@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md — MedCore Operational Brain
 
 > **Epistemic Status**: Verified Project Knowledge & Baseline Parameters  
-> **Last Synchronized**: September 25, 2026  
+> **Last Synchronized**: September 26, 2026  
 > **Active Project**: MedCore (MedCore1)  
 > **Knowledge Layer**: Project Operational Brain (`.brain/`)
 
@@ -72,17 +72,37 @@
 
 ## 3. Statutory Deduction Cascade & Legal Rules
 
-### Statutory Deduction Waterfall
+### Statutory Deduction Waterfall & Fundamental Revenue Cycle Accounting Law
 [FACT] Philippine hospital billing must calculate net liabilities strictly in the following sequential order pursuant to Republic Acts 9994, 10754, 11223, and DOH/BIR guidelines:
 
-$$\text{Net Patient Due} = \left(\left(\text{Gross Charges} - \text{12\% VAT Exemption} - \text{20\% SC/PWD Discount}\right) - \text{PhilHealth ACR/DRG}\right) - \text{HMO Approved LOA}$$
+$$\text{Gross Total} \equiv \text{VAT Exemption} + \text{Senior/PWD Discount} + \text{PhilHealth Benefit} + \text{HMO Approved} + \text{Net Patient Due}$$
 
 1. **Gross Charges**: Aggregated room & board, diagnostics, central supplies, pharmacy, and Doctor Professional Fees (PF).
 2. **12% VAT Exemption**: Deducted from qualifying hospital services and doctor fees for verified Senior Citizens (RA 9994) and Persons with Disability (RA 10754).
 3. **20% Statutory Discount**: Deducted from the VAT-exempt base for Senior Citizens and PWDs.
-4. **PhilHealth All Case Rates (ACR) / DRG Deduction**: Deducted after statutory discounts. Mandates partitioned deductions between Hospital Charges and Professional Fees, applying 1st and 2nd Case Rate splits where applicable.
-5. **HMO / Commercial Insurance Deduction**: Applied against remaining covered charges within Maximum Benefit Limits (MBL), after enforcing policy inner limits and excluding non-covered sundries.
-6. **Patient Out-of-Pocket Balance**: The residual net liability, payable via digital rails or promissory notes.
+4. **PhilHealth All Case Rates (ACR) / DRG Deduction**: Deducted after statutory discounts from the eligible covered base (cannot absorb room upgrade differentials, excluded supplies, or excess PF).
+5. **HMO / Commercial Insurance Deduction**: Applied strictly against remaining eligible covered base after PhilHealth within Maximum Benefit Limits (MBL), excluding non-covered sundries.
+6. **Patient Out-of-Pocket Balance**: The residual net liability, comprising non-covered items (Room Upgrade Differential, Disallowed Sundries, Doctor Excess PF) plus any HMO coverage shortfall.
+
+### Single Source of Truth 10-Step Financial Pipeline (`src/utils/financing.ts`)
+[DECISION] All MedCore financial interactions and installment calculations are standardized through a single mathematical pipeline:
+1. `Hospital Bill`: Gross hospital charges + Gross doctor fees (`grossTotal`).
+2. `PhilHealth Coverage`: Statutory PhilHealth case rate benefit applied (`philhealthTotal`).
+3. `HMO Coverage`: Commercial HMO approved LOA benefit (`hmoApprovedAmount`).
+4. `Other Adjustments`: Statutory discounts (12% VAT exemption + 20% SC/PWD discount).
+5. `Patient Responsibility`: Net patient liability (`netPatientDue`).
+6. `Outstanding Balance`: Residual unpaid patient due (`patientResponsibility - amountPaid`).
+7. `Financed Amount`: Principal amount under promissory agreement (`financedAmount === outstandingBalance`).
+8. `Financing Fee / Interest`: Under RA 9439, statutory hospital promissory notes are strictly **0% interest** (`financingFee = ₱0.00`).
+9. `Total Repayment`: $\text{Total Repayment} \equiv \text{Financed Amount} + \text{Financing Fee} = \text{Financed Amount}$.
+10. `Monthly Installment`: Amortized over 3, 6, or 12 months with exact centavo reconciliation ($\sum \text{Schedule} \equiv \text{Total Repayment}$).
+
+### Full 250-Patient Dataset Audit Verification
+[FACT] Verified via automated test suite (`scripts/auditFinancials.ts`):
+- **250 / 250 patient records audited individually**.
+- **0 waterfall discrepancies** (100% centavo-exact reconciliation against gross bills).
+- **0 inflated or mismatched installment plans** (monthly payments strictly reconcile with principal).
+- **0 NaN, undefined, or floating-point drift errors**.
 
 ### Regulatory & Statutory Governance
 - [FACT] **RA 9439 (Anti-Hospital Detention Law)**: Strictly prohibits detaining medically cleared patients for non-payment of hospital bills. Patients in non-private accommodations are entitled to leave upon executing a promissory note.
@@ -170,20 +190,700 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
 
 ---
 
-## 8. Frontend Architecture & Production Prototype State
+## 8. Frontend Architecture & Operational Cockpit Implementation
 
-[FACT] **Implementation**: Full, interactive, zero-compilation-error frontend application built inside `MedCore1/`:
+[FACT] **Current Implementation State**: Complete, zero-compilation-error production-grade frontend prototype built inside `MedCore1/`:
 - **Core Framework**: React 18.3.1 + Vite 6.4.3 + TypeScript + Tailwind CSS + Lucide React.
-- **Architecture**: 4-Tier Command Center structure:
-  - **Tier 1 (Global Command Bar)**: St. Jude Medical context, live operational PST clock, 7-role switcher dropdown, universal Cmd+K fast patient search modal, theme toggle.
-  - **Tier 2 (5 Core Pillar Telemetry)**: Real-time telemetry cards for `GUIDE`, `VERIFY`, `REWARD`, `REPORT`, and `IMPROVE` with route switching.
-  - **Tier 3 (Primary Operational Workspace)**:
-    - *Left*: Discharge Clearance Mission Control (6-stage Kanban: `MGH_DECLARED`, `DOCTOR_PF_PENDING`, `PHARMACY_RTS_AUDIT`, `HMO_FINAL_LOA`, `PENDING_SETTLEMENT`, `CLEARED_GATE_PASS`) with live countdown timers and SLA badges (`NORMAL`, `WARNING`, `BREACH`).
-    - *Right*: Tripartite Reconciled Ledger Workbench displaying the exact statutory deduction waterfall (`Gross -> 12% VAT Exemption -> 20% SC/PWD Discount -> PhilHealth ACR -> HMO Approved LOA -> Net Patient Due`) with centavo-precision math and "Why do I owe this?" line-item explanations.
-  - **Tier 4 (Contextual Action Drawer & Modals)**:
-    - Doctor 15-minute quick-sign modal with HMO accredited schedule ceiling fallback.
-    - RA 9439 statutory promissory note execution modal with 3/6/12-month amortizations.
-    - Digital Gate Pass clearance modal with cryptographic HMAC-SHA256 signature and lobby exit verification.
-- **Dedicated Operational Views**: `COMMAND_CENTER`, `GUIDE`, `VERIFY`, `RECONCILE`, `REWARD`, `REPORT`, `IMPROVE`, `DISPUTE_DESK`, `PATIENT_CLARIFY` (375px mobile PWA simulation), and `SETTINGS`.
-- **Verification**: `npx tsc --noEmit` passed with 0 errors; `npx vite build` succeeded in 924ms producing optimized production bundles.
+- **Architectural Overhaul (IA Redesign)**:
+  - **Purged 5-Pillar Mnemonic from Visible Navigation**: `GUIDE`, `VERIFY`, `REWARD`, `REPORT`, `IMPROVE` were decommissioned as sidebar navigation items and top-level cards (the 5-pillar engine now functions strictly under the hood as core calculation and validation middleware).
+  - **Eliminated "Reward"**: Removed misleading consumer terminology for patient debt and payments; replaced with task-oriented statutory settlement and RA 9439 promissory note mechanics.
+  - **8 Task-Oriented Operational Routes**:
+    1. `COMMAND_CENTER`: Mission Control 5-level cockpit answering "What needs immediate operational attention right now?"
+    2. `DISCHARGE_CLEARANCE`: 45-minute statutory MGH queue manager with 6-stage Kanban board.
+    3. `ENCOUNTERS_LEDGER`: Master inpatient tripartite running bill with line items + Pre-Admission Intake tab with procedure cost estimator and RA 10932 orientation.
+    4. `COVERAGE_APPROVALS`: PhilHealth PEC/MDR verification table, commercial HMO eLOA monitor (Maxicare, Intellicare, Medicard, PhilCare), and room tariff matrix.
+    5. `DISPUTES_EXCEPTIONS`: Contested chargemaster line items, supervisory courtesy waivers, and RA 9439 Digital Promissory Note Register.
+    6. `CLAIMS_ESOA`: PhilHealth eClaims 3.0 pre-flight scrubber, CF1–CF4 cross-auditor, statutory 60-day filing countdown clock, and live eSOA XML generator (PhilHealth Circular 2023-0026 & 2024-0037).
+    7. `RCM_ANALYTICS`: Executive CFO suite with PhilHealth RTH Denial Pareto, 5-stage TAT distribution heatmap, and 250-bed economic impact ROI model (+₱31.4M/yr).
+    8. `CONFIGURATION`: HIS read-replica CDC connection, PhilHealth HITP credentials, HMO policy exclusion rules, and SLA alarm timers.
+  - **Decoupled Patient Clarify PWA**: Mobile web preview drawer accessible by staff via instant preview drawer and SMS/WhatsApp magic link generation, completely decoupled from staff sidebar navigation.
+- **Command Center 5-Level Operational Hierarchy**:
+  - **Level 1 (Global Context Bar)**: St. Jude Medical context, real-time PST operational clock, 7-role switcher dropdown, universal ⌘K command palette, and dark/light mode toggle.
+  - **Level 2 (Priority Action Strip)**: 4 Bento action cards: SLA Breach Risks (45m ceiling), HMO LOA Delays (avg 52m TAT), High-Risk Claims (CF4 exceptions), and Trapped Capital (active wards).
+  - **Level 3 (Active Discharge Radar)**: High-density 45-minute SLA Mission Control table with patient location, live countdown timer, 6-stage milestone chip, bottleneck indicator, 3-driver patient responsibility tags, and 1-click action triggers.
+  - **Level 4 (Dual Operational Pipelines)**: Split view between Payer Coverage & Approval Watch on the left and Unresolved Billing Disputes & Delayed Lines on the right.
+  - **Level 5 (Velocity & Recovery Pulse)**: Trailing 24-hour performance footer displaying 24h Avg TAT (34.2m vs 4.8h baseline), Bed-Hours Reclaimed (28.5 hrs), Clean Claim Rate (96.4%), Digital POS Collections (₱384,200), and RA 9439 Promissory Recovery Rate (88.2%).
+- **Slide-Over Patient Dossier Drawer (600px width)**: Triggered from any row in the Active Discharge Radar without losing queue context. Displays patient demographics, 45m SLA timer, Three-Driver Out-of-Pocket Breakdown (Room Differential, Consumables, Excess PF), centavo-accurate statutory waterfall, and quick action buttons.
+- **Centavo-Accurate Waterfall Calculation Engine**: `src/utils/waterfall.ts` enforcing exact 2-decimal roundoff: `Gross -> 12% VAT Exemption -> 20% SC/PWD Statutory Discount -> PhilHealth ACR -> HMO Approved LOA -> Net Patient Due`.
+- **Verification**: `npx tsc --noEmit` passed with 0 errors; `npx vite build` succeeded in 882ms producing optimized production bundles with 0 errors.
+
+---
+
+## 9. Enterprise Visual System & Typography Redesign (Completed)
+
+[FACT] **Visual Cleanup & Aesthetic Normalization**:
+- **Aesthetic Overhaul**: Purged artificial "AI-generated dashboard" styling—eliminated neon card borders, ubiquitous pill badges, miniature cards, loud icon backgrounds, and tiny uppercase labels. Transitioned the entire UI to a calm, high-legibility enterprise healthcare standard (resembling Epic Systems, Stripe, Linear, and modern hospital SaaS).
+- **Typography Scale & Hierarchy**:
+  - **Dominant Font**: Inter (clean sans-serif) used universally for navigation, headings, body text, tables, forms, and buttons.
+  - **Monospace Restriction**: Strictly limited to technical identifiers and financial values (MRNs, encounter numbers, claim codes, PST timestamps, centavo-accurate currency amounts).
+  - **Scale Normalized**:
+    - Body and table cell text: 14–15px minimum.
+    - Secondary metadata and subtext: 13–14px.
+    - Section headings: 15–18px font-semibold.
+    - View/page titles: 20–28px font-semibold.
+    - Key numeric metrics: 20–28px font-bold tabular-nums.
+    - Navigation items: 14–15px font-medium.
+    - Buttons & controls: 13–14px font-medium.
+- **Redesigned Core Components**:
+  - `GlobalCommandBar`: Quiet status dots, clean PST clock, clean search input with ⌘K, profile menu.
+  - `SidebarNav`: 14px navigation text, normal sentence/title case, removed decorative blue indicator bars, clean subtle badges.
+  - `PriorityActionStrip`: Replaced isolated Bento cards with a single unified 4-segment operational summary strip.
+  - `ActiveDischargeRadar`: Primary operational workspace with generous row height (`py-4 px-6`), patient name visual anchor, plain text SLA indicators, clean tabular currency, and calm action buttons.
+  - `DualOperationalPipelines` & `VelocityRecoveryPulse`: Clean two-column enterprise pipeline and quiet telemetry footer.
+  - Drawers & Modals: Standardized `DischargeDossierDrawer`, `WhyDoIOweThisDrawer`, `DoctorQuickSignModal`, `DigitalPromissoryModal`, `DigitalGatePassModal`, `SearchModal`, `DischargeMissionControl`, and `DischargeCard`.
+  - Operational Views: Standardized `EncountersLedgerView`, `CoverageApprovalsView`, `DisputesExceptionsView`, `ClaimsEsoaView`, `RcmAnalyticsView`, `ConfigurationView`, and `PatientClarifyView`.
+- **Verification**: `tsc -b && vite build` completed in 798ms with 0 errors. Dev server running and verified responsive on `http://localhost:5173`.
+
+---
+
+## 10. Light Mode Mandate & Master / Detail Discharge Workspace Redesign (Completed)
+
+[FACT] **Total Light Mode Mandate**:
+- **Pure Light Mode Environment**: MedCore is strictly 100% light mode. Completely eradicated dark mode toggles, dark-mode CSS variables, theme switching state, and all `dark:` utility classes across all components, views, modals, and drawers.
+- **Root Enforcement**: `index.html` body initialized as `@apply antialiased text-slate-900 bg-slate-50`, and `MedCoreContext.tsx` explicitly invokes `document.documentElement.classList.remove('dark')` on mount. Zero dark mode classes remain in `src/`.
+
+[FACT] **Intentional Operational Color System**:
+- **Preserved Clinical Colors**: Rather than neutralizing the interface to monochrome gray, color is applied intentionally to convey urgency, status, and direct action:
+  - **MedCore Blue (`bg-blue-600`)**: Primary actions, stage advances, active navigational selections, and command shortcuts.
+  - **Emerald Green (`bg-emerald-600`, `text-emerald-700`)**: Positive approvals, cleared items, digital gate pass issuance, and prompt settlements (`✓ Approved`, `✓ Verified`, `✓ Ready for Exit`).
+  - **Amber Orange (`bg-amber-50`, `border-amber-300`, `text-amber-800`)**: Bottlenecks, SLA warnings, accredited ceiling breaches, and pending physician signatures (`● Pending Signature`, `! At Risk`).
+  - **Rose Red (`text-rose-700`, `bg-rose-50`)**: Critical SLA breaches, high RTH claim risks, and disputed charges (`× Blocked`, `! High RTH Risk`).
+  - **Purple (`bg-purple-600`, `border-purple-300`, `text-purple-800`)**: Statutory RA 9439 promissory note executions and installment agreements.
+- **Bold Semantic Statuses**: Outlined badge pills replaced with bold semantic text + colored pulse dots / icons (e.g., `✓ Ready for Exit`, `● In Review`, `! At Risk · 13m left`).
+- **Colorful Action Buttons**: Replaced gray outline buttons with full-height semantic action buttons with high contrast and tactile feedback.
+
+[FACT] **Discharge Clearance Master / Detail Workspace (Primary Workstation)**:
+- Replaced horizontal spreadsheet table with an operational Master / Detail workspace structured around the 5 operator decisions:
+  1. *Who is the patient?* (Name, age, room/bed, PhilHealth PIN, HMO provider).
+  2. *Can they leave right now?* (Bold SLA status indicator, minutes elapsed in stage, 6-stage milestone tracker).
+  3. *What is blocking them?* (Prominent "What is Blocking Discharge Right Now?" alert box with bottleneck narrative and 1-click action trigger).
+  4. *How much is unresolved?* (Three-Driver Out-of-Pocket breakdown: Room Differential, Consumables Excluded, Excess Doctor PF).
+  5. *What can I do right now?* (Direct resolution actions: QuickSign PF, Clear Pharmacy RTS, Validate HMO eLOA, Settle QR Ph, Issue RA 9439 Note, Generate Gate Pass).
+- **Master Queue (Left Pane)**: Scrollable patient queue with real-time status chips, blocker badges, and net due amounts.
+- **Detail Workstation (Right Pane)**: Comprehensive operational station that updates instantly on patient selection without modal disruptions.
+- **Sub-View Flexibility**: Maintained 1-click toggle between Master / Detail Workspace, 6-Stage Kanban Pipeline (`DischargeMissionControl`), and Full Card Grid view.
+
+[FACT] **Top Summary Area Normalization**:
+- Replaced separate disjointed AI widgets in `PriorityActionStrip` with a unified 4-segment command summary strip featuring 24–28px bold figures, 14–15px clear titles, 13px descriptions, and direct route navigation.
+
+[FACT] **Verification**:
+- Zero TypeScript errors (`npx tsc -b && npm run build` built successfully in 790ms).
+- Dev server running and verified responsive with HTTP 200 OK on `http://localhost:5173`.
+
+---
+
+## 11. Inspiration-Based Dashboard Visual & Architectural Overhaul (Completed)
+
+[FACT] **Design Inspiration Synthesis (`dashboard_inspos/`)**:
+- Inspected and integrated recurring enterprise healthcare patterns from all 4 inspiration sources:
+  1. **Comlogik HIMS (`dashboard_inspo_1.jpg`)**: Real Philippine hospital billing system blueprint. Adopted patient demographic header banner (Patient ID, Name, Room/Bed, Age/Sex, Attending Doctor, HMO Payer), prominent **Net Balance Due** callout box, and dedicated right-hand **Quick Action Console Pad** with high-contrast, tactile operational buttons (`Record Payment / QR Ph`, `Apply Tariff Ceiling`, `Doctor QuickSign Portal`, `Execute RA 9439 Note`, `Issue Digital Gate Pass`, `Generate Official eSOA`).
+  2. **MediKit (`dashboard_inspo_2.jpg`)**: Refactored the 4 metric cards in `PriorityActionStrip` with soft circular icon containers, 26–28px bold metrics, clean titles, subtitle context, and direct workspace links.
+  3. **MediCore AI (`dashboard_inspo_3.jpg`)**: Refined `SidebarNav` with unnumbered natural groups (`Operations & Workspaces` and `Statutory & Compliance`), vibrant royal blue active highlight (`bg-blue-600 text-white font-semibold shadow-xs`), bottom Patient Clarify utility promo card, top command bar with calendar date + live PST clock, search shortcut pill (`⌘K`), and unread notification bell badge.
+  4. **Medicare Doctor Admin (`dashboard_inspo_4.jpg`)**: Implemented 6-step discharge milestone progress bar with visual status indicators and clean worklist tags.
+
+[FACT] **Component Modifications**:
+- `SidebarNav.tsx`: Natural unnumbered groups, solid royal blue active highlight (`bg-blue-600 text-white`), clean badge contrast, and bottom Patient Clarify utility card.
+- `GlobalCommandBar.tsx`: Medical brand mark, hospital facility context (`St. Jude Medical Center Manila`), calendar date + live PST clock, SLA status badge, search bar with `⌘K`, notification bell with badge, and role switcher.
+- `PriorityActionStrip.tsx`: 4 distinct modern cards with soft colored circular icon backdrops (rose/amber/blue/emerald), bold 26–28px numbers, clear subtitles, and navigation links.
+- `ActiveDischargeRadar.tsx`: Comlogik-style patient demographic banner, 6-stage milestone tracker, prominent Balance Due callout (`₱ 12,450.00`) with 3-Driver Out-of-Pocket breakdown, and dedicated right-side Quick Action Console pad with colorful action buttons.
+- `CommandCenterView.tsx`: Smooth scrollable layout (`overflow-y-auto`) with minimum height on `ActiveDischargeRadar` ensuring all 4 command levels remain fully visible without squashing.
+- `DualOperationalPipelines.tsx`: Crisp 2-column card layout with clean headers, itemized details, and direct action triggers.
+- `TripartiteWorkbench.tsx`: Comlogik-inspired itemized charges table with sticky header, status chips, centavo-accurate statutory waterfall, and action buttons.
+
+[FACT] **Verification**:
+- `npx tsc -b && npm run build` compiled with 0 errors in 849ms.
+- Dev server verified active and responsive with HTTP 200 OK on `http://localhost:5173`.
+
+---
+
+## 12. Full Demo Data & Realistic Philippine Hospital Simulation Overhaul (Completed)
+
+[FACT] **Single Source of Truth & Interconnected Inpatient Roster (`src/data/mockData.ts`, `src/types/domain.ts`)**:
+- Expanded domain models with `EncounterTimelineEvent`, rich HMO authorization states (`AWAITING_CODE`, `DISALLOWED_ITEMS`, `PARTIALLY_APPROVED`), PhilHealth pre-flight audit statuses (`INTERCEPTED`, `RETURNED`, `APPROVED`), claim aging days, assigned auditors, dispute department tags, and encounter timelines.
+- Engineered 15 comprehensive, realistic, fully interconnected inpatient encounters spanning all clinical departments (Internal Medicine, General Surgery, Orthopedics, OB-GYN, Nephrology, Cardiology, Pediatrics) and room categories (Ward, Semi-Private, Regular Private, Private Deluxe):
+  - Every encounter contains an itemized chargemaster (4–10 realistic line items with Philippine RCM codes, unit rates, PhilHealth/HMO shares, out-of-pocket balances, and plain-language explanations).
+  - Every encounter includes a multi-event chronological operational audit timeline (MGH orders, clinical reviews, pharmacy returns, payer portal transmissions, and cashier settlements).
+  - Every statutory waterfall is calculated with centavo precision via `recalculateWaterfall` adhering to RA 9994/RA 10754 VAT exemptions and PhilHealth Circular 2024-0037 (+50% ACR).
+
+[FACT] **Codified Real-World Operational Archetypes**:
+1. *Clean Fully Covered Case*: Miguel Santos (`enc-0012`, Dengue hemorrhagic fever, Ward NBB, Medicard, ₱0 OOP balance).
+2. *HMO Final LOA Bottleneck*: Juan Dela Cruz (`enc-1049`, Maxicare final eLOA code delayed 32m, contested Foley catheter supplies).
+3. *PhilHealth Documentation Deficiency / RTH Pre-Flight*: Arthur Alcantara (`enc-5521`, Lap Chole, CF4 vitals and operative findings incomplete, RTH score 0.78, SLA breached).
+4. *Unclear OOP / 3-Driver Breakdown*: Teresa Dimaculangan, Ramon Castillo, Lourdes Villanueva with itemized splits for Room Differential, Consumables Excluded, and Excess Doctor PF.
+5. *Active Chargemaster Disputes*: Maria Clara Bautista (`disp-02`, contested ₱12,500 assistant surgeon PF); Juan Dela Cruz (`disp-01`, contested ₱1,928 catheter); Lourdes Villanueva (`disp-03`, ₱6,071 disallowed bone cement); Eduardo Garcia (`disp-05`, ₱2,400 unreturned IV sets).
+6. *Statutory Promissory Note Register under RA 9439*: Rolando Gutierrez (`enc-4552`, `PN-2026-089` for ₱24,600 stroke balance after Medicard MBL exhaustion); Ramon Castillo (`enc-6624`, `PN-2026-090` for ₱11,200 3-month repayment note).
+7. *Pre-Flight Claim Interception*: Teresa Dimaculangan (`enc-3419`, MDR maiden name discrepancy caught prior to transmission).
+8. *Cleared Cases with Digital HMAC Gate Passes*: Corazon Mendoza (`enc-3314`, `PASS-MC-88319`, Dialysis exit); Ferdinand Navarro (`enc-9201`, `PASS-INT-99120`, Femur ORIF cleared via QR Ph).
+
+[FACT] **View Implementations & Enhancements**:
+- **Coverage & Approvals (`CoverageApprovalsView.tsx`)**: Multi-tier search, status pills (`All`, `Approved`, `Awaiting Code`, `Disallowed Supplies`, `Draft`), HMO carrier dropdown, MBL remaining, and turnaround time metrics.
+- **Claims & eSOA Pre-Flight Scrubber (`ClaimsEsoaView.tsx`)**: Inpatient Pre-Flight Audit Worklist table across all 15 claims, dynamic RTH risk score badges, CF4 clinical integrity dots (vitals, ward course, labs), status chips, and real-time PhilHealth Circular 2023-0026 conforming eSOA XML generator.
+- **RCM Analytics (`RcmAnalyticsView.tsx`)**: 30-Day Discharge Turnaround Time (TAT) Descent visual chart (274m down to 32.4m), Trapped Capital Pareto by friction source, AR Aging Profile (0–30d, 31–60d, 61–90d, 90+d), and Multi-Payer Performance & Turnaround Matrix.
+- **Discharge Dossier Drawer (`DischargeDossierDrawer.tsx`)**: Live chronological Operational Timeline / Audit Log rendering timestamps, actors, and status pills.
+- **Disputes & Exceptions (`DisputesExceptionsView.tsx`)**: Active Chargemaster Disputes triage with 1-click supervisory waiver/promissory triggers, and RA 9439 Promissory Note Register with executed installment agreements.
+- **Encounters & Ledgers (`EncountersLedgerView.tsx`) & Patient Clarify (`PatientClarifyView.tsx`)**: Fully integrated with all 15 encounters for interactive multi-patient review and mobile preview.
+
+[FACT] **Verification**:
+- `npx tsc -b && npm run build` successfully compiled with 0 errors in 817ms.
+- Vite dev server verified responsive with HTTP 200 OK on `http://localhost:5173`.
+
+---
+
+## 13. Realistic 250-Patient Level 3 Philippine Hospital Dataset Expansion (Completed)
+
+[FACT] **Deterministic High-Fidelity Dataset Generation (`src/data/patientDatasetGenerator.ts`, `src/data/mockData.ts`)**:
+- Implemented a zero-dependency deterministic Lehmer PRNG (`seed: 20260925`) to synthesize **235 additional realistic inpatient records** (`enc-1016` to `enc-1250`), combined with the 15 handcrafted flagship encounters for an exact total of **250 interconnected patient encounters**.
+- **Hospital Capacity & Unit Distribution**:
+  - Surgical Ward & OB-GYN (3rd Floor): 73 encounters
+  - Internal Medicine, Cardiology & Geriatrics (5th Floor): 41 encounters
+  - Orthopedics & Pediatrics (6th Floor): 40 encounters
+  - Telemetry & Step-Down (2nd Floor): 37 encounters
+  - Private Deluxe (4th Floor): 18 encounters
+  - Executive Suites (4th Floor): 13 encounters
+  - Emergency Department & ED Holding (1st Floor): 10 encounters
+  - Intensive Care Units (ICU / NICU / PICU): 14 encounters
+  - Ambulatory Hemodialysis & Day Care: 4 encounters
+- **Attending Doctors & Credentials**: 13 Philippine medical specialists with verified PRC licenses and specialty credentials (FPCP, FPCS, FPOA, FPOGS, FPPS, FPCC, FPNA, FPCR).
+- **HMO Carriers**: Maxicare, Intellicare, Medicard, Pacific Cross, PhilCare, Etiqa Philippines, Caritas Health Shield, and Insular Health Care.
+- **Financial Ledgers**:
+  - Total Gross Hospital Charges: ₱12,268,905.00
+  - Total PhilHealth Benefit: ₱7,500,900.00
+  - Total HMO LOA Coverage: ₱3,089,537.13
+  - Total Net Patient Out-of-Pocket: ₱1,785,411.57
+  - Executed Promissory Notes (RA 9439): 8 notes
+  - Active Disputed Items: 15 items (₱50,670.00)
+  - Discharged Gate Passes Issued: 83 passes
+
+[FACT] **PhilHealth & HMO Problem Category Distribution**:
+1. *Clean / Ready for Submission*: 123 cases (49.2%) — Complete CF4 notes, zero discrepancies, clean LOA approval.
+2. *Missing Documentation*: 23 cases (9.2%) — Missing CF4 ward course notes, physician discharge summaries, or doctor signatures.
+3. *Coding / Diagnosis Mismatch*: 18 cases (7.2%) — Primary ICD-10 diagnosis conflicts with secondary procedure or lab findings.
+4. *Incomplete Claim Requirements*: 13 cases (5.2%) — PhilHealth Member Data Record (MDR) maiden name discrepancies and missing physician PAN entries.
+5. *PhilHealth Coverage / Benefit Issues*: 16 cases (6.4%) — Single Period of Confinement (SPC) flags and claims approaching the 60-day filing cutoff.
+6. *HMO Verification & Authorization Issues*: 45 cases (18.0%) — Final LOA status `AWAITING_CODE` (TAT >35m) or `DISALLOWED_ITEMS`.
+7. *Billing & Financial Discrepancies*: 15 cases (6.0%) — Unreturned pharmacy medications (RTS pending credit slip) or contested chargemaster items.
+8. *Pending Approval / In Review*: 3 cases (1.2%) — Insurer medical director audit underway.
+9. *Denied / Returned / Needs Correction*: 9 cases (3.6%) — PhilHealth Returned to Hospital (RTH) pre-flight alerts (RTH score >0.85).
+10. *Discharge Blocking Cases*: 111 cases (44.4%) — Inpatient cases in stages 1–5 requiring clinical, payer, or cashier clearance.
+
+[FACT] **UI Component & Pagination Optimizations for Large Datasets**:
+- **Coverage & Approvals (`CoverageApprovalsView.tsx`)**: Added 20-row client-side pagination with page indicators ("Page X of Y", "Showing X–Y of 250"), preventing DOM lag while preserving multi-tier filters and search.
+- **Claims & eSOA Scrubber (`ClaimsEsoaView.tsx`)**: Added 15-row pagination for the pre-flight audit worklist with real-time XML preview updates on row selection.
+- **Encounters & Ledgers (`EncountersLedgerView.tsx`)**: Replaced horizontal scroll strip with a combined quick-search input, quick-select dropdown covering all 250 encounters, and top 8 matching patient chips.
+- **Global Search (`SearchModal.tsx`)**: Sliced rendered matches to top 15 results for instantaneous keyboard arrow navigation.
+- **Patient Clarify Preview (`PatientClarifyView.tsx`)**: Prefixed room/bed numbers to the select dropdown for instant patient identification across floors.
+
+[FACT] **Verification**:
+- `npx tsc -b && npm run build` successfully passed with 0 errors.
+- Vite dev server verified responsive with HTTP 200 OK on `http://localhost:5173`.
+
+---
+
+## 14. 100% Financial Reconciliation & Production System Audit (Completed)
+
+[FACT] **Statutory Deduction Waterfall Engine Hardening**:
+- Resolved line-item calculation in `WhyDoIOweThisDrawer.tsx` and `TripartiteWorkbench.tsx` to ensure statutory deductions (12% VAT exemption and 20% Senior/PWD discount pursuant to RA 9994 / RA 10754) are deducted from the patient's net responsibility.
+- For chargemaster line item `item-101` (Gross: ₱12,000.00, VAT: ₱1,285.71, SC/PWD: ₱2,142.86, HMO: ₱6,000.00), the system accurately derives Net Patient Responsibility of **₱2,571.43** ($\text{₱12,000} - \text{₱9,428.57 deductions}$).
+- Realigned `item-101` in `mockData.ts` and validated line items across all encounters.
+
+[FACT] **Disputes & Exceptions / Promissory Note Installment Realignment**:
+- Updated `MedCoreContext.tsx` and `DigitalPromissoryModal.tsx` to support custom dispute item amounts and context.
+- For disputed items like Suction Catheters `item-104` (contested balance ₱1,928.57), clicking "Promissory Note" in `DisputesExceptionsView.tsx` now launches the promissory agreement anchored to the exact contested amount at 0% statutory interest:
+  - 3 Months: **₱642.86 / month** (Schedule: [642.86, 642.86, 642.85])
+  - 6 Months: **₱321.43 / month** (Schedule: [321.43, 321.43, 321.43, 321.43, 321.43, 321.42])
+  - 12 Months: **₱160.71 / month** (Schedule: [160.71 × 11, 160.76])
+- Corrected demographic mismatch on handcrafted case `enc-4552` (Rolando Gutierrez, ₱24,600 promissory note) to ensure non-senior classification aligns with statutory waterfall calculations.
+
+[FACT] **PhilHealth Circular 2023-0026 XML Inspector Modal (`ClaimsEsoaView.tsx`)**:
+- Connected the "Inspect XML →" button in the claims table to an interactive modal viewer.
+- Renders formatted, syntactically highlighted PhilHealth Circular 2023-0026 eSOA XML conforming payloads with pre-flight checklist verification (CF1, CF2, CF4), clipboard copy, and `.xml` file downloads.
+
+[FACT] **Static Sidebar Navigation & Full-Width Configuration Layout**:
+- Fixed outer page scrolling in `App.tsx` by setting root container to `h-screen w-screen overflow-hidden` with a fixed `h-full shrink-0` sidebar and independently scrollable content containers.
+- Replaced `Sliders` icon with standard Lucide `Settings` (gear icon) on the navigation menu.
+- Expanded `ConfigurationView.tsx` from narrow `max-w-4xl` to a full-width responsive multi-column grid layout.
+
+[FACT] **100% Automated Financial Consistency Verification**:
+- Automated test runner `scripts/auditFinancials.ts` executed against all 250 patients individually:
+  ```text
+  Patients audited: 250
+  Gross total errors: 0
+  VAT calculation errors: 0
+  Senior/PWD calculation errors: 0
+  PhilHealth calculation errors: 0
+  HMO calculation errors: 0
+  Total deduction errors: 0
+  Patient responsibility errors: 0
+  Outstanding balance errors: 0
+  Promissory note errors: 0
+  3-month installment errors: 0
+  6-month installment errors: 0
+  12-month installment errors: 0
+  ```
+- All 250 records pass with 100% mathematical and regulatory reconciliation.
+
+---
+
+## 15. Universal Table Architecture, Command Center Layout & Waive Workflow (Completed)
+
+[DECISION] **Universal Table Architecture Across Application**:
+- Established strict enterprise table standard across all views:
+  - **Static / Sticky Header**: `sticky top-0 bg-slate-50 z-10 border-b border-slate-200`.
+  - **Scrollable Body**: Bounded container with smooth overflow scrolling (`max-h-[...] min-h-[300px] overflow-y-auto overflow-x-auto`).
+  - **Header Typography**: Prominent, high-contrast enterprise styling (`text-xs font-bold uppercase tracking-wider text-slate-600`).
+  - **Left-Aligned Content**: All categorical, descriptive, clinical, and status columns strictly left-aligned with headers (`text-left`). All financial amounts right-aligned with matching right-aligned headers (`text-right`).
+  - **Docked Pagination Controls**: Pagination bars placed outside scrollable containers at the bottom of the card (`border-t border-slate-200 bg-white shrink-0`).
+- Standardized across all 7 dashboard tables:
+  1. `ActiveDischargeRadar.tsx` (Left Queue independent scroll + interactive full `TABLE` view mode).
+  2. `CoverageApprovalsView.tsx` (Multi-payer inpatient roster + docked pagination).
+  3. `ClaimsEsoaView.tsx` (Pre-flight audit worklist + docked pagination).
+  4. `EncountersLedgerView.tsx` (Pre-admission scheduled intake table).
+  5. `TripartiteWorkbench.tsx` (Itemized chargemaster ledger table).
+  6. `RcmAnalyticsView.tsx` (Commercial HMO Carrier Performance Matrix).
+  7. `DisputesExceptionsView.tsx` (Contested Chargemaster Items & RA 9439 Promissory Notes Register).
+
+[DECISION] **Command Center & Discharge Workstation Viewport Rhythm**:
+- Upgraded Discharge Clearance Workstation in `CommandCenterView.tsx` to an intentional `h-[72vh] min-h-[580px] max-h-[840px] flex flex-col` container.
+- Capped Dual Operational Pipelines (`DualOperationalPipelines.tsx`) to `h-[340px] max-h-[340px]` with internal scrollable lists (`flex-1 min-h-0 overflow-y-auto pr-1.5`), preventing vertical page bloat.
+- In `ActiveDischargeRadar.tsx`, synchronized bottom card heights using `grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch`:
+  - Left column (`lg:col-span-8 flex flex-col gap-4`): Blocker Action Box + Total Net Patient Due Box (`flex-1 flex flex-col justify-between`).
+  - Right column (`lg:col-span-4 flex flex-col`): Quick Action Console (`h-full flex flex-col justify-between`).
+  - Both columns share the exact same bottom edge with zero height mismatch.
+
+[FACT] **Disputes & Exceptions — Real "Waive" State Mutation**:
+- Resolved defect in `MedCoreContext.tsx`: `supervisoryWaiveItem` now resets `isDisputed: false`, sets `patientOop: 0`, clears `disputeReason`, records `SUPERVISOR_WAIVED` status in `enc.disputes`, updates `unreturnedMedsCount`, and invokes `recalculateWaterfall` to deduct the waived item from gross and net liabilities.
+- Updated `DisputesExceptionsView.tsx` and `DualOperationalPipelines.tsx` filters to exclude `SUPERVISORY_WAIVED` and `WAIVED` items, immediately removing them from active dispute queues upon supervisor action.
+- Production build passes cleanly (`npm run build` 0 errors, 100% financial audit passed).
+
+---
+
+## 16. Command Center Viewport Sizing, Expanded Patient Intelligence & Docked Coverage Pagination (Completed)
+
+[DECISION] **Command Center Two-Screen Viewport Architecture (`CommandCenterView.tsx`)**:
+- Solved layout overflow where Discharge Clearance Workstation was cut off at the bottom and Dual Operational Pipelines peeked awkwardly onto the first view.
+- Structured Command Center into two distinct, intentional full-height screens (`min-h-[calc(100vh-56px)] shrink-0`):
+  - **Screen 1 (Initial Viewport)**: Dedicated entirely to `PriorityActionStrip` (~125px) and `ActiveDischargeRadar` (`flex-1 min-h-0`). The entire Discharge Clearance Workstation (Patient Queue on left, Operational Workspace on right) fits completely within the initial screen with zero element cutoff and no pipelines peeking at the bottom.
+  - **Screen 2 (Next Scroll)**: On scrolling down, `DualOperationalPipelines` commands the full viewing height (`min-h-[520px]` side-by-side cards with `flex-1 min-h-0 overflow-y-auto` internal lists) alongside `VelocityRecoveryPulse` (trailing KPI footer), providing complete presence for Payer Coverage & Authorizations and Unresolved Billing Exceptions without cramped bounds.
+
+[DECISION] **Discharge Clearance Right Pane Empty Space Elimination (`ActiveDischargeRadar.tsx`)**:
+- Completely eliminated empty white space at the bottom of the Master/Detail workspace as identified in `current_problems/Pasted 2026-09-26 at 3.10.40 AM.png`.
+- **Enlarged Patient Demographic & Clinical Intelligence Banner**:
+  - Avatar expanded to `w-16 h-16 rounded-2xl` with bold initials and vibrant gradient.
+  - Full Name styled at `text-2xl font-black text-slate-900 tracking-tight`.
+  - Prominent semantic tags: Age & Gender, Senior Citizen (RA 9994), PWD (RA 10754), and PhilHealth PEC 3.0 Verified.
+  - High-density 8-card metadata matrix: Encounter Reference, Room/Bed & Ward Class, Attending Specialist (PRC & Specialty), Admitting Diagnosis (ICD-10), Primary HMO (MBL Remaining), PhilHealth ACR Benefit, MGH Declaration Timestamp, and Discharge Stage.
+  - Quick utility buttons for Patient Clarify, Itemized Ledger, and Print eSOA.
+- **Prominent Statutory Reconciliation Bar**: Embedded inside the Total Net Patient Due card, clearly itemizing $\text{Gross Total} - \text{PhilHealth ACR} - \text{HMO Approved} - \text{Senior/PWD/VAT} = \text{Net Patient Due}$.
+- **Itemized Audit & Sign-Off Overview**: Added a bottom grid featuring a Chargemaster Audit Summary (Room & Board, Pharmacy, Supplies, PF) and Discharge Clearance Sign-Offs (Specialist PF, Pharmacy RTS, PhilHealth PEC, HMO LOA), gracefully utilizing available vertical height with actionable operational data.
+
+[DECISION] **Coverage & Approvals 100vh Constraint & Docked Pagination (`CoverageApprovalsView.tsx`)**:
+- Maintained strict `h-full min-h-0 overflow-hidden` container preventing any height expansion past 100vh.
+- Fixed visible records to `pageSize = 6` so table content fits comfortably on standard viewports without pushing controls off-screen.
+- Upgraded docked bottom pagination bar with bold, high-contrast "Next" button (`bg-blue-600 hover:bg-blue-700 text-white font-bold`) and "Previous" button with `ChevronLeft` and `ChevronRight` icons.
+- Pinned pagination controls permanently at the bottom of the card (`shrink-0 border-t border-slate-200 bg-white px-6 py-2.5`), immediately accessible without scrolling.
+- Preserved complete 250-record dataset and static sticky table headers.
+
+---
+
+## 17. Discharge Clearance Viewport Fit & Coverage Approvals Table Volume Optimization (Completed)
+
+[DECISION] **Discharge Clearance Zero-Scroll Layout & Padding Enhancements (`ActiveDischargeRadar.tsx`)**:
+- Addressed user feedback and annotations from `current_problems/Screenshot 2026-09-26 at 03.28.01.png`:
+  - **Blocker Action Bar & Sign-Offs Headers**: Added intentional internal padding (`px-4 py-3`), clear alert icon container (`w-8 h-8 rounded-lg`), and crisp action buttons, providing comfortable breathing room around critical status indicators.
+  - **Right Workspace Compaction (40–50% Height Reduction)**:
+    - Demographic & Clinical Intelligence banner compacted to ~105px with `w-11 h-11` avatar, 4 high-density metadata cards (Bed/Ward, Specialist, Diagnosis, MGH time), and horizontal secondary details.
+    - 6-step Milestones bar compacted to ~55px (`py-2 px-3`).
+    - Net Patient Due card compacted to ~150px with single-line statutory deduction waterfall strip ($\text{Gross} - \text{PH} - \text{HMO} - \text{SC/PWD} = \text{Net Due}$) and 3 cost-driver chips.
+    - Quick Action Console compacted to ~210px with 5 streamlined station sign-off buttons, matching the left column height.
+    - Itemized Chargemaster Audit and Discharge Clearance Sign-Offs compacted to ~105px with high-density tabular and pill summaries.
+  - **Zero-Scroll Operational Result**: The entire right column fits onto standard viewports (670–750px) without any vertical scrolling required to view the itemized chargemaster audit and discharge clearance sign-offs.
+  - **Left Patient Queue Compaction**: Reduced card padding from `p-4` to `px-3.5 py-2.5` with tighter typography, allowing 10–11 patients to fit on screen simultaneously (matching the right column density).
+
+[DECISION] **Coverage Approvals Table Empty Space Elimination (`CoverageApprovalsView.tsx`)**:
+- Addressed user feedback and annotation from `current_problems/Screenshot 2026-09-26 at 03.29.43.png`:
+  - Expanded `pageSize` from 6 to 11 (+5 rows), perfectly filling the ~240px empty salmon-highlighted void between row 6 and the pagination bar.
+  - Preserved the fixed `h-full min-h-0 overflow-hidden` outer wrapper and pinned bottom pagination controls (`shrink-0 border-t border-slate-200 bg-white px-6 py-2.5`).
+  - Table comfortably showcases 11 active coverage verification records on standard desktop viewports without overflowing or pushing controls off-screen.
+
+---
+
+## 18. Patient Queue Scrollability, Viewport Height Bounds, Bottom Margins & Table Row Expansion (Completed)
+
+[DECISION] **Command Center Viewport Height Constraint & Queue Scrollability (`CommandCenterView.tsx`)**:
+- Resolved defect where Screen 1 expanded to ~10,000px height causing the patient queue to render all 200 patients in an unscrollable list.
+- Replaced unconstrained `min-h-[calc(100vh-56px)]` with strict `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col pb-3 sm:pb-4`.
+- Bounded container height re-activates `flex-1 min-h-0 overflow-y-auto` in `ActiveDischargeRadar.tsx`, restoring smooth internal scrolling across all 200 patient queue items.
+- Added `pb-3 sm:pb-4` on the Screen 1 container and `pb-6 sm:pb-8` to the right pane, ensuring the UI on the right side never directly touches the bottom border or bottom edge of the screen.
+
+[DECISION] **Discharge Clearance Workstation Full Right Column Utilization (`DischargeClearanceView.tsx` & `ActiveDischargeRadar.tsx`)**:
+- Standardized `DischargeClearanceView.tsx` to `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden bg-slate-50 pb-3 sm:pb-4`, strictly bounding the view to 100vh minus header heights with bottom margin breathing room.
+- In `ActiveDischargeRadar.tsx`:
+  - Added `flex-1 min-h-0` and `items-stretch` to Section 3 (`grid-cols-1 lg:grid-cols-12`), allowing the Blocker Box, Net Patient Due, and Quick Action Console to flexibly utilize the entire right column height.
+  - Added `mb-2` and `pb-6 sm:pb-8` to ensure the lower Chargemaster Audit and Discharge Clearance Sign-Offs cards maintain comfortable bottom margin above the screen edge.
+  - Added `pb-6` to the patient queue list container so the final queue card never ends flush against the bottom.
+
+[DECISION] **Coverage Approvals Whitespace Elimination with 12th Row (`CoverageApprovalsView.tsx`)**:
+- Increased `pageSize` from 11 to 12 rows, filling the remaining whitespace in the table container without pushing pagination controls off-screen.
+- Preserved 100% centavo-exact financial calculation accuracy across all 250 patients (0 errors across all 12 categories).
+
+---
+
+## 19. Universal Table Left-Alignment, Dual Pipeline Viewport Bounds & Elimination of Wasted Space (Completed)
+
+[DECISION] **Universal Enterprise Table Left-Alignment (All 8 Tables in Codebase)**:
+- Conducted full audit of all tables across all dashboard categories to eliminate inconsistent right-alignment and center-alignment.
+- Established strict universal standard: **every column header (`<th>`) and every cell data item (`<td>`) is strictly left-aligned (`text-left`)**, including numbers, currency amounts, percentages, ICD-10/RVS codes, status badges, dates, and action button containers (`justify-start`).
+- Audited and updated across all 8 tables:
+  1. **Encounters & Ledgers (`EncountersLedgerView.tsx`)**: Pre-admission scheduled intake table (`Est. Out-of-Pocket` and `Action` converted to `text-left`).
+  2. **Encounters & Ledgers (`TripartiteWorkbench.tsx`)**: Master Inpatient Running Bill table (all 8 columns: `Item / Service Description`, `Qty`, `Gross Total`, `PhilHealth`, `HMO Coverage`, `Patient Balance`, `Coverage Status`, and `Actions` converted to `text-left`).
+  3. **Disputes & Exceptions (`DisputesExceptionsView.tsx` - Table 1)**: Active Chargemaster Disputes table (`Amount` and `Actions` converted to `text-left` and `justify-start`).
+  4. **Disputes & Exceptions (`DisputesExceptionsView.tsx` - Table 2)**: Statutory Promissory Undertakings (RA 9439) table (`Principal Balance` and `Monthly Installment` converted to `text-left`).
+  5. **Claims & eSOA XML (`ClaimsEsoaView.tsx`)**: Inpatient Pre-Flight Audit Worklist table (`Case Rate (ACR)` and `Action` converted to `text-left`).
+  6. **RCM Analytics (`RcmAnalyticsView.tsx`)**: Commercial HMO Carrier Performance Matrix (all 6 columns: `HMO Carrier`, `Inpatient Cases`, `Avg eLOA TAT`, `Disallowance Rate`, `Clean Approval`, and `Total Reconciled MTD` converted to `text-left`).
+  7. **Coverage Approvals (`CoverageApprovalsView.tsx`)**: Payer Coordination Worklist (`Approved LOA`, `Excluded Supplies`, and `Actions` converted to `text-left` and `justify-start`).
+  8. **Active Discharge Radar (`ActiveDischargeRadar.tsx`)**: Discharge Clearance Table View mode (`Net Patient Due` and `Actions` converted to `text-left` and `justify-start`).
+- Verified with grep and codebase audit: **zero** table headers or table cells retain `text-right` or `text-center`.
+
+[DECISION] **Command Center Screen 2 Viewport Bounds & Dual Pipeline Scrolling (`CommandCenterView.tsx` & `DualOperationalPipelines.tsx`)**:
+- Addressed issue shown in `Screenshot 2026-09-26 at 03.46.03.png` where the "Payer Coverage & Authorizations" and "Unresolved Billing Exceptions" cards overflowed the viewport, touched the bottom edge of the screen, and lists did not scroll internally:
+  - In `CommandCenterView.tsx`, converted Screen 2 from `min-h-[calc(100vh-56px)]` to strict `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col justify-between pb-3 sm:pb-4`.
+  - In `DualOperationalPipelines.tsx`, replaced restrictive `min-h-[520px]` and `min-h-[480px]` with `min-h-0 overflow-hidden` and `h-full min-h-0 flex flex-col overflow-hidden`.
+  - Both pipeline cards now fit neatly within the viewport with their internal lists scrolling smoothly, maintaining comfortable `pb-3 sm:pb-4` padding from the screen bottom and keeping `VelocityRecoveryPulse` cleanly visible.
+
+[DECISION] **Discharge Clearance Right Workspace Pane Wasted Space Elimination (`ActiveDischargeRadar.tsx`)**:
+- Addressed issue shown in `Screenshot 2026-09-26 at 03.47.10.png` where artificial stretching created massive blank voids labeled "wasted space" inside the Net Patient Due card and Quick Action Console:
+  - Removed `flex flex-col justify-between` from the right workspace container (line 403).
+  - Removed `flex-1 min-h-0` stretching from Section 3.
+  - Removed `flex-1 flex flex-col justify-between` from the Total Net Patient Due card, returning it to a cohesive operational card with `space-y-2.5`.
+  - Removed `h-full flex flex-col justify-between` from the Quick Action Console, returning it to a compact action pad with `space-y-2.5`.
+  - Both cards now present high-density, beautifully formatted operational data with zero artificial empty space.
+
+[DECISION] **Coverage Approvals Table Whitespace Optimization (`CoverageApprovalsView.tsx`)**:
+- Increased `pageSize` from 12 to 13 rows, cleanly fitting an additional patient record to fill remaining vertical whitespace without causing table overflow.
+
+[FACT] **Automated Verification**:
+- Production build passes cleanly with zero TypeScript errors (`npm run build`).
+- Automated financial test runner (`scripts/auditFinancials.ts`) verifies 100% reconciliation across all 250 patients (0 errors across all 12 statutory and waterfall categories).
+
+---
+
+## 20. Command Center Dual Operational Watch Container-Level Sizing & Sticky Headers (Completed)
+
+[DECISION] **Payer Coverage & Authorizations Fixed 12-Row Container (`DualOperationalPipelines.tsx`)**:
+- Fixed container height to display **exactly 12 rows** by default (`height: 664px`, `maxHeight: 664px`).
+- Preserved complete underlying dataset of 250 inpatient encounters (removed legacy `.slice(0, 35)` limitation).
+- Enabled internal vertical scrolling (`overflow-y-auto pr-1.5 space-y-2`) for encounters 13 through 250.
+- Implemented a **sticky table header** (`sticky top-0 bg-white z-10 pb-2 pt-0.5 border-b border-slate-100`) with left-aligned columns: `Patient & Bed`, `Payer & Benefit Coverage`, `Adjudication Status`, and `Action`.
+
+[DECISION] **Unresolved Billing Exceptions 10-Row Sizing & Space-Occupying Footer (`DualOperationalPipelines.tsx`)**:
+- Sized the scrollable exception list container to display **exactly 10 rows** by default (`height: 552px`, `maxHeight: 552px`).
+- Enabled internal vertical scrolling (`overflow-y-auto pr-1.5 space-y-2`) for exceptions 11 through 15+.
+- Configured a dedicated operational footer (`flex-1 min-h-[104px] mt-2 p-3 rounded-xl border border-slate-200 bg-slate-50`) that **occupies the remaining available space below the 10-row table**, perfectly matching the 12-row Left Card height without dead whitespace or card bottom misalignment.
+- Footer displays real-time contested exposure metrics (`Total Contested Exposure: formatPhp(totalContestedAmount)`), exception count badge, statutory RA 9439 / RA 9994 compliance explainer, and a direct navigation action button to the Disputes Desk.
+
+[DECISION] **Container-Level Layout Integrity & Zero Page Overflow (`CommandCenterView.tsx`)**:
+- Removed artificial `overflow-hidden` from Screen 2 in `CommandCenterView.tsx`, resolving the layout at the container/table level rather than using brute-force overflow cropping.
+- Both pipeline cards fit naturally within the Command Center viewport, do not cause page-level overflow, maintain consistent left alignment across all text and numbers, and cleanly preserve `VelocityRecoveryPulse` at the bottom of the section.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors.
+- `scripts/auditFinancials.ts`: 100% mathematical reconciliation across all 250 patient records.
+
+---
+
+## 21. Scroll Chaining Elimination & Non-Scrollable Discharge Clearance Additional Data Section (Completed)
+
+[DECISION] **Universal Scroll Containment Across All Cards & Panels (`src/index.css`)**:
+- Solved scroll chaining/bubbling where reaching the boundary of an internal scrollable card propagated scroll events to the outer parent page.
+- Applied CSS `overscroll-behavior: contain` and `-webkit-overflow-scrolling: touch` universally to `.overscroll-contain`, `overflow-y-auto`, `overflow-auto`, `[class*="overflow-y-auto"]`, and `[class*="overflow-auto"]`.
+- Added explicit `overscroll-contain` utility classes across:
+  - Discharge Clearance Patient Queue, Table View, and Card View (`ActiveDischargeRadar.tsx`)
+  - Dual Operational Pipelines (Payer Coverage and Unresolved Billing Exceptions) (`DualOperationalPipelines.tsx`)
+  - Master Itemized Running Bill (`TripartiteWorkbench.tsx`)
+  - Scheduled Pre-Admission Encounters (`EncountersLedgerView.tsx`)
+  - Active Contested Charges & Promissory Notes Register (`DisputesExceptionsView.tsx`)
+  - Inpatient Pre-Flight Claims Worklist & Pre-Flight XML Inspection Modal (`ClaimsEsoaView.tsx`)
+  - Payer Coordination Worklist (`CoverageApprovalsView.tsx`)
+  - Commercial HMO Carrier Performance Matrix (`RcmAnalyticsView.tsx`)
+  - Drawers & Modals: `WhyDoIOweThisDrawer.tsx`, `ContextualActionDrawer.tsx`, `PatientClarifyDrawer.tsx`, `DischargeDossierDrawer.tsx`, `SearchModal.tsx`, and `SidebarNav.tsx`.
+- Completely prevents scroll propagation without breaking normal parent page scrolling when the user's cursor is outside cards. Zero JavaScript scroll listener hacks used.
+
+[DECISION] **Discharge Clearance Workstation Non-Scrollable Additional Data Section (`ActiveDischargeRadar.tsx`)**:
+- Completely removed internal vertical scrolling (`overflow-y-auto pb-6 sm:pb-8`) from the right workspace Additional Data section.
+- Replaced with a non-scrollable, zero-scrollbar layout (`min-h-0 flex flex-col justify-between overflow-hidden`).
+- All 4 internal operational cards (Discharge Clearance Sign-Offs, Itemized Chargemaster Audit, Total Net Patient Due, and Quick Action Console) remain 100% visible and accessible simultaneously within the bounded ~550px workstation viewport.
+- Eliminates redundant nested/double scrollbars, leaving the left patient queue as the sole, cleanly scrollable list on the screen.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors.
+- `scripts/auditFinancials.ts`: 100% mathematical reconciliation across all 250 patient records (0 statutory, calculation, or installment errors).
+
+---
+
+## 22. Active Multi-Payer Inpatient Roster Row Height Tuning & Patient Navigation (Completed)
+
+[DECISION] **Active Multi-Payer Inpatient Roster Page Size Reduction (`CoverageApprovalsView.tsx`)**:
+- Reduced `pageSize` from 13 back to 12 rows (-1 row).
+- Eliminates vertical y-axis overflow and removes unnecessary scrollbars from the table surface on standard viewports, cleanly fitting the table, filter bar, and pinned pagination bar within the screen height.
+- Retained full access to the complete 250-encounter dataset across all filter categories.
+
+[DECISION] **Next and Previous Patient Navigation Controls (`CoverageApprovalsView.tsx`)**:
+- Added `tableContainerRef` to reset the table scroll position to top whenever changing patient pages.
+- Configured Previous and Next buttons with `type="button"`, `e.preventDefault()`, and explicit patient navigation attributes (`aria-label="Navigate to previous patients"`, `title="Navigate to previous patients"`, `aria-label="Navigate to next patients"`, `title="Navigate to next patients"`).
+- Restricts Next/Prev buttons strictly to navigating between patients without affecting the outer page scroll.
+
+---
+
+## 23. Dashboard Polish, Search Bar Alignment, Viewport Sizing & Sticky Header Hardening (Completed)
+
+[DECISION] **Encounters & Ledgers In-Situ Patient Navigation & Search Bar (`TripartiteWorkbench.tsx`)**:
+- Addressed issue from screenshot `09.57.10.png`.
+- Added `<` and `>` patient cycling buttons (`ChevronLeft` / `ChevronRight`) with counter (`${currentIndex + 1} of ${encounters.length}`) and quick select dropdown directly adjacent to the patient identity badges in the header.
+- Added a dedicated in-situ search bar on the right side of the header with real-time dropdown filtering by patient name, encounter ID, and room/bed, enabling rapid navigation without navigating away from the ledger.
+
+[DECISION] **Discharge Workstation Viewport Height Preservation (`ActiveDischargeRadar.tsx`)**:
+- Addressed issue from screenshot `10.00.18.png`.
+- Compacted vertical padding across Section 1 (Demographics & Clinical Intelligence), Section 2 (Milestones), Section 3 (Blocker, Net Due, Quick Actions), and Section 4 (Chargemaster Audit & Sign-offs), reducing total component height by ~70px.
+- Removed trailing `mb-2` margin. The entire workstation container, including its bottom rounded border and drop shadow, fits cleanly within standard viewports under `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden` with zero clipping.
+
+[DECISION] **Command Center Dual Operational Watch Sizing & Space Utilization (`DualOperationalPipelines.tsx`)**:
+- Addressed issue from screenshot `10.01.50.png`.
+- Left Pipeline (Payer Coverage): Increased row height from 48px to 56px (`h-[56px] px-4 py-2`), container height to 760px (12 visible rows), upgraded patient name to `text-sm font-bold`, secondary coverage line to `text-xs`, and action buttons to `px-3.5 py-1.5`.
+- Right Pipeline (Unresolved Exceptions): Increased row height to 56px (`h-[56px] px-4 py-2`), sized the 10 visible rows to 632px, upgraded contested charge description to `text-sm font-bold`, amount to `text-sm font-bold text-rose-700 font-mono`, secondary line to `text-xs`, and expanded the statutory compliance footer to `min-h-[120px] mt-2.5 p-3.5` to balance the left card height at 760px with zero empty dead space.
+
+[DECISION] **Search Input Left-Padding & Icon Collision Fix (`ActiveDischargeRadar.tsx` & `CoverageApprovalsView.tsx`)**:
+- Addressed issues from screenshots `10.03.01.png`, `10.03.46.png`, and `10.04.42.png`.
+- Replaced invalid Tailwind utility class `pl-8.5` (which was dropped by Tailwind, resulting in `0px` left padding and causing placeholder text to collide with the search icon) with standard `pl-8` (32px left padding).
+- Positioned the magnifying glass icon with `left-2.5 top-1/2 -translate-y-1/2 pointer-events-none`, guaranteeing perfect vertical centering and preventing icon-text collision across all search inputs.
+
+[DECISION] **Sticky Table Header Seam Gap & Row Bleed Prevention (`ClaimsEsoaView.tsx`, `CoverageApprovalsView.tsx`, `DisputesExceptionsView.tsx`)**:
+- Addressed issue from screenshot `10.06.50.png`.
+- Replaced `border-collapse` with `border-separate border-spacing-0` and applied `sticky top-0 bg-slate-50 z-20 border-b border-slate-200` directly to each `<th>` element.
+- Prevents WebKit sticky `thead` border separation and eliminates gaps where scrolled rows peek through behind or above the header.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors.
+- `scripts/auditFinancials.ts`: 100% mathematical and regulatory reconciliation across all 250 patient records (0 calculation errors, 0 waterfall discrepancies).
+
+---
+
+## 24. Global Search Removal & Architecture Shift: Scroll-Through Lists to Searchable Paginated Tables (Completed)
+
+[DECISION] **Removal of Global Search from Top Command Bar (`GlobalCommandBar.tsx`, `App.tsx`, `MedCoreContext.tsx`)**:
+- Completely removed the global search input and ⌘K trigger from `GlobalCommandBar.tsx` and `App.tsx`.
+- Removed Cmd+K keyboard shortcut from `MedCoreContext.tsx`.
+- Replaced global patient/data search with contextual, in-situ search bars directly inside each operational view (Discharge Radar, Encounters Ledger, Coverage Approvals, Disputes Desk, Claims & eSOA, and Command Center Pipelines).
+
+[DECISION] **Encounters & Ledgers Header Patient Switcher Refinement (`TripartiteWorkbench.tsx`)**:
+- Addressed visual notes from `Screenshot 2026-09-26 at 10.43.25.png`.
+- Removed `< 4 of 250 >` button group from the patient identity area on the left, leaving the patient name, encounter number, and Senior/PWD badges clean.
+- Relocated the patient dropdown selector (`#4 Bed 512-B · TAN, Rebecca C.`) over to the right action area next to the in-situ patient search input.
+- Enlarged font and element sizing of the right header controls: dropdown selector, search input (`pl-9 pr-3.5 py-2 text-sm w-60`), "Preview patient view" button, and "Open dossier" button.
+
+[DECISION] **Disputes & Exceptions Search & Paginated Navigation (`DisputesExceptionsView.tsx`)**:
+- Added an in-situ search bar filtering across patient name, encounter number, room/bed, contested item description, item code, category, and dispute reason in Contested Items tab, and note number, borrower name, ID, and room/bed in Promissory Register tab.
+- Replaced continuous table scrolling (`max-h-[calc(100vh-250px)] overflow-y-auto`) with a clean paginated view (`pageSize = 8`).
+- Added docked pagination footer with count summaries ("Showing X to Y of Z") and disabled-safe **Previous** and **Next** buttons.
+- Changing search query or tab automatically resets page to 1.
+
+[DECISION] **Command Center Dual Operational Watch Search & Pagination (`DualOperationalPipelines.tsx`)**:
+- **Payer Coverage**: Replaced continuous 760px list scrolling with fixed 8-row pagination (`pageSize = 8`). Added a dedicated search bar (`Search patient, bed, HMO...`) filtering across the full dataset. Integrated docked **Previous / Next** pagination controls in the card footer.
+- **Unresolved Billing Exceptions**: Replaced continuous 632px list scrolling with fixed 6-row pagination (`pageSize = 6`). Added a dedicated search bar (`Search exceptions, patient...`). Integrated docked **Previous / Next** pagination controls and exposure summary in the card footer.
+- Both cards maintain synchronized vertical heights without internal scrollbars.
+
+[DECISION] **Claims & eSOA XML Search & Paginated Navigation (`ClaimsEsoaView.tsx`)**:
+- Replaced continuous table scrolling with fixed 8-row pagination (`pageSize = 8`).
+- Expanded search filter to cover patient name, PhilHealth claim ID, encounter number, room/bed, case rate code, primary ICD-10, and diagnosis description across the full dataset.
+- Added permanent, docked **Previous / Next** pagination controls in the footer.
+- Search input and filter status buttons automatically reset pagination to page 1.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors (built in 872ms).
+- `scripts/auditFinancials.ts`: 100% mathematical and statutory reconciliation across all 250 patient records (0 calculation errors, 0 waterfall discrepancies).
+
+---
+
+## 25. Viewport Space Maximization: Command Center Pipelines & Disputes Table Lengthening (Completed)
+
+[DECISION] **Command Center Screen 2 Pipelines Viewport Space Maximization (`DualOperationalPipelines.tsx`)**:
+- Addressed issue from `Screenshot 2026-09-26 at 10.53.07.png` where ~250px of empty space was left between pipeline cards and the KPI footer.
+- **Payer Coverage & Authorizations**:
+  - Expanded pagination size from 8 to **11 visible rows** (`payerPageSize = 11`).
+  - Increased row height to `h-[60px] px-4 py-2.5 rounded-xl`.
+  - Scaled typography: patient name to `text-base font-bold`, secondary coverage to `text-xs sm:text-sm`, amount to `text-base font-mono font-bold`.
+  - Scaled element sizes: search input to `py-2 text-xs sm:text-sm pl-9 pr-3.5 w-56`, and "Approve" button to `px-4 py-2 text-xs font-bold`.
+- **Unresolved Billing Exceptions**:
+  - Expanded pagination size from 6 to **8 visible rows** (`exceptionsPageSize = 8`).
+  - Increased row height to `h-[60px] px-4 py-2.5 rounded-xl`.
+  - Scaled typography: contested charge description to `text-base font-bold`, amount to `text-base font-mono font-bold text-rose-700`.
+  - Scaled action buttons ("Why?", "Waive", "Promissory") to `py-1.5 px-3/px-3.5 text-xs font-semibold/bold`.
+  - Expanded exposure card padding to `p-4 space-y-2` with `text-base font-bold text-rose-700` exposure total.
+- Both cards expand to ~790px, completely utilizing the available viewport height down to `VelocityRecoveryPulse` without leaving dead whitespace.
+
+[DECISION] **Disputes & Exceptions Table Lengthening via Additional Rows (`DisputesExceptionsView.tsx`)**:
+- Addressed issue from `Screenshot 2026-09-26 at 10.55.03.png` where ~300px of empty space appeared beneath the 8-row table.
+- In strict adherence to user instructions ("maximize this empty space, increase the lenth of the table, maintain the current font size and element sizes, add additional rows instead to lengthen the table"), maintained current font sizes and element dimensions.
+- Increased pagination page size from 8 to **12 rows** (`pageSize = 12`).
+- The 12-row table fills the available screen height cleanly with zero wasted space above the bottom viewport edge.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors (built in 866ms).
+- `scripts/auditFinancials.ts`: 100% mathematical and statutory reconciliation across all 250 patient records (0 calculation errors, 0 waterfall discrepancies).
+
+---
+
+## 26. Disputes & Exceptions Table Page Size Tuning (-1 Row) (Completed)
+
+[DECISION] **Disputes & Exceptions Table Row Count & Padding Tuning (`DisputesExceptionsView.tsx`)**:
+- Reduced pagination page size from 12 to **11 visible rows** (`pageSize = 11`) per user instruction.
+- Reduced row vertical padding across table cells from `py-4` (16px) to `py-2.5` (10px) and header cells from `py-3.5` to `py-2.5` exclusively within the disputes table.
+- Saves ~132px of vertical height across the 11 rows, ensuring the table fits cleanly within the current 100vh viewport without triggering page-level vertical overflow.
+- Preserved existing layout, typography, search filtering, and actions across the rest of the application.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors (built in 844ms).
+- `scripts/auditFinancials.ts`: 100% mathematical and statutory reconciliation across all 250 patient records (0 calculation errors, 0 waterfall discrepancies).
+
+---
+
+## 27. Disputes Table Viewport Space Maximization via Row Padding Calibration (Completed)
+
+[DECISION] **Disputes Table Row Padding Calibration (`DisputesExceptionsView.tsx`)**:
+- Addressed issue highlighted in `Screenshot 2026-09-26 at 11.08.26.png` ("maximize this empty space, increase the padding for the rows").
+- Increased row cell vertical padding from `py-2.5` (10px) to **`py-3.5`** (14px) and table header cells from `py-2.5` to **`py-3`** (12px) across both Tab 1 (Active Chargemaster Disputes) and Tab 2 (Statutory Promissory Undertakings RA 9439).
+- Adds +88px across the 11 visible rows, expanding the table downward to fill the ~80-90px empty void above the screen bottom while maintaining an ~11-15px bottom buffer without causing page scrollbars or viewport overflow.
+- Preserved existing 11-row pagination size, search filtering, button sizes, and 100% financial reconciliation.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors (built in 870ms).
+- `scripts/auditFinancials.ts`: 100% mathematical and statutory reconciliation across all 250 patient records (0 calculation errors, 0 waterfall discrepancies).
+
+---
+
+## 28. Systemic Code Audit & Comprehensive Defect Resolution (Completed)
+
+[DECISION] **Financial Settlement Balance Clearing & Trapped Revenue KPI (`src/types/domain.ts`, `src/context/MedCoreContext.tsx`, `src/components/dashboard/ActiveDischargeRadar.tsx`)**:
+- Added optional `patientPaid?: number` to `StatutoryWaterfall` interface.
+- In `settlePatientBalance()`, zeroed out `enc.waterfall.netPatientDue = 0`, credited paid balance to `enc.waterfall.patientPaid`, transitioned stage to `CLEARED_GATE_PASS`, and synchronized `selectedEncounterId`.
+- Command Center Trapped Revenue KPI dynamically updates as settled encounters no longer report outstanding dues.
+- Replaced the action payment trigger with a disabled `✓ Settled & Cleared (Gate Pass Issued) - ₱0.00 DUE` status badge when stage is cleared or net patient due is zero.
+
+[DECISION] **Cross-Patient Action Synchronization in Active Discharge Radar (`src/components/dashboard/ActiveDischargeRadar.tsx`)**:
+- Synchronized `selectEncounter(enc.id)` across all blocker resolution triggers (`applyAccreditedCeiling`, `clearPharmacyRts`, `approveHmoFinalLoa`, `settlePatientBalance`, `openDossierDrawer`) and quick console triggers (`openDoctorQuickSign`, `openDigitalGatePass`, `openPromissoryModal`).
+- Guaranteed that quick-signing orders, approving eLOAs, or executing promissory notes always acts upon the currently active encounter.
+
+[DECISION] **Standalone Promissory Note Selector & Dead-End Elimination (`src/components/actions/DigitalPromissoryModal.tsx`, `src/context/MedCoreContext.tsx`)**:
+- Updated `openPromissoryModal()` in `MedCoreContext.tsx` to automatically default to an inpatient encounter with positive patient due if called without an encounter ID or if the selected encounter has a ₱0 balance.
+- Updated `DigitalPromissoryModal.tsx` zero-balance state: replaced the terminal dead-end "Close" dialog with an active encounter dropdown selector listing all eligible inpatients with balances.
+- Added an in-situ encounter switcher inside the general promissory note form, allowing seamless switching across patients without leaving the modal.
+
+[DECISION] **Mobile/Tablet Viewport Adaptation for Active Discharge Radar (`src/components/dashboard/ActiveDischargeRadar.tsx`)**:
+- Implemented responsive segmented pane switching (`QUEUE` | `DETAIL`) for viewports `< lg` (screens below 1024px) where dual-column layouts collide.
+- Added a "← Back to Patient Queue" button in detail view for mobile/tablet. Selecting a patient from the queue automatically transitions view into the detail workstation. Desktop view retains standard dual-column master-detail layout.
+
+[DECISION] **Dynamic Attention Badges Decrement on Supervisory Waiver (`src/components/layout/SidebarNav.tsx`, `src/components/kanban/DischargeMissionControl.tsx`)**:
+- Updated dispute detection across `SidebarNav.tsx` and `DischargeMissionControl.tsx` to filter out waived items (`SUPERVISORY_WAIVED`, `WAIVED`) and resolved/waived disputes (`SUPERVISOR_WAIVED`, `HMO_RECONSIDERED`, `RESOLVED`, `WAIVED`).
+- Badges in SidebarNav and Kanban filter counters decrement immediately upon dispute waiver.
+
+[DECISION] **Dynamic All-Payer HMO Coverage Filter (`src/views/CoverageApprovalsView.tsx`)**:
+- Derived `availablePayers` dynamically from the active encounter dataset.
+- Added support and count badges for all 8 Philippine HMO carriers (Maxicare, Intellicare, Medicard, Pacific Cross, PhilCare, Etiqa Philippines, Caritas Health Shield, Insular Health Care).
+
+[DECISION] **Natural-Language "Why Do I Owe This?" Supervisory Waiver Recognition (`src/components/ledger/WhyDoIOweThisDrawer.tsx`)**:
+- Updated line-item adjudication drawer to recognize `isWaived` items (`SUPERVISORY_WAIVED` / `WAIVED`).
+- Overrides `netPatientDue = 0`, injects a dedicated "Less: Supervisory Goodwill Waiver" deduction row into the calculation waterfall, renders a prominent green waiver confirmation alert banner, and replaces dispute/action buttons with a disabled `✓ Waived by Supervisor (₱0.00 Due)` badge.
+
+[FACT] **Automated Verification**:
+- `npm run build`: 0 TypeScript/compilation errors (built in 862ms).
+- `scripts/auditFinancials.ts`: 100% mathematical and statutory reconciliation across all 250 patient records (0 calculation errors, 0 waterfall discrepancies).
+
+---
+
+## 29. Canonical Project Knowledge & System Architecture Reference (Consolidated Directives)
+
+This section serves as the **authoritative, reusable project reference** for all future engineering, design, and multi-agent operations across the MedCore1 workspace:
+
+### 1. Search & Pagination Architecture
+- **Global Search Decommissioned**: The top universal search bar and ⌘K modal have been permanently decommissioned to eliminate context fragmentation.
+- **In-Situ Search Standard**: Every operational view embeds its own contextual search bar (`Search...` input) that filters directly within that functional domain.
+- **Full-Dataset Querying**: Search inputs must ALWAYS filter against the full underlying dataset (all 250 records), never just the currently visible paginated slice.
+- **Automatic Page Reset**: Typing in a search bar or changing status filter pills must ALWAYS reset the active page index to 1 (`setCurrentPage(1)`).
+- **Docked Table Pagination**: Tables utilize fixed-size docked pagination with `Previous / Next` navigation controls pinned to the table footer.
+- **Prescribed Page Sizes**:
+  - `DualOperationalPipelines.tsx` (Payer Coverage): **11 visible rows** (`payerPageSize = 11`)
+  - `DualOperationalPipelines.tsx` (Unresolved Exceptions): **8 visible rows** (`exceptionsPageSize = 8`)
+  - `DisputesExceptionsView.tsx` (Both tabs): **11 visible rows** (`pageSize = 11`)
+  - `ClaimsEsoaView.tsx` (Pre-Flight Audit): **8 visible rows** (`pageSize = 8`)
+  - `CoverageApprovalsView.tsx` (Multi-Payer Roster): **12 visible rows** (`pageSize = 12`)
+
+### 2. Table Alignment Standard
+- **Strict Universal Left-Alignment (`text-left`)**: Every table header (`<th>`) and every table cell (`<td>`) across all 8 tables in the codebase is strictly left-aligned.
+- **Applies to All Data Types**: Currency amounts (`formatPhp(...)`), numeric quantities, dates, timestamps, ICD-10/RVS codes, status badges, and action button groups (`flex items-center justify-start`) are left-aligned.
+- **Never Right-Align or Center**: Never introduce `text-right` or `text-center` into table cells or headers.
+
+### 3. Viewport Containment & Scrolling Rules
+- **100vh Viewport Bounds**: All primary view containers are strictly constrained to the screen height: `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col pb-3 sm:pb-4`.
+- **Independent Card Scrolling**: Scrollable panels use `overflow-y-auto` paired with `overscroll-contain`. Continuing to scroll at the top or bottom boundary of a card must NEVER propagate or bubble to the page behind it.
+- **No JavaScript Scroll Hacks**: Containment is enforced purely via CSS layout (`overscroll-contain`, flex constraints, `min-h-0`).
+- **Elimination of Nested Scrollbars**: Workstation side panels (e.g. Additional Data pane) must fit within available layout height without internal scrollbars.
+
+### 4. Discharge Clearance Layout & Responsive Behavior
+- **Desktop (>= 1024px / `lg`)**: Renders split-pane master-detail HIMS workstation (left queue `w-full lg:w-96`, right clearance console `flex-1 min-w-0`).
+- **Mobile / Tablet (< 1024px)**: Automatically activates responsive segmented pane switcher (`QUEUE` | `DETAIL`) with a "← Back to Patient Queue" navigation button. Clicking a queue card transitions the view directly to the detail workstation.
+- **Bottom Edge Breathing Room**: All cards and views maintain `pb-3 sm:pb-4` (and `pb-6 sm:pb-8` on workstation panes) so UI elements never sit flush against the browser window bottom.
+
+### 5. Financial Settlement & Statutory Waterfall State Machine
+- **Atomic Settlement**: Calling `settlePatientBalance(encounterId)` must:
+  1. Set `enc.waterfall.netPatientDue = 0`.
+  2. Credit paid amount to `enc.waterfall.patientPaid`.
+  3. Set `enc.dischargeStage = 'CLEARED_GATE_PASS'`.
+  4. Synchronize `selectedEncounterId = encounterId`.
+  5. Append timeline event with timestamp.
+- **Settled UI State**: In `ActiveDischargeRadar`, settled encounters replace payment buttons with a disabled badge: `✓ Settled & Cleared (Gate Pass Issued) - ₱0.00 DUE`.
+- **Trapped Revenue KPI**: Command Center Trapped Revenue KPI dynamically recomputes as `encounters.reduce((acc, enc) => acc + enc.waterfall.netPatientDue, 0)`, immediately reflecting settlement.
+
+### 6. Patient-Selection Synchronization Requirements
+- **Mandatory Selection Sync**: Every blocker resolution handler (`applyAccreditedCeiling`, `clearPharmacyRts`, `approveHmoFinalLoa`, `settlePatientBalance`, `openDossierDrawer`) and modal trigger (`openDoctorQuickSign`, `openDigitalGatePass`, `openPromissoryModal`) must dispatch `selectEncounter(encounterId)` before executing.
+- **Queue Fallback**: When filtering the patient queue in `ActiveDischargeRadar`, `currentSelectedEncounter` must prioritize `filteredEncounters.find(e => e.id === selectedEncounterId) || filteredEncounters[0]`.
+
+### 7. Statutory Promissory Note Guarantee (RA 9439) Workflow
+- **Zero-Balance Dead-End Elimination**: If `openPromissoryModal()` is opened without an encounter ID or on a settled patient, it automatically selects the first encounter with `netPatientDue > 0`.
+- **Inpatient Picker**: If opened on a patient with ₱0 balance, the modal displays an interactive dropdown listing all eligible inpatients with outstanding balances rather than a dead-end "Close" dialog.
+- **In-Situ Patient Switcher**: The promissory note form includes an encounter dropdown allowing billing staff to issue notes for any eligible patient without exiting the modal.
+- **Statutory Terms**: 0% interest, 3 / 6 / 12 month installment schedules calculated centavo-exact under RA 9439.
+
+### 8. Dispute & Supervisory Waiver State Hierarchy
+- **Resolved Dispute Statuses**: Items marked `SUPERVISORY_WAIVED` or `WAIVED` and disputes marked `SUPERVISOR_WAIVED` or `HMO_RECONSIDERED` are resolved and inactive.
+- **Attention Badges**: Badges in `SidebarNav` and filter counts in `DischargeMissionControl` strictly exclude waived/resolved items and disputes, decrementing immediately upon waiver.
+- **Natural-Language Bill Adjudication (`WhyDoIOweThisDrawer`)**:
+  - Recognizes `isWaived` (`SUPERVISORY_WAIVED` / `WAIVED`).
+  - Overrides `netPatientDue = 0`.
+  - Injects a dedicated "Less: Supervisory Goodwill Waiver" deduction row into the calculation cascade.
+  - Displays a prominent green statutory waiver alert banner.
+  - Replaces action buttons with a disabled `✓ Waived by Supervisor (₱0.00 Due)` badge.
+
+### 9. HMO & Payer Gateway Coordination
+- **Dynamic Payer Discovery**: `availablePayers` is derived dynamically from the active encounter dataset.
+- **Full Philippine HMO Ecosystem**: Supports all 8 commercial HMO carriers: Maxicare, Intellicare, Medicard, Pacific Cross, PhilCare, Etiqa Philippines, Caritas Health Shield, Insular Health Care.
+- **Dual Matching**: Payer filters check both `enc.hmo.providerName` and `enc.hmo.hmoName`.
+
+
+
+
+
+
+
+
+
+
 
