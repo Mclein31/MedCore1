@@ -36,7 +36,15 @@ export interface ChargemasterItem {
   philhealthCovered: number;
   hmoCovered: number;
   patientOop: number;
-  status: 'COVERED' | 'DISALLOWED_SUNDRY' | 'EXCESS_PF' | 'CONTESTED' | 'SUPERVISORY_WAIVED' | 'PARTIAL' | 'DISPUTED' | 'WAIVED';
+  status:
+    | 'COVERED'
+    | 'DISALLOWED_SUNDRY'
+    | 'EXCESS_PF'
+    | 'CONTESTED'
+    | 'SUPERVISORY_WAIVED'
+    | 'PARTIAL'
+    | 'DISPUTED'
+    | 'WAIVED';
   exclusionReasonClause?: string;
   plainLanguageExplainer: string;
   isDisputed?: boolean;
@@ -59,6 +67,7 @@ export interface StatutoryWaterfall {
   roomUpgradeExcess: number;
   excludedConsumables: number;
   doctorExcessPf: number;
+  patientPaid?: number;
 }
 
 export interface PhilHealthClaim {
@@ -76,7 +85,10 @@ export interface PhilHealthClaim {
   cf4CourseInWardRecorded: boolean;
   cf4LabsConsistent: boolean;
   eSoaXmlConformity: boolean;
-  status: 'CLEAN' | 'WARNING' | 'INTERCEPTED' | 'TRANSMITTED';
+  status: 'CLEAN' | 'WARNING' | 'INTERCEPTED' | 'TRANSMITTED' | 'RETURNED' | 'APPROVED';
+  claimAgingDays?: number;
+  assignedAuditor?: string;
+  deficiencyReason?: string;
 }
 
 export interface HmoAuthorization {
@@ -88,11 +100,21 @@ export interface HmoAuthorization {
   mblRemaining: number;
   dailyRoomAllowance: number;
   initialLoaApproved: boolean;
-  finalLoaStatus: 'PENDING_SUBMISSION' | 'AWAITING_CODE' | 'APPROVED' | 'DISALLOWED_ITEMS';
+  finalLoaStatus:
+    | 'PENDING_SUBMISSION'
+    | 'AWAITING_CODE'
+    | 'APPROVED'
+    | 'DISALLOWED_ITEMS'
+    | 'UNDER_REVIEW'
+    | 'PARTIALLY_APPROVED'
+    | 'REJECTED';
   loaStatus?: string;
   approvalCode?: string;
   approvedAmount: number;
   disallowedConsumables: number;
+  turnaroundMinutes?: number;
+  adjusterName?: string;
+  adjusterContact?: string;
 }
 
 export interface DischargePass {
@@ -133,6 +155,9 @@ export interface BillingDispute {
   status: 'OPEN' | 'FROZEN' | 'SUPERVISOR_WAIVED' | 'HMO_RECONSIDERED' | 'UPHELD';
   supervisorNotes?: string;
   createdAt: string;
+  assignedStaff?: string;
+  resolutionClause?: string;
+  department?: string;
 }
 
 export interface DoctorInfo {
@@ -143,6 +168,17 @@ export interface DoctorInfo {
   declaredFee: number;
   accreditedScheduleRate: number;
   status: string;
+}
+
+export interface EncounterTimelineEvent {
+  id: string;
+  timestamp: string;
+  timeDisplay: string;
+  title: string;
+  description: string;
+  actor: string;
+  type: 'CLINICAL' | 'PAYER' | 'PHARMACY' | 'BILLING' | 'LEGAL' | 'DISCHARGE';
+  status: 'COMPLETED' | 'PENDING' | 'BLOCKED';
 }
 
 export interface Encounter {
@@ -180,4 +216,5 @@ export interface Encounter {
   dischargePass?: DischargePass;
   promissoryNote?: PromissoryNote;
   disputes: BillingDispute[];
+  timeline?: EncounterTimelineEvent[];
 }

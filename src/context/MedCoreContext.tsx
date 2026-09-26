@@ -3,6 +3,7 @@ import { Encounter, ChargemasterItem, DischargeStage, PromissoryNote, DischargeP
 import { NavRoute, UserRole } from '../types/navigation';
 import { INITIAL_ENCOUNTERS } from '../data/mockData';
 import { recalculateWaterfall } from '../utils/waterfall';
+import { calculateInstallmentPlan } from '../utils/financing';
 
 interface MedCoreContextType {
   encounters: Encounter[];
@@ -10,13 +11,14 @@ interface MedCoreContextType {
   selectedEncounter: Encounter;
   activeRoute: NavRoute;
   activeRole: UserRole;
-  isDarkMode: boolean;
   searchQuery: string;
   activeFilter: 'ALL' | 'WARNING' | 'BREACH' | 'DISPUTED';
   
   // Drawer & Modal States
   isActionDrawerOpen: boolean;
   isPromissoryModalOpen: boolean;
+  promissoryCustomAmount: number | null;
+  promissoryItemContext: { description?: string; itemId?: string } | null;
   isDoctorQuickSignOpen: boolean;
   isGatePassModalOpen: boolean;
   isWhyDoIOweThisOpen: boolean;
@@ -33,12 +35,15 @@ interface MedCoreContextType {
   setActiveRole: (role: UserRole) => void;
   setSearchQuery: (query: string) => void;
   setActiveFilter: (filter: 'ALL' | 'WARNING' | 'BREACH' | 'DISPUTED') => void;
-  toggleDarkMode: () => void;
   
   // Modal openers
   openActionDrawer: () => void;
   closeActionDrawer: () => void;
-  openPromissoryModal: () => void;
+  openPromissoryModal: (
+    encounterId?: string,
+    customAmount?: number,
+    itemContext?: { description?: string; itemId?: string } | string
+  ) => void;
   closePromissoryModal: () => void;
   openDoctorQuickSign: () => void;
   closeDoctorQuickSign: () => void;
@@ -66,7 +71,8 @@ interface MedCoreContextType {
     borrowerName: string,
     idType: 'PHILSYS_NATIONAL_ID' | 'UMID' | 'DRIVERS_LICENSE',
     idNumber: string,
-    months: 3 | 6 | 12
+    months: 3 | 6 | 12,
+    customPrincipal?: number
   ) => void;
   freezeDisputeItem: (encounterId: string, itemId: string, reason: string) => void;
   supervisoryWaiveItem: (encounterId: string, itemId: string, notes: string) => void;
@@ -79,13 +85,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [selectedEncounterId, setSelectedEncounterId] = useState<string>('enc-8812');
   const [activeRoute, setActiveRoute] = useState<NavRoute>('COMMAND_CENTER');
   const [activeRole, setActiveRole] = useState<UserRole>('BILLING_SPECIALIST');
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'WARNING' | 'BREACH' | 'DISPUTED'>('ALL');
 
   // Modals & Drawers
   const [isActionDrawerOpen, setIsActionDrawerOpen] = useState(false);
   const [isPromissoryModalOpen, setIsPromissoryModalOpen] = useState(false);
+  const [promissoryCustomAmount, setPromissoryCustomAmount] = useState<number | null>(null);
+  const [promissoryItemContext, setPromissoryItemContext] = useState<{ description?: string; itemId?: string } | null>(null);
   const [isDoctorQuickSignOpen, setIsDoctorQuickSignOpen] = useState(false);
   const [isGatePassModalOpen, setIsGatePassModalOpen] = useState(false);
   const [isWhyDoIOweThisOpen, setIsWhyDoIOweThisOpen] = useState(false);
@@ -96,24 +103,19 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isPatientClarifyDrawerOpen, setIsPatientClarifyDrawerOpen] = useState(false);
   const [clarifyTokenEncounter, setClarifyTokenEncounter] = useState<Encounter | null>(null);
 
-  // Apply dark mode class to html document
+  // Enforce pure light mode across the application
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
+    document.documentElement.classList.remove('dark');
+  }, []);
 
-  // Global Keyboard Shortcuts (Cmd+K / Ctrl+K, Esc, G+C, G+D)
+  // Global Keyboard Shortcuts (Esc)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setIsSearchModalOpen((prev) => !prev);
-      } else if (e.key === 'Escape') {
+      if (e.key === 'Escape') {
         setIsActionDrawerOpen(false);
         setIsPromissoryModalOpen(false);
+        setPromissoryCustomAmount(null);
+        setPromissoryItemContext(null);
         setIsDoctorQuickSignOpen(false);
         setIsGatePassModalOpen(false);
         setIsWhyDoIOweThisOpen(false);
@@ -133,13 +135,46 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSelectedEncounterId(id);
   };
 
-  const toggleDarkMode = () => setIsDarkMode((prev) => !prev);
-
   const openActionDrawer = () => setIsActionDrawerOpen(true);
   const closeActionDrawer = () => setIsActionDrawerOpen(false);
 
-  const openPromissoryModal = () => setIsPromissoryModalOpen(true);
-  const closePromissoryModal = () => setIsPromissoryModalOpen(false);
+  const openPromissoryModal = (
+    encounterId?: string,
+    customAmount?: number,
+    itemContext?: { description?: string; itemId?: string } | string
+  ) => {
+    if (encounterId) {
+      setSelectedEncounterId(encounterId);
+    } else {
+      const current = encounters.find(e => e.id === selectedEncounterId);
+      if (!current || current.waterfall.netPatientDue <= 0) {
+        const firstEligible = encounters.find(e => e.waterfall.netPatientDue > 0);
+        if (firstEligible) {
+          setSelectedEncounterId(firstEligible.id);
+        }
+      }
+    }
+    if (customAmount !== undefined && customAmount !== null) {
+      setPromissoryCustomAmount(customAmount);
+    } else {
+      setPromissoryCustomAmount(null);
+    }
+    if (itemContext) {
+      if (typeof itemContext === 'string') {
+        setPromissoryItemContext({ description: itemContext });
+      } else {
+        setPromissoryItemContext(itemContext);
+      }
+    } else {
+      setPromissoryItemContext(null);
+    }
+    setIsPromissoryModalOpen(true);
+  };
+  const closePromissoryModal = () => {
+    setIsPromissoryModalOpen(false);
+    setPromissoryCustomAmount(null);
+    setPromissoryItemContext(null);
+  };
 
   const openDoctorQuickSign = () => setIsDoctorQuickSignOpen(true);
   const closeDoctorQuickSign = () => setIsDoctorQuickSignOpen(false);
@@ -169,7 +204,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const openPatientClarifyDrawer = (encounter?: Encounter) => {
-    setClarifyTokenEncounter(encounter || selectedEncounter);
+    const enc = encounter || selectedEncounter;
+    setClarifyTokenEncounter(enc);
+    setSelectedEncounterId(enc.id);
     setIsPatientClarifyDrawerOpen(true);
   };
   const closePatientClarifyDrawer = () => {
@@ -301,15 +338,17 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     encounterId: string,
     channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE'
   ) => {
+    setSelectedEncounterId(encounterId);
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
+        const currentDue = enc.waterfall.netPatientDue;
         const newPass: DischargePass = {
           passNumber: `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`,
           encounterId: enc.id,
           patientName: enc.patient.maskedName,
           roomBed: enc.roomBed,
-          settledAmount: enc.waterfall.netPatientDue,
+          settledAmount: currentDue,
           settlementChannel: channel,
           issuedAt: new Date().toISOString(),
           status: 'ACTIVE_READY_FOR_EXIT',
@@ -318,7 +357,12 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return {
           ...enc,
           stage: 'CLEARED_GATE_PASS',
-          dischargePass: newPass
+          dischargePass: newPass,
+          waterfall: {
+            ...enc.waterfall,
+            netPatientDue: 0,
+            patientPaid: (enc.waterfall.patientPaid || 0) + currentDue
+          }
         };
       })
     );
@@ -330,13 +374,16 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     borrowerName: string,
     idType: 'PHILSYS_NATIONAL_ID' | 'UMID' | 'DRIVERS_LICENSE',
     idNumber: string,
-    months: 3 | 6 | 12
+    months: 3 | 6 | 12,
+    customPrincipal?: number
   ) => {
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
-        const principal = enc.waterfall.netPatientDue;
-        const monthly = Number((principal / months).toFixed(2));
+        const principal = customPrincipal !== undefined && customPrincipal !== null
+          ? customPrincipal
+          : (promissoryCustomAmount !== null ? promissoryCustomAmount : enc.waterfall.netPatientDue);
+        const plan = calculateInstallmentPlan(principal, months);
         const note: PromissoryNote = {
           id: `PN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
           encounterId: enc.id,
@@ -346,7 +393,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           borrowerIdNumber: idNumber,
           principalAmount: principal,
           installmentMonths: months,
-          monthlyInstallment: monthly,
+          monthlyInstallment: plan.monthlyInstallment,
           firstDueDate: '2026-10-25',
           digitalSignatureTimestamp: new Date().toISOString(),
           status: 'ACTIVE'
@@ -408,7 +455,15 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
         const updatedItems = enc.items.map((it) =>
-          it.id === itemId ? { ...it, status: 'SUPERVISORY_WAIVED' as const } : it
+          it.id === itemId
+            ? {
+                ...it,
+                status: 'SUPERVISORY_WAIVED' as const,
+                isDisputed: false,
+                patientOop: 0,
+                disputeReason: undefined
+              }
+            : it
         );
         const updatedWaterfall = recalculateWaterfall(
           updatedItems,
@@ -424,11 +479,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
             ? { ...d, status: 'SUPERVISOR_WAIVED' as const, supervisorNotes: notes }
             : d
         );
+        const hasRemainingDisputedMeds = updatedItems.some(
+          (it) =>
+            (it.isDisputed || it.status === 'CONTESTED') &&
+            it.status !== 'SUPERVISORY_WAIVED' &&
+            it.status !== 'WAIVED' &&
+            it.category === 'PHARMACY'
+        );
         return {
           ...enc,
           items: updatedItems,
           waterfall: updatedWaterfall,
-          disputes: updatedDisputes
+          disputes: updatedDisputes,
+          pharmacyRtsCleared: enc.pharmacyRtsCleared || !hasRemainingDisputedMeds,
+          unreturnedMedsCount: hasRemainingDisputedMeds ? enc.unreturnedMedsCount : 0
         };
       })
     );
@@ -442,11 +506,12 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         selectedEncounter,
         activeRoute,
         activeRole,
-        isDarkMode,
         searchQuery,
         activeFilter,
         isActionDrawerOpen,
         isPromissoryModalOpen,
+        promissoryCustomAmount,
+        promissoryItemContext,
         isDoctorQuickSignOpen,
         isGatePassModalOpen,
         isWhyDoIOweThisOpen,
@@ -461,7 +526,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setActiveRole,
         setSearchQuery,
         setActiveFilter,
-        toggleDarkMode,
         openActionDrawer,
         closeActionDrawer,
         openPromissoryModal,

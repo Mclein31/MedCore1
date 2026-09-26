@@ -9,6 +9,13 @@ import { ChargemasterItem, StatutoryWaterfall } from '../types/domain';
  *
  * Sequence: Gross -> 12% VAT Exemption -> 20% SC/PWD Discount -> PhilHealth ACR -> HMO LOA -> Patient OOP
  * All figures enforced with 2-decimal precision (centavo exactness).
+ *
+ * Fundamental Revenue Cycle Accounting Law:
+ * Gross Total = VAT Exemption + Senior Discount + PhilHealth Benefit + HMO Approved + Net Patient Due
+ *
+ * Regulatory & Contractual Precedence:
+ * Non-covered items (Room Upgrade Differential, Disallowed Sundries, Doctor Excess PF) are strictly
+ * ineligible for PhilHealth case rate absorption or HMO LOA coverage, and pass directly to Net Patient Due.
  */
 export function recalculateWaterfall(
   items: ChargemasterItem[],
@@ -25,7 +32,7 @@ export function recalculateWaterfall(
   let excludedConsumables = 0;
 
   for (const item of items) {
-    if (item.status === 'SUPERVISORY_WAIVED') {
+    if (item.status === 'SUPERVISORY_WAIVED' || item.status === 'WAIVED') {
       continue;
     }
     if (item.category === 'PROFESSIONAL_FEE') {
@@ -58,22 +65,33 @@ export function recalculateWaterfall(
     Math.max(0, grossTotal - vatExemption - seniorPwdDiscount).toFixed(2)
   );
 
-  const philhealthTotal = Number((philhealthHci + philhealthPf).toFixed(2));
-  const afterPhilhealth = Math.max(0, Number((netVatDiscountedBase - philhealthTotal).toFixed(2)));
-
-  // HMO coverage applied against remaining covered base (excluding disallowed consumables & upgrade excess)
-  const hmoApprovedAmount = Math.min(afterPhilhealth, Number(hmoMaxAllowance.toFixed(2)));
-
-  // Net Patient Out-of-Pocket Due = Uncovered Base + Room Differential + Excluded Supplies + Excess PF
-  const uncoveredBase = Math.max(0, Number((afterPhilhealth - hmoApprovedAmount).toFixed(2)));
-  const netPatientDue = Number(
-    (uncoveredBase + roomUpgradeExcess + excludedConsumables + excessDoctorPf).toFixed(2)
+  // Non-covered patient items that PhilHealth and HMO exclude by regulation and policy
+  const totalNonCovered = Number(
+    (roomUpgradeExcess + excludedConsumables + excessDoctorPf).toFixed(2)
   );
+
+  // The base of charges eligible for statutory PhilHealth and third-party HMO coverage
+  const eligibleCoveredBase = Math.max(0, Number((netVatDiscountedBase - totalNonCovered).toFixed(2)));
+
+  const philhealthRequested = Number((philhealthHci + philhealthPf).toFixed(2));
+  // PhilHealth benefit is applied against eligible covered charges (cannot absorb room upgrade or excess PF)
+  const philhealthTotal = Math.min(eligibleCoveredBase, philhealthRequested);
+
+  // HMO coverage applied strictly against remaining eligible covered base after PhilHealth
+  const hmoEligibleBase = Math.max(0, Number((eligibleCoveredBase - philhealthTotal).toFixed(2)));
+  const hmoApprovedAmount = Math.min(hmoEligibleBase, Number(hmoMaxAllowance.toFixed(2)));
+
+  // Coverage shortfall on eligible items (e.g. when HMO MBL is capped)
+  const coverageShortfall = Math.max(0, Number((hmoEligibleBase - hmoApprovedAmount).toFixed(2)));
+
+  // Net Patient Out-of-Pocket Due = Non-covered items + any HMO coverage shortfall
+  const netPatientDue = Number((totalNonCovered + coverageShortfall).toFixed(2));
 
   return {
     grossHospitalCharges,
     grossDoctorFee,
     grossTotal,
+    grossCharges: grossTotal,
     vatExemption,
     seniorPwdDiscount,
     netVatDiscountedBase,
