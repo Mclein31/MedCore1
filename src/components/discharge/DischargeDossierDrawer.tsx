@@ -1,22 +1,7 @@
 import React from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
 import { formatPhp } from '../../utils/formatters';
-import {
-  X,
-  Clock,
-  User,
-  Shield,
-  FileCheck2,
-  AlertTriangle,
-  Building,
-  CheckCircle,
-  QrCode,
-  Smartphone,
-  ExternalLink,
-  ChevronRight,
-  Receipt,
-  FileText
-} from 'lucide-react';
+import { X, ExternalLink, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 
 export const DischargeDossierDrawer: React.FC = () => {
   const {
@@ -45,276 +30,306 @@ export const DischargeDossierDrawer: React.FC = () => {
     closeDossierDrawer();
   };
 
+  const getStageTitle = (stage: string) => {
+    switch (stage) {
+      case 'MGH_DECLARED':
+        return 'Step 1 of 6: MGH order declared';
+      case 'DOCTOR_PF_PENDING':
+        return 'Step 2 of 6: Doctor PF confirmation';
+      case 'PHARMACY_RTS_AUDIT':
+        return 'Step 3 of 6: Pharmacy return audit';
+      case 'HMO_FINAL_LOA':
+        return 'Step 4 of 6: HMO final LOA review';
+      case 'PENDING_SETTLEMENT':
+        return 'Step 5 of 6: Payment settlement';
+      case 'CLEARED_GATE_PASS':
+        return 'Step 6 of 6: Gate pass issued';
+      default:
+        return stage;
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
       {/* Backdrop */}
       <div
         onClick={closeDossierDrawer}
-        className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-slate-900/30 backdrop-blur-2xs transition-opacity"
       />
 
-      {/* Drawer Panel (600px width) */}
-      <div className="relative w-full max-w-[620px] bg-white dark:bg-[#0F172A] border-l border-slate-200 dark:border-slate-800 shadow-2xl flex flex-col h-full z-10 animate-in slide-in-from-right duration-200">
+      {/* Drawer Panel (620px width) */}
+      <div className="relative w-full max-w-[620px] bg-white border-l border-slate-200 shadow-xl flex flex-col h-full z-10">
         {/* Drawer Header */}
-        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-900/60">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-brand-blue/10 dark:bg-sky-500/10 flex items-center justify-center font-mono font-bold text-brand-blue dark:text-sky-400 text-sm border border-brand-blue/20">
-              {enc.roomBed.replace('Room ', '').replace('Bed ', '')}
+        <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between bg-white">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h3 className="font-bold text-slate-900 text-xl tracking-tight">
+                {enc.patient.fullName || enc.patient.maskedName}
+              </h3>
+              {enc.patient.isSeniorCitizen && (
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                  Senior Citizen
+                </span>
+              )}
+              {enc.patient.isPwd && (
+                <span className="text-xs font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full">
+                  PWD
+                </span>
+              )}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 dark:text-slate-100 text-sm">
-                  {enc.patient.maskedName}
-                </h3>
-                {enc.patient.isSeniorCitizen && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold">
-                    SENIOR CITIZEN
-                  </span>
-                )}
-                {enc.patient.isPwd && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20 font-bold">
-                    PWD
-                  </span>
-                )}
-              </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                MRN: {enc.patient.mrn} • Case: {enc.encounterNumber} • {enc.roomCategory}
-              </div>
+            <div className="text-sm text-slate-500 mt-1 font-medium">
+              Case <span className="font-mono">{enc.encounterNumber}</span> · {enc.roomBed} ({enc.roomCategory.replace('_', ' ')}) · Attending: <strong>{enc.attendingDoctor}</strong>
             </div>
           </div>
 
           <button
             onClick={closeDossierDrawer}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Drawer Body: Scrollable */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
-          {/* 45m Statutory SLA Countdown Banner */}
-          <div
-            className={`p-3.5 rounded-lg border flex items-center justify-between font-mono ${
-              isBreached
-                ? 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400'
-                : enc.elapsedMinutes >= 25
-                ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
-                : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-4 h-4 shrink-0" />
-              <div>
-                <div className="font-bold text-xs uppercase tracking-wide">
-                  {isBreached
-                    ? `45-Minute Discharge SLA Breached (+${Math.abs(remainingMinutes)}m Over)`
-                    : `${remainingMinutes} Minutes Remaining on 45m SLA`}
-                </div>
-                <div className="text-[11px] opacity-80">
-                  MGH Declared at {new Date(enc.mghOrderTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {enc.elapsedMinutes}m elapsed
-                </div>
+        {/* Drawer Body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6 text-sm">
+          {/* SLA & Stage Summary Banner */}
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                {isBreached ? (
+                  <span className="font-bold text-rose-700 flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-rose-600" />
+                    <span>{Math.abs(remainingMinutes)}m overdue (SLA Breached)</span>
+                  </span>
+                ) : enc.elapsedMinutes >= 25 ? (
+                  <span className="font-bold text-amber-700 flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-amber-600" />
+                    <span>{remainingMinutes}m remaining on 45m SLA</span>
+                  </span>
+                ) : (
+                  <span className="font-bold text-emerald-700 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>On Schedule ({remainingMinutes}m left)</span>
+                  </span>
+                )}
+              </div>
+              <div className="text-xs text-slate-500 mt-1">
+                MGH declared at {new Date(enc.mghOrderTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · {enc.elapsedMinutes}m elapsed
               </div>
             </div>
 
-            <span className="text-xs font-bold px-2 py-1 rounded bg-white/60 dark:bg-slate-900/60 border border-current">
-              {enc.stage.replace('_', ' ')}
+            <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-2xs">
+              {getStageTitle(enc.stage)}
             </span>
           </div>
 
           {/* Three-Driver Out-of-Pocket Breakdown */}
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Receipt className="w-3.5 h-3.5 text-brand-blue" />
-                Three-Driver Patient Responsibility Breakdown
-              </h4>
-              <span className="text-[10px] font-mono text-slate-400">
-                Philippine OOP Architecture
-              </span>
-            </div>
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              Out-of-Pocket Balance Drivers
+            </h4>
 
-            <div className="grid grid-cols-3 gap-2.5">
-              {/* Driver 1: Room Upgrade Differential */}
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1">
-                <div className="text-[10px] uppercase font-mono text-slate-400">
-                  1. Room Upgrade
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl bg-white shadow-2xs">
+              <div className="p-3.5 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-slate-900">
+                    1. Room upgrade differential
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Daily rate {formatPhp(enc.dailyRoomRate)} vs. HMO policy allowance {formatPhp(enc.dailyRoomAllowance)}
+                  </div>
                 </div>
-                <div className="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">
+                <span className="font-mono font-bold text-slate-900 text-base">
                   {formatPhp(enc.waterfall.roomUpgradeExcess)}
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                  Rate {formatPhp(enc.dailyRoomRate)} vs allowance {formatPhp(enc.dailyRoomAllowance)}
-                </div>
+                </span>
               </div>
 
-              {/* Driver 2: Non-Covered Consumables */}
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1">
-                <div className="text-[10px] uppercase font-mono text-slate-400">
-                  2. Consumables
+              <div className="p-3.5 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-slate-900">
+                    2. Non-covered consumables &amp; pharmacy
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Excluded medical supplies &amp; sundry items
+                  </div>
                 </div>
-                <div className="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">
+                <span className="font-mono font-bold text-slate-900 text-base">
                   {formatPhp(enc.waterfall.excludedConsumables)}
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                  Disallowed supply exclusions &amp; sundries
-                </div>
+                </span>
               </div>
 
-              {/* Driver 3: Doctor Excess PF */}
-              <div className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-1">
-                <div className="text-[10px] uppercase font-mono text-slate-400">
-                  3. Doctor Excess PF
+              <div className="p-3.5 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-slate-900">
+                    3. Attending doctor excess professional fee
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Declared fee exceeds {enc.hmo.providerName} tariff ceiling
+                  </div>
                 </div>
-                <div className="font-mono font-bold text-slate-900 dark:text-slate-100 text-xs">
+                <span className="font-mono font-bold text-slate-900 text-base">
                   {formatPhp(enc.doctorExcessPf)}
-                </div>
-                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight">
-                  Over HMO tariff ceiling ({enc.attendingDoctor})
-                </div>
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Statutory Waterfall Deduction Breakdown */}
-          <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
-            <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-2">
-              Statutory Waterfall Deductions (Centavo Precision)
+          {/* Statutory Waterfall Breakdown */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              Statutory Calculation Breakdown
             </h4>
 
-            <div className="space-y-1.5 font-mono text-xs divide-y divide-slate-100 dark:divide-slate-800/80">
-              <div className="flex justify-between py-1 text-slate-600 dark:text-slate-400">
-                <span>Gross Hospital &amp; Doctor Charges</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-2.5 text-sm">
+              <div className="flex justify-between text-slate-600">
+                <span>Gross hospital &amp; doctor charges</span>
+                <span className="font-mono font-semibold text-slate-900">
                   {formatPhp(enc.waterfall.grossTotal)}
                 </span>
               </div>
 
               {(enc.patient.isSeniorCitizen || enc.patient.isPwd) && (
                 <>
-                  <div className="flex justify-between py-1 text-emerald-600 dark:text-emerald-400">
-                    <span>- 12% VAT Exemption (RA 9994/10754)</span>
-                    <span>-{formatPhp(enc.waterfall.vatExemption)}</span>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Less: 12% VAT exemption (RA 9994/10754)</span>
+                    <span className="font-mono font-semibold text-emerald-700">
+                      -{formatPhp(enc.waterfall.vatExemption)}
+                    </span>
                   </div>
-                  <div className="flex justify-between py-1 text-emerald-600 dark:text-emerald-400">
-                    <span>- 20% Senior Citizen / PWD Statutory Discount</span>
-                    <span>-{formatPhp(enc.waterfall.seniorPwdDiscount)}</span>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Less: 20% Senior Citizen / PWD discount</span>
+                    <span className="font-mono font-semibold text-emerald-700">
+                      -{formatPhp(enc.waterfall.seniorPwdDiscount)}
+                    </span>
                   </div>
                 </>
               )}
 
-              <div className="flex justify-between py-1 text-sky-600 dark:text-sky-400">
-                <span>- PhilHealth All Case Rate (ACR) Total</span>
-                <span>-{formatPhp(enc.waterfall.philhealthTotal)}</span>
+              <div className="flex justify-between text-slate-600">
+                <span>Less: PhilHealth All Case Rate (ACR)</span>
+                <span className="font-mono font-semibold text-blue-700">
+                  -{formatPhp(enc.waterfall.philhealthTotal)}
+                </span>
               </div>
 
-              <div className="flex justify-between py-1 text-indigo-600 dark:text-indigo-400">
-                <span>- HMO Approved LOA ({enc.hmo.providerName})</span>
-                <span>-{formatPhp(enc.waterfall.hmoApprovedAmount)}</span>
+              <div className="flex justify-between text-slate-600">
+                <span>Less: {enc.hmo.providerName} approved LOA</span>
+                <span className="font-mono font-semibold text-blue-700">
+                  -{formatPhp(enc.waterfall.hmoApprovedAmount)}
+                </span>
               </div>
 
-              <div className="flex justify-between pt-2.5 text-sm font-bold text-slate-900 dark:text-slate-100">
-                <span>NET PATIENT BALANCE DUE</span>
-                <span className="text-base text-rose-600 dark:text-rose-400">
+              <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
+                <span className="font-bold text-slate-900 text-base">
+                  Net Patient Balance Due
+                </span>
+                <span className="font-mono font-bold text-2xl text-slate-900 tabular-nums">
                   {formatPhp(enc.waterfall.netPatientDue)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Clinical & Claims Diagnostic Details */}
-          <div className="p-3.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/30 flex items-center justify-between text-xs">
-            <div>
-              <div className="text-[10px] font-mono text-slate-400 uppercase">
-                Primary Diagnosis &amp; ICD-10
-              </div>
-              <div className="font-semibold text-slate-800 dark:text-slate-200 mt-0.5">
-                {enc.primaryDiagnosis} ({enc.primaryIcd10})
-              </div>
-              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                Attending: {enc.attendingDoctor} • Case Rate Code: {enc.philhealth.caseRateCode}
+          {/* Live Operational Timeline / Audit Log */}
+          {enc.timeline && enc.timeline.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                Operational Milestones &amp; Activity Log
+              </h4>
+              <div className="space-y-2.5 border border-slate-200 rounded-xl p-4 bg-slate-50/60">
+                {enc.timeline.map((event) => (
+                  <div key={event.id} className="flex items-start gap-3 text-xs">
+                    <div className="font-mono text-slate-400 font-semibold shrink-0 w-16 pt-0.5">
+                      {event.timeDisplay}
+                    </div>
+                    <div className="w-2 h-2 rounded-full mt-1.5 shrink-0 bg-blue-600" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-slate-900 flex items-center justify-between">
+                        <span>{event.title}</span>
+                        <span className="text-[10px] text-slate-400 font-normal">{event.actor}</span>
+                      </div>
+                      <p className="text-slate-600 mt-0.5 leading-relaxed">
+                        {event.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
+          )}
 
+          {/* Quick link to full tripartite ledger */}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs text-slate-500">
+              Primary diagnosis: <strong>{enc.primaryDiagnosis}</strong> ({enc.primaryIcd10})
+            </span>
             <button
               onClick={handleOpenLedger}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-semibold bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 transition-colors shrink-0"
+              className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
             >
-              <span>Full Ledger</span>
+              <span>Inspect full itemized ledger</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
         {/* Drawer Action Footer */}
-        <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 space-y-2">
-          {/* Quick Primary Actions */}
-          <div className="grid grid-cols-2 gap-2">
-            {/* Action 1: Doctor QuickSign / Ceiling */}
+        <div className="p-5 border-t border-slate-200 bg-white space-y-3">
+          <div className="grid grid-cols-2 gap-2.5">
+            {/* Dynamic Stage Actions */}
             {enc.stage === 'DOCTOR_PF_PENDING' && (
               <button
                 onClick={() => applyAccreditedCeiling(enc.id)}
-                className="w-full py-2 px-3 rounded-md bg-amber-500 hover:bg-amber-600 text-white font-mono font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-xs transition-colors"
               >
-                <CheckCircle className="w-3.5 h-3.5" />
                 Apply 15m Ceiling Rate
               </button>
             )}
 
-            {/* Action 2: Clear Pharmacy RTS */}
             {enc.stage === 'PHARMACY_RTS_AUDIT' && (
               <button
                 onClick={() => clearPharmacyRts(enc.id)}
-                className="w-full py-2 px-3 rounded-md bg-sky-600 hover:bg-sky-700 text-white font-mono font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-colors"
               >
-                <CheckCircle className="w-3.5 h-3.5" />
-                Clear Pharmacy RTS Audit
+                Clear Pharmacy RTS
               </button>
             )}
 
-            {/* Action 3: HMO Approval */}
             {enc.stage === 'HMO_FINAL_LOA' && (
               <button
                 onClick={() => approveHmoFinalLoa(enc.id)}
-                className="w-full py-2 px-3 rounded-md bg-indigo-600 hover:bg-indigo-700 text-white font-mono font-semibold text-xs transition-colors flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xs transition-colors"
               >
-                <CheckCircle className="w-3.5 h-3.5" />
                 Approve HMO Final LOA
               </button>
             )}
 
-            {/* Action 4: Issue Gate Pass */}
             <button
               onClick={() => {
                 selectEncounter(enc.id);
                 issueDigitalGatePass(enc.id);
               }}
-              className="py-2 px-3 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-mono font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+              className="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-colors"
             >
-              <QrCode className="w-3.5 h-3.5" />
               Issue Gate Pass
             </button>
 
-            {/* Action 5: RA 9439 Promissory Note */}
             <button
               onClick={() => {
                 selectEncounter(enc.id);
-                openPromissoryModal();
+                openPromissoryModal(enc.id);
               }}
-              className="py-2 px-3 rounded-md bg-purple-600 hover:bg-purple-700 text-white font-mono font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-xs"
+              className="py-2.5 px-3 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-sm transition-colors"
             >
-              <FileText className="w-3.5 h-3.5" />
               RA 9439 Promissory Note
             </button>
           </div>
 
-          {/* Action 6: Send Patient Clarify Magic Link */}
           <button
             onClick={() => openPatientClarifyDrawer(enc)}
-            className="w-full py-2 px-3 rounded-md border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-2 px-3 text-xs text-blue-600 hover:text-blue-800 font-semibold text-center transition-colors"
           >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Send Patient Clarify Magic Link (SMS / WhatsApp)</span>
+            Send Patient Clarify Magic Link (SMS / WhatsApp) →
           </button>
         </div>
       </div>

@@ -1,16 +1,7 @@
 import React from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
-import { formatPeso } from '../../utils/formatters';
-import {
-  HelpCircle,
-  X,
-  Shield,
-  FileQuestion,
-  Lock,
-  CheckCircle,
-  AlertTriangle,
-  Info
-} from 'lucide-react';
+import { formatPhp } from '../../utils/formatters';
+import { X, CheckCircle2 } from 'lucide-react';
 
 export const WhyDoIOweThisDrawer: React.FC = () => {
   const {
@@ -25,154 +16,195 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
   if (!isWhyDoIOweThisOpen || !selectedWhyItem) return null;
 
   const item = selectedWhyItem;
-  const isSeniorOrPwd =
+  const isWaived = item.status === 'SUPERVISORY_WAIVED' || item.status === 'WAIVED';
+  const isSeniorOrPwd = Boolean(
+    selectedEncounter.patient.seniorCitizenId ||
     selectedEncounter.patient.isSeniorCitizen ||
-    selectedEncounter.patient.isPwd;
+    selectedEncounter.patient.pwdId ||
+    selectedEncounter.patient.isPwd
+  );
+
+  const vatExemption = isSeniorOrPwd && item.isVatable
+    ? Number((item.grossAmount - item.grossAmount / 1.12).toFixed(2))
+    : 0;
+  const vatExemptBase = Number((item.grossAmount - vatExemption).toFixed(2));
+  const seniorPwdDiscount = isSeniorOrPwd && item.isVatable
+    ? Number((vatExemptBase * 0.20).toFixed(2))
+    : 0;
+  const philhealth = Number((item.philhealthCovered || 0).toFixed(2));
+  const hmo = Number((item.hmoCovered || 0).toFixed(2));
+  const statutoryAndInsuranceDeductions = Number((vatExemption + seniorPwdDiscount + philhealth + hmo).toFixed(2));
+  const preWaiverBalance = Math.max(0, Number((item.grossAmount - statutoryAndInsuranceDeductions).toFixed(2)));
+  const supervisoryWaiver = isWaived ? preWaiverBalance : 0;
+  const totalDeductions = Number((statutoryAndInsuranceDeductions + supervisoryWaiver).toFixed(2));
+  const netPatientDue = isWaived ? 0 : Math.max(0, Number((item.grossAmount - totalDeductions).toFixed(2)));
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex justify-end"
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-end"
       onClick={closeWhyDoIOweThis}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col animate-in slide-in-from-right duration-200"
+        className="w-full max-w-lg bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between bg-slate-50 dark:bg-slate-900/80">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-start justify-between bg-white">
           <div>
-            <div className="flex items-center gap-2">
-              <HelpCircle className="w-4 h-4 text-brand-blue dark:text-sky-400" />
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 font-mono">
-                Line-Item Plain-English Explainer
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <h3 className="font-semibold text-slate-900 text-base">
+              Line-Item Explanation
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
               Natural-language adjudication breakdown for patient clarity
             </p>
           </div>
           <button
             onClick={closeWhyDoIOweThis}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
-          {/* Item Overview Card */}
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80">
+        <div className="flex-1 p-6 overflow-y-auto overscroll-contain space-y-6 text-sm bg-slate-50/50">
+          {/* Supervisory Waiver Banner */}
+          {isWaived && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <div>
+                <span className="font-bold block">Supervisory Waiver Applied</span>
+                <span>This line item has been officially waived under RA 9439 discharge protocol. Net patient liability is ₱0.00.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Item Overview */}
+          <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-start justify-between">
               <div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                <span className="text-xs font-mono text-slate-400">
                   {item.code}
                 </span>
-                <div className="font-semibold text-sm text-slate-900 dark:text-slate-100 mt-1">
+                <div className="font-semibold text-base text-slate-900 mt-1">
                   {item.description}
                 </div>
-                <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                  Category: {item.category.replace(/_/g, ' ')} • Qty: {item.qty} × {formatPeso(item.unitPrice)}
+                <div className="text-xs text-slate-500 mt-1">
+                  {item.category.replace(/_/g, ' ')} · Qty: {item.qty} × {formatPhp(item.unitPrice)}
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100">
-                  {formatPeso(item.grossAmount)}
+                <div className="text-lg font-bold font-mono text-slate-900">
+                  {formatPhp(item.grossAmount)}
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono">Gross Total</span>
+                <span className="text-xs text-slate-500">Gross Total</span>
               </div>
             </div>
           </div>
 
-          {/* Plain English Explanation Box */}
-          <div className="p-3.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800">
-            <div className="flex items-center gap-1.5 font-semibold text-sky-900 dark:text-sky-300 text-xs mb-1.5">
-              <Info className="w-3.5 h-3.5 text-brand-blue" />
-              <span>&ldquo;Why Do I Owe This?&rdquo; Direct Answer</span>
+          {/* Plain Language Direct Explanation */}
+          <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1.5">
+            <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Why Patient Owes This Balance
             </div>
-            <p className="text-sky-900/90 dark:text-sky-200/90 leading-relaxed text-xs">
+            <p className="text-sm text-slate-800 leading-relaxed font-normal">
               {item.plainLanguageExplainer}
             </p>
           </div>
 
-          {/* Tripartite Deduction Cascade Breakdown for this item */}
-          <div className="space-y-2">
-            <h4 className="font-mono font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
-              Multi-Payer Coverage Waterfall
+          {/* Waterfall Cascade for this Item */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-slate-900">
+              Deduction Calculation
             </h4>
-            <div className="space-y-1.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 font-mono text-xs">
-              <div className="flex justify-between">
-                <span>1. Gross Hospital Price:</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100">
-                  {formatPeso(item.grossAmount)}
+
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5 text-sm">
+              <div className="flex justify-between text-slate-600">
+                <span>Gross Hospital Price</span>
+                <span className="font-mono text-slate-900 font-medium">
+                  {formatPhp(item.grossAmount)}
                 </span>
               </div>
 
               {isSeniorOrPwd && item.isVatable && (
                 <>
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                    <span>2. Less: 12% VAT Exemption (RA 9994/10754):</span>
-                    <span>- {formatPeso((item.grossAmount / 1.12) * 0.12)}</span>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Less: 12% VAT exemption</span>
+                    <span className="font-mono text-emerald-600 font-semibold">
+                      -{formatPhp(vatExemption)}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
-                    <span>3. Less: 20% Senior/PWD Discount:</span>
-                    <span>- {formatPeso((item.grossAmount / 1.12) * 0.20)}</span>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Less: 20% Senior/PWD discount</span>
+                    <span className="font-mono text-emerald-600 font-semibold">
+                      -{formatPhp(seniorPwdDiscount)}
+                    </span>
                   </div>
                 </>
               )}
 
-              <div className="flex justify-between text-sky-600 dark:text-sky-400">
-                <span>4. Less: PhilHealth Case Rate (ACR):</span>
-                <span>
-                  {item.philhealthCovered > 0
-                    ? `- ${formatPeso(item.philhealthCovered)}`
-                    : '₱0.00 (Unbundled / Cap exceeded)'}
+              <div className="flex justify-between text-slate-600">
+                <span>Less: PhilHealth Case Rate (ACR)</span>
+                <span className="font-mono text-slate-700">
+                  {philhealth > 0
+                    ? `-${formatPhp(philhealth)}`
+                    : '₱0.00 (Uncovered)'}
                 </span>
               </div>
 
-              <div className="flex justify-between text-sky-600 dark:text-sky-400">
-                <span>5. Less: HMO Approved LOA ({selectedEncounter.hmo.hmoName || selectedEncounter.hmo.providerName}):</span>
-                <span>
-                  {item.hmoCovered > 0
-                    ? `- ${formatPeso(item.hmoCovered)}`
-                    : '₱0.00 (Policy Exclusion / Inner Cap)'}
+              <div className="flex justify-between text-slate-600">
+                <span>Less: {selectedEncounter.hmo.providerName} coverage</span>
+                <span className="font-mono text-slate-700">
+                  {hmo > 0
+                    ? `-${formatPhp(hmo)}`
+                    : '₱0.00 (Policy inner limit)'}
                 </span>
               </div>
 
-              <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between font-bold text-sm text-slate-900 dark:text-slate-100">
-                <span>Net Patient Due:</span>
-                <span className={item.patientOop > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}>
-                  {formatPeso(item.patientOop)}
+              {isWaived && (
+                <div className="flex justify-between text-slate-600 bg-emerald-50/60 p-2 rounded-lg border border-emerald-200">
+                  <span className="text-emerald-900 font-semibold">Less: Supervisory Goodwill Waiver</span>
+                  <span className="font-mono text-emerald-700 font-bold">
+                    -{formatPhp(supervisoryWaiver)}
+                  </span>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-100 flex justify-between text-slate-600 text-xs font-semibold">
+                <span>Total Applicable Deductions</span>
+                <span className="font-mono text-emerald-700 font-bold">
+                  -{formatPhp(totalDeductions)}
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline">
+                <span className="font-semibold text-slate-900 text-sm">
+                  Net Patient Responsibility
+                </span>
+                <span className="font-mono font-bold text-xl text-slate-900">
+                  {formatPhp(netPatientDue)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Statutory and Policy Citations */}
-          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-1.5 text-[11px]">
-            <div className="font-semibold text-slate-700 dark:text-slate-300 font-mono">
-              Regulatory References & Safeguards
-            </div>
-            <ul className="list-disc list-inside text-slate-500 dark:text-slate-400 space-y-1">
-              <li>
-                <span className="font-mono font-medium text-slate-700 dark:text-slate-300">RA 9439:</span> Anti-Hospital Detention Law prohibits holding patients for unpaid balances.
-              </li>
-              <li>
-                <span className="font-mono font-medium text-slate-700 dark:text-slate-300">PhilHealth Cir 2024-0037:</span> 50% rate increase applied to Case Rate bundles.
-              </li>
-              <li>
-                <span className="font-mono font-medium text-slate-700 dark:text-slate-300">PNDF / Essential Medicines:</span> Uncovered non-formulary meds flag mandatory alternatives.
-              </li>
-            </ul>
+          {/* Statutory References */}
+          <div className="p-3.5 bg-slate-100 rounded-lg text-xs text-slate-600 space-y-1">
+            <div><strong className="text-slate-700">RA 9439:</strong> Anti-Hospital Detention Law prohibits holding patients for unpaid balances.</div>
+            <div><strong className="text-slate-700">PhilHealth Cir 2024-0037:</strong> 50% rate increase applied to Case Rate bundles.</div>
           </div>
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/80 flex items-center gap-2">
-          {item.status === 'CONTESTED' || item.isDisputed ? (
-            <div className="flex-1 py-1.5 px-3 rounded bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-medium flex items-center justify-center gap-1.5">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Item Frozen on Dispute Desk</span>
+        <div className="p-4 border-t border-slate-200 bg-white flex items-center gap-3">
+          {isWaived ? (
+            <div className="flex-1 py-2.5 px-3 rounded-lg text-center text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 flex items-center justify-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>✓ Waived by Supervisor (₱0.00 Due)</span>
+            </div>
+          ) : item.status === 'CONTESTED' || item.isDisputed ? (
+            <div className="flex-1 py-2.5 px-3 rounded-lg text-center text-sm font-semibold text-amber-700 bg-amber-50 border border-amber-200">
+              Item Frozen on Dispute Desk
             </div>
           ) : (
             <button
@@ -184,14 +216,13 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
                 );
                 closeWhyDoIOweThis();
               }}
-              className="flex-1 py-1.5 px-3 rounded bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/60 border border-purple-200 dark:border-purple-800 text-purple-700 dark:text-purple-300 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+              className="flex-1 py-2.5 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-sm transition-colors shadow-xs"
             >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Freeze on Dispute Desk</span>
+              Freeze on Dispute Desk
             </button>
           )}
 
-          {item.patientOop > 0 && item.status !== 'CONTESTED' && !item.isDisputed && (
+          {!isWaived && item.patientOop > 0 && item.status !== 'CONTESTED' && !item.isDisputed && (
             <button
               onClick={() => {
                 supervisoryWaiveItem(
@@ -201,9 +232,9 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
                 );
                 closeWhyDoIOweThis();
               }}
-              className="py-1.5 px-3 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors"
+              className="py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors shadow-xs"
             >
-              Supervisory Waive
+              Waive Balance
             </button>
           )}
         </div>

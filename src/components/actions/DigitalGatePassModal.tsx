@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
 import { formatPeso, formatPstTimestamp } from '../../utils/formatters';
 import {
-  QrCode,
   X,
   CheckCircle2,
   ShieldCheck,
   Printer,
   Copy,
   Building2,
-  ExternalLink,
-  Shield
+  Check
 } from 'lucide-react';
 
 export const DigitalGatePassModal: React.FC = () => {
@@ -51,47 +49,54 @@ export const DigitalGatePassModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
       onClick={closeGatePassModal}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden"
+        className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-brand-blue" />
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 font-mono">
-              Digital Gate Pass Discharge Clearance
-            </h3>
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-slate-900">
+                Digital Gate Pass Clearance
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Hospital exit authorization and verification
+              </p>
+            </div>
           </div>
           <button
             onClick={closeGatePassModal}
-            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Gate Pass Card */}
-        <div className="p-5 text-center space-y-4">
+        <div className="p-6 text-center space-y-4">
           {/* Hospital Brand & Pass Number */}
           <div>
-            <div className="text-[11px] font-mono text-slate-500 uppercase tracking-wider">
+            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
               St. Jude Medical Center — Manila
             </div>
-            <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5">
+            <div className="text-2xl font-bold font-mono tracking-tight text-slate-900 mt-1">
               {pass.passNumber}
             </div>
-            <div className="inline-flex items-center gap-1.5 mt-1 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>{verifiedAtLobby ? 'VERIFIED AT LOBBY' : 'AUTHORIZED DISCHARGE'}</span>
+            <div className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-bold text-emerald-700">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>{verifiedAtLobby ? '✓ Verified at Lobby Desk' : '✓ Authorized Discharge'}</span>
             </div>
           </div>
 
           {/* Cryptographic QR Code Visual */}
-          <div className="w-44 h-44 mx-auto p-3 rounded-xl bg-white border border-slate-200 shadow-inner flex flex-col items-center justify-center">
+          <div className="w-44 h-44 mx-auto p-3 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col items-center justify-center">
             {/* SVG Simulated QR Matrix */}
             <svg viewBox="0 0 100 100" className="w-full h-full text-slate-900">
               {/* Corner position markers */}
@@ -128,47 +133,47 @@ export const DigitalGatePassModal: React.FC = () => {
 
               <rect x="38" y="82" width="8" height="8" fill="currentColor" />
               <rect x="52" y="82" width="16" height="8" fill="currentColor" />
-              <rect x="74" y="82" width="16" height="8" fill="currentColor" />
+              <rect x="74" y="16" width="8" height="8" fill="currentColor" />
             </svg>
-            <span className="text-[9px] font-mono text-slate-400 mt-1">
+            <span className="text-[10px] font-mono text-slate-500 mt-1">
               HMAC SHA-256 Validated
             </span>
           </div>
 
           {/* Details Table */}
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 text-left text-xs font-mono space-y-1.5">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-left text-sm space-y-2 shadow-xs">
             <div className="flex justify-between">
-              <span className="text-slate-400">Patient:</span>
-              <span className="font-semibold text-slate-900 dark:text-slate-100">{enc.patient.fullName}</span>
+              <span className="text-slate-500">Patient</span>
+              <span className="font-bold text-slate-900">{enc.patient.fullName}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Room / Bed:</span>
-              <span className="text-slate-700 dark:text-slate-300">{enc.roomBed}</span>
+              <span className="text-slate-500">Room / Bed</span>
+              <span className="text-slate-700 font-mono text-xs font-medium">{enc.roomBed}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Attending:</span>
-              <span className="text-slate-700 dark:text-slate-300">{enc.attendingDoctor}</span>
+              <span className="text-slate-500">Attending Doctor</span>
+              <span className="text-slate-700 font-medium">{enc.attendingDoctor}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-400">Settlement:</span>
-              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+              <span className="text-slate-500">Settlement</span>
+              <span className="text-emerald-700 font-bold">
                 {pass.settlementChannel === 'PROMISSORY_NOTE' ? 'RA 9439 Note Guaranteed' : 'Fully Settled (QR Ph)'}
               </span>
             </div>
-            <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-slate-700">
-              <span className="text-slate-400">Issued Timestamp:</span>
-              <span className="text-slate-500">{formatPstTimestamp(pass.issuedAt)}</span>
+            <div className="flex justify-between pt-2 border-t border-slate-200 text-xs">
+              <span className="text-slate-400">Issued Timestamp</span>
+              <span className="text-slate-600 font-mono">{formatPstTimestamp(pass.issuedAt)}</span>
             </div>
           </div>
 
           {/* Cryptographic Hash token */}
-          <div className="flex items-center justify-between px-3 py-1.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-mono text-slate-500">
+          <div className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-slate-100 text-xs font-mono text-slate-600">
             <span className="truncate max-w-[240px]">Sig: {pass.hmacSignature}</span>
             <button
               onClick={copyToken}
-              className="text-brand-blue hover:text-sky-600 font-semibold flex items-center gap-1"
+              className="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1 ml-2 shrink-0 transition-colors"
             >
-              <Copy className="w-3 h-3" />
+              {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600 font-bold" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copiedToken ? 'Copied' : 'Copy'}</span>
             </button>
           </div>
@@ -178,20 +183,20 @@ export const DigitalGatePassModal: React.FC = () => {
             {!verifiedAtLobby ? (
               <button
                 onClick={handleVerify}
-                className="flex-1 py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                className="flex-1 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 <ShieldCheck className="w-4 h-4" />
                 <span>Security Officer: Verify & Permit Exit</span>
               </button>
             ) : (
-              <div className="flex-1 py-2 px-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-mono font-medium flex items-center justify-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              <div className="flex-1 py-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold flex items-center justify-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
                 <span>Patient Exited Lobby • Case Concluded</span>
               </div>
             )}
             <button
               onClick={() => window.print()}
-              className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors"
+              className="p-3 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors shadow-xs"
               title="Print Clearance Slip"
             >
               <Printer className="w-4 h-4" />

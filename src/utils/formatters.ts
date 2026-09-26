@@ -11,6 +11,8 @@ export function formatPeso(amount: number): string {
   }).format(amount).replace('PHP', '₱');
 }
 
+export const formatPhp = formatPeso;
+
 export function formatDuration(minutes: number): string {
   const hrs = Math.floor(minutes / 60);
   const mins = minutes % 60;

@@ -6,10 +6,8 @@ import {
   X,
   FileCheck2,
   CheckCircle2,
-  AlertCircle,
   Send,
-  ShieldAlert,
-  ArrowRight
+  AlertTriangle
 } from 'lucide-react';
 
 export const DoctorQuickSignModal: React.FC = () => {
@@ -54,117 +52,126 @@ export const DoctorQuickSignModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
       onClick={closeDoctorQuickSign}
     >
       <div
-        className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden"
+        className="w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-navy dark:bg-brand-blue flex items-center justify-center text-white">
-              <Stethoscope className="w-4 h-4" />
+        <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center">
+              <Stethoscope className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 font-mono">
-                Attending Physician PF QuickSign Portal
+              <h3 className="font-bold text-base text-slate-900">
+                Physician Professional Fee Clearance
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                15-Minute SLA Auto-Ceiling Protection
+              <p className="text-xs text-slate-500 mt-0.5">
+                15-minute SLA statutory ceiling protection
               </p>
             </div>
           </div>
           <button
             onClick={closeDoctorQuickSign}
-            className="p-1 rounded text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 space-y-4 text-xs">
+        <div className="p-6 space-y-5 text-sm">
           {/* Doctor Profile Banner */}
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between shadow-xs">
             <div>
-              <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
+              <div className="font-bold text-slate-900 text-base">
                 {doctorName}
               </div>
-              <div className="text-[11px] text-slate-500 font-mono mt-0.5">
-                License: {prc} • Specialization: Internal Medicine / Surgery
+              <div className="text-xs text-slate-600 mt-1">
+                License: <span className="font-mono font-medium text-slate-800">{prc}</span> • Internal Medicine / Surgery
               </div>
-              <div className="text-[11px] text-slate-400 font-mono">
-                Mobile: +63 917 882 1920
+              <div className="text-xs text-slate-500 mt-0.5 font-mono">
+                +63 917 882 1920
               </div>
             </div>
             <div className="text-right">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-brand-blue dark:text-sky-400 border border-sky-500/20 font-semibold">
-                {isSigned ? 'SIGNED' : 'PENDING SIGN'}
+              <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${
+                isSigned ? 'text-emerald-700' : 'text-amber-700'
+              }`}>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isSigned ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                  }`}
+                />
+                {isSigned ? '✓ Signed' : '● Pending Signature'}
               </span>
             </div>
           </div>
 
           {/* Fee Comparison Grid */}
-          <div className="grid grid-cols-2 gap-3 font-mono">
-            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <span className="text-[10px] text-slate-400 block uppercase">Declared Fee</span>
-              <span className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1 block">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">
+                Declared Fee
+              </span>
+              <span className="text-2xl font-bold font-mono text-slate-900 mt-1.5 block tabular-nums">
                 {formatPeso(declared)}
               </span>
-              <span className="text-[10px] text-slate-500 mt-0.5 block font-sans">
-                Physician requested fee
+              <span className="text-xs text-slate-500 mt-1 block">
+                Physician requested amount
               </span>
             </div>
 
-            <div className="p-3 rounded-lg border border-sky-200 dark:border-sky-900 bg-sky-50/50 dark:bg-sky-950/30">
-              <span className="text-[10px] text-sky-600 dark:text-sky-400 block uppercase font-bold">
+            <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 shadow-xs">
+              <span className="text-xs font-semibold text-blue-900 uppercase tracking-wider block">
                 {hmoName} Schedule Ceiling
               </span>
-              <span className="text-base font-bold text-sky-700 dark:text-sky-300 mt-1 block">
+              <span className="text-2xl font-bold font-mono text-blue-700 mt-1.5 block tabular-nums">
                 {formatPeso(ceiling)}
               </span>
-              <span className="text-[10px] text-sky-600/80 dark:text-sky-400/80 mt-0.5 block font-sans">
-                Contracted HMO tariff
+              <span className="text-xs text-blue-700/80 mt-1 block">
+                Contracted tariff limit
               </span>
             </div>
           </div>
 
           {/* Excess Fee Warning */}
           {excess > 0 && (
-            <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5">
-              <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold text-amber-800 dark:text-amber-300 block text-xs">
-                  Excess Professional Fee Detected: {formatPeso(excess)}
+            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 shadow-xs">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs leading-relaxed">
+                <span className="font-bold text-amber-900 block mb-0.5 text-sm">
+                  Excess Fee Identified: {formatPeso(excess)}
                 </span>
-                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5 leading-snug">
-                  Under standard hospital policy, signing without capping charges the {formatPeso(excess)} difference directly to the patient out-of-pocket, risking discharge dispute.
+                <p className="text-amber-800">
+                  Signing without capping charges the {formatPeso(excess)} difference directly to the patient out-of-pocket, risking discharge dispute and delay.
                 </p>
               </div>
             </div>
           )}
 
           {signedSuccess ? (
-            <div className="p-4 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-center text-emerald-700 dark:text-emerald-300 font-medium">
-              <CheckCircle2 className="w-6 h-6 mx-auto mb-1 text-emerald-500" />
-              Doctor Professional Fee Signed & Tripartite Ledger Recalculated!
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-center text-emerald-800 font-semibold">
+              <CheckCircle2 className="w-7 h-7 mx-auto mb-1.5 text-emerald-600" />
+              Doctor professional fee signed and tripartite ledger updated.
             </div>
           ) : (
-            <div className="space-y-2 pt-1">
+            <div className="space-y-3 pt-2">
               <button
                 onClick={handleApplyCeiling}
-                className="w-full py-2.5 px-3 rounded-lg bg-brand-navy hover:bg-slate-800 dark:bg-brand-blue dark:hover:bg-sky-600 text-white font-medium text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+                className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
               >
                 <FileCheck2 className="w-4 h-4" />
-                <span>Apply Accredited Schedule Ceiling ({formatPeso(ceiling)})</span>
+                <span>Apply Schedule Ceiling ({formatPeso(ceiling)})</span>
               </button>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleSignDeclared}
-                  className="py-2 px-3 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors"
+                  className="py-2.5 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-sm transition-colors shadow-xs"
                 >
                   Sign As Declared ({formatPeso(declared)})
                 </button>
@@ -173,10 +180,10 @@ export const DoctorQuickSignModal: React.FC = () => {
                     nudgeDoctor(selectedEncounter.id);
                     closeDoctorQuickSign();
                   }}
-                  className="py-2 px-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                  className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <Send className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Send SMS Portal Link</span>
+                  <Send className="w-4 h-4 text-slate-500" />
+                  <span>Send SMS Link</span>
                 </button>
               </div>
             </div>

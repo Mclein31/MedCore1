@@ -7,16 +7,10 @@ import {
   FileCheck2,
   Pill,
   ShieldCheck,
-  CreditCard,
   QrCode,
   FileText,
-  AlertTriangle,
-  Lock,
   ChevronRight,
-  ExternalLink,
-  Smartphone,
-  CheckCircle2,
-  Clock
+  Smartphone
 } from 'lucide-react';
 
 export const ContextualActionDrawer: React.FC = () => {
@@ -24,16 +18,16 @@ export const ContextualActionDrawer: React.FC = () => {
     isActionDrawerOpen,
     closeActionDrawer,
     selectedEncounter,
+    selectEncounter,
     advanceStage,
     nudgeDoctor,
-    applyAccreditedCeiling,
     clearPharmacyRts,
     approveHmoFinalLoa,
     settlePatientBalance,
     openDoctorQuickSign,
     openPromissoryModal,
     openGatePassModal,
-    setActiveRoute
+    openPatientClarifyDrawer
   } = useMedCore();
 
   if (!isActionDrawerOpen) return null;
@@ -49,186 +43,184 @@ export const ContextualActionDrawer: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex justify-end"
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end"
       onClick={closeActionDrawer}
     >
       <div
-        className="w-full max-w-lg bg-white dark:bg-slate-900 h-full shadow-2xl border-l border-slate-200 dark:border-slate-800 flex flex-col animate-in slide-in-from-right duration-200"
+        className="w-full max-w-lg bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-start justify-between bg-slate-50 dark:bg-slate-900/80">
+        <div className="p-5 border-b border-slate-200 flex items-start justify-between bg-slate-50/70">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-navy text-white dark:bg-brand-blue font-bold">
-                TIER 4
-              </span>
-              <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 font-mono">
-                Contextual Operational Action Drawer
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Active Case: {pName} ({enc.encounterNumber})
+            <h3 className="font-bold text-base text-slate-900">
+              Operational Actions
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Active case: <span className="font-semibold text-slate-700">{pName}</span> · <span className="font-mono">{enc.encounterNumber}</span>
             </p>
           </div>
           <button
             onClick={closeActionDrawer}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 p-4 overflow-y-auto space-y-4 text-xs">
+        <div className="flex-1 p-5 overflow-y-auto overscroll-contain space-y-5 text-sm bg-slate-50/40">
           {/* Active Stage & SLA Tracker */}
-          <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-mono font-semibold uppercase text-slate-500">
+          <div className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-500">
+              <span className="font-bold uppercase tracking-wider text-slate-600">
                 Discharge Workflow Stage
               </span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 text-brand-blue dark:text-sky-400 border border-sky-500/20">
+              <span className="font-semibold text-slate-700">
                 {formatDuration(elapsed)} elapsed
               </span>
             </div>
-            <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+            <div className="text-lg font-bold text-slate-900">
               {enc.stage.replace(/_/g, ' ')}
             </div>
             <button
               onClick={() => advanceStage(enc.id)}
-              className="w-full py-2 px-3 rounded bg-brand-navy hover:bg-slate-800 dark:bg-brand-blue dark:hover:bg-sky-600 text-white font-medium text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+              className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
             >
               <span>Advance to Next Stage</span>
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
           {/* Operational Action Blocks */}
-          <div className="space-y-3">
-            <h4 className="font-mono font-semibold text-slate-500 uppercase tracking-wider text-[11px]">
+          <div className="space-y-4">
+            <h4 className="font-bold text-slate-600 uppercase tracking-wider text-xs">
               Available Interventions
             </h4>
 
             {/* 1. Doctor PF Intervention */}
-            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-900 text-sm">
                   Doctor Professional Fee Triage
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-xs text-slate-600 font-medium">
                   {doctorName}
                 </span>
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                Current PF: {formatPeso(declared)} • HMO Ceiling: {formatPeso(ceiling)}
+              <div className="text-xs text-slate-600">
+                Current PF: <span className="font-mono font-semibold text-slate-800">{formatPeso(declared)}</span> · Schedule Ceiling: <span className="font-mono font-semibold text-blue-700">{formatPeso(ceiling)}</span>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
                   onClick={() => nudgeDoctor(enc.id)}
-                  className="py-1.5 px-2 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs flex items-center justify-center gap-1 transition-colors"
+                  className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <Send className="w-3 h-3 text-slate-400" />
+                  <Send className="w-3.5 h-3.5 text-slate-500" />
                   <span>Send SMS Nudge</span>
                 </button>
                 <button
                   onClick={openDoctorQuickSign}
-                  className="py-1.5 px-2 rounded bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 font-medium text-xs flex items-center justify-center gap-1 transition-colors"
+                  className="py-2.5 px-3 rounded-lg border border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <FileCheck2 className="w-3 h-3 text-brand-blue" />
+                  <FileCheck2 className="w-3.5 h-3.5 text-blue-600" />
                   <span>Doctor QuickSign</span>
                 </button>
               </div>
             </div>
 
             {/* 2. Pharmacy RTS Clearance */}
-            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-900 text-sm">
                   Pharmacy Return-to-Stock (RTS)
                 </span>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                  PNDF Aligned
+                <span className="text-xs text-emerald-700 font-bold">
+                  ✓ PNDF Aligned
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Audits unadministered ward medicines and credit slips to prevent over-billing.
+              <p className="text-xs text-slate-600">
+                Audit unadministered ward medicines and credit slips to prevent over-billing.
               </p>
               <button
                 onClick={() => clearPharmacyRts(enc.id)}
-                className="w-full py-1.5 px-2 rounded bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:hover:bg-emerald-900 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
-                <Pill className="w-3 h-3 text-emerald-500" />
+                <Pill className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Reconcile Ward Stock & Clear RTS</span>
               </button>
             </div>
 
             {/* 3. HMO Final eLOA Clearance */}
-            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-900 text-sm">
                   HMO Final eLOA Adjudication
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">
+                <span className="text-xs text-slate-600 font-semibold">
                   {hmoName}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Auto-transmits finalized SOA to HMO portal for real-time electronic letter of authorization.
+              <p className="text-xs text-slate-600">
+                Transmits finalized SOA to HMO portal for real-time electronic letter of authorization.
               </p>
               <button
                 onClick={() => approveHmoFinalLoa(enc.id)}
-                className="w-full py-1.5 px-2 rounded bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/60 dark:hover:bg-sky-900 border border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2.5 px-3 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
-                <ShieldCheck className="w-3.5 h-3.5 text-sky-500" />
+                <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
                 <span>Validate & Lock HMO Coverage</span>
               </button>
             </div>
 
             {/* 4. Financial Settlement Interventions */}
-            <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-2">
+            <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="font-bold text-slate-900 text-sm">
                   Point-of-Sale Settlement Options
                 </span>
-                <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                <span className="text-base font-bold font-mono text-slate-900 tabular-nums">
                   {formatPeso(waterfall.netPatientDue)} Due
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
                   onClick={() => settlePatientBalance(enc.id, 'QR_PH')}
-                  className="py-1.5 px-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs flex items-center justify-center gap-1 transition-colors shadow-xs"
+                  className="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   <span>QR Ph Pay</span>
                 </button>
                 <button
-                  onClick={openPromissoryModal}
-                  className="py-1.5 px-2 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs flex items-center justify-center gap-1 transition-colors"
+                  onClick={() => {
+                    selectEncounter(enc.id);
+                    openPromissoryModal(enc.id);
+                  }}
+                  className="py-2.5 px-3 rounded-lg border border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                  <FileText className="w-3.5 h-3.5 text-purple-600" />
                   <span>RA 9439 Note</span>
                 </button>
               </div>
             </div>
 
             {/* 5. Gate Pass & Dispute Navigation */}
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-2.5 pt-1">
               <button
                 onClick={openGatePassModal}
-                className="py-2 px-2 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
-                <QrCode className="w-3.5 h-3.5 text-slate-400" />
+                <QrCode className="w-3.5 h-3.5 text-slate-500" />
                 <span>Lobby Gate Pass</span>
               </button>
               <button
                 onClick={() => {
                   closeActionDrawer();
-                  setActiveRoute('PATIENT_CLARIFY');
+                  openPatientClarifyDrawer(enc);
                 }}
-                className="py-2 px-2 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors"
+                className="py-2.5 px-3 rounded-lg border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
-                <Smartphone className="w-3.5 h-3.5 text-slate-400" />
+                <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Patient Clarify</span>
               </button>
             </div>
