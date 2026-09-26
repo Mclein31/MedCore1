@@ -46,5 +46,28 @@
 
 - **Status**: Confirmed & Codified (`[FACT: Suspended Oct 1, 2024; DECISION: Configurable Toggle]`)
 - **Context**: PhilHealth suspended the 90-day Single Period of Confinement rule on October 1, 2024. However, regulatory directives in Philippine healthcare can shift rapidly upon executive leadership turnover, and historical audit queries still examine past claims.
-- **Decision**: Retain the complete PhilHealth 90-day SPC rule calculation engine within `MedCore ClaimReady`, but place its enforcement behind a dynamic system configuration toggle (`ENABLE_PHILHEALTH_SPC_FILTER = FALSE`).
 - **Consequences**: If PhilHealth reinstates the rule or regional offices perform retrospective audits, MedCore can re-enable SPC checks instantly with zero code changes or deployment downtime.
+
+---
+
+## 6. ADR-006: Standalone Statutory Promissory Note Guarantee Workflow (RA 9439) with Zero-Balance Fallback
+
+- **Status**: Confirmed & Codified (`[DECISION]`)
+- **Context**: Under Republic Act No. 9439 (Anti-Hospital Detention Law), hospitals cannot detain non-paying patients who execute a valid promissory note. When staff launch the promissory note modal from the general Disputes & Exceptions desk without a pre-selected patient, or when the currently focused encounter is already settled (₱0.00 due), earlier builds dead-ended at a terminal "Zero Outstanding Balance" dialog.
+- **Decision**:
+  1. If `openPromissoryModal()` is called without an encounter ID or on a settled patient, automatically pre-select the first inpatient encounter with an active positive balance (`waterfall.netPatientDue > 0`).
+  2. If opened on an encounter with ₱0 balance, render an interactive patient picker dropdown listing all eligible inpatients with outstanding balances, rather than a terminal "Close" modal.
+  3. Include an in-situ encounter switcher inside the general promissory note form, allowing hospital billing officers to issue promissory undertakings across patients without closing and reopening the modal.
+- **Consequences**: Zero dead-ends for hospital credit and collection staff; full adherence to RA 9439 statutory guarantees with 0% interest financing plans (3, 6, 12 months).
+
+---
+
+## 7. ADR-007: Supervisory Courtesy Waiver & Natural-Language Bill Transparency (Why Do I Owe This?)
+
+- **Status**: Confirmed & Codified (`[DECISION]`)
+- **Context**: Philippine private hospital discharges frequently experience friction over contested charges (e.g. sundry supply kits, unconsumed IV sets, room upgrades). Supervisors often grant courtesy goodwill waivers to accelerate discharge clearances. If waivers are not reflected in real-time or explainers show conflicting amounts, patients dispute the final bill.
+- **Decision**:
+  1. Provide a supervisory "Waive Balance" action that marks items as `SUPERVISORY_WAIVED` and disputes as `SUPERVISOR_WAIVED`.
+  2. The natural-language "Why Do I Owe This?" drawer dynamically recognizes waived items: displays a green statutory waiver notice banner, explicitly deducts "Less: Supervisory Goodwill Waiver" in the calculation cascade, sets net patient responsibility to ₱0.00, and displays a disabled `✓ Waived by Supervisor` status badge.
+  3. Supervisory waivers immediately update the financial waterfall and decrement attention badges across the sidebar and Kanban boards.
+- **Consequences**: Transparent patient-facing adjudication; immediate clearance acceleration under statutory discharge protocols.

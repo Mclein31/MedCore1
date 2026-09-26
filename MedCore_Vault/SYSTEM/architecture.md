@@ -113,3 +113,36 @@
 │                          │ trail of every transaction and ledger edit.  │
 └──────────────────────────┴──────────────────────────────────────────────┘
 ```
+
+---
+
+## 4. Frontend Application Architecture & UI Operating Principles
+
+[DECISION] The MedCore operational dashboard (`medcore-dashboard`) is structured as a mission-critical financial cockpit for hospital billing officers, HMO liaison desks, and nursing clearance staff:
+
+### 1. View Architecture & Route Taxonomy
+The application coordinates 7 distinct operational routes:
+- **`COMMAND_CENTER`**: Two-screen executive overview with high-density priority blocker strip, real-time trapped revenue KPI, and dual operational pipelines (Payer Coverage & Unresolved Billing Exceptions).
+- **`DISCHARGE_CLEARANCE`**: Master-detail clearance workstation featuring the 6-stage discharge state machine, real-time SLA breach countdowns, itemized chargemaster audit, and digital gate pass authorization.
+- **`ENCOUNTERS_LEDGER`**: Pre-admission intake pipeline and tripartite master running bill ledger.
+- **`COVERAGE_APPROVALS`**: Multi-payer LOA coordination desk supporting 8 commercial HMO gateways and PhilHealth PEC verification.
+- **`DISPUTES_EXCEPTIONS`**: Contested charge triage desk and statutory RA 9439 promissory note register.
+- **`CLAIMS_ESOA`**: PhilHealth eClaims pre-flight audit worklist and dynamic XML payload generator.
+- **`RCM_ANALYTICS`**: CFO-grade denial analytics, HMO turnaround time metrics, and revenue recovery telemetry.
+
+### 2. Viewport Containment & Scrolling Rules
+- **Zero Page-Level Vertical Spills**: Every primary view container is strictly constrained to the viewport (`h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col pb-3 sm:pb-4`).
+- **Independent Card Scrolling**: Scrollable sub-containers use `overflow-y-auto` paired with `overscroll-contain`. When an operator scrolls to the boundary of a card or table, the scroll event never bubbles or chains to the underlying dashboard.
+- **Elimination of Nested Scrollbars**: Workstation side panels (e.g. Additional Data pane) are sized dynamically to fit within available space without internal scrollbars.
+
+### 3. In-Situ Search & Docked Pagination
+- **No Global Search**: Universal search was decommissioned to eliminate context switching. Search bars are embedded in-situ within their respective operational tables.
+- **Deterministic Docked Pagination**: High-volume tables display fixed row counts (e.g. 11 rows in Pipelines/Disputes, 8 in Claims, 12 in Coverage Approvals) with docked `Previous / Next` navigation bars pinned to table footers.
+- **Full-Dataset Querying**: In-situ search filters operate against the full dataset (250 encounters), automatically resetting pagination to page 1 upon query changes.
+
+### 4. Enterprise Table Standard (Strict Left-Alignment)
+- **Strict Universal Left Alignment (`text-left`)**: Every `<th>` and `<td>` across all dashboard tables is strictly left-aligned, including currency amounts, dates, quantities, codes, and action containers (`justify-start`). This eliminates ragged vertical scanlines and minimizes cognitive load for billing operators.
+
+### 5. Responsive Master-Detail Sizing
+- In `ActiveDischargeRadar`, viewports `>= 1024px` (`lg`) render the split-pane master-detail HIMS workstation (patient queue on left, clearance console on right).
+- Viewports `< 1024px` automatically activate a responsive segmented pane switcher (`QUEUE` | `DETAIL`) with a "← Back to Patient Queue" navigation button, preventing column squishing and maintaining high readability.
