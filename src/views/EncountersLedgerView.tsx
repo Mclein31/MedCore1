@@ -1,23 +1,13 @@
 import React, { useState } from 'react';
 import { useMedCore } from '../context/MedCoreContext';
 import { TripartiteWorkbench } from '../components/ledger/TripartiteWorkbench';
-import { formatPhp } from '../../utils/formatters';
-import {
-  Layers,
-  Sparkles,
-  Calculator,
-  ShieldCheck,
-  Search,
-  ArrowRight,
-  FileCheck2,
-  CheckCircle2,
-  Building,
-  UserPlus
-} from 'lucide-react';
+import { formatPhp } from '../utils/formatters';
+import { Search } from 'lucide-react';
 
 export const EncountersLedgerView: React.FC = () => {
-  const { encounters, selectedEncounterId, selectEncounter, openDossierDrawer } = useMedCore();
+  const { encounters, selectedEncounterId, selectEncounter } = useMedCore();
   const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>('INPATIENT_LEDGER');
+  const [ledgerQuery, setLedgerQuery] = useState('');
 
   // Estimator State
   const [selectedProcedure, setSelectedProcedure] = useState('LAP_CHOLE');
@@ -64,67 +54,102 @@ export const EncountersLedgerView: React.FC = () => {
   const currentProc = procedures.find((p) => p.code === selectedProcedure) || procedures[0];
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 dark:bg-[#070D18] overflow-hidden">
-      {/* Top Navigation Tabs & Quick Patient Strip */}
-      <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-brand-blue dark:text-sky-400" />
-            <h2 className="text-xs font-bold font-mono uppercase tracking-wider text-slate-900 dark:text-slate-100">
-              Encounters &amp; Ledgers
-            </h2>
-          </div>
+    <div className="flex-1 flex flex-col h-full bg-white overflow-hidden">
+      {/* Top Navigation Tabs & Patient Strip */}
+      <div className="border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 bg-white">
+        <div className="flex items-center gap-4">
+          <h2 className="text-base font-bold text-slate-900">
+            Encounters &amp; Ledgers
+          </h2>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg text-xs font-mono">
+          <div className="flex items-center gap-1.5 text-xs">
             <button
               onClick={() => setActiveTab('INPATIENT_LEDGER')}
-              className={`px-3 py-1 rounded-md transition-all font-semibold ${
+              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
                 activeTab === 'INPATIENT_LEDGER'
-                  ? 'bg-white dark:bg-slate-700 text-brand-blue dark:text-sky-400 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              Active Inpatient Ledgers ({encounters.length})
+              Active inpatients ({encounters.length})
             </button>
             <button
               onClick={() => setActiveTab('PRE_ADMISSION_INTAKE')}
-              className={`px-3 py-1 rounded-md transition-all font-semibold ${
+              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
                 activeTab === 'PRE_ADMISSION_INTAKE'
-                  ? 'bg-white dark:bg-slate-700 text-brand-blue dark:text-sky-400 shadow-2xs'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              Pre-Admission Intake &amp; Estimator
+              Pre-admission cost estimator
             </button>
           </div>
         </div>
 
-        {/* Inpatient Patient Quick Selector */}
+        {/* Inpatient Patient Quick Selector with Search and Dropdown */}
         {activeTab === 'INPATIENT_LEDGER' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto max-w-full pb-1 sm:pb-0">
-            {encounters.map((enc) => {
-              const isSelected = enc.id === selectedEncounterId;
-              return (
-                <button
-                  key={enc.id}
-                  onClick={() => selectEncounter(enc.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 border ${
-                    isSelected
-                      ? 'bg-sky-500/10 border-sky-500 text-brand-blue dark:text-sky-300 font-semibold shadow-2xs'
-                      : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
-                  }`}
-                >
-                  <span>{enc.patient.maskedName}</span>
-                  <span className="text-[10px] font-mono text-slate-400">
-                    ({enc.roomBed.replace('Room ', '').replace('Bed ', '')})
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-900 dark:text-slate-100">
-                    {formatPhp(enc.waterfall.netPatientDue)}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 sm:pb-0 text-sm">
+            {/* Quick Search */}
+            <div className="relative shrink-0">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                value={ledgerQuery}
+                onChange={(e) => setLedgerQuery(e.target.value)}
+                placeholder="Filter patient / bed..."
+                className="pl-7 pr-2.5 py-1 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36 text-slate-800 placeholder-slate-400"
+              />
+            </div>
+
+            {/* Jump to Any Patient Select */}
+            <select
+              value={selectedEncounterId}
+              onChange={(e) => selectEncounter(e.target.value)}
+              className="px-2.5 py-1 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none shrink-0 shadow-2xs max-w-[190px]"
+            >
+              {encounters.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.roomBed} · {e.patient.fullName || e.patient.maskedName}
+                </option>
+              ))}
+            </select>
+
+            {/* Quick Matching Chips (Top 8) */}
+            {encounters
+              .filter((enc) => {
+                if (!ledgerQuery.trim()) return true;
+                const q = ledgerQuery.toLowerCase();
+                const name = (enc.patient.fullName || enc.patient.maskedName || '').toLowerCase();
+                const room = enc.roomBed.toLowerCase();
+                const encNum = enc.encounterNumber.toLowerCase();
+                return name.includes(q) || room.includes(q) || encNum.includes(q);
+              })
+              .slice(0, 8)
+              .map((enc) => {
+                const isSelected = enc.id === selectedEncounterId;
+                const pName = enc.patient.fullName || enc.patient.maskedName;
+
+                return (
+                  <button
+                    key={enc.id}
+                    onClick={() => selectEncounter(enc.id)}
+                    className={`px-3 py-1 rounded-lg transition-colors shrink-0 flex items-center gap-2 text-xs ${
+                      isSelected
+                        ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
+                    }`}
+                  >
+                    <span>{pName}</span>
+                    <span className="text-slate-400 font-mono text-[11px]">
+                      {enc.roomBed}
+                    </span>
+                    <span className="font-mono font-bold text-slate-900">
+                      {formatPhp(enc.waterfall.netPatientDue)}
+                    </span>
+                  </button>
+                );
+              })}
           </div>
         )}
       </div>
@@ -135,89 +160,37 @@ export const EncountersLedgerView: React.FC = () => {
           <TripartiteWorkbench />
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Header Description */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-mono">
-                Pre-Admission Cost Estimation &amp; Financial Orientation
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Upfront statutory deduction calculations, case rate lookups, and RA 10932 Anti-Deposit compliance.
-              </p>
-            </div>
-
-            <div className="px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-medium flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4" />
-              <span>RA 10932 Deposit-Free: 100% Compliant</span>
-            </div>
-          </div>
-
-          {/* Intake Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-mono text-slate-400 uppercase">Intake Pipeline Value</span>
-              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
-                ₱18,420,000
-              </div>
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block font-mono">
-                142 scheduled elective/urgent admissions
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-mono text-slate-400 uppercase">Upfront E-Consent Rate</span>
-              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
-                98.6%
-              </div>
-              <span className="text-[11px] text-slate-500 mt-1 block">
-                Digital pre-admission disclosure signed
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-mono text-slate-400 uppercase">Estimation Accuracy</span>
-              <div className="text-2xl font-bold font-mono text-slate-900 dark:text-slate-100 mt-1">
-                ±4.2%
-              </div>
-              <span className="text-[11px] text-slate-500 mt-1 block">
-                Actual discharge SOA vs pre-admission estimate
-              </span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-              <span className="text-[11px] font-mono text-slate-400 uppercase">Surprise Bill Reduction</span>
-              <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-                -78%
-              </div>
-              <span className="text-[11px] text-slate-500 mt-1 block">
-                Discharge bill disputes virtually eliminated
-              </span>
-            </div>
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-white">
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 tracking-tight">
+              Pre-Admission Cost Estimation &amp; Orientation
+            </h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Upfront statutory deduction calculations, case rate lookups, and RA 10932 Anti-Deposit compliance.
+            </p>
           </div>
 
           {/* Interactive Procedure Estimator + Scheduled Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Estimator Engine */}
-            <div className="lg:col-span-1 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-brand-blue" />
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 font-mono">
-                  Procedure Cost Estimator
+            <div className="lg:col-span-5 p-6 rounded-xl border border-slate-200 space-y-5 bg-white shadow-2xs">
+              <div>
+                <h4 className="font-bold text-base text-slate-900">
+                  Procedure Cost Calculator
                 </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  PhilHealth All-Case-Rates (ACR) and contracted HMO allowances before admission.
+                </p>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Simulates PhilHealth All-Case-Rates (ACR) and contracted HMO allowances before ward entry.
-              </p>
 
               <div>
-                <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                  Select Procedure Bundle:
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Select clinical procedure bundle:
                 </label>
                 <select
                   value={selectedProcedure}
                   onChange={(e) => setSelectedProcedure(e.target.value)}
-                  className="w-full p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium text-slate-900 dark:text-slate-100 font-mono"
+                  className="w-full p-2.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900"
                 >
                   {procedures.map((p) => (
                     <option key={p.code} value={p.code}>
@@ -227,91 +200,84 @@ export const EncountersLedgerView: React.FC = () => {
                 </select>
               </div>
 
-              <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-2 text-xs font-mono">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Estimated Gross Charges:</span>
-                  <span className="font-bold text-slate-900 dark:text-slate-100">{formatPhp(currentProc.estGross)}</span>
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-sm">
+                <div className="flex justify-between text-slate-600">
+                  <span>Estimated gross charges</span>
+                  <span className="font-mono font-semibold text-slate-900">{formatPhp(currentProc.estGross)}</span>
                 </div>
-                <div className="flex justify-between text-sky-600 dark:text-sky-400">
-                  <span>Less: PhilHealth ACR:</span>
-                  <span>- {formatPhp(currentProc.philhealthACR)}</span>
+                <div className="flex justify-between text-slate-600">
+                  <span>Less: PhilHealth ACR</span>
+                  <span className="font-mono text-emerald-700 font-semibold">- {formatPhp(currentProc.philhealthACR)}</span>
                 </div>
-                <div className="flex justify-between text-indigo-600 dark:text-indigo-400">
-                  <span>Less: HMO Coverage:</span>
-                  <span>- {formatPhp(currentProc.avgHmoLoa)}</span>
+                <div className="flex justify-between text-slate-600">
+                  <span>Less: HMO coverage</span>
+                  <span className="font-mono text-blue-700 font-semibold">- {formatPhp(currentProc.avgHmoLoa)}</span>
                 </div>
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex justify-between font-bold text-sm text-rose-600 dark:text-rose-400">
-                  <span>Est. Patient Responsibility:</span>
-                  <span>{formatPhp(currentProc.estPatientOop)}</span>
+                <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline font-bold text-base text-slate-900">
+                  <span>Estimated Out-of-Pocket</span>
+                  <span className="font-mono text-xl text-slate-900 tabular-nums">{formatPhp(currentProc.estPatientOop)}</span>
                 </div>
               </div>
 
               <button
                 onClick={() => alert(`Pre-admission orientation link generated for ${currentProc.name}`)}
-                className="w-full py-2.5 px-3 rounded-lg bg-brand-navy hover:bg-slate-800 dark:bg-brand-blue dark:hover:bg-sky-600 text-white font-medium text-xs flex items-center justify-center gap-2 transition-colors shadow-xs"
+                className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors shadow-xs"
               >
-                <span>Send Upfront Orientation SMS</span>
-                <ArrowRight className="w-3.5 h-3.5" />
+                Send Upfront Orientation SMS
               </button>
             </div>
 
             {/* Scheduled Intake Encounters */}
-            <div className="lg:col-span-2 p-5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 font-mono">
-                  Active Pre-Admission Encounters
+            <div className="lg:col-span-7 p-6 rounded-xl border border-slate-200 space-y-4 bg-white shadow-2xs">
+              <div className="flex items-baseline justify-between">
+                <h4 className="font-bold text-base text-slate-900">
+                  Scheduled Pre-Admission Encounters
                 </h4>
-                <span className="text-[11px] font-mono text-slate-400">
-                  Live Intake Queue
+                <span className="text-xs text-slate-500 font-medium">
+                  {encounters.length} scheduled
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-slate-200 dark:border-slate-800 text-[10px] font-mono text-slate-400 uppercase">
-                    <tr>
-                      <th className="py-2 px-3">Patient / MRN</th>
-                      <th className="py-2 px-2">Planned Room</th>
-                      <th className="py-2 px-2">Payer</th>
-                      <th className="py-2 px-2 text-right">Est. Out-of-Pocket</th>
-                      <th className="py-2 px-2 text-center">E-Consent</th>
-                      <th className="py-2 px-3 text-right">Action</th>
+              <div className="max-h-[380px] overflow-y-auto overflow-x-auto overscroll-contain rounded-lg border border-slate-200">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
+                    <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                      <th className="py-3 px-3 text-left">Patient &amp; MRN</th>
+                      <th className="py-3 px-3 text-left">Planned Room</th>
+                      <th className="py-3 px-3 text-left">Payer</th>
+                      <th className="py-3 px-3 text-left">Est. Out-of-Pocket</th>
+                      <th className="py-3 px-3 text-left">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                  <tbody className="divide-y divide-slate-100">
                     {encounters.map((enc) => (
-                      <tr key={enc.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="py-2.5 px-3 font-sans">
-                          <div className="font-semibold text-slate-900 dark:text-slate-100">
-                            {enc.patient.maskedName}
+                      <tr key={enc.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="py-3 px-3 text-left">
+                          <div className="font-semibold text-slate-900">
+                            {enc.patient.fullName || enc.patient.maskedName}
                           </div>
-                          <div className="text-[10px] text-slate-400 font-mono">
+                          <div className="text-xs text-slate-500 font-mono">
                             {enc.encounterNumber}
                           </div>
                         </td>
-                        <td className="py-2.5 px-2 text-slate-600 dark:text-slate-400">
-                          {enc.roomCategory}
+                        <td className="py-3 px-3 text-left text-slate-700 font-medium">
+                          {enc.roomCategory.replace('_', ' ')}
                         </td>
-                        <td className="py-2.5 px-2 text-slate-600 dark:text-slate-400">
-                          {enc.hmo.providerName}
+                        <td className="py-3 px-3 text-left text-slate-700 font-medium">
+                          {enc.hmo.hmoName || enc.hmo.providerName}
                         </td>
-                        <td className="py-2.5 px-2 text-right font-bold text-slate-900 dark:text-slate-100">
+                        <td className="py-3 px-3 text-left font-mono font-bold text-slate-900">
                           {formatPhp(enc.waterfall.netPatientDue)}
                         </td>
-                        <td className="py-2.5 px-2 text-center">
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                            <CheckCircle2 className="w-3 h-3" /> Signed
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-right">
+                        <td className="py-3 px-3 text-left">
                           <button
                             onClick={() => {
                               selectEncounter(enc.id);
                               setActiveTab('INPATIENT_LEDGER');
                             }}
-                            className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-medium text-brand-blue dark:text-sky-400"
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 text-left"
                           >
-                            Open Ledger
+                            Open ledger →
                           </button>
                         </td>
                       </tr>

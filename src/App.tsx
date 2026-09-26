@@ -2,24 +2,23 @@ import React, { useState } from 'react';
 import { MedCoreProvider, useMedCore } from './context/MedCoreContext';
 import { GlobalCommandBar } from './components/layout/GlobalCommandBar';
 import { SidebarNav } from './components/layout/SidebarNav';
-import { SearchModal } from './components/layout/SearchModal';
 import { WhyDoIOweThisDrawer } from './components/ledger/WhyDoIOweThisDrawer';
 import { ContextualActionDrawer } from './components/actions/ContextualActionDrawer';
 import { DoctorQuickSignModal } from './components/actions/DoctorQuickSignModal';
 import { DigitalPromissoryModal } from './components/actions/DigitalPromissoryModal';
 import { DigitalGatePassModal } from './components/actions/DigitalGatePassModal';
+import { DischargeDossierDrawer } from './components/discharge/DischargeDossierDrawer';
+import { PatientClarifyDrawer } from './components/discharge/PatientClarifyDrawer';
 
-// Views
+// 8 Task-Oriented Operational Views
 import { CommandCenterView } from './views/CommandCenterView';
-import { GuideView } from './views/GuideView';
-import { VerifyView } from './views/VerifyView';
-import { ReconcileView } from './views/ReconcileView';
-import { RewardView } from './views/RewardView';
-import { ReportView } from './views/ReportView';
-import { ImproveView } from './views/ImproveView';
-import { DisputeDeskView } from './views/DisputeDeskView';
-import { PatientClarifyView } from './views/PatientClarifyView';
-import { SettingsView } from './views/SettingsView';
+import { DischargeClearanceView } from './views/DischargeClearanceView';
+import { EncountersLedgerView } from './views/EncountersLedgerView';
+import { CoverageApprovalsView } from './views/CoverageApprovalsView';
+import { DisputesExceptionsView } from './views/DisputesExceptionsView';
+import { ClaimsEsoaView } from './views/ClaimsEsoaView';
+import { RcmAnalyticsView } from './views/RcmAnalyticsView';
+import { ConfigurationView } from './views/ConfigurationView';
 
 const MainLayout: React.FC = () => {
   const { activeRoute } = useMedCore();
@@ -29,47 +28,44 @@ const MainLayout: React.FC = () => {
     switch (activeRoute) {
       case 'COMMAND_CENTER':
         return <CommandCenterView />;
-      case 'GUIDE':
-        return <GuideView />;
-      case 'VERIFY':
-        return <VerifyView />;
-      case 'RECONCILE':
-        return <ReconcileView />;
-      case 'REWARD':
-        return <RewardView />;
-      case 'REPORT':
-        return <ReportView />;
-      case 'IMPROVE':
-        return <ImproveView />;
-      case 'DISPUTE_DESK':
-        return <DisputeDeskView />;
-      case 'PATIENT_CLARIFY':
-        return <PatientClarifyView />;
-      case 'SETTINGS':
-        return <SettingsView />;
+      case 'DISCHARGE_CLEARANCE':
+        return <DischargeClearanceView />;
+      case 'ENCOUNTERS_LEDGER':
+        return <EncountersLedgerView />;
+      case 'COVERAGE_APPROVALS':
+        return <CoverageApprovalsView />;
+      case 'DISPUTES_EXCEPTIONS':
+        return <DisputesExceptionsView />;
+      case 'CLAIMS_ESOA':
+        return <ClaimsEsoaView />;
+      case 'RCM_ANALYTICS':
+        return <RcmAnalyticsView />;
+      case 'CONFIGURATION':
+        return <ConfigurationView />;
       default:
         return <CommandCenterView />;
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-[#070D18] text-slate-900 dark:text-slate-100 flex flex-col font-sans select-none antialiased">
-      {/* TIER 1: Global Command Bar */}
+    <div className="h-screen w-screen overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans select-none antialiased">
+      {/* LEVEL 1: Global Context & Command Bar */}
       <GlobalCommandBar />
 
-      {/* Main Body: Sidebar + Active Route View */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* Main Body: Operational Workflow Sidebar + Active Task View */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <SidebarNav
           isCollapsed={isSidebarCollapsed}
           setIsCollapsed={setIsSidebarCollapsed}
         />
-        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
           {renderActiveView()}
         </main>
       </div>
 
-      {/* Modals, Drawers & Overlays */}
-      <SearchModal />
+      {/* Modals, Overlays & Slide-Over Drawers */}
+      <DischargeDossierDrawer />
+      <PatientClarifyDrawer />
       <WhyDoIOweThisDrawer />
       <ContextualActionDrawer />
       <DoctorQuickSignModal />
