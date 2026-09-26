@@ -1,10 +1,17 @@
 import React from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
 import { formatPhp } from '../../utils/formatters';
-import { AlertCircle, Clock, ShieldAlert, Coins, ChevronRight, Zap } from 'lucide-react';
+import {
+  Clock,
+  ShieldAlert,
+  FileCheck,
+  CreditCard,
+  ArrowRight,
+  AlertTriangle
+} from 'lucide-react';
 
 export const PriorityActionStrip: React.FC = () => {
-  const { encounters, setActiveFilter, activeFilter, setActiveRoute, approveHmoFinalLoa } = useMedCore();
+  const { encounters, setActiveFilter, activeFilter, setActiveRoute } = useMedCore();
 
   const warningCount = encounters.filter((e) => e.slaStatus === 'WARNING').length;
   const breachCount = encounters.filter((e) => e.slaStatus === 'BREACH').length;
@@ -18,127 +25,171 @@ export const PriorityActionStrip: React.FC = () => {
   );
 
   const trappedCapital = encounters.reduce((acc, enc) => {
-    return acc + enc.waterfall.netPatientDue + enc.doctorExcessPf;
+    return acc + enc.waterfall.netPatientDue;
   }, 0);
 
   return (
-    <section className="px-4 py-3 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-[#0B1120]/70 backdrop-blur-xs">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Card 1: SLA Breach Risks */}
-        <div
-          onClick={() => setActiveFilter(activeFilter === 'BREACH' ? 'ALL' : 'BREACH')}
-          className={`cursor-pointer rounded-lg p-3 transition-all border ${
-            activeFilter === 'BREACH'
-              ? 'bg-rose-500/10 border-rose-500 ring-1 ring-rose-500/30'
-              : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-rose-400 dark:hover:border-rose-500/50 shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-              <Clock className="w-3.5 h-3.5" />
-              SLA Breach Risks
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-bold border border-rose-500/20">
-              45m Ceiling
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between mt-2">
-            <div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100">
-                {breachCount} <span className="text-xs font-normal text-slate-500">breached</span> / {warningCount} <span className="text-xs font-normal text-slate-500">warning</span>
+    <section className="bg-slate-50/50 border-b border-slate-200 px-6 py-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1: SLA Clearance Card (Inspo 2 style) */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                breachCount > 0
+                  ? 'bg-rose-50 text-rose-600 ring-4 ring-rose-50/50'
+                  : warningCount > 0
+                  ? 'bg-amber-50 text-amber-600 ring-4 ring-amber-50/50'
+                  : 'bg-emerald-50 text-emerald-600 ring-4 ring-emerald-50/50'
+              }`}>
+                {breachCount > 0 ? (
+                  <AlertTriangle className="w-5 h-5" />
+                ) : (
+                  <Clock className="w-5 h-5" />
+                )}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                {breachCount > 0 ? 'Exceeding statutory 45m target' : 'All cases tracking within SLA'}
-              </div>
+              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                breachCount > 0
+                  ? 'bg-rose-100 text-rose-800'
+                  : warningCount > 0
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-emerald-100 text-emerald-800'
+              }`}>
+                45m Statutory SLA
+              </span>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+
+            <div className="mt-3">
+              <div className={`text-2xl font-bold tracking-tight ${
+                breachCount > 0 ? 'text-rose-600' : warningCount > 0 ? 'text-amber-600' : 'text-emerald-700'
+              }`}>
+                {breachCount > 0 ? `${breachCount} Breached` : `${warningCount} At Risk`}
+              </div>
+              <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                Discharge Clearance Queue
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                45-min statutory window · {warningCount} cases approaching limit
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-3 mt-2 border-t border-slate-100">
+            <button
+              onClick={() => setActiveFilter(activeFilter === 'WARNING' ? 'ALL' : 'WARNING')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <span>Review clearance queue</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Card 2: HMO LOA Delays */}
-        <div
-          onClick={() => setActiveRoute('COVERAGE_APPROVALS')}
-          className="cursor-pointer rounded-lg p-3 transition-all border bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 shadow-xs group"
-        >
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-              <AlertCircle className="w-3.5 h-3.5" />
-              HMO LOA Delays
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
-              Avg 52m TAT
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between mt-2">
-            <div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100">
-                {hmoPending.length} <span className="text-xs font-normal text-slate-500">pending</span>
+        {/* Metric 2: HMO Authorizations Card (Inspo 2 style) */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-full bg-amber-50 text-amber-600 ring-4 ring-amber-50/50 flex items-center justify-center">
+                <ShieldAlert className="w-5 h-5" />
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                Maxicare (2), Intellicare (1) in queue
-              </div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                Avg 52m TAT
+              </span>
             </div>
-            <span className="text-xs text-brand-blue dark:text-sky-400 font-medium group-hover:underline flex items-center">
-              View <ChevronRight className="w-3.5 h-3.5" />
-            </span>
+
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight text-amber-600">
+                {hmoPending.length} Pending
+              </div>
+              <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                HMO Final eLOA Review
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Awaiting Maxicare, Medicard &amp; Intellicare coverage codes
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-3 mt-2 border-t border-slate-100">
+            <button
+              onClick={() => setActiveRoute('COVERAGE_APPROVALS')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <span>View authorizations</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Card 3: High-Risk Claims (RTH Risk) */}
-        <div
-          onClick={() => setActiveRoute('CLAIMS_ESOA')}
-          className="cursor-pointer rounded-lg p-3 transition-all border bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-500/50 shadow-xs group"
-        >
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-              <ShieldAlert className="w-3.5 h-3.5" />
-              High-Risk Claims
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold border border-indigo-500/20">
-              eClaims 3.0
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between mt-2">
-            <div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100">
-                {highRiskClaims.length} <span className="text-xs font-normal text-slate-500">exceptions</span>
+        {/* Metric 3: Claims Pre-Flight Card (Inspo 2 style) */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 ring-4 ring-rose-50/50 flex items-center justify-center">
+                <FileCheck className="w-5 h-5" />
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                CF4 missing vitals / ICD discrepancy
-              </div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">
+                eClaims 3.0
+              </span>
             </div>
-            <span className="text-xs text-brand-blue dark:text-sky-400 font-medium group-hover:underline flex items-center">
-              Scrub <ChevronRight className="w-3.5 h-3.5" />
-            </span>
+
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight text-rose-600">
+                {highRiskClaims.length} Action Needed
+              </div>
+              <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                PhilHealth Pre-Flight Audit
+              </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Missing CF4 clinical entries &amp; diagnostic attachments
+              </p>
+            </div>
+          </div>
+
+          <div className="pt-3 mt-2 border-t border-slate-100">
+            <button
+              onClick={() => setActiveRoute('CLAIMS_ESOA')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <span>Scrub eClaims audit</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Card 4: Trapped Capital */}
-        <div
-          onClick={() => setActiveRoute('ENCOUNTERS_LEDGER')}
-          className="cursor-pointer rounded-lg p-3 transition-all border bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50 shadow-xs group"
-        >
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider">
-              <Coins className="w-3.5 h-3.5" />
-              Trapped Capital
-            </span>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold border border-emerald-500/20">
-              Active Wards
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between mt-2">
-            <div>
-              <div className="text-xl font-bold font-mono text-slate-900 dark:text-slate-100">
+        {/* Metric 4: Active Inpatient Receivables Card (Inspo 2 style) */}
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 ring-4 ring-emerald-50/50 flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-mono">
+                {encounters.length} Inpatients
+              </span>
+            </div>
+
+            <div className="mt-3">
+              <div className="text-2xl font-bold tracking-tight font-mono text-slate-900 tabular-nums">
                 {formatPhp(trappedCapital)}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                ₱285k PF excess + ₱127k pending LOA
+              <div className="text-sm font-semibold text-slate-900 mt-0.5">
+                Active Inpatient Receivables
               </div>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                ₱285k PF excess · ₱127k pending insurance coverage
+              </p>
             </div>
-            <span className="text-xs text-brand-blue dark:text-sky-400 font-medium group-hover:underline flex items-center">
-              Reconcile <ChevronRight className="w-3.5 h-3.5" />
-            </span>
+          </div>
+
+          <div className="pt-3 mt-2 border-t border-slate-100">
+            <button
+              onClick={() => setActiveRoute('ENCOUNTERS_LEDGER')}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              <span>Inspect ledgers</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>

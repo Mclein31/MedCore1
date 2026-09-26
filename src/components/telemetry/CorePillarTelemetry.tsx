@@ -8,9 +8,7 @@ import {
   Award,
   BarChart3,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
-  CheckCircle2
+  ArrowUpRight
 } from 'lucide-react';
 
 export const CorePillarTelemetry: React.FC = () => {
@@ -30,7 +28,7 @@ export const CorePillarTelemetry: React.FC = () => {
   }[] = [
     {
       key: 'guide',
-      route: 'GUIDE',
+      route: 'ENCOUNTERS_LEDGER',
       title: MOCK_CORE_PILLARS.guide.title,
       subtitle: MOCK_CORE_PILLARS.guide.subtitle,
       metric: MOCK_CORE_PILLARS.guide.metricValue,
@@ -42,7 +40,7 @@ export const CorePillarTelemetry: React.FC = () => {
     },
     {
       key: 'verify',
-      route: 'VERIFY',
+      route: 'COVERAGE_APPROVALS',
       title: MOCK_CORE_PILLARS.verify.title,
       subtitle: MOCK_CORE_PILLARS.verify.subtitle,
       metric: MOCK_CORE_PILLARS.verify.metricValue,
@@ -54,7 +52,7 @@ export const CorePillarTelemetry: React.FC = () => {
     },
     {
       key: 'reward',
-      route: 'REWARD',
+      route: 'DISCHARGE_CLEARANCE',
       title: MOCK_CORE_PILLARS.reward.title,
       subtitle: MOCK_CORE_PILLARS.reward.subtitle,
       metric: MOCK_CORE_PILLARS.reward.metricValue,
@@ -66,7 +64,7 @@ export const CorePillarTelemetry: React.FC = () => {
     },
     {
       key: 'report',
-      route: 'REPORT',
+      route: 'RCM_ANALYTICS',
       title: MOCK_CORE_PILLARS.report.title,
       subtitle: MOCK_CORE_PILLARS.report.subtitle,
       metric: MOCK_CORE_PILLARS.report.metricValue,
@@ -78,7 +76,7 @@ export const CorePillarTelemetry: React.FC = () => {
     },
     {
       key: 'improve',
-      route: 'IMPROVE',
+      route: 'CLAIMS_ESOA',
       title: MOCK_CORE_PILLARS.improve.title,
       subtitle: MOCK_CORE_PILLARS.improve.subtitle,
       metric: MOCK_CORE_PILLARS.improve.metricValue,
@@ -91,22 +89,22 @@ export const CorePillarTelemetry: React.FC = () => {
   ];
 
   return (
-    <section className="bg-slate-50/50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-800/80 px-4 py-2.5">
-      <div className="flex items-center justify-between mb-1.5 px-0.5">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-slate-500 font-semibold">
-            Core 5-Pillar Operational Engine
+    <section className="bg-white border-b border-slate-200 px-6 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+            Operational Pillars
           </span>
-          <span className="text-[10px] text-slate-400 font-mono">
-            GUIDE → VERIFY → REWARD → REPORT → IMPROVE
+          <span className="text-xs text-slate-400">
+            Guide → Verify → Reward → Report → Improve
           </span>
         </div>
-        <div className="text-[10px] font-mono text-slate-400 hidden sm:block">
-          Active SLA Monitor • Live Real-Time Telemetry
+        <div className="text-xs text-slate-500 hidden sm:block font-medium">
+          Live Operational Telemetry
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {pillars.map((p) => {
           const Icon = p.icon;
           const isSelected = activeRoute === p.route;
@@ -115,59 +113,40 @@ export const CorePillarTelemetry: React.FC = () => {
             <button
               key={p.key}
               onClick={() => setActiveRoute(p.route)}
-              className={`p-2.5 rounded-lg border text-left transition-all relative overflow-hidden group ${
+              className={`p-3 rounded-lg border text-left transition-all relative overflow-hidden group ${
                 isSelected
-                  ? 'bg-white dark:bg-slate-900 border-sky-500 shadow-xs ring-1 ring-sky-500/20'
-                  : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850'
+                  ? 'bg-blue-50/70 border-blue-600 ring-1 ring-blue-600 shadow-xs'
+                  : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/60'
               }`}
             >
               {/* Header: Title + Subtitle */}
-              <div className="flex items-center justify-between gap-1 mb-1">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div
-                    className={`w-5 h-5 rounded flex items-center justify-center shrink-0 ${
-                      isSelected
-                        ? 'bg-sky-500/10 text-brand-blue dark:text-sky-400'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                    }`}
-                  >
-                    <Icon className="w-3 h-3" />
-                  </div>
-                  <span
-                    className={`text-xs font-bold font-mono tracking-tight ${
-                      isSelected
-                        ? 'text-sky-700 dark:text-sky-400'
-                        : 'text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
+              <div className="flex items-center justify-between gap-1 mb-1.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-blue-600' : 'text-slate-500'}`} />
+                  <span className={`text-xs font-bold truncate ${isSelected ? 'text-blue-950' : 'text-slate-800'}`}>
                     {p.title}
                   </span>
                 </div>
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 shrink-0">
+                <span className="text-[11px] text-slate-500 shrink-0 font-medium">
                   {p.badge}
                 </span>
               </div>
 
               {/* Main Metric Value */}
               <div className="flex items-baseline justify-between gap-2 mt-1">
-                <span className="text-lg font-bold font-mono tracking-tight text-slate-900 dark:text-slate-100 tabular-nums">
+                <span className="text-xl font-bold font-mono tracking-tight text-slate-900 tabular-nums">
                   {p.metric}
                 </span>
-                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center shrink-0">
-                  <ArrowUpRight className="w-2.5 h-2.5 mr-0.5" />
+                <span className="text-xs text-emerald-700 flex items-center shrink-0 font-bold">
+                  <ArrowUpRight className="w-3.5 h-3.5 mr-0.5" />
                   {p.change}
                 </span>
               </div>
 
               {/* Subtext description */}
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+              <div className="text-xs text-slate-500 truncate mt-1">
                 {p.subtext}
               </div>
-
-              {/* Active Route indicator bar */}
-              {isSelected && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-brand-blue dark:bg-sky-400" />
-              )}
             </button>
           );
         })}
