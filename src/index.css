@@ -19,19 +19,9 @@
   --status-info: #2563EB;
 }
 
-.dark {
-  --bg-app: #090D16;
-  --bg-surface: #0F172A;
-  --bg-surface-elevated: #1E293B;
-  --border-neutral: #334155;
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-}
-
 @layer base {
   body {
-    @apply antialiased text-slate-900 bg-slate-50 dark:bg-[#090D16] dark:text-slate-100;
+    @apply antialiased text-slate-900 bg-slate-50;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
@@ -59,4 +49,14 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.6);
+}
+
+/* Prevent scroll chaining/bubbling from nested cards and internal panels to the main page */
+.overscroll-contain,
+.overflow-y-auto,
+.overflow-auto,
+[class*="overflow-y-auto"],
+[class*="overflow-auto"] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
