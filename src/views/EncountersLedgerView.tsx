@@ -2,12 +2,10 @@ import React, { useState } from 'react';
 import { useMedCore } from '../context/MedCoreContext';
 import { TripartiteWorkbench } from '../components/ledger/TripartiteWorkbench';
 import { formatPhp } from '../utils/formatters';
-import { Search } from 'lucide-react';
 
 export const EncountersLedgerView: React.FC = () => {
-  const { encounters, selectedEncounterId, selectEncounter } = useMedCore();
+  const { encounters, selectEncounter } = useMedCore();
   const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>('INPATIENT_LEDGER');
-  const [ledgerQuery, setLedgerQuery] = useState('');
 
   // Estimator State
   const [selectedProcedure, setSelectedProcedure] = useState('LAP_CHOLE');
@@ -86,72 +84,6 @@ export const EncountersLedgerView: React.FC = () => {
             </button>
           </div>
         </div>
-
-        {/* Inpatient Patient Quick Selector with Search and Dropdown */}
-        {activeTab === 'INPATIENT_LEDGER' && (
-          <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-1 sm:pb-0 text-sm">
-            {/* Quick Search */}
-            <div className="relative shrink-0">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-              <input
-                type="text"
-                value={ledgerQuery}
-                onChange={(e) => setLedgerQuery(e.target.value)}
-                placeholder="Filter patient / bed..."
-                className="pl-7 pr-2.5 py-1 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-36 text-slate-800 placeholder-slate-400"
-              />
-            </div>
-
-            {/* Jump to Any Patient Select */}
-            <select
-              value={selectedEncounterId}
-              onChange={(e) => selectEncounter(e.target.value)}
-              className="px-2.5 py-1 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none shrink-0 shadow-2xs max-w-[190px]"
-            >
-              {encounters.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.roomBed} · {e.patient.fullName || e.patient.maskedName}
-                </option>
-              ))}
-            </select>
-
-            {/* Quick Matching Chips (Top 8) */}
-            {encounters
-              .filter((enc) => {
-                if (!ledgerQuery.trim()) return true;
-                const q = ledgerQuery.toLowerCase();
-                const name = (enc.patient.fullName || enc.patient.maskedName || '').toLowerCase();
-                const room = enc.roomBed.toLowerCase();
-                const encNum = enc.encounterNumber.toLowerCase();
-                return name.includes(q) || room.includes(q) || encNum.includes(q);
-              })
-              .slice(0, 8)
-              .map((enc) => {
-                const isSelected = enc.id === selectedEncounterId;
-                const pName = enc.patient.fullName || enc.patient.maskedName;
-
-                return (
-                  <button
-                    key={enc.id}
-                    onClick={() => selectEncounter(enc.id)}
-                    className={`px-3 py-1 rounded-lg transition-colors shrink-0 flex items-center gap-2 text-xs ${
-                      isSelected
-                        ? 'bg-blue-50 text-blue-900 font-bold border border-blue-200 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
-                    }`}
-                  >
-                    <span>{pName}</span>
-                    <span className="text-slate-400 font-mono text-[11px]">
-                      {enc.roomBed}
-                    </span>
-                    <span className="font-mono font-bold text-slate-900">
-                      {formatPhp(enc.waterfall.netPatientDue)}
-                    </span>
-                  </button>
-                );
-              })}
-          </div>
-        )}
       </div>
 
       {/* Main Tab Viewport */}
