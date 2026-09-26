@@ -1,46 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
-import { formatPeso, formatPstTimestamp } from '../../utils/formatters';
-import { ChargemasterItem } from '../../types/domain';
-import {
-  HelpCircle,
-  Shield,
-  FileText,
-  AlertTriangle,
-  Lock,
-  CheckCircle2,
-  ArrowRight,
-  TrendingDown,
-  Sparkles,
-  QrCode,
-  DollarSign,
-  UserCheck,
-  ChevronRight,
-  Clock,
-  ExternalLink
-} from 'lucide-react';
+import { formatPhp } from '../../utils/formatters';
+import { Smartphone, ExternalLink, HelpCircle, ShieldCheck, AlertCircle, Search } from 'lucide-react';
 
 export const TripartiteWorkbench: React.FC = () => {
   const {
+    encounters,
     selectedEncounter,
+    selectEncounter,
     openWhyDoIOweThis,
-    openActionDrawer,
-    openPromissoryModal,
-    openGatePassModal,
-    openDoctorQuickSign,
-    settlePatientBalance,
-    setActiveRoute
+    openDossierDrawer,
+    openPatientClarifyDrawer
   } = useMedCore();
 
   const enc = selectedEncounter;
   const waterfall = enc.waterfall;
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
+  const [patientSearchQuery, setPatientSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
+
+  const currentIndex = encounters.findIndex((e) => e.id === enc.id);
+
+  const matchingEncounters = encounters.filter((e) => {
+    if (!patientSearchQuery.trim()) return false;
+    const q = patientSearchQuery.toLowerCase();
+    const name = (e.patient.fullName || e.patient.maskedName || '').toLowerCase();
+    const bed = (e.bedNumber || e.roomBed || '').toLowerCase();
+    const encNum = (e.encounterNumber || '').toLowerCase();
+    return name.includes(q) || bed.includes(q) || encNum.includes(q);
+  });
+
+  useEffect(() => {
+    const handleClickOutside = (ev: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(ev.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const pName = enc.patient.fullName || enc.patient.maskedName;
   const rBed = enc.bedNumber || enc.roomBed;
   const rType = enc.roomType || enc.roomCategory.replace(/_/g, ' ');
   const hName = enc.hmo.hmoName || enc.hmo.providerName;
-  const lNum = enc.hmo.loaNumber || enc.hmo.cardMasked;
   const doctorName = enc.attendingDoctor;
 
   const items = enc.items;
@@ -51,156 +55,183 @@ export const TripartiteWorkbench: React.FC = () => {
   });
 
   const categories = [
-    { key: 'ALL', label: 'All Items' },
-    { key: 'ROOM_BOARD', label: 'Room & Board' },
+    { key: 'ALL', label: 'All charges' },
+    { key: 'ROOM_BOARD', label: 'Room & board' },
     { key: 'PHARMACY', label: 'Pharmacy' },
     { key: 'LABORATORY', label: 'Laboratory' },
-    { key: 'CENTRAL_SUPPLIES', label: 'Supplies' },
-    { key: 'PROFESSIONAL_FEE', label: 'Doctor PF' }
+    { key: 'CENTRAL_SUPPLIES', label: 'Medical supplies' },
+    { key: 'PROFESSIONAL_FEE', label: 'Professional fees' }
   ];
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#0F172A] overflow-hidden">
-      {/* 1. Encounter Summary Header */}
-      <div className="p-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 flex flex-wrap items-center justify-between gap-3 shrink-0">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              {pName}
-            </h2>
-            <span className="text-xs font-mono text-slate-500">
-              {enc.encounterNumber}
-            </span>
-            {enc.patient.isSeniorCitizen && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold">
-                SC: {enc.patient.seniorCitizenId || 'ACTIVE'}
-              </span>
-            )}
-            {enc.patient.isPwd && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20 font-bold">
-                PWD: {enc.patient.pwdId || 'ACTIVE'}
-              </span>
-            )}
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-brand-blue dark:text-sky-400 border border-sky-500/20">
-              {enc.stage.replace(/_/g, ' ')}
-            </span>
+    <div className="flex flex-col h-full bg-white overflow-hidden">
+      {/* 1. Encounter Summary Header (Inspo 1 Comlogik Style) */}
+      <div className="px-6 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 shrink-0 bg-white">
+        <div className="flex items-center gap-4">
+          <div className="w-11 h-11 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shrink-0 text-base shadow-xs">
+            {pName.split(' ').map((n) => n[0]).join('').slice(0, 2)}
           </div>
+          <div>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                {pName}
+              </h2>
+              <span className="text-xs font-mono text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
+                {enc.encounterNumber}
+              </span>
+              {enc.patient.isSeniorCitizen && (
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-200">
+                  Senior Citizen (RA 9994)
+                </span>
+              )}
+              {enc.patient.isPwd && (
+                <span className="text-xs font-bold text-indigo-800 bg-indigo-100 px-2.5 py-0.5 rounded-full border border-indigo-200">
+                  PWD (RA 10754)
+                </span>
+              )}
+            </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mt-1 font-mono">
-            <span>Bed: <strong className="text-slate-700 dark:text-slate-300">{rBed} ({rType})</strong></span>
-            <span>PhilHealth: <strong className="text-slate-700 dark:text-slate-300">{enc.patient.philhealthPin}</strong></span>
-            <span>HMO: <strong className="text-slate-700 dark:text-slate-300">{hName} (#{lNum})</strong></span>
-            <span>Doctor: <strong className="text-slate-700 dark:text-slate-300">{doctorName}</strong></span>
+            <div className="text-xs text-slate-600 mt-1">
+              <span className="font-semibold text-slate-900">{rBed} ({rType})</span> · PhilHealth: <span className="font-mono">{enc.patient.philhealthPin}</span> · {hName} · Attending: <strong>{doctorName}</strong>
+            </div>
           </div>
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveRoute('PATIENT_CLARIFY')}
-            className="px-2.5 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-colors"
-            title="Preview Patient Clarify Mobile Web SOA"
+        {/* Header Actions: Patient Switcher + Search Bar + Preview Patient View + Open Dossier */}
+        <div className="flex items-center gap-3">
+          {/* Direct Select Switcher (Moved to right side with enlarged sizing) */}
+          <select
+            value={enc.id}
+            onChange={(e) => selectEncounter(e.target.value)}
+            className="text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg py-2 px-3 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[210px] truncate shadow-2xs transition-colors cursor-pointer"
+            title="Switch to specific patient"
           >
-            <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden sm:inline">Clarify View</span>
+            {encounters.map((e, idx) => (
+              <option key={e.id} value={e.id}>
+                #{idx + 1} {e.roomBed} · {e.patient.fullName || e.patient.maskedName}
+              </option>
+            ))}
+          </select>
+
+          {/* Search Bar (Enlarged size) */}
+          <div ref={searchRef} className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search patient, bed, MRN..."
+              value={patientSearchQuery}
+              onChange={(e) => {
+                setPatientSearchQuery(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              className="pl-9 pr-3.5 py-2 text-sm rounded-lg bg-slate-50 border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 w-60 text-slate-800 placeholder-slate-400 shadow-2xs"
+            />
+            {isSearchOpen && patientSearchQuery.trim() && (
+              <div className="absolute right-0 top-full mt-1.5 w-80 bg-white rounded-xl border border-slate-200 shadow-lg z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
+                {matchingEncounters.length === 0 ? (
+                  <div className="p-3 text-xs text-slate-400 text-center">No patients found</div>
+                ) : (
+                  matchingEncounters.slice(0, 10).map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        selectEncounter(m.id);
+                        setPatientSearchQuery('');
+                        setIsSearchOpen(false);
+                      }}
+                      className="w-full text-left p-2.5 hover:bg-slate-50 flex items-center justify-between text-xs transition-colors"
+                    >
+                      <div>
+                        <div className="font-semibold text-slate-900">{m.patient.fullName || m.patient.maskedName}</div>
+                        <div className="text-[10px] text-slate-400">{m.roomBed} · {m.encounterNumber}</div>
+                      </div>
+                      <span className="font-mono font-bold text-slate-700 text-xs">
+                        {formatPhp(m.waterfall.netPatientDue)}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => openPatientClarifyDrawer(enc)}
+            className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+          >
+            <Smartphone className="w-4 h-4 text-emerald-600" />
+            <span>Preview patient view</span>
           </button>
           <button
-            onClick={openActionDrawer}
-            className="px-3 py-1.5 rounded bg-brand-navy hover:bg-slate-800 dark:bg-brand-blue dark:hover:bg-sky-600 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
+            onClick={() => openDossierDrawer(enc)}
+            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors shadow-xs flex items-center gap-1.5"
           >
-            <span>Actions Drawer</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            <ExternalLink className="w-4 h-4" />
+            <span>Open dossier</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Visual Statutory Deduction Waterfall Banner */}
-      <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-slate-100/50 dark:bg-slate-900/40 shrink-0">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
-            Interactive Statutory Deduction Waterfall (Exact Centavo Adjudication)
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">
-            RA 9994/10754 • PhilHealth ACR • HMO Tier
-          </span>
+      {/* 2. Unified Statutory Deduction Waterfall Strip (Centavo-precision Comlogik) */}
+      <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50 shrink-0">
+        <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+          Statutory deduction waterfall (centavo precision)
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 text-xs">
-          {/* Step 1: Gross Charges */}
-          <div className="p-2 rounded bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="text-[10px] font-mono text-slate-400 uppercase">1. Gross Charges</div>
-            <div className="text-sm font-bold font-mono text-slate-900 dark:text-slate-100 mt-0.5 tabular-nums">
-              {formatPeso(waterfall.grossTotal)}
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm divide-y md:divide-y-0 md:divide-x divide-slate-200">
+          <div>
+            <div className="text-xs text-slate-500 font-medium">1. Gross charges</div>
+            <div className="text-base font-bold font-mono text-slate-900 mt-0.5">
+              {formatPhp(waterfall.grossTotal)}
             </div>
-            <div className="text-[10px] text-slate-400 truncate">Hospital Chargemaster</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Hospital billed</div>
           </div>
 
-          {/* Step 2: VAT Exemption */}
-          <div className="p-2 rounded bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 uppercase">
-              2. 12% VAT Exempt
+          <div className="md:pl-4 pt-2 md:pt-0">
+            <div className="text-xs text-slate-500 font-medium">2. VAT exemption</div>
+            <div className="text-base font-bold font-mono text-emerald-700 mt-0.5">
+              -{formatPhp(waterfall.vatExemption)}
             </div>
-            <div className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
-              -{formatPeso(waterfall.vatExemption)}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">
-              {waterfall.vatExemption > 0 ? 'RA 9994/10754 Applied' : 'Standard Rate (No SC)'}
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              {waterfall.vatExemption > 0 ? '12% VAT exempt' : 'Standard rate'}
             </div>
           </div>
 
-          {/* Step 3: SC/PWD 20% Discount */}
-          <div className="p-2 rounded bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 uppercase">
-              3. 20% SC / PWD
+          <div className="md:pl-4 pt-2 md:pt-0">
+            <div className="text-xs text-slate-500 font-medium">3. SC / PWD discount</div>
+            <div className="text-base font-bold font-mono text-emerald-700 mt-0.5">
+              -{formatPhp(waterfall.seniorPwdDiscount)}
             </div>
-            <div className="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
-              -{formatPeso(waterfall.seniorPwdDiscount)}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">On Net of VAT Base</div>
-          </div>
-
-          {/* Step 4: PhilHealth ACR */}
-          <div className="p-2 rounded bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="text-[10px] font-mono text-sky-600 dark:text-sky-400 uppercase">
-              4. PhilHealth ACR
-            </div>
-            <div className="text-sm font-bold font-mono text-sky-600 dark:text-sky-400 mt-0.5 tabular-nums">
-              -{formatPeso(waterfall.philhealthTotal)}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">
-              HCI: {formatPeso(waterfall.philhealthHci)} | PF: {formatPeso(waterfall.philhealthPf)}
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              {waterfall.seniorPwdDiscount > 0 ? '20% statutory' : 'Not applicable'}
             </div>
           </div>
 
-          {/* Step 5: HMO Approved LOA */}
-          <div className="p-2 rounded bg-white dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
-            <div className="text-[10px] font-mono text-sky-600 dark:text-sky-400 uppercase">
-              5. HMO Approved LOA
+          <div className="md:pl-4 pt-2 md:pt-0">
+            <div className="text-xs text-slate-500 font-medium">4. PhilHealth ACR</div>
+            <div className="text-base font-bold font-mono text-blue-700 mt-0.5">
+              -{formatPhp(waterfall.philhealthTotal)}
             </div>
-            <div className="text-sm font-bold font-mono text-sky-600 dark:text-sky-400 mt-0.5 tabular-nums">
-              -{formatPeso(waterfall.hmoApprovedAmount)}
-            </div>
-            <div className="text-[10px] text-slate-400 truncate">{hName} Max Covered</div>
+            <div className="text-[11px] text-slate-500 mt-0.5">Case rates</div>
           </div>
 
-          {/* Step 6: Net Patient Due */}
-          <div className={`p-2 rounded border ${
-            waterfall.netPatientDue > 0
-              ? 'bg-amber-500/10 border-amber-500/30'
-              : 'bg-emerald-500/10 border-emerald-500/30'
-          }`}>
-            <div className={`text-[10px] font-mono uppercase font-bold ${
-              waterfall.netPatientDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
-            }`}>
-              6. Net Patient Due
+          <div className="md:pl-4 pt-2 md:pt-0">
+            <div className="text-xs text-slate-500 font-medium">5. HMO LOA</div>
+            <div className="text-base font-bold font-mono text-blue-700 mt-0.5">
+              -{formatPhp(waterfall.hmoApprovedAmount)}
             </div>
-            <div className={`text-sm font-bold font-mono mt-0.5 tabular-nums ${
-              waterfall.netPatientDue > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-emerald-700 dark:text-emerald-300'
-            }`}>
-              {formatPeso(waterfall.netPatientDue)}
+            <div className="text-[11px] text-slate-500 mt-0.5">{hName} approved</div>
+          </div>
+
+          <div className="md:pl-4 pt-2 md:pt-0">
+            <div className="text-xs font-bold text-slate-800">6. Net patient due</div>
+            <div className="text-lg font-black font-mono text-slate-900 mt-0.5 tabular-nums">
+              {formatPhp(waterfall.netPatientDue)}
             </div>
-            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-              {waterfall.netPatientDue > 0 ? 'Collect at Discharge' : 'Fully Settled / Cleared'}
+            <div className="text-[11px] text-slate-500 mt-0.5">
+              {waterfall.netPatientDue > 0 ? 'Collect at cashier' : 'Zero balance'}
             </div>
           </div>
         </div>
@@ -209,16 +240,16 @@ export const TripartiteWorkbench: React.FC = () => {
       {/* 3. Category Filter & Line Item Table */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Table Filters */}
-        <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0 bg-white dark:bg-slate-900">
+        <div className="px-6 py-3 border-b border-slate-200 flex items-center justify-between gap-4 shrink-0 bg-white">
           <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
             {categories.map((c) => (
               <button
                 key={c.key}
                 onClick={() => setFilterCategory(c.key)}
-                className={`px-2.5 py-1 rounded text-[11px] font-mono transition-colors whitespace-nowrap ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                   filterCategory === c.key
-                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-semibold'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
                 }`}
               >
                 {c.label}
@@ -226,183 +257,109 @@ export const TripartiteWorkbench: React.FC = () => {
             ))}
           </div>
 
-          <div className="text-[11px] text-slate-400 font-mono hidden md:block">
+          <div className="text-xs text-slate-500 font-semibold">
             {filteredItems.length} of {items.length} line items
           </div>
         </div>
 
-        {/* Table Contents */}
-        <div className="flex-1 overflow-y-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 text-[10px] font-mono text-slate-400 uppercase tracking-wider z-10">
-              <tr>
-                <th className="py-2 px-3">Item / Service</th>
-                <th className="py-2 px-2 text-right">Qty</th>
-                <th className="py-2 px-2 text-right">Gross Price</th>
-                <th className="py-2 px-2 text-right">PhilHealth</th>
-                <th className="py-2 px-2 text-right">HMO LOA</th>
-                <th className="py-2 px-2 text-right">Patient Due</th>
-                <th className="py-2 px-2 text-center">Status</th>
-                <th className="py-2 px-3 text-right">Explainer</th>
+        {/* Table Contents (Comlogik Inspo 1 Style) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <table className="w-full text-left text-sm border-collapse">
+            <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
+              <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                <th className="py-3.5 px-6 text-left">Item / Service Description</th>
+                <th className="py-3.5 px-3 text-left">Qty</th>
+                <th className="py-3.5 px-4 text-left">Gross Total</th>
+                <th className="py-3.5 px-4 text-left">PhilHealth</th>
+                <th className="py-3.5 px-4 text-left">HMO Coverage</th>
+                <th className="py-3.5 px-4 text-left">Patient Balance</th>
+                <th className="py-3.5 px-4 text-left">Coverage Status</th>
+                <th className="py-3.5 px-6 text-left">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono">
-              {filteredItems.map((item) => {
-                const isDisputed = item.status === 'CONTESTED' || item.isDisputed;
+            <tbody className="divide-y divide-slate-100">
+              {filteredItems.map((item) => (
+                <tr
+                  key={item.id}
+                  className="hover:bg-slate-50 transition-colors"
+                >
+                  <td className="py-3.5 px-6 text-left">
+                    <div className="font-semibold text-slate-900 text-sm">
+                      {item.description}
+                    </div>
+                    <div className="text-xs text-slate-500 font-mono mt-0.5">
+                      {item.code} · {item.category.replace(/_/g, ' ')}
+                    </div>
+                  </td>
 
-                return (
-                  <tr
-                    key={item.id}
-                    className={`hover:bg-slate-50/80 dark:hover:bg-slate-850/60 transition-colors ${
-                      isDisputed ? 'bg-purple-500/5 dark:bg-purple-950/20' : ''
-                    }`}
-                  >
-                    {/* Item Description */}
-                    <td className="py-2.5 px-3 font-sans max-w-[220px]">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-slate-900 dark:text-slate-100 text-xs truncate">
-                          {item.description}
-                        </span>
-                        {isDisputed && (
-                          <span className="p-0.5 rounded bg-purple-500/20 text-purple-600 dark:text-purple-400 shrink-0" title="Item Locked Under Dispute">
-                            <Lock className="w-3 h-3" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <span>{item.code}</span>
-                        <span>•</span>
-                        <span>{item.category.replace(/_/g, ' ')}</span>
-                      </div>
-                    </td>
+                  <td className="py-3.5 px-3 text-left font-mono text-slate-600 font-semibold">
+                    {item.qty}
+                  </td>
 
-                    {/* Qty */}
-                    <td className="py-2.5 px-2 text-right text-slate-600 dark:text-slate-400 tabular-nums">
-                      {item.qty}
-                    </td>
+                  <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900 tabular-nums">
+                    {formatPhp(item.grossAmount)}
+                  </td>
 
-                    {/* Gross */}
-                    <td className="py-2.5 px-2 text-right font-medium text-slate-900 dark:text-slate-100 tabular-nums">
-                      {formatPeso(item.grossAmount)}
-                    </td>
+                  <td className="py-3.5 px-4 text-left font-mono text-slate-600 tabular-nums">
+                    {item.philhealthCovered > 0 ? formatPhp(item.philhealthCovered) : '—'}
+                  </td>
 
-                    {/* PhilHealth */}
-                    <td className="py-2.5 px-2 text-right text-sky-600 dark:text-sky-400 tabular-nums">
-                      {item.philhealthCovered > 0 ? formatPeso(item.philhealthCovered) : '—'}
-                    </td>
+                  <td className="py-3.5 px-4 text-left font-mono text-slate-600 tabular-nums">
+                    {item.hmoCovered > 0 ? formatPhp(item.hmoCovered) : '—'}
+                  </td>
 
-                    {/* HMO */}
-                    <td className="py-2.5 px-2 text-right text-sky-600 dark:text-sky-400 tabular-nums">
-                      {item.hmoCovered > 0 ? formatPeso(item.hmoCovered) : '—'}
-                    </td>
+                  <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900 tabular-nums">
+                    {(() => {
+                      const isSeniorOrPwd = Boolean(
+                        selectedEncounter.patient.seniorCitizenId ||
+                        selectedEncounter.patient.isSeniorCitizen ||
+                        selectedEncounter.patient.pwdId ||
+                        selectedEncounter.patient.isPwd
+                      );
+                      const vat = isSeniorOrPwd && item.isVatable ? Number((item.grossAmount - item.grossAmount / 1.12).toFixed(2)) : 0;
+                      const sc = isSeniorOrPwd && item.isVatable ? Number(((item.grossAmount - vat) * 0.20).toFixed(2)) : 0;
+                      const maxLegalOop = Math.max(0, Number((item.grossAmount - vat - sc - item.philhealthCovered - item.hmoCovered).toFixed(2)));
+                      const patientOopResolved = item.patientOop !== undefined && item.patientOop < maxLegalOop ? item.patientOop : maxLegalOop;
 
-                    {/* Patient OOP */}
-                    <td className="py-2.5 px-2 text-right font-bold tabular-nums">
-                      <span
-                        className={
-                          item.patientOop > 0
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-emerald-600 dark:text-emerald-400'
-                        }
-                      >
-                        {formatPeso(item.patientOop)}
+                      return patientOopResolved > 0 ? (
+                        <span className="text-rose-700 font-bold">{formatPhp(patientOopResolved)}</span>
+                      ) : (
+                        <span className="text-slate-400">₱0.00</span>
+                      );
+                    })()}
+                  </td>
+
+                  <td className="py-3.5 px-4 text-left text-xs">
+                    {item.status === 'CONTESTED' || item.isDisputed ? (
+                      <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-xs">
+                        <AlertCircle className="w-3 h-3 text-rose-600" />
+                        <span>Contested</span>
                       </span>
-                    </td>
-
-                    {/* Status Badge */}
-                    <td className="py-2.5 px-2 text-center">
-                      <span
-                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-mono uppercase font-semibold ${
-                          item.status === 'COVERED'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                            : item.status === 'PARTIAL'
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                            : item.status === 'CONTESTED' || item.status === 'DISPUTED'
-                            ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
-                            : item.status === 'SUPERVISORY_WAIVED' || item.status === 'WAIVED'
-                            ? 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
-                        }`}
-                      >
-                        {item.status}
+                    ) : item.status === 'COVERED' ? (
+                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-xs">
+                        <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                        <span>Covered</span>
                       </span>
-                    </td>
+                    ) : (
+                      <span className="font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-xs">
+                        {item.status.replace(/_/g, ' ')}
+                      </span>
+                    )}
+                  </td>
 
-                    {/* Why Do I Owe This Button */}
-                    <td className="py-2.5 px-3 text-right">
-                      <button
-                        onClick={() => openWhyDoIOweThis(item)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[10px] font-medium text-slate-700 dark:text-slate-300 transition-colors"
-                        title="Plain English line-item explanation"
-                      >
-                        <HelpCircle className="w-3 h-3 text-brand-blue dark:text-sky-400" />
-                        <span>Why?</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                  <td className="py-3.5 px-6 text-left">
+                    <button
+                      onClick={() => openWhyDoIOweThis(item)}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1"
+                    >
+                      <HelpCircle className="w-3 h-3 text-slate-400" />
+                      <span>Why?</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        </div>
-
-        {/* 4. Bottom Exclusion Triage & Quick Discharge Settlement Bar */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/90 flex flex-wrap items-center justify-between gap-3 shrink-0">
-          <div className="flex flex-wrap items-center gap-4 text-xs font-mono">
-            <div>
-              <span className="text-slate-400 text-[10px] block">Room Differential:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {formatPeso(waterfall.roomUpgradeExcess)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[10px] block">Consumable Exclusions:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {formatPeso(waterfall.excludedConsumables)}
-              </span>
-            </div>
-            <div>
-              <span className="text-slate-400 text-[10px] block">Doctor Excess PF:</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">
-                {formatPeso(waterfall.doctorExcessPf)}
-              </span>
-            </div>
-            <div className="pl-2 border-l border-slate-200 dark:border-slate-700">
-              <span className="text-slate-400 text-[10px] block font-bold">Total Patient Net Due:</span>
-              <span className="text-base font-bold text-amber-600 dark:text-amber-400 tabular-nums">
-                {formatPeso(waterfall.netPatientDue)}
-              </span>
-            </div>
-          </div>
-
-          {/* Action CTAs */}
-          <div className="flex items-center gap-2">
-            {waterfall.netPatientDue > 0 ? (
-              <>
-                <button
-                  onClick={() => settlePatientBalance(enc.id, 'QR_PH')}
-                  className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>Collect via QR Ph</span>
-                </button>
-                <button
-                  onClick={openPromissoryModal}
-                  className="px-3 py-1.5 rounded bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-xs font-medium text-slate-800 dark:text-slate-200 transition-colors"
-                >
-                  RA 9439 Note
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={openGatePassModal}
-                className="px-3 py-1.5 rounded bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium flex items-center gap-1.5 transition-colors shadow-xs font-mono"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>View Digital Gate Pass</span>
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>

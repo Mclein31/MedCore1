@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
-import { Search, User, Bed, Shield, ArrowRight, CornerDownLeft, Sparkles } from 'lucide-react';
+import { Search, User, Bed, Shield, CornerDownLeft, Sparkles } from 'lucide-react';
 import { formatPeso } from '../../utils/formatters';
 
 export const SearchModal: React.FC = () => {
@@ -10,7 +10,8 @@ export const SearchModal: React.FC = () => {
     encounters,
     selectEncounter,
     setActiveRoute,
-    setActiveRole
+    setActiveRole,
+    openPatientClarifyDrawer
   } = useMedCore();
 
   const [query, setQuery] = useState('');
@@ -52,20 +53,20 @@ export const SearchModal: React.FC = () => {
   // System command suggestions
   const commandSuggestions = [
     {
-      title: 'Navigate to Tripartite Reconcile Ledger',
+      title: 'Navigate to Inpatient Encounters & Ledgers',
       action: () => {
-        setActiveRoute('RECONCILE');
+        setActiveRoute('ENCOUNTERS_LEDGER');
         closeSearchModal();
       },
-      category: 'NAVIGATION'
+      category: 'Navigation'
     },
     {
-      title: 'Open Dispute Desk (Unsettled Items)',
+      title: 'Open Disputes, Exceptions & Promissory Desk',
       action: () => {
-        setActiveRoute('DISPUTE_DESK');
+        setActiveRoute('DISPUTES_EXCEPTIONS');
         closeSearchModal();
       },
-      category: 'WORKFLOW'
+      category: 'Workflow'
     },
     {
       title: 'Switch View to Hospital CFO / Executive RCM',
@@ -73,19 +74,20 @@ export const SearchModal: React.FC = () => {
         setActiveRole('HOSPITAL_CFO');
         closeSearchModal();
       },
-      category: 'ROLE'
+      category: 'Role'
     },
     {
-      title: 'Simulate Mobile Patient Clarify Portal',
+      title: 'Preview Mobile Patient Clarify Portal',
       action: () => {
-        setActiveRoute('PATIENT_CLARIFY');
         closeSearchModal();
+        openPatientClarifyDrawer();
       },
-      category: 'PREVIEW'
+      category: 'Preview'
     }
   ].filter((c) => c.title.toLowerCase().includes(query.toLowerCase()));
 
-  const totalResults = matchingEncounters.length + commandSuggestions.length;
+  const visibleEncounters = matchingEncounters.slice(0, 15);
+  const totalResults = visibleEncounters.length + commandSuggestions.length;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -96,12 +98,12 @@ export const SearchModal: React.FC = () => {
       setSelectedIndex((prev) => (prev - 1 + Math.max(1, totalResults)) % Math.max(1, totalResults));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedIndex < matchingEncounters.length) {
-        const item = matchingEncounters[selectedIndex];
+      if (selectedIndex < visibleEncounters.length) {
+        const item = visibleEncounters[selectedIndex];
         selectEncounter(item.id);
         closeSearchModal();
       } else {
-        const cmd = commandSuggestions[selectedIndex - matchingEncounters.length];
+        const cmd = commandSuggestions[selectedIndex - visibleEncounters.length];
         if (cmd) cmd.action();
       }
     }
@@ -109,16 +111,16 @@ export const SearchModal: React.FC = () => {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-start justify-center pt-20 px-4"
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center pt-20 px-4"
       onClick={closeSearchModal}
     >
       <div
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+        className="w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3 border-b border-slate-200 dark:border-slate-800 gap-3">
+        <div className="flex items-center px-4 py-3.5 border-b border-slate-200 gap-3 bg-white">
           <Search className="w-5 h-5 text-slate-400 shrink-0" />
           <input
             ref={inputRef}
@@ -128,23 +130,23 @@ export const SearchModal: React.FC = () => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
-            placeholder="Type patient name, PIN, MRN, HMO, doctor, or command..."
-            className="w-full bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none"
+            placeholder="Search patient, MRN, encounter, doctor, or command..."
+            className="w-full bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
           />
-          <kbd className="px-2 py-0.5 text-[11px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
-            ESC
+          <kbd className="px-2 py-0.5 text-xs text-slate-500 bg-slate-100 rounded border border-slate-200 font-mono">
+            Esc
           </kbd>
         </div>
 
         {/* Results List */}
-        <div className="overflow-y-auto p-2 divide-y divide-slate-100 dark:divide-slate-800/60">
+        <div className="overflow-y-auto overscroll-contain p-2 divide-y divide-slate-100">
           {/* Encounters Section */}
           {matchingEncounters.length > 0 && (
             <div className="py-2">
-              <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase text-slate-400 tracking-wider">
+              <div className="px-3 py-1.5 text-xs font-semibold uppercase text-slate-500 tracking-wider">
                 Matching Inpatient Encounters ({matchingEncounters.length})
               </div>
-              {matchingEncounters.map((enc, idx) => {
+              {visibleEncounters.map((enc, idx) => {
                 const isSelected = idx === selectedIndex;
                 const pName = enc.patient.fullName || enc.patient.maskedName;
                 const rBed = enc.bedNumber || enc.roomBed;
@@ -161,43 +163,43 @@ export const SearchModal: React.FC = () => {
                     }}
                     className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between transition-colors ${
                       isSelected
-                        ? 'bg-sky-500/10 text-sky-900 dark:text-sky-200 border border-sky-500/30'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                        ? 'bg-blue-50 text-blue-900 ring-1 ring-blue-200'
+                        : 'hover:bg-slate-50 text-slate-800'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4 text-slate-500" />
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+                        <User className="w-4 h-4 text-slate-600" />
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-sm truncate">{pName}</span>
-                          <span className="text-[11px] font-mono text-slate-400">{enc.encounterNumber}</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono">
-                            {enc.stage.replace(/_/g, ' ')}
+                          <span className="text-xs font-mono text-slate-500">{enc.encounterNumber}</span>
+                          <span className="text-xs text-slate-500 font-medium">
+                            · {enc.stage.replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
                           <span className="flex items-center gap-1">
-                            <Bed className="w-3 h-3" />
+                            <Bed className="w-3.5 h-3.5 text-slate-400" />
                             {rBed} ({rType})
                           </span>
-                          <span>•</span>
+                          <span>·</span>
                           <span className="flex items-center gap-1">
-                            <Shield className="w-3 h-3" />
+                            <Shield className="w-3.5 h-3.5 text-slate-400" />
                             {hName}
                           </span>
-                          <span>•</span>
-                          <span className="truncate max-w-[180px]">{diag}</span>
+                          <span>·</span>
+                          <span className="truncate max-w-[200px]">{diag}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="text-right shrink-0 ml-3">
-                      <div className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100">
+                      <div className="text-sm font-bold font-mono text-slate-900 tabular-nums">
                         {formatPeso(enc.waterfall.netPatientDue)}
                       </div>
-                      <div className="text-[10px] text-slate-400">Net Due</div>
+                      <div className="text-xs text-slate-500">Net Due</div>
                     </div>
                   </button>
                 );
@@ -208,7 +210,7 @@ export const SearchModal: React.FC = () => {
           {/* Quick Commands Section */}
           {commandSuggestions.length > 0 && (
             <div className="py-2">
-              <div className="px-3 py-1 text-[10px] font-mono font-semibold uppercase text-slate-400 tracking-wider">
+              <div className="px-3 py-1.5 text-xs font-semibold uppercase text-slate-500 tracking-wider">
                 Quick Actions & System Commands
               </div>
               {commandSuggestions.map((cmd, idx) => {
@@ -218,21 +220,21 @@ export const SearchModal: React.FC = () => {
                   <button
                     key={cmd.title}
                     onClick={cmd.action}
-                    className={`w-full text-left px-3 py-2 rounded-lg flex items-center justify-between text-xs transition-colors ${
+                    className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between text-sm transition-colors ${
                       isSelected
-                        ? 'bg-sky-500/10 text-sky-900 dark:text-sky-200 border border-sky-500/30'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
+                        ? 'bg-blue-50 text-blue-900 ring-1 ring-blue-200'
+                        : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Sparkles className="w-3.5 h-3.5 text-brand-blue" />
-                      <span>{cmd.title}</span>
+                      <Sparkles className="w-4 h-4 text-blue-600" />
+                      <span className="font-medium">{cmd.title}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">
+                      <span className="text-xs text-slate-500 font-medium">
                         {cmd.category}
                       </span>
-                      <CornerDownLeft className="w-3 h-3 text-slate-400" />
+                      <CornerDownLeft className="w-3.5 h-3.5 text-slate-400" />
                     </div>
                   </button>
                 );
@@ -241,21 +243,21 @@ export const SearchModal: React.FC = () => {
           )}
 
           {totalResults === 0 && (
-            <div className="p-8 text-center text-slate-400 text-xs">
+            <div className="p-8 text-center text-slate-400 text-sm">
               No matching encounters or commands found for &ldquo;{query}&rdquo;.
             </div>
           )}
         </div>
 
         {/* Footer Shortcut Hints */}
-        <div className="p-2.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] text-slate-500 flex items-center justify-between px-4 font-mono">
-          <div className="flex items-center gap-3">
+        <div className="p-3 border-t border-slate-200 bg-slate-50 text-xs text-slate-500 flex items-center justify-between px-4">
+          <div className="flex items-center gap-4 font-medium">
             <span>↑↓ Navigate</span>
             <span>↵ Select</span>
-            <span>ESC Close</span>
+            <span>Esc Close</span>
           </div>
-          <div className="text-[10px] text-slate-400">
-            MedCore FastSearch™ Index
+          <div className="text-slate-400 font-medium">
+            MedCore Directory
           </div>
         </div>
       </div>
