@@ -1,13 +1,10 @@
 import React from 'react';
 import { useMedCore } from '../../context/MedCoreContext';
-import { DischargeStage, Encounter } from '../../types/domain';
+import { DischargeStage } from '../../types/domain';
 import { DischargeCard } from './DischargeCard';
 import { formatPeso } from '../../utils/formatters';
 import {
   Clock,
-  ShieldAlert,
-  Filter,
-  CheckCircle2,
   Stethoscope,
   Pill,
   ShieldCheck,
@@ -63,7 +60,7 @@ const STAGES: StageConfig[] = [
     stage: 'CLEARED_GATE_PASS',
     title: '6. Cleared & Gate Pass Issued',
     shortTitle: '6. Cleared Pass',
-    targetMinutes: 'Completed',
+    targetMinutes: 'Done',
     icon: QrCode
   }
 ];
@@ -81,85 +78,114 @@ export const DischargeMissionControl: React.FC = () => {
     if (activeFilter === 'WARNING') return enc.slaStatus === 'WARNING';
     if (activeFilter === 'BREACH') return enc.slaStatus === 'BREACH';
     if (activeFilter === 'DISPUTED') {
-      return enc.items.some((item) => item.status === 'CONTESTED' || item.isDisputed);
+      return (
+        enc.items.some(
+          (item) =>
+            (item.status === 'CONTESTED' || item.isDisputed) &&
+            item.status !== 'SUPERVISORY_WAIVED' &&
+            item.status !== 'WAIVED'
+        ) ||
+        enc.disputes.some(
+          (d) =>
+            d.status !== 'SUPERVISOR_WAIVED' &&
+            (d.status as string) !== 'SUPERVISORY_WAIVED' &&
+            d.status !== 'HMO_RECONSIDERED' &&
+            (d.status as string) !== 'RESOLVED' &&
+            (d.status as string) !== 'WAIVED'
+        )
+      );
     }
     return true;
   });
 
   const warningCount = encounters.filter((e) => e.slaStatus === 'WARNING').length;
   const breachCount = encounters.filter((e) => e.slaStatus === 'BREACH').length;
-  const disputedCount = encounters.filter((e) =>
-    e.items.some((item) => item.status === 'CONTESTED' || item.isDisputed)
+  const disputedCount = encounters.filter(
+    (e) =>
+      e.items.some(
+        (item) =>
+          (item.status === 'CONTESTED' || item.isDisputed) &&
+          item.status !== 'SUPERVISORY_WAIVED' &&
+          item.status !== 'WAIVED'
+      ) ||
+      e.disputes.some(
+        (d) =>
+          d.status !== 'SUPERVISOR_WAIVED' &&
+          (d.status as string) !== 'SUPERVISORY_WAIVED' &&
+          d.status !== 'HMO_RECONSIDERED' &&
+          (d.status as string) !== 'RESOLVED' &&
+          (d.status as string) !== 'WAIVED'
+      )
   ).length;
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/60 dark:bg-[#0B1120] border-r border-slate-200 dark:border-slate-800">
+    <div className="flex flex-col h-full bg-slate-50">
       {/* Header & Filter Controls */}
-      <div className="p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 flex flex-wrap items-center justify-between gap-2 shrink-0">
+      <div className="p-4 border-b border-slate-200 bg-white flex flex-wrap items-center justify-between gap-4 shrink-0">
         <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 font-mono">
-              Discharge Clearance Mission Control
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-slate-900">
+              6-Stage Discharge Pipeline
             </h2>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/10 text-brand-blue dark:text-sky-400 font-semibold border border-sky-500/20">
-              {filteredEncounters.length} Inpatient Cases
+            <span className="text-xs text-slate-500">
+              {filteredEncounters.length} active inpatient cases
             </span>
           </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-            Active 6-Stage Tripartite Discharge Pipeline • SLA Target: &lt;45m Total
+          <div className="text-xs text-slate-500 mt-0.5">
+            Active 6-stage tripartite discharge pipeline · Total SLA target &lt;45m
           </div>
         </div>
 
-        {/* Filter Toggle Badges */}
-        <div className="flex items-center gap-1.5 text-xs font-mono">
+        {/* Filter Segmented Controls */}
+        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100">
           <button
             onClick={() => setActiveFilter('ALL')}
-            className={`px-2 py-1 rounded text-[11px] transition-colors ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
               activeFilter === 'ALL'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-medium'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             All ({encounters.length})
           </button>
           <button
             onClick={() => setActiveFilter('WARNING')}
-            className={`px-2 py-1 rounded text-[11px] transition-colors flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 ${
               activeFilter === 'WARNING'
-                ? 'bg-amber-500 text-white font-medium'
-                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20'
+                ? 'bg-white text-amber-700 shadow-xs'
+                : 'text-slate-600 hover:text-amber-700'
             }`}
           >
-            <span>Warning</span>
-            <span className="font-bold">({warningCount})</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span>Warning ({warningCount})</span>
           </button>
           <button
             onClick={() => setActiveFilter('BREACH')}
-            className={`px-2 py-1 rounded text-[11px] transition-colors flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 ${
               activeFilter === 'BREACH'
-                ? 'bg-rose-600 text-white font-medium'
-                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500/20'
+                ? 'bg-white text-rose-700 shadow-xs'
+                : 'text-slate-600 hover:text-rose-700'
             }`}
           >
-            <span>Breach</span>
-            <span className="font-bold">({breachCount})</span>
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            <span>Breach ({breachCount})</span>
           </button>
           <button
             onClick={() => setActiveFilter('DISPUTED')}
-            className={`px-2 py-1 rounded text-[11px] transition-colors flex items-center gap-1 ${
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5 ${
               activeFilter === 'DISPUTED'
-                ? 'bg-purple-600 text-white font-medium'
-                : 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 hover:bg-purple-500/20'
+                ? 'bg-white text-purple-700 shadow-xs'
+                : 'text-slate-600 hover:text-purple-700'
             }`}
           >
-            <span>Disputed</span>
-            <span className="font-bold">({disputedCount})</span>
+            <span className="w-2 h-2 rounded-full bg-purple-500" />
+            <span>Disputed ({disputedCount})</span>
           </button>
         </div>
       </div>
 
       {/* 6-Stage Kanban Board */}
-      <div className="flex-1 overflow-x-auto p-3 flex gap-3 min-h-0">
+      <div className="flex-1 overflow-x-auto p-4 flex gap-4 min-h-0">
         {STAGES.map((s) => {
           const StageIcon = s.icon;
           const stageEncounters = filteredEncounters.filter(
@@ -173,31 +199,31 @@ export const DischargeMissionControl: React.FC = () => {
           return (
             <div
               key={s.stage}
-              className="flex-1 min-w-[240px] max-w-[310px] flex flex-col bg-slate-100/70 dark:bg-slate-900/60 rounded-xl border border-slate-200/80 dark:border-slate-800/80 overflow-hidden"
+              className="flex-1 min-w-[270px] max-w-[320px] flex flex-col bg-slate-100/80 rounded-xl border border-slate-200 overflow-hidden"
             >
               {/* Column Header */}
-              <div className="p-2.5 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80">
+              <div className="p-3 border-b border-slate-200 bg-white">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <StageIcon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                    <span className="font-semibold text-xs text-slate-800 dark:text-slate-200 truncate">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StageIcon className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span className="font-semibold text-sm text-slate-800 truncate">
                       {s.shortTitle}
                     </span>
                   </div>
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                  <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
                     {stageEncounters.length}
                   </span>
                 </div>
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 mt-1">
+                <div className="flex items-center justify-between text-xs text-slate-500 mt-1.5">
                   <span>Target: {s.targetMinutes}</span>
-                  <span className="tabular-nums font-medium text-slate-600 dark:text-slate-400">
+                  <span className="tabular-nums font-mono font-semibold text-slate-700">
                     {formatPeso(totalStageAmount)}
                   </span>
                 </div>
               </div>
 
               {/* Cards List */}
-              <div className="flex-1 p-2 space-y-2.5 overflow-y-auto">
+              <div className="flex-1 p-3 space-y-3 overflow-y-auto">
                 {stageEncounters.map((encounter) => (
                   <DischargeCard
                     key={encounter.id}
@@ -207,7 +233,7 @@ export const DischargeMissionControl: React.FC = () => {
                 ))}
 
                 {stageEncounters.length === 0 && (
-                  <div className="h-28 rounded-lg border border-dashed border-slate-200 dark:border-slate-800/60 flex items-center justify-center text-slate-400 text-[11px] p-2 text-center font-mono">
+                  <div className="h-28 rounded-lg border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs p-3 text-center">
                     No cases in this stage
                   </div>
                 )}
