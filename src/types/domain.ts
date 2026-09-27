@@ -218,3 +218,44 @@ export interface Encounter {
   disputes: BillingDispute[];
   timeline?: EncounterTimelineEvent[];
 }
+
+export interface CommercialCarrierMetric {
+  carrier: string;
+  activeCases: number;
+  avgTatMinutes: number;
+  avgTatFormatted: string;
+  disallowanceRate: number; // percentage, e.g. 2.1
+  cleanApprovalRate: number; // percentage, e.g. 97.9
+  reconciledTotal: number;
+}
+
+export interface TrappedCapitalFriction {
+  category: string;
+  amount: number;
+  share: number; // percentage 0-100
+  avgDelayMinutes: number;
+  avgDelayFormatted: string;
+  casesCount: number;
+}
+
+export interface ArAgingSummary {
+  bucket: string;
+  amount: number;
+  percentage: number;
+  status: string;
+  isStatutoryRisk?: boolean;
+}
+
+export interface DischargeTatPoint {
+  day: number;
+  dateStr?: string;
+  tatMinutes: number;
+  isToday?: boolean;
+}
+
+export interface PreFlightAuditStatus {
+  xmlConformityPercent: number;
+  cf4NotesPercent: number;
+  codingConsistencyPercent: number;
+  doctorPanVerifiedPercent: number;
+}
