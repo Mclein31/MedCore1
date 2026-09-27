@@ -128,7 +128,7 @@ The application coordinates 7 distinct operational routes:
 - **`COVERAGE_APPROVALS`**: Multi-payer LOA coordination desk supporting 8 commercial HMO gateways and PhilHealth PEC verification.
 - **`DISPUTES_EXCEPTIONS`**: Contested charge triage desk and statutory RA 9439 promissory note register.
 - **`CLAIMS_ESOA`**: PhilHealth eClaims pre-flight audit worklist and dynamic XML payload generator.
-- **`RCM_ANALYTICS`**: CFO-grade denial analytics, HMO turnaround time metrics, and revenue recovery telemetry.
+- **`RCM_ANALYTICS`**: Production-grade CFO & Revenue Cycle Command workstation answering the 20 core hospital financial questions. Features real-time statutory waterfall decomposition (0.00 centavo drift), 30-day discharge TAT descent line telemetry, pre-flight claims scrutiny donut, trapped capital Pareto, 8-carrier commercial HMO performance matrix, departmental exception density, and actionable inpatient worklist with one-click resolution actions.
 
 ### 2. Viewport Containment & Scrolling Rules
 - **Zero Page-Level Vertical Spills**: Every primary view container is strictly constrained to the viewport (`h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col pb-3 sm:pb-4`).

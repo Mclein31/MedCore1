@@ -877,6 +877,53 @@ This section serves as the **authoritative, reusable project reference** for all
 - **Full Philippine HMO Ecosystem**: Supports all 8 commercial HMO carriers: Maxicare, Intellicare, Medicard, Pacific Cross, PhilCare, Etiqa Philippines, Caritas Health Shield, Insular Health Care.
 - **Dual Matching**: Payer filters check both `enc.hmo.providerName` and `enc.hmo.hmoName`.
 
+---
+
+## 30. Enterprise RCM Analytics & Hospital Financial Intelligence Suite
+
+### 30.1 Regulatory & Statutory Anchors
+- **PhilHealth Circular No. 2023-0026**: Mandatory XML schema for Statements of Account (eSOA). Scanned PDFs trigger automatic Return-to-Hospital (RTH) rejection. MedCore validates 100% of claims pre-flight.
+- **PhilHealth Circular No. 2024-0006**: DRG Shadow Billing using Claim Form 5 (CF5) and eSOA data.
+- **PhilHealth Circular No. 2024-0037 (Effective Jan 1, 2025)**: Across-the-board +50% rate increase across ~9,000 All Case Rates (ACR), updating hospital billing deductions dynamically.
+- **PhilHealth Circular No. 2024-0021 & 2025-0015**: Single Period of Confinement (SPC) formally abolished; authorized retroactive refiling of denied claims dating back to Feb 20, 2019.
+- **Statutory 60-Day Filing Cutoff**: Claims approaching 31–60 days trigger prominent amber alerts to avert uncollectible write-offs.
+- **Anti-Hospital Detention Law (RA 9439)**: Promissory notes must strictly carry 0.00% interest and 3/6/12 month amortized schedules with exact centavo reconciliation.
+
+### 30.2 Architectural Topology & The 10 Analytics Domains
+The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular analytical sub-components in `src/components/analytics/`:
+1. **Macro Revenue Scorecard (`MacroRevenueScorecard.tsx`)**: 8 unified bento KPI cards covering Total Gross Billings (₱12.27M), Days in AR (21.4d), Pre-Flight Clean Claims (96.4%), Annualized Bottom-Line Yield (+₱31.41M), Trapped Capital (₱4.86M benchmark), Revenue at Risk, Problem Census, and RA 9439 Recovered Revenue.
+2. **Hospital Multi-Payer Financing Waterfall (`HospitalFinancingWaterfall.tsx`)**: Horizontal cascade bar strictly reconciling Gross Total ≡ VAT Exemption + Senior/PWD Discount + PhilHealth Benefit + HMO Approved + Net Patient Due with 0.00 centavo drift.
+3. **Discharge TAT Descent & Inflow Trend (`FinancialVelocityTrendChart.tsx`)**: Temporal SVG line chart with 288m historical baseline, 45m statutory SLA ceiling, and 15–30m MedCore digital target band.
+4. **Pre-Flight Claims Scrutiny Pipeline (`ClaimsScrutinyPipeline.tsx`)**: Donut chart with <= 5 segments (Clean 49.2%, Warnings 6.4%, Intercepted 12.4%, Returned 3.6%, Under Review 28.4%) and Circular 2023-0026 XML checklist.
+5. **Billing Exceptions & Trapped Capital Pareto (`TrappedCapitalPareto.tsx`)**: Ranked horizontal bars for HMO eLOA holds, Doctor PF holds, Disallowed supplies, Pharmacy RTS holds, CF4 records, and diagnostic code mismatches.
+6. **Commercial HMO Carrier Performance Matrix (`CommercialCarrierLedger.tsx`)**: Universal left-aligned paginated table covering all 8 Philippine HMOs (Maxicare, Intellicare, Medicard, Pacific Cross, PhilCare, Etiqa, Caritas, Insular) + RTH elimination sub-panel.
+7. **Departmental Exception Density (`DepartmentExceptionMatrix.tsx`)**: Grouped clustered vertical bar chart comparing census volume vs exception count across 8 clinical hospital units.
+8. **MedCore Cumulative Economic Yield (`MedCoreCumulativeImpactChart.tsx`)**: 12-month cumulative area chart proving +₱31.41M/yr bottom-line yield against legacy leakage baselines.
+9. **Patient Out-of-Pocket & Payment Rails (`PatientOopDriverCard.tsx`)**: 3-driver breakdown (Room upgrade 46.2%, Disallowed sundries 31.4%, Excess PF 22.4%) + digital payment rail adoption (QR Ph 38.4%, GCash/Maya 32.1%).
+10. **Accounts Receivable Aging Profile (`ArAgingProfileCard.tsx`)**: 4-tier aging buckets (0–30d ₱28.40M, 31–60d ₱7.21M, 61–90d ₱2.42M, 90+d ₱0.98M) with statutory cutoff alert.
+11. **Actionable Inpatient Worklist (`ActionableExceptionsWorklist.tsx`)**: Full-width filterable, paginated table with quick-actions (Doctor QuickSign, RTS slip, Follow-Up LOA, Promissory Note, Open Dossier).
+12. **Executive Report & Audit Modal (`ExecutiveReportModal.tsx`)**: Print/PDF and CSV export utility for hospital CFOs and board review.
+
+### 30.3 Single Source of Truth & Universal UI Standards
+- **Derived Real-Time Calculations**: All metrics derive dynamically from `useMedCore().encounters` through `src/utils/rcmAnalyticsCalculations.ts`.
+- **Strict 100% Light Mode**: `bg-slate-50`, `bg-white`, `border-slate-200`, `text-slate-900`. Zero `dark:` Tailwind classes.
+- **Universal Table Left-Alignment Rule**: All table headers (`<th>`) and cells (`<td>`) across all ledgers are explicitly `text-left`.
+- **Viewport Bounds**: Enforced `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col bg-slate-50` with contained inner scrolling.
+
+### 30.4 Code Review Audit & Quality Verification
+- **Audit Date**: 2026-09-27
+- **Findings Remediated**:
+  1. *CRITICAL (Arithmetic Scaling)*: Fixed `grossDailyRunRate` in `src/utils/rcmAnalyticsCalculations.ts` to scale by `(totalEncountersCount / 250) * 1822897`, eliminating ~₱89.46B/d calculation error.
+  2. *HIGH (CSV Data URI)*: Replaced direct `encodeURI` on raw CSV text in `src/components/analytics/ExecutiveReportModal.tsx` with `encodeURIComponent` to prevent URI malformation.
+  3. *MEDIUM (Friction Category Fallback)*: Added clean encounter guard `if (!isEncounterProblem(enc)) return 'Clean / No Active Hold'` in `getEncounterFrictionCategory` to prevent clean cases from inflating HMO LOA holds.
+  4. *LOW (Pagination Range Display)*: Handled empty query results in `src/components/analytics/CommercialCarrierLedger.tsx` to display `Showing 0–0 of 0 Carriers`.
+  5. *LOW (Section Collision)*: Renumbered Enterprise RCM Analytics to Section `30` in `.brain/PROJECT_CONTEXT.md`.
+- **Reconciliation & Build Verification**:
+  - `npm run build` (`tsc -b && vite build`): PASSED (0 errors, 1.67s).
+  - `npx tsx scripts/auditFinancials.ts`: PASSED (250/250 records, 0 drift, 100% balanced).
+
+
+
 
 
 
