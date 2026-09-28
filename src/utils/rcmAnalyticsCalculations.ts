@@ -1,4 +1,4 @@
-import { Encounter, DischargeStage, CommercialCarrierMetric, TrappedCapitalFriction, ArAgingSummary, DischargeTatPoint, PreFlightAuditStatus } from '../types/domain';
+import { Encounter, DischargeStage, CommercialCarrierMetric, TrappedCapitalFriction, ArAgingSummary, DischargeTatPoint, PreFlightAuditStatus } from '@/types/domain';
 export type { CommercialCarrierMetric, TrappedCapitalFriction, ArAgingSummary, DischargeTatPoint, PreFlightAuditStatus };
 import { formatPhp } from './formatters';
 

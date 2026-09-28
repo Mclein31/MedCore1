@@ -11,8 +11,8 @@ import {
   EncounterTimelineEvent,
   DischargeStage,
   SlaStatus
-} from '../types/domain';
-import { recalculateWaterfall } from '../utils/waterfall';
+} from '@/types/domain';
+import { recalculateWaterfall } from '@/utils/waterfall';
 
 // ============================================================================
 // DETERMINISTIC LEHMER PSEUDO-RANDOM NUMBER GENERATOR

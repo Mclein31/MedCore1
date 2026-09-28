@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useMedCore } from '../../context/MedCoreContext';
+import { useMedCore } from '@/context/MedCoreContext';
 import { Search, User, Bed, Shield, CornerDownLeft, Sparkles } from 'lucide-react';
-import { formatPeso } from '../../utils/formatters';
+import { formatPeso } from '@/utils/formatters';
 
 export const SearchModal: React.FC = () => {
   const {

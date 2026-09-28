@@ -1,5 +1,5 @@
-import { Encounter, ChargemasterItem, EncounterTimelineEvent } from '../types/domain';
-import { recalculateWaterfall } from '../utils/waterfall';
+import { Encounter, ChargemasterItem, EncounterTimelineEvent } from '@/types/domain';
+import { recalculateWaterfall } from '@/utils/waterfall';
 import { generateAdditionalEncounters } from './patientDatasetGenerator';
 
 // ============================================================================
@@ -2683,50 +2683,3 @@ export const INITIAL_ENCOUNTERS: Encounter[] = ALL_RAW_ENCOUNTERS.map((enc) => (
   }
 }));
 
-export const MOCK_CORE_PILLARS = {
-  guide: {
-    title: 'GUIDE',
-    subtitle: 'Pre-Admission Financial Orientation',
-    metricValue: '₱24.8M',
-    metricDetail: 'Active intake pipeline (186 cases)',
-    badgeText: 'Deposit-Free (RA 10932)',
-    badgeType: 'info' as const,
-    changeText: '+18% vs last week'
-  },
-  verify: {
-    title: 'VERIFY',
-    subtitle: 'Eligibility & LOA Triage Rate',
-    metricValue: '96.2%',
-    metricDetail: 'Active eligibility verified',
-    badgeText: 'PhilHealth PEC: 99.4%',
-    badgeType: 'success' as const,
-    changeText: '14.2m avg LOA response'
-  },
-  reward: {
-    title: 'REWARD',
-    subtitle: 'Point-of-Sale Settlement Lift',
-    metricValue: '₱5.8M',
-    metricDetail: 'Settled at discharge today',
-    badgeText: '93.4% POS Rate',
-    badgeType: 'success' as const,
-    changeText: '+34% cash collection'
-  },
-  report: {
-    title: 'REPORT',
-    subtitle: 'Discharge Turnaround Time (TAT)',
-    metricValue: '32.4m',
-    metricDetail: 'SLA Ceiling <45m (Target <30m)',
-    badgeText: '412 Bed-Hours Saved',
-    badgeType: 'success' as const,
-    changeText: '▼ 5.1h vs legacy paper'
-  },
-  improve: {
-    title: 'IMPROVE',
-    subtitle: 'PhilHealth Return-to-Hospital',
-    metricValue: '1.2%',
-    metricDetail: 'Initial RTH denial rate',
-    badgeText: 'Clean Claims: 98.8%',
-    badgeType: 'success' as const,
-    changeText: '▼ from 18.2% baseline'
-  }
-};

@@ -1,4 +1,4 @@
-import { ChargemasterItem, StatutoryWaterfall } from '../types/domain';
+import { ChargemasterItem, StatutoryWaterfall } from '@/types/domain';
 
 /**
  * Computes the strict statutory deduction waterfall pursuant to:

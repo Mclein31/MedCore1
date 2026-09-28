@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Encounter, ChargemasterItem, DischargeStage, PromissoryNote, DischargePass } from '../types/domain';
-import { NavRoute, UserRole } from '../types/navigation';
-import { INITIAL_ENCOUNTERS } from '../data/mockData';
-import { recalculateWaterfall } from '../utils/waterfall';
-import { calculateInstallmentPlan } from '../utils/financing';
+import { Encounter, ChargemasterItem, DischargeStage, PromissoryNote, DischargePass } from '@/types/domain';
+import { NavRoute, UserRole } from '@/types/navigation';
+import { INITIAL_ENCOUNTERS } from '@/data/mockData';
+import { recalculateWaterfall } from '@/utils/waterfall';
+import { calculateInstallmentPlan } from '@/utils/financing';
 
 interface MedCoreContextType {
   encounters: Encounter[];

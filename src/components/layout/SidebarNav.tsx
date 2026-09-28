@@ -1,6 +1,6 @@
 import React from 'react';
-import { useMedCore } from '../../context/MedCoreContext';
-import { NavRoute } from '../../types/navigation';
+import { useMedCore } from '@/context/MedCoreContext';
+import { NavRoute } from '@/types/navigation';
 import {
   Activity,
   DoorOpen,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useMedCore } from '../../context/MedCoreContext';
-import { UserRole } from '../../types/navigation';
+import { useMedCore } from '@/context/MedCoreContext';
+import { UserRole } from '@/types/navigation';
 import {
   ChevronDown,
   Bell,
