@@ -1,4 +1,4 @@
-import { Encounter, ChargemasterItem, StatutoryWaterfall, PromissoryNote } from '../types/domain';
+import { Encounter, ChargemasterItem, StatutoryWaterfall, PromissoryNote } from '@/types/domain';
 
 export interface InstallmentPlan {
   termMonths: 3 | 6 | 12;

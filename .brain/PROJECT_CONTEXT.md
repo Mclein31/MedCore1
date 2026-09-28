@@ -922,15 +922,64 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   - `npm run build` (`tsc -b && vite build`): PASSED (0 errors, 1.67s).
   - `npx tsx scripts/auditFinancials.ts`: PASSED (250/250 records, 0 drift, 100% balanced).
 
+---
 
+## 31. Repository Reorganization & Feature-Sliced Architecture Hardening (Completed)
 
+[DECISION] **Feature-Sliced Architecture & Directory Layout Standard**:
+- Reorganized codebase from a flat component directory into domain-encapsulated feature modules and shared layers:
+  ```text
+  MedCore1/
+  ├── .brain/
+  │   └── PROJECT_CONTEXT.md
+  ├── docs/
+  │   ├── market/               # Pitch decks, market validation surveys
+  │   └── research/             # Cedar competitive feature breakdown
+  ├── public/                   # Static browser assets & favicons
+  ├── scripts/
+  │   └── auditFinancials.ts    # 100% financial reconciliation test engine
+  ├── src/
+  │   ├── app/                  # Application bootstrap & shell (App.tsx)
+  │   ├── components/           # Shared cross-cutting UI
+  │   │   ├── common/           # Generic atoms (StatusBadge)
+  │   │   ├── layout/           # GlobalCommandBar, SidebarNav, SearchModal
+  │   │   └── modals/           # Action modals (DigitalGatePassModal, DigitalPromissoryModal, DoctorQuickSignModal)
+  │   ├── context/              # Centralized state (MedCoreContext.tsx)
+  │   ├── data/                 # Datasets & synthetic generation (mockData.ts, patientDatasetGenerator.ts)
+  │   ├── features/             # Domain-encapsulated feature modules
+  │   │   ├── analytics/        # Executive CFO suite, Pareto charts, carrier ledger
+  │   │   ├── command-center/   # 5-level operational cockpit & priority strip
+  │   │   ├── discharge/        # 45-minute SLA radar, Kanban, dossier drawer
+  │   │   ├── ledger/           # Tripartite running bill & line-item explainer
+  │   │   └── patient-clarify/  # Mobile Web PWA preview & touch waterfall
+  │   ├── hooks/                # Reusable React hooks (useMedCore.ts, index.ts)
+  │   ├── pages/                # Route-level page components (8 primary views + backward-compatibility aliases)
+  │   ├── types/                # Domain models & navigation contracts (domain.ts, navigation.ts)
+  │   └── utils/                # Pure calculation engines (waterfall.ts, financing.ts, formatters.ts, rcmAnalyticsCalculations.ts)
+  ├── package.json
+  ├── tsconfig.json
+  ├── tailwind.config.js
+  └── vite.config.ts
+  ```
 
+[DECISION] **Architectural Boundaries & Barrier Exports**:
+- **Cross-Feature Modals Extracted**: `DigitalGatePassModal`, `DigitalPromissoryModal`, and `DoctorQuickSignModal` relocated to `src/components/modals/` with unified barrel re-exports (`src/components/modals/index.ts`). Resolves feature encapsulation leaks where other operational pages required statutory promissory or physician signing flows.
+- **Public API Barrel Architecture**: Added `index.ts` barrier exports across all feature modules (`src/features/*/index.ts`), `src/pages/index.ts`, `src/components/modals/index.ts`, and `src/hooks/index.ts`.
+- **Global Path Aliasing (@/*)**: Standardized all internal imports in `src/` to use `@/` aliases configured in `tsconfig.json` and `vite.config.ts`, completely eliminating fragile multi-level relative path traversals (`../../`).
+- **Hook Co-location**: Created `src/hooks/useMedCore.ts` and `src/hooks/index.ts` for clean hook consumption while preserving backward-compatible exports in `src/context/MedCoreContext.tsx`.
+- **Pure Light Mode Configuration**: Removed redundant `darkMode: 'class'` from `tailwind.config.js`, enforcing strict light-mode compliance.
+- **Documentation Migration**: Migrated loose root-level documents and validation decks into `docs/market/` and `docs/research/`.
 
+[FACT] **Zero Regression Verification**:
+- `npm test`: 250/250 patient records pass the 10-step Philippine statutory deduction waterfall and centavo-exact RA 9439 installment schedule with 0 errors.
+- `npx tsc -b`: 0 type errors across the entire codebase.
+- `npm run build`: Production build passes cleanly with zero missing imports or broken references.
 
-
-
-
-
-
-
-
+[FACT] **Code Reviewer Audit Approval & Remediation Sign-Off**:
+- Formal review and post-refactor audit completed: APPROVED.
+- All 4 identified review observations resolved:
+  1. Feature domain leaks eliminated via `src/components/modals/` extraction.
+  2. Relative path aliasing replaced with universal `@/*` mapping across all context, data, and utility modules.
+  3. Reusable hook barrier co-located at `src/hooks/` (`useMedCore.ts`, `index.ts`).
+  4. Redundant `darkMode: 'class'` purged from `tailwind.config.js`.
+- Zero regressions confirmed across statutory financial logic, strict light mode mandate, routing contracts, and production builds.
