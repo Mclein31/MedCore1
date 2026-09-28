@@ -108,6 +108,64 @@ export const ActiveDischargeRadar: React.FC = () => {
     }
   };
 
+  const renderBillStateChip = (enc: Encounter) => {
+    if (enc.promissoryNote && enc.promissoryNote.status === 'ACTIVE') {
+      return (
+        <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-full text-[10px]">
+          <span>⚖ RA 9439 Note Active</span>
+        </span>
+      );
+    }
+    switch (enc.billState) {
+      case 'PAID':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
+            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+            <span>✓ Settled &amp; Cleared</span>
+          </span>
+        );
+      case 'PARTIALLY_PAID':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px]">
+            <span>◐ Partially Paid</span>
+          </span>
+        );
+      case 'DISPUTED':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-rose-800 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-[10px]">
+            <AlertTriangle className="w-3 h-3 text-rose-600" />
+            <span>! Contested</span>
+          </span>
+        );
+      case 'VIEWED':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-purple-800 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full text-[10px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+            <span>● Viewed</span>
+          </span>
+        );
+      case 'SENT_TO_PATIENT':
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full text-[10px]">
+            <span>↗ eSOA Sent</span>
+          </span>
+        );
+      case 'FINALIZED':
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full text-[10px]">
+            <span>Bill Finalized</span>
+          </span>
+        );
+      case 'DRAFT':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 font-medium text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-[10px]">
+            <span>Draft</span>
+          </span>
+        );
+    }
+  };
+
   const getBlockerDetails = (enc: Encounter) => {
     switch (enc.stage) {
       case 'DOCTOR_PF_PENDING':
@@ -429,6 +487,19 @@ export const ActiveDischargeRadar: React.FC = () => {
                         {blocker.actionText}
                       </span>
                     </div>
+
+                    {/* eSOA Lifecycle Status Row */}
+                    <div className="mt-1 pt-1 border-t border-slate-50 flex items-center justify-between text-[10px]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-400 font-medium">eSOA:</span>
+                        {renderBillStateChip(enc)}
+                      </div>
+                      {enc.amountPaid !== undefined && enc.amountPaid > 0 && (
+                        <span className="font-mono text-emerald-700 font-semibold">
+                          Paid {formatPhp(enc.amountPaid)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -570,10 +641,14 @@ export const ActiveDischargeRadar: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Sub-strip: Payer, ACR Benefit & Declaration Time */}
+                {/* Sub-strip: Payer, ACR Benefit, eSOA Status & Declaration Time */}
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 flex-wrap gap-2">
                   <div>
                     Payer: <strong className="text-slate-800 font-semibold">{currentSelectedEncounter.hmo.hmoName || currentSelectedEncounter.hmo.providerName}</strong> (MBL Rem: <span className="font-mono font-semibold">{formatPhp(currentSelectedEncounter.hmo.mblRemaining)}</span>)
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span>eSOA Status:</span>
+                    {renderBillStateChip(currentSelectedEncounter)}
                   </div>
                   <div>
                     PhilHealth Benefit: <strong className="text-emerald-700 font-mono font-bold">{formatPhp(currentSelectedEncounter.philhealth.totalCaseRate)}</strong> ({currentSelectedEncounter.philhealth.caseRateCode})
@@ -989,6 +1064,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                 <th className="py-3.5 px-4 text-left">Attending Doctor</th>
                 <th className="py-3.5 px-4 text-left">Payer / Plan</th>
                 <th className="py-3.5 px-4 text-left">Stage</th>
+                <th className="py-3.5 px-4 text-left">eSOA Status</th>
                 <th className="py-3.5 px-4 text-left">SLA Status</th>
                 <th className="py-3.5 px-4 text-left">Net Patient Due</th>
                 <th className="py-3.5 px-6 text-left">Actions</th>
@@ -1039,6 +1115,10 @@ export const ActiveDischargeRadar: React.FC = () => {
 
                     <td className="py-3.5 px-4 text-left text-xs font-semibold text-slate-800">
                       Step {getStageMeta(enc.stage).step}: {getStageMeta(enc.stage).label}
+                    </td>
+
+                    <td className="py-3.5 px-4 text-left">
+                      {renderBillStateChip(enc)}
                     </td>
 
                     <td className="py-3.5 px-4 text-left">
@@ -1120,6 +1200,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                           PWD
                         </span>
                       )}
+                      {renderBillStateChip(enc)}
                     </div>
                     <div className="text-xs text-slate-600 mt-1">
                       <span className="font-semibold text-slate-800">{enc.roomBed}</span> · <span className="font-mono text-xs">{enc.encounterNumber}</span> · {hmo} · Attending: <strong>{enc.attendingDoctor}</strong>

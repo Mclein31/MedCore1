@@ -30,7 +30,7 @@ interface NavItemConfig {
 }
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollapsed }) => {
-  const { activeRoute, setActiveRoute, encounters, openPatientClarifyDrawer } = useMedCore();
+  const { activeRoute, setActiveRoute, setActiveRole, encounters, openPatientClarifyDrawer } = useMedCore();
 
   const warningCount = encounters.filter((e) => e.slaStatus === 'WARNING' || e.slaStatus === 'BREACH').length;
   const disputedCount = encounters.filter(
@@ -187,22 +187,46 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
             <p className="text-[11px] text-slate-600 leading-tight mb-2.5">
               Instant mobile SOA preview &amp; plain-language billing explanation.
             </p>
-            <button
-              onClick={() => openPatientClarifyDrawer()}
-              className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-colors"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-              <span>Launch Mobile Preview</span>
-            </button>
+            <div className="space-y-1.5">
+              <button
+                onClick={() => openPatientClarifyDrawer()}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs transition-colors"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Mobile Preview Drawer</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveRole('PATIENT_GUARANTOR');
+                  setActiveRoute('PATIENT_PORTAL');
+                }}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-white" />
+                <span>Open Patient Portal</span>
+              </button>
+            </div>
           </div>
         ) : (
-          <button
-            onClick={() => openPatientClarifyDrawer()}
-            title="Launch Patient Clarify Mobile Preview"
-            className="w-full flex items-center justify-center p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
-          >
-            <Smartphone className="w-5 h-5" />
-          </button>
+          <div className="space-y-1">
+            <button
+              onClick={() => openPatientClarifyDrawer()}
+              title="Launch Patient Clarify Mobile Preview"
+              className="w-full flex items-center justify-center p-2 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors"
+            >
+              <Smartphone className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => {
+                setActiveRole('PATIENT_GUARANTOR');
+                setActiveRoute('PATIENT_PORTAL');
+              }}
+              title="Open Standalone Patient Portal"
+              className="w-full flex items-center justify-center p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              <Sparkles className="w-5 h-5" />
+            </button>
+          </div>
         )}
 
         {/* Legal citations & collapse toggle */}

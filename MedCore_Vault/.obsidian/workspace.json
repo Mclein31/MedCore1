@@ -11,10 +11,14 @@
             "id": "e0d98fe799dca019",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "PRODUCT/users.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "users"
             }
           }
         ]
@@ -51,7 +55,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "",
+                "query": "2%",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -75,7 +79,8 @@
               "title": "Bookmarks"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "horizontal",
@@ -186,12 +191,14 @@
   },
   "active": "e0d98fe799dca019",
   "lastOpenFiles": [
+    "PRODUCT/vision.md",
+    "DECISIONS/assumptions.md",
+    "RESEARCH/market.md",
     "PRODUCT/problems.md",
     "RESEARCH/cedar_model.md",
     "REQUIREMENTS/mvp_scope.md",
     "REQUIREMENTS/non_functional.md",
     "REQUIREMENTS/functional.md",
-    "DECISIONS/assumptions.md",
     "DECISIONS/technical_decisions.md",
     "DECISIONS/product_decisions.md",
     "SYSTEM/data_model.md",
@@ -209,8 +216,6 @@
     "RESEARCH/regulations.md",
     "RESEARCH/statistics.md",
     "RESEARCH/competitors.md",
-    "RESEARCH/market.md",
-    "DOMAIN/billing_disputes.md",
-    "DOMAIN/insurance_reconciliation.md"
+    "DOMAIN/billing_disputes.md"
   ]
 }

@@ -6,7 +6,8 @@ export type NavRoute =
   | 'DISPUTES_EXCEPTIONS'
   | 'CLAIMS_ESOA'
   | 'RCM_ANALYTICS'
-  | 'CONFIGURATION';
+  | 'CONFIGURATION'
+  | 'PATIENT_PORTAL';
 
 export type UserRole =
   | 'BILLING_SPECIALIST'
