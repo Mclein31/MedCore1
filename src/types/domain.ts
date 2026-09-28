@@ -217,6 +217,16 @@ export interface Encounter {
   promissoryNote?: PromissoryNote;
   disputes: BillingDispute[];
   timeline?: EncounterTimelineEvent[];
+  // Patient Billing & Demo Settlement Extension
+  billState?: 'DRAFT' | 'FINALIZED' | 'SENT_TO_PATIENT' | 'VIEWED' | 'DISPUTED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  billNumber?: string;
+  amountPaid?: number;
+  remainingBalance?: number;
+  billFinalizedAt?: string;
+  billSentAt?: string;
+  billFirstViewedAt?: string;
+  paymentHistory?: any[];
+  receipts?: any[];
 }
 
 export interface CommercialCarrierMetric {
@@ -259,3 +269,12 @@ export interface PreFlightAuditStatus {
   codingConsistencyPercent: number;
   doctorPanVerifiedPercent: number;
 }
+
+export type {
+  BillLifecycleState,
+  DemoPaymentRail,
+  PaymentLifecycleState,
+  DemoPaymentRecord,
+  PaymentReceipt,
+  PatientBillStatement
+} from '@/features/patient-clarify/types/billing';

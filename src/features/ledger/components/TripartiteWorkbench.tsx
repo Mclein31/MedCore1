@@ -1,7 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { Smartphone, ExternalLink, HelpCircle, ShieldCheck, AlertCircle, Search } from 'lucide-react';
+import { BillLifecycleState } from '@/types/domain';
+import {
+  Smartphone,
+  ExternalLink,
+  HelpCircle,
+  ShieldCheck,
+  AlertCircle,
+  Search,
+  CheckCircle2,
+  FileCheck2,
+  Send,
+  Copy,
+  Check,
+  Sparkles
+} from 'lucide-react';
 
 export const TripartiteWorkbench: React.FC = () => {
   const {
@@ -10,7 +24,11 @@ export const TripartiteWorkbench: React.FC = () => {
     selectEncounter,
     openWhyDoIOweThis,
     openDossierDrawer,
-    openPatientClarifyDrawer
+    openPatientClarifyDrawer,
+    finalizeBill,
+    sendBillToPatient,
+    setActiveRoute,
+    setActiveRole
   } = useMedCore();
 
   const enc = selectedEncounter;
@@ -18,7 +36,79 @@ export const TripartiteWorkbench: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
   const [patientSearchQuery, setPatientSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const handleSendEsoa = () => {
+    const { magicLink } = sendBillToPatient(enc.id);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(magicLink).catch(() => {});
+    }
+    setCopiedNotification(`eSOA dispatched for ${enc.patient.fullName || enc.patient.maskedName}! Magic link copied to clipboard.`);
+    setTimeout(() => {
+      setCopiedNotification(null);
+    }, 4500);
+  };
+
+  const renderBillBadge = (state?: BillLifecycleState) => {
+    if (enc.promissoryNote && enc.promissoryNote.status === 'ACTIVE') {
+      return (
+        <span className="inline-flex items-center gap-1 font-bold text-teal-800 bg-teal-100/70 border border-teal-300 px-2 py-0.5 rounded-full text-xs">
+          <span>⚖ RA 9439 Note Active</span>
+        </span>
+      );
+    }
+    switch (state) {
+      case 'PAID':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-emerald-800 bg-emerald-100/70 border border-emerald-300 px-2 py-0.5 rounded-full text-xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>✓ Settled &amp; Cleared</span>
+          </span>
+        );
+      case 'PARTIALLY_PAID':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-amber-800 bg-amber-100/70 border border-amber-300 px-2 py-0.5 rounded-full text-xs">
+            <span>◐ Partially Paid</span>
+          </span>
+        );
+      case 'DISPUTED':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-rose-800 bg-rose-100/70 border border-rose-300 px-2 py-0.5 rounded-full text-xs">
+            <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+            <span>! Contested Item</span>
+          </span>
+        );
+      case 'VIEWED':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-purple-800 bg-purple-100/70 border border-purple-300 px-2 py-0.5 rounded-full text-xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 animate-pulse" />
+            <span>● Viewed by Patient</span>
+          </span>
+        );
+      case 'SENT_TO_PATIENT':
+        return (
+          <span className="inline-flex items-center gap-1 font-bold text-blue-800 bg-blue-100/70 border border-blue-300 px-2 py-0.5 rounded-full text-xs">
+            <Send className="w-3 h-3 text-blue-600" />
+            <span>↗ eSOA Sent</span>
+          </span>
+        );
+      case 'FINALIZED':
+        return (
+          <span className="inline-flex items-center gap-1 font-semibold text-indigo-800 bg-indigo-100/70 border border-indigo-300 px-2 py-0.5 rounded-full text-xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Bill Finalized</span>
+          </span>
+        );
+      case 'DRAFT':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 font-medium text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-xs">
+            <span>Draft</span>
+          </span>
+        );
+    }
+  };
 
   const currentIndex = encounters.findIndex((e) => e.id === enc.id);
 
@@ -173,6 +263,116 @@ export const TripartiteWorkbench: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* 1.5 Billing Lifecycle & eSOA Dispatch Strip */}
+      <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">
+            Billing Lifecycle:
+          </span>
+          {renderBillBadge(enc.billState)}
+
+          <span className="text-slate-300">·</span>
+          <span className="text-slate-600 font-medium">
+            Bill No: <span className="font-mono font-bold text-slate-900">{enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber}`}</span>
+          </span>
+
+          {enc.amountPaid !== undefined && enc.amountPaid > 0 && (
+            <>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-600 font-medium">
+                Paid: <span className="font-mono font-bold text-emerald-700">{formatPhp(enc.amountPaid)}</span>
+              </span>
+            </>
+          )}
+
+          {enc.remainingBalance !== undefined && enc.remainingBalance > 0 && (
+            <>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-600 font-medium">
+                Remaining: <span className="font-mono font-bold text-rose-700">{formatPhp(enc.remainingBalance)}</span>
+              </span>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Finalize Bill Action */}
+          {enc.billState === 'DRAFT' ? (
+            <button
+              type="button"
+              onClick={() => finalizeBill(enc.id)}
+              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
+              title="Lock hospital chargemaster lines and prepare official statement"
+            >
+              <FileCheck2 className="w-3.5 h-3.5" />
+              <span>Finalize Bill</span>
+            </button>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Bill Finalized</span>
+            </span>
+          )}
+
+          {/* Send eSOA Action */}
+          <button
+            type="button"
+            onClick={handleSendEsoa}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
+            title="Dispatch plain-language eSOA magic link to patient mobile via SMS"
+          >
+            <Send className="w-3.5 h-3.5" />
+            <span>{enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'VIEWED' ? 'Resend eSOA' : 'Send eSOA (SMS/Link)'}</span>
+          </button>
+
+          {/* Direct Switcher into Full Patient Experience */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveRole('PATIENT_GUARANTOR');
+              setActiveRoute('PATIENT_PORTAL');
+            }}
+            className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
+            title="Switch to Patient Guarantor view in standalone portal"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span>Open Patient Portal</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Copy Notification Banner */}
+      {copiedNotification && (
+        <div className="bg-blue-50 border-b border-blue-200 px-6 py-2 flex items-center justify-between text-xs text-blue-900 animate-in fade-in duration-200 shrink-0">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+            <span className="font-semibold">{copiedNotification}</span>
+            <span className="text-blue-600 font-mono text-[11px] hidden md:inline">
+              (magic link active)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveRole('PATIENT_GUARANTOR');
+                setActiveRoute('PATIENT_PORTAL');
+              }}
+              className="text-xs font-bold text-blue-700 underline hover:text-blue-900"
+            >
+              Test Patient Experience &rarr;
+            </button>
+            <button
+              type="button"
+              onClick={() => setCopiedNotification(null)}
+              className="text-slate-400 hover:text-slate-600 ml-2 font-bold"
+            >
+              &#10005;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. Unified Statutory Deduction Waterfall Strip (Centavo-precision Comlogik) */}
       <div className="px-6 py-3.5 border-b border-slate-200 bg-slate-50 shrink-0">

@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MedCoreProvider, useMedCore } from '@/context/MedCoreContext';
 import { GlobalCommandBar } from '@/components/layout/GlobalCommandBar';
 import { SidebarNav } from '@/components/layout/SidebarNav';
 import { SearchModal } from '@/components/layout/SearchModal';
 import { WhyDoIOweThisDrawer } from '@/features/ledger';
 import { ContextualActionDrawer, DischargeDossierDrawer } from '@/features/discharge';
-import { PatientClarifyDrawer } from '@/features/patient-clarify';
+import { PatientClarifyDrawer, PatientPortalStandalone } from '@/features/patient-clarify';
 import { DoctorQuickSignModal, DigitalPromissoryModal, DigitalGatePassModal } from '@/components/modals';
 
 // 8 Task-Oriented Operational Route Pages
@@ -21,8 +21,50 @@ import {
 } from '@/pages';
 
 const MainLayout: React.FC = () => {
-  const { activeRoute } = useMedCore();
+  const {
+    activeRoute,
+    activeRole,
+    setActiveRoute,
+    setActiveRole,
+    selectEncounter,
+    encounters
+  } = useMedCore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Hash-based routing listener for magic links like #/clarify/enc-8812 or #/patient-portal
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash.startsWith('#/clarify/')) {
+        const id = hash.replace('#/clarify/', '').split('?')[0];
+        if (id && encounters.some((e) => e.id === id)) {
+          selectEncounter(id);
+        }
+        setActiveRoute('PATIENT_PORTAL');
+        setActiveRole('PATIENT_GUARANTOR');
+      } else if (hash === '#/patient-portal') {
+        setActiveRoute('PATIENT_PORTAL');
+        setActiveRole('PATIENT_GUARANTOR');
+      }
+    };
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [encounters, selectEncounter, setActiveRoute, setActiveRole]);
+
+  // When patient portal route or guarantor role is active, render the dedicated patient portal experience
+  if (activeRoute === 'PATIENT_PORTAL' || activeRole === 'PATIENT_GUARANTOR') {
+    return (
+      <div className="min-h-screen w-screen bg-slate-100 text-slate-900 flex flex-col font-sans select-none antialiased">
+        <PatientPortalStandalone />
+        <SearchModal />
+        <WhyDoIOweThisDrawer />
+        <DoctorQuickSignModal />
+        <DigitalPromissoryModal />
+        <DigitalGatePassModal />
+      </div>
+    );
+  }
 
   const renderActiveView = () => {
     switch (activeRoute) {
