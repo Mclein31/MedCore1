@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, Clock, AlertTriangle, Search, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, Search, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const CoverageApprovalsPage: React.FC = () => {
-  const { encounters, approveHmoFinalLoa, openDossierDrawer } = useMedCore();
+  const { encounters, approveHmoFinalLoa, openDossierDrawer, printDocument } = useMedCore();
   const [isVerifying, setIsVerifying] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPayer, setFilterPayer] = useState<string>('ALL');
@@ -25,6 +26,14 @@ export const CoverageApprovalsPage: React.FC = () => {
     setTimeout(() => {
       setIsVerifying(false);
     }, 1200);
+  };
+
+  const handlePrintRoster = () => {
+    printDocument({
+      type: 'COVERAGE_APPROVALS_REPORT',
+      title: 'Coverage Approvals Roster',
+      data: { encounters: filteredEncounters }
+    });
   };
 
   const hmoGateways = [
@@ -90,14 +99,25 @@ export const CoverageApprovalsPage: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={triggerBatchVerification}
-          disabled={isVerifying}
-          className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs flex items-center gap-1.5"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isVerifying ? 'animate-spin' : ''}`} />
-          <span>{isVerifying ? 'Pinging payer gateways...' : 'Ping All Payer Gateways'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrintRoster}
+            className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs flex items-center gap-1.5"
+            title="Print Coverage Approvals Roster"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span>Print Roster</span>
+          </button>
+
+          <button
+            onClick={triggerBatchVerification}
+            disabled={isVerifying}
+            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isVerifying ? 'animate-spin' : ''}`} />
+            <span>{isVerifying ? 'Pinging payer gateways...' : 'Ping All Payer Gateways'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Gateway Status Strip */}
@@ -243,7 +263,7 @@ export const CoverageApprovalsPage: React.FC = () => {
 
         {/* Table Content */}
         <div ref={tableContainerRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-contain">
-          <table className="w-full text-left text-sm border-separate border-spacing-0">
+          <table className="w-full min-w-[960px] text-left text-sm border-separate border-spacing-0">
             <thead className="sticky top-0 z-20">
               <tr className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-2.5 px-6 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">Patient &amp; Room</th>
@@ -367,12 +387,22 @@ export const CoverageApprovalsPage: React.FC = () => {
                     <td className="py-2 px-6 text-left">
                       <div className="flex items-center justify-start gap-1.5">
                         {!isApproved && (
-                          <button
-                            onClick={() => approveHmoFinalLoa(enc.id)}
-                            className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-2xs transition-colors"
-                          >
-                            Approve
-                          </button>
+                          <ConfirmButton
+                            label="Approve"
+                            modalTitle="Approve HMO LOA Coverage?"
+                            modalDescription={`This will approve and lock the ${enc.hmo.providerName || enc.hmo.hmoName} electronic Letter of Authorization (eLOA) for ${enc.patient.fullName || enc.patient.maskedName}, enabling final discharge clearance.`}
+                            confirmLabel="Approve LOA"
+                            variant="primary"
+                            confirmVariant="primary"
+                            size="xs"
+                            contextInfo={[
+                              { label: 'Patient', value: enc.patient.fullName || enc.patient.maskedName },
+                              { label: 'HMO Provider', value: enc.hmo.providerName || enc.hmo.hmoName },
+                              { label: 'Approved Benefit', value: formatPhp(enc.hmo.approvedAmount) }
+                            ]}
+                            onConfirm={() => approveHmoFinalLoa(enc.id)}
+                            title="Approve HMO Final LOA"
+                          />
                         )}
                         <button
                           onClick={() => openDossierDrawer(enc)}

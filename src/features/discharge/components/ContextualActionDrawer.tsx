@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Smartphone
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const ContextualActionDrawer: React.FC = () => {
   const {
@@ -83,13 +84,28 @@ export const ContextualActionDrawer: React.FC = () => {
             <div className="text-lg font-bold text-slate-900">
               {enc.stage.replace(/_/g, ' ')}
             </div>
-            <button
-              onClick={() => advanceStage(enc.id)}
-              className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
-            >
-              <span>Advance to Next Stage</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <ConfirmButton
+              label={
+                <span className="flex items-center justify-center gap-2">
+                  <span>Advance to Next Stage</span>
+                  <ChevronRight className="w-4 h-4" />
+                </span>
+              }
+              modalTitle="Advance Discharge Workflow Stage?"
+              modalDescription={`Advance case ${enc.encounterNumber} (${pName}) from ${enc.stage.replace(/_/g, ' ')} to the next discharge stage in the clinical pathway.`}
+              confirmLabel="Advance Stage"
+              variant="primary"
+              confirmVariant="primary"
+              contextInfo={[
+                { label: 'Patient', value: pName },
+                { label: 'Current Stage', value: enc.stage.replace(/_/g, ' ') },
+                { label: 'Time in Stage', value: formatDuration(elapsed) },
+                { label: 'Room/Bed', value: enc.bedNumber || enc.roomBed }
+              ]}
+              size="md"
+              fullWidth
+              onConfirm={() => advanceStage(enc.id)}
+            />
           </div>
 
           {/* Operational Action Blocks */}
@@ -142,13 +158,28 @@ export const ContextualActionDrawer: React.FC = () => {
               <p className="text-xs text-slate-600">
                 Audit unadministered ward medicines and credit slips to prevent over-billing.
               </p>
-              <button
-                onClick={() => clearPharmacyRts(enc.id)}
-                className="w-full py-2.5 px-3 rounded-lg border border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-              >
-                <Pill className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Reconcile Ward Stock & Clear RTS</span>
-              </button>
+              <ConfirmButton
+                label={
+                  <span className="flex items-center justify-center gap-1.5">
+                    <Pill className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Reconcile Ward Stock & Clear RTS</span>
+                  </span>
+                }
+                modalTitle="Clear Pharmacy Return-to-Stock Audit?"
+                modalDescription={`Reconcile ward medicines and certify that all credit slips for ${pName} have been processed with Central Pharmacy.`}
+                confirmLabel="Clear RTS"
+                variant="outline"
+                confirmVariant="success"
+                contextInfo={[
+                  { label: 'Patient', value: pName },
+                  { label: 'Ward/Bed', value: enc.bedNumber || enc.roomBed },
+                  { label: 'PNDF Alignment', value: 'Verified' }
+                ]}
+                size="sm"
+                fullWidth
+                className="border-emerald-300 bg-emerald-50 hover:bg-emerald-100 text-emerald-800"
+                onConfirm={() => clearPharmacyRts(enc.id)}
+              />
             </div>
 
             {/* 3. HMO Final eLOA Clearance */}
@@ -164,13 +195,29 @@ export const ContextualActionDrawer: React.FC = () => {
               <p className="text-xs text-slate-600">
                 Transmits finalized SOA to HMO portal for real-time electronic letter of authorization.
               </p>
-              <button
-                onClick={() => approveHmoFinalLoa(enc.id)}
-                className="w-full py-2.5 px-3 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
-                <span>Validate & Lock HMO Coverage</span>
-              </button>
+              <ConfirmButton
+                label={
+                  <span className="flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Validate & Lock HMO Coverage</span>
+                  </span>
+                }
+                modalTitle="Validate & Lock HMO Coverage?"
+                modalDescription={`Validate final adjudication and lock ${hmoName} coverage amount for ${pName}.`}
+                confirmLabel="Lock HMO LOA"
+                variant="outline"
+                confirmVariant="primary"
+                contextInfo={[
+                  { label: 'Patient', value: pName },
+                  { label: 'Payer', value: hmoName },
+                  { label: 'Approved Amount', value: formatPeso(waterfall.hmoApprovedAmount) },
+                  { label: 'Patient Due', value: formatPeso(waterfall.netPatientDue) }
+                ]}
+                size="sm"
+                fullWidth
+                className="border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800"
+                onConfirm={() => approveHmoFinalLoa(enc.id)}
+              />
             </div>
 
             {/* 4. Financial Settlement Interventions */}
@@ -184,13 +231,27 @@ export const ContextualActionDrawer: React.FC = () => {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2.5 pt-1">
-                <button
-                  onClick={() => settlePatientBalance(enc.id, 'QR_PH')}
-                  className="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
-                >
-                  <QrCode className="w-3.5 h-3.5" />
-                  <span>QR Ph Pay</span>
-                </button>
+                <ConfirmButton
+                  label={
+                    <span className="flex items-center justify-center gap-1.5">
+                      <QrCode className="w-3.5 h-3.5" />
+                      <span>QR Ph Pay</span>
+                    </span>
+                  }
+                  modalTitle="Confirm QR Ph Patient Settlement?"
+                  modalDescription={`Record QR Ph cashless settlement of ${formatPeso(waterfall.netPatientDue)} for ${pName}. This will clear the balance and unlock gate pass generation.`}
+                  confirmLabel="Record Payment"
+                  variant="success"
+                  confirmVariant="success"
+                  contextInfo={[
+                    { label: 'Patient', value: pName },
+                    { label: 'Payment Channel', value: 'Bangko Sentral QR Ph POS' },
+                    { label: 'Settlement Amount', value: formatPeso(waterfall.netPatientDue) }
+                  ]}
+                  size="sm"
+                  fullWidth
+                  onConfirm={() => settlePatientBalance(enc.id, 'QR_PH')}
+                />
                 <button
                   onClick={() => {
                     selectEncounter(enc.id);

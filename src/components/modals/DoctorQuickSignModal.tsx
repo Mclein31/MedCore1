@@ -9,6 +9,7 @@ import {
   Send,
   AlertTriangle
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const DoctorQuickSignModal: React.FC = () => {
   const {
@@ -160,21 +161,48 @@ export const DoctorQuickSignModal: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3 pt-2">
-              <button
-                onClick={handleApplyCeiling}
-                className="w-full py-3 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
-              >
-                <FileCheck2 className="w-4 h-4" />
-                <span>Apply Schedule Ceiling ({formatPeso(ceiling)})</span>
-              </button>
+              <ConfirmButton
+                label={
+                  <span className="flex items-center justify-center gap-2">
+                    <FileCheck2 className="w-4 h-4" />
+                    <span>Apply Schedule Ceiling ({formatPeso(ceiling)})</span>
+                  </span>
+                }
+                modalTitle="Apply Doctor Schedule Ceiling Rate?"
+                modalDescription={`This will cap ${selectedEncounter.attendingDoctor}'s professional fee at the accredited ceiling of ${formatPeso(ceiling)}, eliminating the ${formatPeso(excess)} excess patient charge.`}
+                confirmLabel="Apply Ceiling"
+                variant="primary"
+                confirmVariant="primary"
+                size="md"
+                className="w-full py-3 px-4 rounded-lg font-semibold text-sm shadow-sm justify-center"
+                contextInfo={[
+                  { label: 'Attending Physician', value: selectedEncounter.attendingDoctor },
+                  { label: 'Declared PF', value: formatPeso(declared) },
+                  { label: 'Accredited Ceiling', value: formatPeso(ceiling) },
+                  { label: 'Patient Excess Eliminated', value: formatPeso(excess) }
+                ]}
+                onConfirm={handleApplyCeiling}
+                title="Cap fee to HMO accredited ceiling"
+              />
 
               <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={handleSignDeclared}
-                  className="py-2.5 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-sm transition-colors shadow-xs"
-                >
-                  Sign As Declared ({formatPeso(declared)})
-                </button>
+                <ConfirmButton
+                  label={`Sign As Declared (${formatPeso(declared)})`}
+                  modalTitle="Sign Doctor PF As Declared (Uncapped)?"
+                  modalDescription={`Warning: Signing without capping will bill the ${formatPeso(excess)} difference directly to the patient as an out-of-pocket obligation, which may delay discharge settlement.`}
+                  confirmLabel="Sign As Declared"
+                  variant="warning"
+                  confirmVariant="warning"
+                  size="md"
+                  className="py-2.5 px-3 rounded-lg font-semibold text-sm shadow-xs justify-center"
+                  contextInfo={[
+                    { label: 'Attending Physician', value: selectedEncounter.attendingDoctor },
+                    { label: 'Declared PF', value: formatPeso(declared) },
+                    { label: 'Direct Patient Liability', value: formatPeso(excess) }
+                  ]}
+                  onConfirm={handleSignDeclared}
+                  title="Sign fee as declared, charging excess to patient"
+                />
                 <button
                   onClick={() => {
                     nudgeDoctor(selectedEncounter.id);

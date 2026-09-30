@@ -1,7 +1,8 @@
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { X, ExternalLink, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import { X, ExternalLink, CheckCircle2, Clock, AlertTriangle, Printer } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const DischargeDossierDrawer: React.FC = () => {
   const {
@@ -14,6 +15,7 @@ export const DischargeDossierDrawer: React.FC = () => {
     issueDigitalGatePass,
     openPromissoryModal,
     openPatientClarifyDrawer,
+    printDocument,
     setActiveRoute,
     selectEncounter
   } = useMedCore();
@@ -21,6 +23,7 @@ export const DischargeDossierDrawer: React.FC = () => {
   if (!isDossierDrawerOpen || !dossierEncounter) return null;
 
   const enc = dossierEncounter;
+  const patientName = enc.patient.fullName || enc.patient.maskedName;
   const remainingMinutes = 45 - enc.elapsedMinutes;
   const isBreached = remainingMinutes <= 0;
 
@@ -82,12 +85,29 @@ export const DischargeDossierDrawer: React.FC = () => {
             </div>
           </div>
 
-          <button
-            onClick={closeDossierDrawer}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                printDocument({
+                  type: 'DISCHARGE_CLEARANCE_DOSSIER',
+                  title: `Clearance Dossier - ${enc.encounterNumber}`,
+                  data: { encounter: enc }
+                })
+              }
+              className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-1 text-xs font-semibold"
+              title="Print Inpatient Discharge Clearance Dossier & SLA Audit Sheet"
+            >
+              <Printer className="w-4 h-4 text-slate-500" />
+              <span className="hidden sm:inline">Print Dossier</span>
+            </button>
+            <button
+              onClick={closeDossierDrawer}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Drawer Body */}
@@ -278,41 +298,87 @@ export const DischargeDossierDrawer: React.FC = () => {
           <div className="grid grid-cols-2 gap-2.5">
             {/* Dynamic Stage Actions */}
             {enc.stage === 'DOCTOR_PF_PENDING' && (
-              <button
-                onClick={() => applyAccreditedCeiling(enc.id)}
-                className="py-2.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-xs transition-colors"
-              >
-                Apply 15m Ceiling Rate
-              </button>
+              <ConfirmButton
+                label="Apply 15m Ceiling Rate"
+                modalTitle="Apply Doctor Accredited Ceiling Rate?"
+                modalDescription={`Apply the statutory ${enc.hmo.providerName} accredited ceiling rate to Dr. ${enc.attendingDoctor}'s declared professional fee. This will adjust the excess fee accordingly.`}
+                confirmLabel="Apply Ceiling"
+                variant="warning"
+                confirmVariant="warning"
+                contextInfo={[
+                  { label: 'Patient', value: patientName },
+                  { label: 'Attending Doctor', value: enc.attendingDoctor },
+                  { label: 'HMO Provider', value: enc.hmo.providerName },
+                  { label: 'Excess PF', value: formatPhp(enc.doctorExcessPf) }
+                ]}
+                size="md"
+                className="py-2.5 px-3 rounded-lg font-bold text-sm shadow-xs justify-center"
+                onConfirm={() => applyAccreditedCeiling(enc.id)}
+                title="Apply statutory HMO accredited ceiling rate to physician fee"
+              />
             )}
 
             {enc.stage === 'PHARMACY_RTS_AUDIT' && (
-              <button
-                onClick={() => clearPharmacyRts(enc.id)}
-                className="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-colors"
-              >
-                Clear Pharmacy RTS
-              </button>
+              <ConfirmButton
+                label="Clear Pharmacy RTS"
+                modalTitle="Clear Pharmacy Return-to-Stock Audit?"
+                modalDescription={`Certify that all unused return-to-stock medications for ${patientName} have been reconciled, credited back, and verified with Central Pharmacy.`}
+                confirmLabel="Clear RTS"
+                variant="success"
+                confirmVariant="success"
+                contextInfo={[
+                  { label: 'Patient', value: patientName },
+                  { label: 'Room/Bed', value: enc.roomBed || 'W-302' },
+                  { label: 'Pharmacy Status', value: 'Pending Physical Return' }
+                ]}
+                size="md"
+                className="py-2.5 px-3 rounded-lg font-bold text-sm shadow-xs justify-center"
+                onConfirm={() => clearPharmacyRts(enc.id)}
+                title="Certify return-to-stock medications are accounted for"
+              />
             )}
 
             {enc.stage === 'HMO_FINAL_LOA' && (
-              <button
-                onClick={() => approveHmoFinalLoa(enc.id)}
-                className="py-2.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-xs transition-colors"
-              >
-                Approve HMO Final LOA
-              </button>
+              <ConfirmButton
+                label="Approve HMO Final LOA"
+                modalTitle="Approve & Lock HMO Final eLOA?"
+                modalDescription={`Approve the final electronic Letter of Authorization from ${enc.hmo.providerName} for ${patientName}. This locks the approved HMO coverage amount to the tripartite ledger.`}
+                confirmLabel="Approve eLOA"
+                variant="primary"
+                confirmVariant="primary"
+                contextInfo={[
+                  { label: 'Patient', value: patientName },
+                  { label: 'HMO Provider', value: enc.hmo.providerName },
+                  { label: 'Approved Amount', value: formatPhp(enc.waterfall.hmoApprovedAmount) },
+                  { label: 'Net Patient Due', value: formatPhp(enc.waterfall.netPatientDue) }
+                ]}
+                size="md"
+                className="py-2.5 px-3 rounded-lg font-bold text-sm shadow-xs justify-center"
+                onConfirm={() => approveHmoFinalLoa(enc.id)}
+                title="Confirm HMO electronic Letter of Authorization"
+              />
             )}
 
-            <button
-              onClick={() => {
+            <ConfirmButton
+              label="Issue Gate Pass"
+              modalTitle="Issue Digital Discharge Gate Pass?"
+              modalDescription={`Issue a cryptographically signed digital gate pass for ${patientName}. This certifies that all station clearances are completed.`}
+              confirmLabel="Issue Gate Pass"
+              variant="success"
+              confirmVariant="success"
+              contextInfo={[
+                { label: 'Patient', value: patientName },
+                { label: 'Discharge Station', value: getStageTitle(enc.stage) },
+                { label: 'Outstanding Balance', value: formatPhp(enc.waterfall.netPatientDue) }
+              ]}
+              size="md"
+              className="py-2.5 px-3 rounded-lg font-bold text-sm shadow-xs justify-center"
+              onConfirm={() => {
                 selectEncounter(enc.id);
                 issueDigitalGatePass(enc.id);
               }}
-              className="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-xs transition-colors"
-            >
-              Issue Gate Pass
-            </button>
+              title="Generate cryptographic digital exit pass"
+            />
 
             <button
               onClick={() => {

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, Search, X } from 'lucide-react';
+import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, Search, X, Printer } from 'lucide-react';
 
 export const ClaimsEsoaPage: React.FC = () => {
-  const { encounters } = useMedCore();
+  const { encounters, printDocument } = useMedCore();
   const [copied, setCopied] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string>(encounters[0]?.id || 'enc-8812');
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
@@ -239,7 +239,7 @@ export const ClaimsEsoaPage: React.FC = () => {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm border-separate border-spacing-0">
+          <table className="w-full min-w-[950px] text-left text-sm border-separate border-spacing-0">
             <thead className="sticky top-0 z-20">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-3.5 px-6 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">Claim ID &amp; Patient</th>
@@ -387,11 +387,28 @@ export const ClaimsEsoaPage: React.FC = () => {
                 {currentEncounter.patient.fullName || currentEncounter.patient.maskedName} ({currentEncounter.encounterNumber})
               </p>
             </div>
-            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-              claim.status === 'CLEAN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-            }`}>
-              {claim.status}
-            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  printDocument({
+                    type: 'CLAIMS_ESOA_AUDIT_REPORT',
+                    title: `PhilHealth Audit - ${claim.id}`,
+                    data: { encounter: currentEncounter }
+                  })
+                }
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors"
+                title="Print PhilHealth CF1-CF4 Conformity Report"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-600" />
+                <span>Print Audit</span>
+              </button>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                claim.status === 'CLEAN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+              }`}>
+                {claim.status}
+              </span>
+            </div>
           </div>
 
           {claim.deficiencyReason && (

@@ -7,7 +7,7 @@ export const DischargeClearancePage: React.FC = () => {
   const [subView, setSubView] = useState<'WORKSPACE' | 'KANBAN'>('WORKSPACE');
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden bg-slate-50 pb-3 sm:pb-4">
+    <div className="flex-1 flex flex-col h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden bg-slate-50">
       {/* Subview Navigation Bar */}
       <div className="px-6 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
         <span className="text-xs text-slate-500 font-medium">

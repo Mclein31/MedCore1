@@ -60,3 +60,163 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ==========================================================================
+   PRINT SPECIFIC STYLES (Document-Style Hospital Reports, No Screenshots)
+   ========================================================================== */
+@media print {
+  @page {
+    size: auto;
+    margin: 10mm 12mm 12mm 12mm;
+  }
+
+  html, body, #root {
+    height: auto !important;
+    min-height: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    line-height: 1.4 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+  }
+
+  /* Hide screen-only elements, dashboard chrome, and open dialogs */
+  #medcore-app-root,
+  .no-print,
+  button,
+  header,
+  aside,
+  nav,
+  input,
+  select,
+  textarea,
+  .print-hidden,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  /* Dedicated print root: centered document using full available printable page width */
+  #medcore-print-root {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    overflow: visible !important;
+  }
+
+  /* Centered print document */
+  .print-document {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border: none !important;
+    overflow: visible !important;
+  }
+
+  /* Expand all scrollable containers so hidden rows are completely printed across pages */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto,
+  [class*="overflow-y-"],
+  [class*="overflow-x-"],
+  [class*="overflow-auto"],
+  [class*="max-h-"],
+  [class*="h-\["] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Full-width table formatting: do not inherit narrow dashboard card widths */
+  table,
+  .print-document table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: auto !important;
+    table-layout: auto !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  tbody {
+    page-break-inside: auto !important;
+  }
+
+  tr, .print-avoid-break {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  a {
+    text-decoration: none !important;
+    color: inherit !important;
+  }
+}
+
+/* Modal and Overlay Entrance Transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn95 {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-in {
+  animation-duration: 150ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fadeIn;
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn95;
+}
+
+.duration-150 {
+  animation-duration: 150ms;
+}
+
+.duration-200 {
+  animation-duration: 200ms;
+}
+

@@ -84,7 +84,7 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search Carrier..."
-            className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-blue-500 w-48 text-left"
+            className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-48 text-left"
           />
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
         </div>

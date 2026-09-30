@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md — MedCore Operational Brain
 
 > **Epistemic Status**: Verified Project Knowledge & Baseline Parameters  
-> **Last Synchronized**: September 26, 2026  
+> **Last Synchronized**: September 30, 2026  
 > **Active Project**: MedCore (MedCore1)  
 > **Knowledge Layer**: Project Operational Brain (`.brain/`)
 
@@ -983,3 +983,197 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   3. Reusable hook barrier co-located at `src/hooks/` (`useMedCore.ts`, `index.ts`).
   4. Redundant `darkMode: 'class'` purged from `tailwind.config.js`.
 - Zero regressions confirmed across statutory financial logic, strict light mode mandate, routing contracts, and production builds.
+
+---
+
+## 32. Enterprise Responsiveness, Localized Overflow, Interaction Safety & Regulatory Print Engine Architecture (Completed)
+
+[DECISION] **1. Responsive Command Workstation & Viewport Refactor**:
+- **Multi-Form Factor Layout Stability**: Eliminated hardcoded layout clipping and window overflow across 13-inch MacBooks (1280x800), standard 1080p laptop displays, and 1440p desktop monitors.
+- **Horizontal Overflow Containment**: Wide tabular hospital ledgers (Payer Coverage, Disputed Items, Promissory Notes, Tripartite Workbench, Claims Pre-Flight, Exceptions Worklist) are wrapped in localized `overflow-x-auto` with strict table minimum widths (`min-w-[900px]` to `min-w-[960px]`). This prevents column collapsing while preserving full column legibility and layout stability on constrained viewports.
+- **Localized Overflow Governance ("The container that owns the overflow is the container that scrolls")**:
+  - Replaced rigid fixed minimum heights (`min-h-[730px]`) in `DualOperationalPipelines.tsx` with bounded flexible heights (`max-h-[580px] overflow-y-auto overscroll-contain pr-1`).
+  - Swapped `ActiveDischargeRadar.tsx` detail pane from `overflow-hidden` to `overflow-y-auto overscroll-contain min-h-0`, preventing whole-page scroll bubbling when drilling into complex encounter dossiers.
+  - Retained pinned sticky headers and docked footers across tables, drawers, and modal sheets.
+
+[DECISION] **2. Interaction Safety & Universal Two-Step Confirmation System**:
+- **Reusable `ConfirmButton` Component (`src/components/common/ConfirmButton.tsx`, `index.ts`)**:
+  - Step 1: Click puts button into confirmation state (`[ Action ] -> [ Confirm Action ] [ Cancel ]`) with clear visual transition.
+  - Step 2: Confirmation execution with automatic double-click and rapid fire prevention (`isExecutingRef`).
+  - Auto-reset safety timer (5,000ms default), keyboard Escape key dismissal, and backdrop/cancel reset.
+  - Supports design tokens: variants (`primary`, `success`, `warning`, `danger`, `outline`, `subtle`), sizes (`xs`, `sm`, `md`), custom icons, and `fullWidth` flex layout modes.
+- **High-Impact Action Coverage**:
+  - **Financial Settlements & Waivers**: Settle Patient Balance (`QR_PH`), Waive Item, Waive Balance, Apply Schedule Ceiling Rate.
+  - **Clinical & Administrative Clearances**: Doctor QuickSign ("Apply Schedule Ceiling", "Sign As Declared"), Clear Pharmacy RTS ("Reconcile Ward Stock & Clear RTS"), Validate & Lock HMO Final eLOA.
+  - **Workflow State Transitions**: Discharge Audit Advance Stage, Priority Pipeline Blocker Approvals/Waivers, Security Exit Verification ("Security Officer: Verify & Permit Exit").
+  - Preserved simple single-click behavior for non-destructive operations (search, filter, view, drawer toggle, navigate).
+
+[DECISION] **3. Enterprise Print Engine & Regulatory Document Generator**:
+- **Decoupled Print Architecture (`src/services/printEngine.ts`)**:
+  - Replaced raw browser `window.print()` viewport capture with an isolated event-driven printing bus and dedicated DOM container (`#medcore-print-root`).
+  - Screen elements (`#medcore-app-root`, sidebar, topbar, modals, interactive buttons) are systematically hidden via `@media print` rules in `src/index.css`.
+  - Content containers expand fully on print, eliminating viewport scroll cropping.
+- **BIR & PhilHealth Statutory Print Templates (`src/components/printing/PrintDocumentContainer.tsx`)**:
+  - `OFFICIAL_ESOA`: Complete Philippine hospital electronic Statement of Account with 6-stage statutory deduction waterfall (RA 9994/RA 10754/PhilHealth/HMO), itemized chargemaster schedule, and tripartite hospital/physician/patient signatures.
+  - `DIGITAL_GATE_PASS`: RA 9439 lobby clearance slip with QR code, 4-digit PIN, and HMAC SHA-256 digital signature.
+  - `OFFICIAL_RECEIPT`: BIR-compliant electronic official receipt with facility accreditation, VAT TIN, channel auth code, and payment breakdown.
+  - `EXECUTIVE_RCM_REPORT`: Multi-metric revenue cycle financial intelligence audit sheet for hospital CFOs and board review.
+  - `DISCHARGE_CLEARANCE_DOSSIER`: 4-station discharge verification audit sheet.
+  - `COVERAGE_APPROVALS_REPORT`: Multi-payer inpatient roster and eLOA approval audit report.
+  - `CLAIMS_ESOA_AUDIT_REPORT`: PhilHealth eClaims CF1-CF4 pre-flight audit report.
+- **Exposed Print Integration**:
+  - Exposed `printDocument(config)` via `useMedCore()` context.
+  - Explicitly wired dedicated print buttons across all relevant views and modals.
+
+[FACT] **Zero Regression & Build Verification**:
+- **Test Engine (`npm test`)**: 250/250 patient records pass the 10-step Philippine statutory deduction waterfall and centavo-exact RA 9439 installment schedule with 0 errors.
+- **TypeScript & Vite Build (`npm run build`)**: 0 type errors, 0 lint/bundle failures. All modules cleanly transformed and packaged.
+
+---
+
+## 33. Centralized Modal Confirmation Overhaul & Full-Page-Width Regulatory Print Architecture (Completed)
+
+[DECISION] **1. Centralized Confirmation Modal Architecture (`ConfirmationModal.tsx`, `MedCoreContext.tsx`)**:
+- **Elimination of Inline Button Morphing**: Replaced the previous inline button morphing (`[ Action ] -> [ Confirm Action ] [ Cancel ]`) with an enterprise-grade accessible confirmation modal. Original buttons on screen retain their exact dimensions, labels, and visual hierarchy without causing table, drawer, or card layout jitter.
+- **Centralized Modal Orchestration (`src/components/modals/ConfirmationModal.tsx`)**:
+  - Global `confirmationState` and `requestConfirmation(options)` exposed across the application via `MedCoreContext`.
+  - Mounted centrally in `App.tsx` for both the command workstation and the standalone patient clarity portal.
+  - Supports configurable `title`, `description`, `confirmLabel`, `cancelLabel`, `variant` (`primary`, `success`, `warning`, `danger`), contextual key-value chips (`contextInfo`), and asynchronous execution state.
+  - Complete dialog accessibility: `role="dialog"`, `aria-modal="true"`, focus trapping (`Tab` cycle within modal), and `Escape` key cancellation.
+  - Strict double-execution locking (`isExecutingRef` and disabled loading spinner state) prevents rapid double-clicks, duplicate updates, and duplicate toast notifications.
+- **Action-Specific Content Enrichment Across All Workstation Stations**:
+  - `CoverageApprovalsPage.tsx`: HMO LOA adjudication ("Approve HMO LOA Coverage?").
+  - `DualOperationalPipelines.tsx`: Blocker triage approvals ("Approve HMO LOA Coverage?", "Waive Contested Line Item?").
+  - `DisputesExceptionsPage.tsx`: Supervisory courtesy credit ("Waive Disputed Item Charges?").
+  - `TripartiteWorkbench.tsx`: Statutory bill finalization ("Finalize Electronic Statement of Account (eSOA)?") and encrypted SMS dispatch ("Dispatch Plain-Language Statement (eSOA) to Patient?").
+  - `WhyDoIOweThisDrawer.tsx`: Dispute desk freeze ("Freeze Disputed Item on Dispute Desk?") and supervisory courtesy credit ("Waive Patient Out-of-Pocket Balance?").
+  - `DoctorQuickSignModal.tsx`: Accredited fee schedule triage ("Apply Accredited Schedule Ceiling?", "Sign As Declared Professional Fee?").
+  - `DigitalGatePassModal.tsx`: Security lobby departure verification ("Authorize Hospital Departure & Permit Exit?").
+  - `DischargeDossierDrawer.tsx`: 4-station discharge authorizations (Ceiling rate, Pharmacy RTS audit, HMO Final eLOA, Digital Gate Pass).
+  - `ContextualActionDrawer.tsx`: Clinical workflow advancement, ward stock reconciliation, HMO lock, and QR Ph POS collection.
+  - `DischargeCard.tsx`: Stage-specific triggers (Discharge audit initiation, RTS reconciliation, eLOA coverage lock, QR Ph settlement).
+  - `ActiveDischargeRadar.tsx`: Blocker actions across workspace detail pane, full clearance table, and card list, plus Quick Action Console settlement.
+  - `ActionableExceptionsWorklist.tsx`: Floor expediter pharmacy RTS credit slip clearance.
+
+[DECISION] **2. Full-Page-Width Regulatory Print Engine Optimization**:
+- **Full Printable Width & Centered Presentation (`src/index.css`, `PrintDocumentContainer.tsx`)**:
+  - Eliminated constrained fixed card wrappers (`max-w-xl` 576px, `max-w-4xl`) on printed documents. Replaced with responsive `.print-document` configured for `w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white`.
+  - `@media print` rules enforce `width: 100% !important; max-width: 100% !important; margin: 0 auto !important;` so that printed documents expand to the full printable page width across A4 and Letter paper dimensions.
+- **Pagination & Table Formatting**:
+  - Enforced `min-width: 100% !important; max-width: 100% !important; table-layout: auto !important;` on printed tables.
+  - Repeated table headers across multi-page breaks via `thead { display: table-header-group; }`.
+  - Prevented orphaned row cuts via `tr { break-inside: avoid; page-break-inside: avoid; }`.
+  - Forced localized scrollable containers (`overflow-y-auto`, `max-h-*`) to expand completely (`overflow: visible !important; max-height: none !important; height: auto !important;`) ensuring all records print without truncation.
+  - Complete suppression of screen UI chrome (`#medcore-app-root`, sidebars, navigation bars, buttons, backdrops) during print spooling.
+
+[FACT] **Zero Regression & Build Verification**:
+- **Test Suite (`npm test`)**: 250/250 inpatient encounters passed all 10 statutory Philippine billing calculation assertions and centavo-exact financial reconciliations with 0 errors.
+- **Production Build (`npm run build`)**: TypeScript check (`tsc -b`) and Vite production bundle succeeded with 0 errors in 1.03s.
+
+---
+
+## 34. Command Workstation Viewport Height Utilization, Scroll Hierarchy & Modal Action-Variant Consistency (Completed)
+
+[DECISION] **1. Dedicated Viewport Height Allocation (`calc(100vh - 56px)`)**:
+- **Dual Fixed-Height Command Workstation Screens (`CommandCenterPage.tsx`)**:
+  - Replaced variable container growth with a structured 2-screen command workstation architecture utilizing `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)]` and CSS scroll snapping (`snap-y snap-mandatory`).
+  - **Screen 1**: Houses the streamlined `PriorityActionStrip` and the `ActiveDischargeRadar` workstation. Fills the available screen height without whole-page overflow.
+  - **Screen 2 (Dual Operational Watch)**: Matches the exact same fixed height `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)]`, containing `DualOperationalPipelines` and the docked `VelocityRecoveryPulse` footer (`h-12 shrink-0`).
+- **Discharge Clearance Workstation (`DischargeClearancePage.tsx`)**:
+  - Container updated to `h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden bg-slate-50`.
+  - Removed trailing bottom padding (`pb-3 sm:pb-4`), eliminating dead space and maximizing usable screen real estate.
+
+[DECISION] **2. Scroll Hierarchy Enforcement & Nested Scrolling Elimination**:
+- **Streamlined Priority Action Strip (`PriorityActionStrip.tsx`)**:
+  - Replaced the bulky 215px 4-card grid with a compact, high-density hospital operational status bar (`py-2 px-6 bg-slate-50/80 border-b border-slate-200 shrink-0`, height ~52px).
+  - Displays the 4 key operational metrics (45m Statutory SLA, HMO Final eLOA, PhilHealth Pre-Flight Audit, Active Inpatient Receivables) as interactive KPI tiles with status indicators and quick-navigation links.
+  - Recovers ~160px of vertical space directly for `ActiveDischargeRadar`, allowing the right-hand patient detail pane to fit comfortably on 13-inch MacBooks and standard laptops without unnecessary inner scrollbars.
+- **Strict Single-Level Scrolling Rule in Dual Operational Pipelines (`DualOperationalPipelines.tsx`)**:
+  - Payer Coverage & Authorizations and Unresolved Billing Exceptions cards are bounded to `flex-1 min-h-0 overflow-hidden`.
+  - Card titles, search bars, table column headers, and pagination footers remain static (`shrink-0`).
+  - Only the unbounded table rows container scrolls (`flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1`).
+  - Streamlined row heights to compact `min-h-[46px]` and compressed the RA 9439 exposure banner, ensuring high data density without crowding.
+
+[DECISION] **3. Strict Dashboard-to-Modal Button Variant Synchronization**:
+- **Waive Button Color Standard**:
+  - All `Waive` actions across the application (`DualOperationalPipelines.tsx`, `DisputesExceptionsPage.tsx`, `WhyDoIOweThisDrawer.tsx`) are strictly standardized to `variant="danger"` (`bg-rose-600 hover:bg-rose-700 text-white shadow-2xs`).
+  - Confirmation modals for waivers inherit `confirmVariant="danger"`, ensuring visual consistency between the initiating dashboard action and modal confirmation.
+- **System-Wide Action-to-Modal Color Parity**:
+  - **Approve Actions** (`DualOperationalPipelines.tsx`, `CoverageApprovalsPage.tsx`, `DischargeDossierDrawer.tsx`, `ActiveDischargeRadar.tsx`): Dashboard `[ Approve ]` (BLUE, `variant="primary"`) = Modal `[ Approve ]` (SAME BLUE, `confirmVariant="primary"`).
+  - **Statutory Bill Finalization** (`TripartiteWorkbench.tsx`): Dashboard `[ Finalize Bill ]` (BLUE, `variant="primary"`) = Modal `[ Finalize Bill ]` (SAME BLUE, `confirmVariant="primary"`).
+  - **Physician Fee Schedule Triage** (`DoctorQuickSignModal.tsx`): "Apply Ceiling" (BLUE, `variant="primary"`) = Modal (SAME BLUE); "Sign As Declared" (AMBER, `variant="warning"`) = Modal (SAME AMBER, `confirmVariant="warning"`).
+  - Secondary cancel button across all modals strictly maintains the standard neutral style (`border border-slate-300 bg-white hover:bg-slate-100 text-slate-700`).
+
+---
+
+## 35. Modal Stacking Context Isolation, Tailwind Token Architecture & Visual Bleed Remediation (Completed)
+
+[DECISION] **1. Root Cause Analysis (`needs_fix/` Audit)**:
+- **Visual Artifacts Inspected**:
+  - `needs_fix/Pasted 2026-09-30 at 4.12.51 PM.png`: On the Coverage Approvals page (`CoverageApprovalsPage.tsx`), clicking `[ Approve ]` triggered the `Approve HMO LOA Coverage?` modal. The sticky table header (`thead` with `bg-slate-50 z-20`) sliced horizontally across the modal subtitle ("Hospital Command Verification"), and right-hand table columns (charges, adjudication status badges, action buttons) bled through the modal backdrop and dialog body.
+  - `needs_fix/Pasted 2026-09-30 at 4.13.07 PM.png`: On the Encounters Ledger page (`EncountersLedgerPage.tsx` / `TripartiteWorkbench.tsx`), clicking `[ Waive Balance ]` inside the `WhyDoIOweThisDrawer` triggered `Waive Patient Out-of-Pocket Balance?`. The sticky chargemaster table header (`thead` with `bg-slate-50 z-10`) painted directly across the center of the confirmation modal, obscuring the contextual waiver information box, while table rows below bled through.
+- **Root Cause Identified**:
+  1. **Tailwind v3 Config Limitation**: `ConfirmationModal.tsx` used `className="fixed inset-0 z-70 ..."`. However, default Tailwind CSS v3 only provides z-index utilities up to `z-50`. Because `z-70` was missing from `tailwind.config.js`, Tailwind dropped the class during compilation. As a result, the modal container had `z-index: auto` (stacking level 0).
+  2. **Stacking Context Leakage**: Sticky table headers (`z-20` and `z-10`) formed positive stacking levels within `#medcore-app-root` (which lacked an isolated stacking context), causing Chromium/WebKit compositors to paint sticky table headers above the confirmation modal dialog.
+  3. **DOM Encapsulation Vulnerability**: The modal was rendered directly within the regular DOM flow alongside `#medcore-app-root` without React Portal isolation (`createPortal`), leaving it subject to parent container overflow and stacking context bounds.
+  4. **Silent Missing Utility Tokens**: Multiple components throughout the application used custom tokens (`backdrop-blur-xs`, `backdrop-blur-2xs`, `shadow-2xs`, `shadow-xs`, `z-60`, `z-70`) that had never been declared in `tailwind.config.js`, causing styles to fail silently. In addition, several form controls used Tailwind v4 syntax (`focus:outline-hidden`) instead of Tailwind v3 (`focus:outline-none`).
+
+[DECISION] **2. Stacking Context Hardening & React Portal Migration (`ConfirmationModal.tsx`)**:
+- **DOM Isolation via `createPortal`**:
+  - `ConfirmationModal` now renders its dialog tree directly into `document.body` via `createPortal(modalContent, document.body)`.
+  - Attaching directly to `document.body` completely decouples the modal from `#medcore-app-root`, bypassing any transform, filter, perspective, overflow, or sticky positioning contexts in the main app shell.
+- **Ultra-High Stacking Level (`z-confirmation` / `z-[9999]`)**:
+  - Container backdrop configured with `fixed inset-0 z-confirmation z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150`.
+  - Inner dialog container reinforced with `relative z-10 bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden`.
+  - Guarantees that confirmation modals sit unconditionally above all application surfaces: sticky table headers (`z-10`, `z-20`), navigation bars, side drawers (`z-50`), standard modals (`z-50`), and nested payment sheets (`z-60`, `z-70`).
+- **Body Scroll Locking**:
+  - Integrated `useEffect` that sets `document.body.style.overflow = 'hidden'` on mount when `isOpen === true`, and restores the original overflow on unmount/close.
+  - Eliminates background scroll bubbling into underlying hospital ledgers while confirmation modals are active.
+
+[DECISION] **3. Tailwind Token Architecture Expansion (`tailwind.config.js`)**:
+- **Extended Z-Index Scale**:
+  - Added explicit scale: `z-60: '60'`, `z-70: '70'`, `z-80: '80'`, `z-90: '90'`, `z-100: '100'`, `modal: '1000'`, `popover: '2000'`, `toast: '3000'`, `tooltip: '4000'`, `confirmation: '9999'`.
+- **Extended Backdrop Blur Scale**:
+  - Added `'2xs': '1px'` and `'xs': '2px'`, restoring intended subtle backdrop blurs across modals, drawers, and status sheets.
+- **Extended Box Shadow Scale**:
+  - Added `'2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)'` and `'xs': '0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.08)'`, providing crisp borders and elevations for dense hospital workstation cards and buttons.
+- **Normalized Focus Outlines**:
+  - Replaced invalid `focus:outline-hidden` with `focus:outline-none` across `ConfirmationModal.tsx`, `CommercialCarrierLedger.tsx`, `ActionableExceptionsWorklist.tsx`, and `AnalyticsFilterStrip.tsx`.
+
+---
+
+## 36. Comprehensive Code & Quality Audit Remediation (Completed)
+
+[DECISION] **1. In-Situ Supervisory Waiver for Contested Items (`WhyDoIOweThisDrawer.tsx`)**:
+- **Continuous Dispute Triage**: Removed the condition blocking supervisors from waiving contested or disputed line items (`item.status !== 'CONTESTED' && !item.isDisputed`).
+- **Operational Alignment**: Supervisors investigating patient charge discrepancies in `WhyDoIOweThisDrawer` can now execute courtesy balance waivers immediately under RA 9439 goodwill protocols without being forced to switch contexts to `DisputesExceptionsPage`.
+
+[DECISION] **2. Print Engine Lifecycle & Native Dialog Fallback (`printEngine.ts`)**:
+- **Browser Event Reliance (`afterprint`)**: The print service now attaches a single-execution `{ once: true }` listener for the browser's native `afterprint` event, ensuring cleanup is tied directly to the user closing or confirming the OS print dialog.
+- **Safety Ceiling Extension**: Replaced the premature 2,500ms timeout with a generous 60-second safety fallback (`this.printTimeout = setTimeout(cleanup, 60000)`). If the `afterprint` event fires early, the timeout is cleared immediately, eliminating premature unmounting of `#medcore-print-root` during lengthy print dialog interactions.
+
+[DECISION] **3. Persistent Gate Pass Lobby Exit Verification (`MedCoreContext.tsx`, `DigitalGatePassModal.tsx`)**:
+- **Domain State Persistence (`verifyGatePass`)**: Added `verifyGatePass(encounterId)` to `MedCoreContext`, updating the persistent encounter model to set `dischargePass.status = 'VERIFIED_AT_LOBBY'` and recording `dischargePass.verifiedAt` with a UTC timestamp.
+- **Audit Authenticity**: Replaced transient component-local state with encounter state synchronization. Reopening the gate pass modal or reprinting clearance slips accurately reflects that lobby departure was authorized and validated.
+
+[DECISION] **4. Deterministic Gate Pass PIN Synchronization (`PrintDocumentContainer.tsx`, `DigitalGatePassModal.tsx`)**:
+- **Deterministic Derivation**: Replaced the static PIN `8492` with a deterministic 4-digit PIN calculated from the alphanumeric pass or encounter number: `(pass?.passNumber || enc.encounterNumber).replace(/\D/g, '').slice(-4).padStart(4, '0')`.
+- **Screen & Print Parity**: Displayed the exact same deterministic PIN beneath the QR code inside `DigitalGatePassModal` and on the official physical clearance slip in `PrintDocumentContainer`.
+
+[DECISION] **5. CSS Entrance Animations & Transition Keyframes (`src/index.css`)**:
+- **Native Keyframe Transitions**: Implemented `@keyframes fadeIn` and `@keyframes zoomIn95` with corresponding `.animate-in`, `.fade-in`, `.zoom-in-95`, and `.duration-*` utility classes directly in `src/index.css`.
+- **Smooth Dialog Ingress**: Restored smooth entrance scaling and opacity transitions on confirmation modals and alert overlays without requiring extra external npm dependencies.
+
+[DECISION] **6. Viewport Height Discipline on Disputes & Exceptions Desk (`DisputesExceptionsPage.tsx`)**:
+- **Workstation Viewport Integration**: Converted `DisputesExceptionsPage.tsx` from unbounded whole-page scrolling (`overflow-y-auto p-8`) into the command workstation standard: `flex-1 flex flex-col h-full min-h-0 p-5 space-y-3.5 bg-slate-50/50 overflow-hidden`.
+- **Localized Table Scrolling & Pinned Chrome**: Both Tab 1 (Contested Chargemaster Items) and Tab 2 (RA 9439 Promissory Notes Register) now feature bounded table containers (`flex-1 min-h-0 overflow-y-auto overscroll-contain`), sticky headers (`sticky top-0 bg-slate-50 z-10`), and permanently visible, pinned bottom pagination bars (`shrink-0`).
+
+[DECISION] **7. Durable Architectural Standards Recorded**:
+- **Modal DOM Mounting Standard**: All top-level action confirmation modals must be rendered via `createPortal(modalContent, document.body)` with `z-confirmation` (`z-[9999]`) and body scroll-locking (`document.body.style.overflow = 'hidden'`) to prevent stacking-context collisions with sticky table headers (`z-10`, `z-20`).
+- **Print Timeout Safety Standard**: The printing bus must rely on the browser's `afterprint` event rather than fixed sub-5-second timeouts to avoid unmounting the printable document while native OS print dialogs remain open.
+
+[FACT] **Zero Regression & Build Verification**:
+- **Test Suite (`npm test`)**: 250/250 patient records pass the 10-step Philippine statutory deduction waterfall and centavo-exact RA 9439 installment schedule with 0 errors.
+- **Production Build (`npm run build`)**: TypeScript check (`tsc -b`) and Vite production bundle succeeded with 0 errors in 966ms.
+
+

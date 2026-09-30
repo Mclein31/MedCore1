@@ -112,7 +112,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
             <select
               value={filters.department}
               onChange={(e) => onFilterChange({ department: e.target.value })}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
             >
               {CLINICAL_WARDS.map((w) => (
                 <option key={w} value={w}>
@@ -128,7 +128,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
             <select
               value={filters.payer}
               onChange={(e) => onFilterChange({ payer: e.target.value })}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
             >
               <option value="All Payers">All Payers &amp; Insurers</option>
               <option value="PhilHealth Only">PhilHealth Only (Social)</option>
@@ -147,7 +147,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
             <select
               value={filters.claimStatus}
               onChange={(e) => onFilterChange({ claimStatus: e.target.value })}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-hidden focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
+              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
             >
               <option value="All Statuses">All Claim Statuses</option>
               <option value="CLEAN">Clean / Validated</option>
