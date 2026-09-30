@@ -20,6 +20,7 @@ import {
 } from '@/features/patient-clarify';
 import { printEngine, PrintDocumentConfig } from '@/services/printEngine';
 import type { ConfirmationModalVariant, ConfirmationContextInfo } from '@/components/modals';
+import { apiClient } from '@/services/apiClient';
 
 export interface ConfirmModalRequest {
   title: string;
@@ -123,6 +124,37 @@ interface MedCoreContextType {
     borrowerIdNumber?: string;
     bankName?: string;
   }) => Promise<{ success: boolean; paymentRecord?: DemoPaymentRecord; error?: string }>;
+  // Auth & Session
+  isAuthenticated: boolean;
+  currentUser: any | null;
+  login: (credentials: { email: string; password?: string; facilityCode?: string }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+
+  // CRUD Modal States
+  isAddChargeModalOpen: boolean;
+  isEditChargeModalOpen: boolean;
+  chargeToEdit: ChargemasterItem | null;
+  isAdmitPatientModalOpen: boolean;
+  isEditEncounterModalOpen: boolean;
+  encounterToEdit: Encounter | null;
+
+  // CRUD Modal Openers & Closers
+  openAddChargeModal: () => void;
+  openEditChargeModal: (item: ChargemasterItem) => void;
+  closeAddEditChargeModal: () => void;
+  openAdmitPatientModal: () => void;
+  closeAdmitPatientModal: () => void;
+  openEditEncounterModal: (encounter?: Encounter) => void;
+  closeEditEncounterModal: () => void;
+
+  // CRUD Actions
+  addChargeItem: (encounterId: string, itemData: any) => Promise<void>;
+  editChargeItem: (encounterId: string, itemId: string, updates: any) => Promise<void>;
+  deleteChargeItem: (encounterId: string, itemId: string) => void;
+  admitPatient: (data: any) => Promise<void>;
+  editEncounter: (encounterId: string, updates: any) => Promise<void>;
+  deleteEncounter: (encounterId: string) => void;
+
   printDocument: (config: PrintDocumentConfig) => void;
   confirmationState: (ConfirmModalRequest & { isOpen: boolean }) | null;
   requestConfirmation: (request: ConfirmModalRequest) => void;
@@ -202,7 +234,15 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [encounters, setEncounters] = useState<Encounter[]>(buildInitialEncounterState);
   const [selectedEncounterId, setSelectedEncounterId] = useState<string>('enc-8812');
   const [activeRoute, setActiveRoute] = useState<NavRoute>('COMMAND_CENTER');
-  const [activeRole, setActiveRole] = useState<UserRole>('BILLING_SPECIALIST');
+  const [activeRole, setActiveRoleState] = useState<UserRole>('BILLING_SPECIALIST');
+
+  const setActiveRole = (role: UserRole) => {
+    setActiveRoleState(role);
+    apiClient.switchRole(role).catch((err) => {
+      console.warn('API switchRole sync:', err);
+    });
+  };
+
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'WARNING' | 'BREACH' | 'DISPUTED'>('ALL');
 
@@ -233,6 +273,163 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const closeConfirmation = () => {
     setConfirmationState(null);
+  };
+
+  // Auth & Session State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('aqromed_auth');
+      return stored === 'true';
+    }
+    return false;
+  });
+
+  const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('aqromed_user');
+      if (stored) {
+        try {
+          return JSON.parse(stored);
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return {
+      id: 'usr-billing-lead',
+      fullName: 'Elena Santos',
+      email: 'elena.santos@stjude.ph',
+      role: 'BILLING_SPECIALIST',
+      title: 'Inpatient Billing Specialist',
+      facilityName: 'St. Jude Medical Center Manila'
+    };
+  });
+
+  // Verify backend session on mount
+  useEffect(() => {
+    apiClient.getMe()
+      .then((res) => {
+        if (res?.user) {
+          setIsAuthenticated(true);
+          setCurrentUser(res.user);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('aqromed_auth', 'true');
+            localStorage.setItem('aqromed_user', JSON.stringify(res.user));
+          }
+        }
+      })
+      .catch(() => {
+        // Standalone or local fallback
+      });
+  }, []);
+
+  const login = async (credentials: { email: string; password?: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await apiClient.login(credentials);
+      if (res?.user) {
+        setIsAuthenticated(true);
+        setCurrentUser(res.user);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('aqromed_auth', 'true');
+          localStorage.setItem('aqromed_user', JSON.stringify(res.user));
+        }
+        if (res.user.role) {
+          setActiveRoleState(res.user.role as UserRole);
+        }
+        return { success: true };
+      }
+      return { success: false, error: 'Login failed: Invalid server response' };
+    } catch (err: any) {
+      // Fallback demo preset accounts
+      const demoAccounts = [
+        { email: 'elena.santos@stjude.ph', role: 'BILLING_SPECIALIST', name: 'Elena Santos', title: 'Inpatient Billing Specialist' },
+        { email: 'arthur.delgado@stjude.ph', role: 'HOSPITAL_CFO', name: 'Arthur Delgado', title: 'Hospital CFO / RCM Director' },
+        { email: 'manuel.reyes@stjude.ph', role: 'ATTENDING_PHYSICIAN', name: 'Dr. Manuel Reyes', title: 'Attending Physician (FPCP)' },
+        { email: 'marco.valenzuela@stjude.ph', role: 'HMO_COORDINATOR', name: 'Marco Valenzuela', title: 'HMO Liaison Coordinator' },
+        { email: 'grace.tan@stjude.ph', role: 'CLAIMS_ENCODER', name: 'Grace Tan', title: 'PhilHealth Claims Auditor' },
+        { email: 'bert.aquino@stjude.ph', role: 'LOBBY_SECURITY', name: 'Bert Aquino', title: 'Lobby Exit Security Officer' }
+      ];
+      const match = demoAccounts.find(d => d.email.toLowerCase() === credentials.email.toLowerCase());
+      if (match) {
+        const user = {
+          id: `usr-${match.role.toLowerCase()}`,
+          fullName: match.name,
+          email: match.email,
+          role: match.role,
+          title: match.title,
+          facilityName: 'St. Jude Medical Center Manila'
+        };
+        setIsAuthenticated(true);
+        setCurrentUser(user);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('aqromed_auth', 'true');
+          localStorage.setItem('aqromed_user', JSON.stringify(user));
+        }
+        setActiveRoleState(match.role as UserRole);
+        return { success: true };
+      }
+      return { success: false, error: err.message || 'Authentication failed' };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await apiClient.logout();
+    } catch (err) {
+      console.warn('API logout notice:', err);
+    } finally {
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('aqromed_auth');
+        localStorage.removeItem('aqromed_user');
+      }
+    }
+  };
+
+  // CRUD Modals State
+  const [isAddChargeModalOpen, setIsAddChargeModalOpen] = useState(false);
+  const [isEditChargeModalOpen, setIsEditChargeModalOpen] = useState(false);
+  const [chargeToEdit, setChargeToEdit] = useState<ChargemasterItem | null>(null);
+
+  const openAddChargeModal = () => {
+    setChargeToEdit(null);
+    setIsAddChargeModalOpen(true);
+    setIsEditChargeModalOpen(false);
+  };
+
+  const openEditChargeModal = (item: ChargemasterItem) => {
+    setChargeToEdit(item);
+    setIsEditChargeModalOpen(true);
+    setIsAddChargeModalOpen(false);
+  };
+
+  const closeAddEditChargeModal = () => {
+    setIsAddChargeModalOpen(false);
+    setIsEditChargeModalOpen(false);
+    setChargeToEdit(null);
+  };
+
+  const [isAdmitPatientModalOpen, setIsAdmitPatientModalOpen] = useState(false);
+  const [isEditEncounterModalOpen, setIsEditEncounterModalOpen] = useState(false);
+  const [encounterToEdit, setEncounterToEdit] = useState<Encounter | null>(null);
+
+  const openAdmitPatientModal = () => {
+    setIsAdmitPatientModalOpen(true);
+  };
+
+  const closeAdmitPatientModal = () => {
+    setIsAdmitPatientModalOpen(false);
+  };
+
+  const openEditEncounterModal = (enc?: Encounter) => {
+    setEncounterToEdit(enc || encounters.find(e => e.id === selectedEncounterId) || encounters[0]);
+    setIsEditEncounterModalOpen(true);
+  };
+
+  const closeEditEncounterModal = () => {
+    setIsEditEncounterModalOpen(false);
+    setEncounterToEdit(null);
   };
 
   // In-flight mutex lock to prevent concurrent double-processing of payments per encounter
@@ -359,6 +556,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   ];
 
   const advanceStage = (encounterId: string) => {
+    apiClient.advanceStage(encounterId).catch((err) => {
+      console.warn('API advance-stage background sync:', err);
+    });
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -389,6 +589,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const applyAccreditedCeiling = (encounterId: string) => {
+    apiClient.applyAccreditedCeiling(encounterId).catch((err) => {
+      console.warn('API accredited-ceiling background sync:', err);
+    });
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -414,6 +617,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const clearPharmacyRts = (encounterId: string) => {
+    apiClient.clearPharmacyRts(encounterId).catch((err) => {
+      console.warn('API clear-pharmacy-rts background sync:', err);
+    });
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -428,6 +634,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const approveHmoFinalLoa = (encounterId: string) => {
+    apiClient.approveHmoFinalLoa(encounterId).catch((err) => {
+      console.warn('API approve-hmo-loa background sync:', err);
+    });
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -539,12 +748,26 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     months: 3 | 6 | 12,
     customPrincipal?: number
   ) => {
+    const encTarget = encounters.find((e) => e.id === encounterId);
+    const targetPrincipal = customPrincipal !== undefined && customPrincipal !== null
+      ? customPrincipal
+      : (promissoryCustomAmount !== null ? promissoryCustomAmount : (encTarget?.waterfall.netPatientDue || 0));
+
+    apiClient.executePromissoryNote(encounterId, {
+      borrowerName,
+      borrowerRelationship: 'GUARANTOR',
+      borrowerIdType: idType,
+      borrowerIdNumber: idNumber,
+      installmentMonths: months,
+      principalAmount: targetPrincipal
+    }).catch((err) => {
+      console.warn('API promissory note sync:', err);
+    });
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
-        const principal = customPrincipal !== undefined && customPrincipal !== null
-          ? customPrincipal
-          : (promissoryCustomAmount !== null ? promissoryCustomAmount : enc.waterfall.netPatientDue);
+        const principal = targetPrincipal;
         const plan = calculateInstallmentPlan(principal, months);
         const note: PromissoryNote = {
           id: `PN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
@@ -586,6 +809,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const freezeDisputeItem = (encounterId: string, itemId: string, reason: string) => {
+    apiClient.fileDispute(encounterId, {
+      chargeId: itemId,
+      reason,
+      disputeCategory: 'OTHER'
+    }).catch((err) => {
+      console.warn('API file dispute sync:', err);
+    });
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -613,6 +844,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const supervisoryWaiveItem = (encounterId: string, itemId: string, notes: string) => {
+    const encTarget = encounters.find((e) => e.id === encounterId);
+    const targetDispute = encTarget?.disputes?.find((d) => d.itemId === itemId);
+    if (targetDispute?.id) {
+      apiClient.waiveDispute(targetDispute.id, notes).catch((err) => {
+        console.warn('API supervisory waive sync:', err);
+      });
+    }
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -746,7 +985,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const sendBillToPatient = (encounterId: string) => {
     const nowIso = new Date().toISOString();
     const token = `tok_${encounterId.replace(/\D/g, '')}_${Math.random().toString(36).substring(2, 7)}`;
-    const magicLink = `https://medcore.stjude.ph/clarify/${encounterId}?token=${token}`;
+    const magicLink = `https://aqromed.stjude.ph/clarify/${encounterId}?token=${token}`;
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -970,10 +1209,438 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isFullySettled
       });
 
+      apiClient.processPayment(
+        enc.id,
+        {
+          amount: params.amount,
+          paymentRail: params.paymentRail,
+          payerName: params.payerName || enc.patient.fullName || enc.patient.maskedName || 'Patient Guarantor',
+          payerContactMasked: params.payerContactMasked || '0917-***-****',
+          notes: (params as any).notes || `Settlement via ${params.paymentRail}`
+        },
+        txRef
+      ).catch((err) => {
+        console.warn('API processPayment background sync:', err);
+      });
+
       return { success: true, paymentRecord: newRecord };
     } finally {
       inFlightPaymentsRef.current.delete(params.encounterId);
     }
+  };
+
+  // --- CHARGEMASTER CRUD IMPLEMENTATION ---
+  const addChargeItem = async (encounterId: string, itemData: any) => {
+    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
+    if (!enc) return;
+
+    const newItem: ChargemasterItem = {
+      id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      code: itemData.code || `CHG-${itemData.category.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
+      description: itemData.description,
+      category: itemData.category,
+      qty: itemData.qty || 1,
+      unitPrice: itemData.grossAmount,
+      grossAmount: itemData.grossAmount,
+      isVatable: true,
+      philhealthCovered: 0,
+      hmoCovered: 0,
+      patientOop: itemData.grossAmount,
+      status: 'COVERED',
+      isDisputed: false,
+      plainLanguageExplainer: `Standard clinical hospital charge for ${itemData.description}.`
+    };
+
+    const updatedItems = [...enc.items, newItem];
+    const newWaterfall = recalculateWaterfall(
+      updatedItems,
+      enc.patient.isSeniorCitizen || enc.patient.isPwd,
+      enc.philhealth.hciAmount,
+      enc.philhealth.pfAmount,
+      enc.hmo.approvedAmount,
+      enc.waterfall.roomUpgradeExcess,
+      enc.doctorExcessPf || 0
+    );
+
+    setEncounters((prev) =>
+      prev.map((e) => {
+        if (e.id !== encounterId) return e;
+        return {
+          ...e,
+          items: updatedItems,
+          waterfall: newWaterfall,
+          remainingBalance: Math.max(0, Number((newWaterfall.netPatientDue - (e.amountPaid || 0)).toFixed(2)))
+        };
+      })
+    );
+
+    try {
+      const res = await apiClient.addChargeItem(encounterId, {
+        description: itemData.description,
+        category: itemData.category === 'MEDICAL_SUPPLIES' ? 'CENTRAL_SUPPLIES' : itemData.category,
+        grossAmount: itemData.grossAmount,
+        qty: 1,
+        unitPrice: itemData.grossAmount
+      });
+      if (res && res.item) {
+        setEncounters((prev) =>
+          prev.map((e) => {
+            if (e.id !== encounterId) return e;
+            return {
+              ...e,
+              items: e.items.map((i) =>
+                i.id === newItem.id ? { ...i, id: res.item.id, code: res.item.code } : i
+              )
+            };
+          })
+        );
+      }
+    } catch (err) {
+      console.warn('Backend addChargeItem sync notice:', err);
+    }
+  };
+
+  const editChargeItem = async (encounterId: string, itemId: string, updates: any) => {
+    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
+    if (!enc) return;
+
+    const item = enc.items.find((i) => i.id === itemId);
+
+    const updatedItems = enc.items.map((i) => {
+      if (i.id !== itemId) return i;
+      const grossAmount = updates.grossAmount !== undefined ? updates.grossAmount : i.grossAmount;
+      return {
+        ...i,
+        ...updates,
+        grossAmount,
+        unitPrice: grossAmount
+      };
+    });
+
+    const newWaterfall = recalculateWaterfall(
+      updatedItems,
+      enc.patient.isSeniorCitizen || enc.patient.isPwd,
+      enc.philhealth.hciAmount,
+      enc.philhealth.pfAmount,
+      enc.hmo.approvedAmount,
+      enc.waterfall.roomUpgradeExcess,
+      enc.doctorExcessPf || 0
+    );
+
+    setEncounters((prev) =>
+      prev.map((e) => {
+        if (e.id !== encounterId) return e;
+        return {
+          ...e,
+          items: updatedItems,
+          waterfall: newWaterfall,
+          remainingBalance: Math.max(0, Number((newWaterfall.netPatientDue - (e.amountPaid || 0)).toFixed(2)))
+        };
+      })
+    );
+
+    try {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId);
+      const targetId = isUuid ? itemId : (item?.code || itemId);
+      await apiClient.editChargeItem(targetId, {
+        description: updates.description,
+        category: updates.category === 'MEDICAL_SUPPLIES' ? 'CENTRAL_SUPPLIES' : updates.category,
+        grossAmount: updates.grossAmount
+      });
+    } catch (err) {
+      console.warn('Backend editChargeItem sync notice:', err);
+    }
+  };
+
+  const deleteChargeItem = (encounterId: string, itemId: string) => {
+    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
+    const item = enc?.items.find((i) => i.id === itemId);
+    const itemName = item?.description || 'Item';
+    const itemAmt = item?.grossAmount ? formatPhp(item.grossAmount) : '₱0.00';
+
+    requestConfirmation({
+      title: 'Delete Chargemaster Item',
+      description: `Are you sure you want to permanently remove "${itemName}" (${itemAmt}) from this patient's running bill? This will automatically recalculate the Philippine statutory deduction waterfall and update the net patient balance.`,
+      confirmLabel: 'Delete Item',
+      cancelLabel: 'Keep Item',
+      variant: 'danger',
+      contextInfo: [
+        { label: 'Item Description', value: itemName },
+        { label: 'Gross Amount', value: itemAmt },
+        { label: 'Patient', value: enc?.patient.fullName || enc?.patient.maskedName || 'Patient' },
+        { label: 'Encounter', value: enc?.encounterNumber || encounterId }
+      ],
+      onConfirm: async () => {
+        if (!enc) return;
+        const updatedItems = enc.items.filter((i) => i.id !== itemId);
+        const newWaterfall = recalculateWaterfall(
+          updatedItems,
+          enc.patient.isSeniorCitizen || enc.patient.isPwd,
+          enc.philhealth.hciAmount,
+          enc.philhealth.pfAmount,
+          enc.hmo.approvedAmount,
+          enc.waterfall.roomUpgradeExcess,
+          enc.doctorExcessPf || 0
+        );
+
+        setEncounters((prev) =>
+          prev.map((e) => {
+            if (e.id !== encounterId) return e;
+            return {
+              ...e,
+              items: updatedItems,
+              waterfall: newWaterfall,
+              remainingBalance: Math.max(0, Number((newWaterfall.netPatientDue - (e.amountPaid || 0)).toFixed(2)))
+            };
+          })
+        );
+
+        try {
+          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId);
+          const targetId = isUuid ? itemId : (item?.code || itemId);
+          await apiClient.deleteChargeItem(targetId);
+        } catch (err) {
+          console.warn('Backend deleteChargeItem sync notice:', err);
+        }
+      }
+    });
+  };
+
+  // --- ENCOUNTER CRUD IMPLEMENTATION ---
+  const admitPatient = async (data: any) => {
+    const newEncId = `enc-${Date.now().toString().slice(-4)}`;
+    const encNumber = `ENC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    const billNumber = `SOA-SJMC-26-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const initialItems: ChargemasterItem[] = [
+      {
+        id: `item-${Date.now()}-1`,
+        code: 'CHG-ROOM-001',
+        description: `Inpatient Room Accommodation (${data.roomCategory?.replace(/_/g, ' ') || 'Regular Private'}) - Day 1`,
+        category: 'ROOM_BOARD',
+        qty: 1,
+        unitPrice: data.dailyRoomRate || 3200,
+        grossAmount: data.dailyRoomRate || 3200,
+        isVatable: true,
+        philhealthCovered: 0,
+        hmoCovered: 0,
+        patientOop: data.dailyRoomRate || 3200,
+        status: 'COVERED',
+        isDisputed: false,
+        plainLanguageExplainer: 'Standard daily room rate charged on admission.'
+      },
+      {
+        id: `item-${Date.now()}-2`,
+        code: 'CHG-SUPP-001',
+        description: 'Standard Inpatient Admission & Hygiene Kit',
+        category: 'CENTRAL_SUPPLIES',
+        qty: 1,
+        unitPrice: 850,
+        grossAmount: 850,
+        isVatable: true,
+        philhealthCovered: 0,
+        hmoCovered: 0,
+        patientOop: 850,
+        status: 'COVERED',
+        isDisputed: false,
+        plainLanguageExplainer: 'Basic clinical hygiene and admission materials.'
+      }
+    ];
+
+    const newWaterfall = recalculateWaterfall(
+      initialItems,
+      data.isSeniorCitizen || data.isPwd,
+      18000,
+      6000,
+      data.hmoProvider ? 50000 : 0,
+      0,
+      0
+    );
+
+    const newEncounter: Encounter = {
+      id: newEncId,
+      encounterNumber: encNumber,
+      billNumber,
+      billState: 'DRAFT',
+      admissionDate: new Date().toISOString().split('T')[0],
+      stage: 'MGH_DECLARED',
+      slaStatus: 'NORMAL',
+      elapsedMinutes: 5,
+      mghOrderTimestamp: new Date().toISOString(),
+      primaryDiagnosis: data.primaryDiagnosis,
+      primaryIcd10: 'Z00.0',
+      roomBed: data.roomBed,
+      bedNumber: data.roomBed,
+      roomCategory: data.roomCategory,
+      roomType: data.roomCategory?.replace(/_/g, ' '),
+      dailyRoomRate: data.dailyRoomRate,
+      dailyRoomAllowance: data.dailyRoomRate || 3200,
+      attendingDoctor: data.attendingDoctor,
+      doctorPan: 'PAN-DOC-2026-001',
+      doctorAgreedFee: 6000,
+      doctorExcessPf: 0,
+      pharmacyRtsCleared: false,
+      unreturnedMedsCount: 0,
+      patient: {
+        id: `pat-${Date.now().toString().slice(-4)}`,
+        mrn: data.mrn,
+        fullName: data.fullName,
+        maskedName: data.fullName,
+        gender: data.gender,
+        age: data.age,
+        isSeniorCitizen: data.isSeniorCitizen,
+        seniorCitizenId: data.isSeniorCitizen ? 'SC-2026-ACTIVE' : undefined,
+        isPwd: data.isPwd,
+        pwdId: data.isPwd ? 'PWD-2026-ACTIVE' : undefined,
+        philhealthPin: data.philhealthPin,
+        contactNumber: '0917-000-0000'
+      },
+      hmo: {
+        providerName: data.hmoProvider || 'Self-Pay / None',
+        hmoName: data.hmoProvider || 'Self-Pay / None',
+        cardMasked: 'CARD-***-9921',
+        loaNumber: data.hmoPolicyNumber ? `LOA-${data.hmoPolicyNumber.slice(-6)}` : 'N/A',
+        policyMbl: 150000,
+        mblRemaining: data.hmoProvider ? 150000 : 0,
+        dailyRoomAllowance: data.dailyRoomRate || 3200,
+        initialLoaApproved: true,
+        finalLoaStatus: data.hmoProvider ? 'PENDING_SUBMISSION' : 'APPROVED',
+        approvedAmount: data.hmoProvider ? 50000 : 0,
+        disallowedConsumables: 0
+      },
+      philhealth: {
+        id: `clm-${Date.now().toString().slice(-4)}`,
+        primaryIcd10: 'Z00.0',
+        primaryDescription: data.primaryDiagnosis || 'General Examination',
+        caseRateCode: 'P01',
+        totalCaseRate: 24000,
+        hciAmount: 18000,
+        pfAmount: 6000,
+        isNbb: false,
+        rthRiskScore: 0.12,
+        cf4VitalsRecorded: true,
+        cf4CourseInWardRecorded: true,
+        cf4LabsConsistent: true,
+        eSoaXmlConformity: true,
+        status: 'CLEAN'
+      },
+      items: initialItems,
+      waterfall: newWaterfall,
+      amountPaid: 0,
+      remainingBalance: newWaterfall.netPatientDue,
+      paymentHistory: [],
+      receipts: [],
+      disputes: [],
+      timeline: [
+        {
+          id: `evt-${Date.now()}-1`,
+          timestamp: new Date().toISOString(),
+          timeDisplay: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          title: 'Patient Admitted',
+          actor: 'Admissions Lead',
+          type: 'BILLING',
+          status: 'COMPLETED',
+          description: `Patient admitted to ${data.roomBed} under ${data.attendingDoctor}. Diagnosis: ${data.primaryDiagnosis}.`
+        }
+      ]
+    };
+
+    setEncounters((prev) => [newEncounter, ...prev]);
+    setSelectedEncounterId(newEncId);
+
+    try {
+      const res = await apiClient.createEncounter({
+        fullName: data.fullName,
+        mrn: data.mrn,
+        gender: data.gender,
+        age: data.age,
+        isSeniorCitizen: data.isSeniorCitizen,
+        isPwd: data.isPwd,
+        philhealthPin: data.philhealthPin,
+        roomBed: data.roomBed,
+        roomCategory: data.roomCategory,
+        dailyRoomRate: data.dailyRoomRate,
+        attendingDoctor: data.attendingDoctor,
+        primaryDiagnosis: data.primaryDiagnosis,
+        hmoProvider: data.hmoProvider,
+        hmoPolicyNumber: data.hmoPolicyNumber
+      });
+
+      if (res && res.encounter) {
+        const backendEnc = res.encounter;
+        setEncounters((prev) =>
+          prev.map((e) => {
+            if (e.id !== newEncId) return e;
+            return {
+              ...e,
+              id: backendEnc.id,
+              encounterNumber: backendEnc.encounterNumber || e.encounterNumber,
+              billNumber: backendEnc.billNumber || e.billNumber,
+              items: backendEnc.items && backendEnc.items.length > 0 ? backendEnc.items : e.items
+            };
+          })
+        );
+        setSelectedEncounterId(backendEnc.id);
+      }
+    } catch (err) {
+      console.warn('Backend createEncounter sync notice:', err);
+    }
+  };
+
+  const editEncounter = async (encounterId: string, updates: any) => {
+    setEncounters((prev) =>
+      prev.map((e) => {
+        if (e.id !== encounterId) return e;
+        return {
+          ...e,
+          ...updates,
+          bedNumber: updates.roomBed || e.bedNumber,
+          roomBed: updates.roomBed || e.roomBed
+        };
+      })
+    );
+
+    try {
+      await apiClient.editEncounter(encounterId, updates);
+    } catch (err) {
+      console.warn('Backend editEncounter sync notice:', err);
+    }
+  };
+
+  const deleteEncounter = (encounterId: string) => {
+    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
+    const pName = enc?.patient.fullName || enc?.patient.maskedName || 'Patient';
+    const encNum = enc?.encounterNumber || encounterId;
+    const bed = enc?.roomBed || enc?.bedNumber || 'Assigned Bed';
+
+    requestConfirmation({
+      title: 'Discharge & Remove Inpatient Encounter',
+      description: `Are you sure you want to remove encounter ${encNum} for ${pName}? This will immediately deallocate and release ${bed} back to available hospital bed inventory.`,
+      confirmLabel: 'Remove Encounter',
+      cancelLabel: 'Keep Encounter',
+      variant: 'danger',
+      contextInfo: [
+        { label: 'Patient Name', value: pName },
+        { label: 'Encounter Number', value: encNum },
+        { label: 'Room / Bed', value: bed },
+        { label: 'Net Patient Due', value: formatPhp(enc?.waterfall.netPatientDue || 0) }
+      ],
+      onConfirm: async () => {
+        setEncounters((prev) => {
+          const remaining = prev.filter((e) => e.id !== encounterId);
+          if (selectedEncounterId === encounterId && remaining.length > 0) {
+            setSelectedEncounterId(remaining[0].id);
+          }
+          return remaining;
+        });
+
+        try {
+          await apiClient.deleteEncounter(encounterId);
+        } catch (err) {
+          console.warn('Backend deleteEncounter sync notice:', err);
+        }
+      }
+    });
   };
 
   return (
@@ -999,6 +1666,33 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         dossierEncounter,
         isPatientClarifyDrawerOpen,
         clarifyTokenEncounter,
+        // Auth & Session
+        isAuthenticated,
+        currentUser,
+        login,
+        logout,
+        // CRUD Modal States
+        isAddChargeModalOpen,
+        isEditChargeModalOpen,
+        chargeToEdit,
+        isAdmitPatientModalOpen,
+        isEditEncounterModalOpen,
+        encounterToEdit,
+        // CRUD Modal Openers
+        openAddChargeModal,
+        openEditChargeModal,
+        closeAddEditChargeModal,
+        openAdmitPatientModal,
+        closeAdmitPatientModal,
+        openEditEncounterModal,
+        closeEditEncounterModal,
+        // CRUD Actions
+        addChargeItem,
+        editChargeItem,
+        deleteChargeItem,
+        admitPatient,
+        editEncounter,
+        deleteEncounter,
         selectEncounter,
         setActiveRoute,
         setActiveRole,
@@ -1056,3 +1750,8 @@ export const useMedCore = () => {
   }
   return context;
 };
+
+// AQROMED Rebranded Context Aliases
+export const useAqromed = useMedCore;
+export const AqromedProvider = MedCoreProvider;
+export const AqromedContext = MedCoreContext;

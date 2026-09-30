@@ -15,7 +15,10 @@ import {
   Copy,
   Check,
   Sparkles,
-  Printer
+  Printer,
+  Plus,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { ConfirmButton } from '@/components/common';
 
@@ -31,7 +34,10 @@ export const TripartiteWorkbench: React.FC = () => {
     sendBillToPatient,
     printDocument,
     setActiveRoute,
-    setActiveRole
+    setActiveRole,
+    openAddChargeModal,
+    openEditChargeModal,
+    deleteChargeItem
   } = useMedCore();
 
   const enc = selectedEncounter;
@@ -369,6 +375,17 @@ export const TripartiteWorkbench: React.FC = () => {
             <span>Print eSOA</span>
           </button>
 
+          {/* Add Chargemaster Line Item Button */}
+          <button
+            type="button"
+            onClick={openAddChargeModal}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+            title="Add a new medication, laboratory test, medical supply, or doctor fee"
+          >
+            <Plus className="w-3.5 h-3.5 text-white" />
+            <span>Add Line Item</span>
+          </button>
+
           {/* Direct Switcher into Full Patient Experience */}
           <button
             type="button"
@@ -591,13 +608,33 @@ export const TripartiteWorkbench: React.FC = () => {
                   </td>
 
                   <td className="py-3.5 px-6 text-left">
-                    <button
-                      onClick={() => openWhyDoIOweThis(item)}
-                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1"
-                    >
-                      <HelpCircle className="w-3 h-3 text-slate-400" />
-                      <span>Why?</span>
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => openEditChargeModal(item)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
+                        title="Edit line item description, category, or gross amount"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteChargeItem(enc.id, item.id)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
+                        title="Remove line item from patient running bill"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openWhyDoIOweThis(item)}
+                        className="px-2 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1 ml-1"
+                        title="Explain this charge in natural language"
+                      >
+                        <HelpCircle className="w-3 h-3 text-slate-400" />
+                        <span>Why?</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

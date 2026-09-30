@@ -21,7 +21,10 @@ import {
   List,
   Printer,
   FileCheck2,
-  User
+  User,
+  UserPlus,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { ConfirmButton } from '@/components/common';
 
@@ -41,7 +44,10 @@ export const ActiveDischargeRadar: React.FC = () => {
     settlePatientBalance,
     printDocument,
     activeFilter,
-    setActiveFilter
+    setActiveFilter,
+    openAdmitPatientModal,
+    openEditEncounterModal,
+    deleteEncounter
   } = useMedCore();
 
   const [filterQuery, setFilterQuery] = useState('');
@@ -387,6 +393,17 @@ export const ActiveDischargeRadar: React.FC = () => {
             />
           </div>
 
+          {/* Admit Inpatient Button */}
+          <button
+            type="button"
+            onClick={openAdmitPatientModal}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5 shrink-0"
+            title="Admit new patient and allocate hospital bed"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-white" />
+            <span>Admit Inpatient</span>
+          </button>
+
           {/* View Mode Toggle */}
           <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100 hidden md:flex">
             <button
@@ -666,6 +683,24 @@ export const ActiveDischargeRadar: React.FC = () => {
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-500" />
                       <span>Print eSOA</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditEncounterModal(currentSelectedEncounter)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors shadow-2xs"
+                      title="Edit encounter details, diagnosis, or room transfer"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Edit</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteEncounter(currentSelectedEncounter.id)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 font-bold text-xs transition-colors shadow-2xs"
+                      title="Remove encounter and release bed back to inventory"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Discharge</span>
                     </button>
                   </div>
                 </div>
@@ -1287,6 +1322,28 @@ export const ActiveDischargeRadar: React.FC = () => {
                             <ChevronRight className="w-3.5 h-3.5" />
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditEncounterModal(enc);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
+                          title="Edit encounter details"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteEncounter(enc.id);
+                          }}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
+                          title="Discharge and remove encounter"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>

@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "aqromed-backend",
+  "main": "server/index.ts",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "NODE_ENV": "development",
+    "DATABASE_URL": "postgresql://mclein@localhost:5432/aqromed",
+    "GATE_PASS_SECRET": "aqromed_gate_pass_hmac_secret_2026_st_jude_manila"
+  },
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "aqromed-hyperdrive-local"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS_BUCKET",
+      "bucket_name": "aqromed-documents"
+    }
+  ]
+}

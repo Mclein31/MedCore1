@@ -6,7 +6,16 @@ import { SearchModal } from '@/components/layout/SearchModal';
 import { WhyDoIOweThisDrawer } from '@/features/ledger';
 import { ContextualActionDrawer, DischargeDossierDrawer } from '@/features/discharge';
 import { PatientClarifyDrawer, PatientPortalStandalone } from '@/features/patient-clarify';
-import { DoctorQuickSignModal, DigitalPromissoryModal, DigitalGatePassModal, ConfirmationModal } from '@/components/modals';
+import {
+  DoctorQuickSignModal,
+  DigitalPromissoryModal,
+  DigitalGatePassModal,
+  ConfirmationModal,
+  AddEditChargeModal,
+  AdmitPatientModal,
+  EditEncounterModal
+} from '@/components/modals';
+import { LoginScreen } from '@/components/auth/LoginScreen';
 import { PrintDocumentContainer } from '@/components/printing';
 
 // 8 Task-Oriented Operational Route Pages
@@ -25,6 +34,7 @@ const MainLayout: React.FC = () => {
   const {
     activeRoute,
     activeRole,
+    isAuthenticated,
     setActiveRoute,
     setActiveRole,
     selectEncounter,
@@ -55,11 +65,41 @@ const MainLayout: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [encounters, selectEncounter, setActiveRoute, setActiveRole]);
 
+  // If user is not authenticated and not on patient portal, present the enterprise login screen
+  if (!isAuthenticated && activeRoute !== 'PATIENT_PORTAL' && activeRole !== 'PATIENT_GUARANTOR') {
+    return (
+      <>
+        <LoginScreen />
+        {confirmationState && (
+          <ConfirmationModal
+            isOpen={confirmationState.isOpen}
+            title={confirmationState.title}
+            description={confirmationState.description}
+            confirmLabel={confirmationState.confirmLabel}
+            cancelLabel={confirmationState.cancelLabel}
+            variant={confirmationState.variant}
+            contextInfo={confirmationState.contextInfo}
+            onConfirm={async () => {
+              await confirmationState.onConfirm();
+              closeConfirmation();
+            }}
+            onCancel={() => {
+              if (confirmationState.onCancel) {
+                confirmationState.onCancel();
+              }
+              closeConfirmation();
+            }}
+          />
+        )}
+      </>
+    );
+  }
+
   // When patient portal route or guarantor role is active, render the dedicated patient portal experience
   if (activeRoute === 'PATIENT_PORTAL' || activeRole === 'PATIENT_GUARANTOR') {
     return (
       <>
-        <div id="medcore-app-root" className="min-h-screen w-full bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+        <div id="aqromed-app-root" className="min-h-screen w-full bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
           <PatientPortalStandalone />
           <SearchModal />
           <WhyDoIOweThisDrawer />
@@ -118,7 +158,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <>
-      <div id="medcore-app-root" className="h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+      <div id="aqromed-app-root" className="h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
         {/* LEVEL 1: Global Context & Command Bar */}
         <GlobalCommandBar />
 
@@ -142,6 +182,9 @@ const MainLayout: React.FC = () => {
         <DoctorQuickSignModal />
         <DigitalPromissoryModal />
         <DigitalGatePassModal />
+        <AddEditChargeModal />
+        <AdmitPatientModal />
+        <EditEncounterModal />
       </div>
       {confirmationState && (
         <ConfirmationModal

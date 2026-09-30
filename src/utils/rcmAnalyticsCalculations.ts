@@ -83,7 +83,7 @@ export const FINANCIAL_INFLOW_RESOLUTION_SERIES = [
   { day: 30, billed: 1.82, resolved: 1.81 }
 ];
 
-// 12-Month Cumulative MedCore Yield vs Historical Leakage (in Millions PHP)
+// 12-Month Cumulative AQROMED Yield vs Historical Leakage (in Millions PHP)
 export const CUMULATIVE_IMPACT_SERIES = [
   { month: 'M1', reclaimedYield: 2.45, historicalLeakage: 2.10 },
   { month: 'M2', reclaimedYield: 5.12, historicalLeakage: 4.25 },
@@ -376,7 +376,7 @@ export function computeMacroKpiMetrics(
 
   // Days in AR: Standard formula DAR = Net AR / Average Daily Gross Billings = 21.4 days baseline
   const daysInAr = 21.4;
-  const darBaselineReduction = 37.2; // 58.6d legacy - 21.4d MedCore
+  const darBaselineReduction = 37.2; // 58.6d legacy - 21.4d AQROMED
 
   // Clean claim calculations
   let returnedCount = 0;

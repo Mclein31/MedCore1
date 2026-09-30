@@ -10,7 +10,7 @@ export const PatientClarifyDrawer: React.FC = () => {
   if (!isPatientClarifyDrawerOpen) return null;
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(`https://medcore.stjude.ph/clarify/${clarifyTokenEncounter?.id || 'enc-8812'}`);
+    navigator.clipboard.writeText(`https://aqromed.stjude.ph/clarify/${clarifyTokenEncounter?.id || 'enc-8812'}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
