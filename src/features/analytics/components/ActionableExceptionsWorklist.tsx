@@ -14,6 +14,7 @@ import {
   Clock,
   ShieldAlert
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 interface ActionableExceptionsWorklistProps {
   exceptions: ActionableExceptionItem[];
@@ -150,7 +151,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search patient, MRN, ward..."
-            className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-blue-500 w-56 text-left"
+            className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-56 text-left"
           />
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
         </div>
@@ -158,7 +159,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
 
       {/* Universal Left-Aligned Table (Strict text-left on all th and td) */}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm border-collapse">
+        <table className="w-full min-w-[960px] text-left text-sm border-collapse">
           <thead className="bg-slate-50 border-b border-slate-200">
             <tr className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <th className="py-3 px-5 text-left">Patient &amp; MRN</th>
@@ -241,13 +242,35 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
 
                   {/* 8. Action Trigger */}
                   <td className="py-3.5 px-5 text-left">
-                    <button
-                      type="button"
-                      onClick={() => handleAction(item)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 shadow-2xs transition-colors"
-                    >
-                      <span>{item.recommendedAction}</span>
-                    </button>
+                    {item.actionType === 'RTS_CLEAR' ? (
+                      <ConfirmButton
+                        label={item.recommendedAction}
+                        modalTitle="Clear Pharmacy Return-to-Stock Audit?"
+                        modalDescription={`Certify that unreturned medications for ${item.patientName} (${item.wardBed}) have been reconciled with Central Pharmacy and credit slips applied.`}
+                        confirmLabel="Clear RTS"
+                        contextInfo={[
+                          { label: 'Patient', value: item.patientName },
+                          { label: 'Ward/Bed', value: item.wardBed },
+                          { label: 'Trapped Amount', value: formatPhp(item.trappedAmount) },
+                          { label: 'Exception', value: item.problemType }
+                        ]}
+                        variant="subtle"
+                        confirmVariant="success"
+                        size="xs"
+                        onConfirm={() => {
+                          selectEncounter(item.encounter.id);
+                          clearPharmacyRts(item.encounter.id);
+                        }}
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleAction(item)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 shadow-2xs transition-colors"
+                      >
+                        <span>{item.recommendedAction}</span>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))

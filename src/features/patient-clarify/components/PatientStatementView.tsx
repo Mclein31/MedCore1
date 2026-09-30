@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useMedCore } from '@/context/MedCoreContext';
 import { PatientBillStatement } from '../types/billing';
 import { ChargemasterItem } from '@/types/domain';
 import { formatPeso, maskName } from '../utils/billFormatters';
@@ -14,7 +15,8 @@ import {
   Building2,
   Calendar,
   HelpCircle,
-  FileCheck
+  FileCheck,
+  Printer
 } from 'lucide-react';
 
 interface Props {
@@ -34,6 +36,7 @@ export const PatientStatementView: React.FC<Props> = ({
   onOpenPromissoryModal,
   onSubmitDispute
 }) => {
+  const { printDocument, encounters, selectedEncounter } = useMedCore();
   const [selectedDisputeItem, setSelectedDisputeItem] = useState<ChargemasterItem | null>(null);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState('ALL');
 
@@ -43,6 +46,15 @@ export const PatientStatementView: React.FC<Props> = ({
   const isSettled = f.remainingBalance <= 0 || bill.state === 'PAID';
 
   const displayName = isMasked ? maskName(p.fullName) : p.fullName;
+
+  const handlePrint = () => {
+    const enc = encounters.find((e) => e.encounterNumber === bill.billNumber || e.id === bill.id || e.patient.mrn === p.mrn) || selectedEncounter;
+    printDocument({
+      type: 'OFFICIAL_ESOA',
+      title: `Official eSOA - ${bill.billNumber}`,
+      data: { encounter: enc }
+    });
+  };
 
   const filteredItems = bill.items.filter((item) => {
     if (activeCategoryFilter === 'ALL') return true;
@@ -61,7 +73,7 @@ export const PatientStatementView: React.FC<Props> = ({
   return (
     <div className="space-y-6 max-w-3xl mx-auto font-sans pb-24">
       {/* Top Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={onBack}
@@ -71,9 +83,21 @@ export const PatientStatementView: React.FC<Props> = ({
           <span>Back to Overview</span>
         </button>
 
-        <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
-          SOA: {bill.billNumber}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-900 bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs hover:bg-slate-50 transition-colors"
+            title="Print Official BIR & PhilHealth-compliant electronic Statement of Account (eSOA)"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span>Print Statement</span>
+          </button>
+
+          <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+            SOA: {bill.billNumber}
+          </span>
+        </div>
       </div>
 
       {/* Hospital Statement Header */}

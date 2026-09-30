@@ -1,4 +1,5 @@
 import React from 'react';
+import { useMedCore } from '@/context/MedCoreContext';
 import { DemoPaymentRecord } from '../types/billing';
 import { formatPeso, formatPstDateTime } from '../utils/billFormatters';
 import { CheckCircle2, X, Printer, QrCode, ShieldCheck, Download } from 'lucide-react';
@@ -24,6 +25,8 @@ export const OfficialReceiptModal: React.FC<Props> = ({
   roomBed = 'Room 312',
   encounterNumber = 'ENC-8812'
 }) => {
+  const { printDocument } = useMedCore();
+
   if (!isOpen || !payment) return null;
 
   return (
@@ -153,6 +156,28 @@ export const OfficialReceiptModal: React.FC<Props> = ({
                 <span>View Digital Discharge Gate Pass →</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() =>
+                printDocument({
+                  type: 'OFFICIAL_RECEIPT',
+                  title: `Official Receipt - ${payment.officialReceiptNumber || payment.id}`,
+                  data: {
+                    payment,
+                    remainingBalance,
+                    patientName,
+                    roomBed,
+                    encounterNumber
+                  }
+                })
+              }
+              className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center justify-center gap-2"
+              title="Print BIR-compliant Official Receipt"
+            >
+              <Printer className="w-3.5 h-3.5 text-slate-600" />
+              <span>Print Official Receipt</span>
+            </button>
 
             <button
               type="button"

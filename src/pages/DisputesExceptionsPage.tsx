@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
 import { CheckCircle2, ShieldAlert, Search } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const DisputesExceptionsPage: React.FC = () => {
   const {
@@ -108,14 +109,14 @@ export const DisputesExceptionsPage: React.FC = () => {
   );
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/50">
+    <div className="flex-1 flex flex-col h-full min-h-0 p-5 space-y-3.5 bg-slate-50/50 overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Disputes, Exceptions &amp; Promissory Desk
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-0.5">
             Supervisory line-item triage, courtesy waivers, and RA 9439 statutory promissory note register.
           </p>
         </div>
@@ -128,7 +129,7 @@ export const DisputesExceptionsPage: React.FC = () => {
                 setActiveTab('CONTESTED_ITEMS');
                 setItemsPage(1);
               }}
-              className={`px-3.5 py-2 rounded-lg transition-colors font-semibold ${
+              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
                 activeTab === 'CONTESTED_ITEMS'
                   ? 'bg-slate-900 text-white shadow-2xs'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -141,7 +142,7 @@ export const DisputesExceptionsPage: React.FC = () => {
                 setActiveTab('PROMISSORY_REGISTER');
                 setNotesPage(1);
               }}
-              className={`px-3.5 py-2 rounded-lg transition-colors font-semibold ${
+              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
                 activeTab === 'PROMISSORY_REGISTER'
                   ? 'bg-slate-900 text-white shadow-2xs'
                   : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
@@ -153,7 +154,7 @@ export const DisputesExceptionsPage: React.FC = () => {
 
           {/* Search Input */}
           <div className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder={
@@ -167,7 +168,7 @@ export const DisputesExceptionsPage: React.FC = () => {
                 setItemsPage(1);
                 setNotesPage(1);
               }}
-              className="pl-9 pr-3.5 py-2 text-xs rounded-lg bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-72 text-slate-800 placeholder-slate-400 shadow-2xs"
+              className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-64 text-slate-800 placeholder-slate-400 shadow-2xs"
             />
           </div>
         </div>
@@ -175,9 +176,9 @@ export const DisputesExceptionsPage: React.FC = () => {
 
       {/* Tab 1: Contested Line Items */}
       {activeTab === 'CONTESTED_ITEMS' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-bold text-slate-900">
+        <div className="flex-1 min-h-0 flex flex-col space-y-2.5">
+          <div className="flex items-center justify-between shrink-0">
+            <h3 className="text-sm font-bold text-slate-900">
               Active Chargemaster Disputes
             </h3>
             <span className="text-xs text-slate-500 font-medium">
@@ -186,21 +187,21 @@ export const DisputesExceptionsPage: React.FC = () => {
           </div>
 
           {filteredDisputedItems.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-sm border border-dashed border-slate-200 bg-white rounded-xl">
+            <div className="flex-1 min-h-0 flex items-center justify-center p-12 text-center text-slate-400 text-sm border border-dashed border-slate-200 bg-white rounded-xl">
               {searchQuery ? `No contested charges matching "${searchQuery}".` : 'Zero active contested charges in current roster.'}
             </div>
           ) : (
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white flex flex-col">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-separate border-spacing-0">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+            <div className="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="flex-1 overflow-y-auto overflow-x-auto overscroll-contain">
+                <table className="w-full min-w-[900px] text-left text-sm border-collapse">
+                  <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
                     <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      <th className="py-3 px-6 text-left border-b border-slate-200">Patient &amp; Bed</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Contested Item</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Category</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Amount</th>
-                      <th className="py-3 px-6 text-left border-b border-slate-200">Context / Reason</th>
-                      <th className="py-3 px-6 text-left border-b border-slate-200">Actions</th>
+                      <th className="py-3 px-6 text-left">Patient &amp; Bed</th>
+                      <th className="py-3 px-4 text-left">Contested Item</th>
+                      <th className="py-3 px-4 text-left">Category</th>
+                      <th className="py-3 px-4 text-left">Amount</th>
+                      <th className="py-3 px-6 text-left">Context / Reason</th>
+                      <th className="py-3 px-6 text-left">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -244,18 +245,28 @@ export const DisputesExceptionsPage: React.FC = () => {
                             >
                               Why?
                             </button>
-                            <button
-                              onClick={() => {
+                            <ConfirmButton
+                              label="Waive Item"
+                              modalTitle="Waive Disputed Item Charges?"
+                              modalDescription={`This will apply a supervisory courtesy credit to waive ${item.description} (${formatPhp(item.grossAmount)}) for ${patientName}, resolving the dispute.`}
+                              confirmLabel="Waive Item"
+                              variant="danger"
+                              confirmVariant="danger"
+                              size="sm"
+                              contextInfo={[
+                                { label: 'Patient', value: patientName },
+                                { label: 'Disputed Item', value: item.description },
+                                { label: 'Disputed Amount', value: formatPhp(item.grossAmount) }
+                              ]}
+                              onConfirm={() => {
                                 supervisoryWaiveItem(
                                   encounterId,
                                   item.id,
                                   'Supervisory courtesy discount applied to unblock discharge'
                                 );
                               }}
-                              className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-colors"
-                            >
-                              Waive Item
-                            </button>
+                              title="Apply Supervisory Courtesy Discount & Waive Item"
+                            />
                             <button
                               onClick={() => {
                                 selectEncounter(encounterId);
@@ -309,10 +320,10 @@ export const DisputesExceptionsPage: React.FC = () => {
 
       {/* Tab 2: RA 9439 Promissory Notes Register */}
       {activeTab === 'PROMISSORY_REGISTER' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
+        <div className="flex-1 min-h-0 flex flex-col space-y-2.5">
+          <div className="flex items-center justify-between shrink-0">
             <div>
-              <h3 className="text-base font-bold text-slate-900">
+              <h3 className="text-sm font-bold text-slate-900">
                 Statutory Promissory Undertakings (RA 9439)
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -322,30 +333,30 @@ export const DisputesExceptionsPage: React.FC = () => {
 
             <button
               onClick={() => openPromissoryModal()}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs"
+              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs"
             >
               + Issue Promissory Note
             </button>
           </div>
 
           {filteredPromissoryNotes.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 text-sm border border-dashed border-slate-200 bg-white rounded-xl">
+            <div className="flex-1 min-h-0 flex items-center justify-center p-12 text-center text-slate-400 text-sm border border-dashed border-slate-200 bg-white rounded-xl">
               {searchQuery ? `No promissory notes matching "${searchQuery}".` : 'Zero promissory notes executed.'}
             </div>
           ) : (
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white flex flex-col">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm border-separate border-spacing-0">
-                  <thead className="bg-slate-50 border-b border-slate-200">
+            <div className="flex-1 min-h-0 flex flex-col bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+              <div className="flex-1 overflow-y-auto overflow-x-auto overscroll-contain">
+                <table className="w-full min-w-[900px] text-left text-sm border-collapse">
+                  <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
                     <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      <th className="py-3 px-6 text-left border-b border-slate-200">Note Number</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Borrower / Guarantor</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Encounter / Room</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Principal Balance</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Monthly Installment</th>
-                      <th className="py-3 px-4 text-left border-b border-slate-200">Terms</th>
-                      <th className="py-3 px-6 text-left border-b border-slate-200">Execution Date</th>
-                      <th className="py-3 px-6 text-left border-b border-slate-200">Status</th>
+                      <th className="py-3 px-6 text-left">Note Number</th>
+                      <th className="py-3 px-4 text-left">Borrower / Guarantor</th>
+                      <th className="py-3 px-4 text-left">Encounter / Room</th>
+                      <th className="py-3 px-4 text-left">Principal Balance</th>
+                      <th className="py-3 px-4 text-left">Monthly Installment</th>
+                      <th className="py-3 px-4 text-left">Terms</th>
+                      <th className="py-3 px-6 text-left">Execution Date</th>
+                      <th className="py-3 px-6 text-left">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">

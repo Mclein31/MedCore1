@@ -22,6 +22,26 @@ export default {
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
         mono: ['JetBrains Mono', 'SF Mono', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+      },
+      zIndex: {
+        60: '60',
+        70: '70',
+        80: '80',
+        90: '90',
+        100: '100',
+        modal: '1000',
+        popover: '2000',
+        toast: '3000',
+        tooltip: '4000',
+        confirmation: '9999'
+      },
+      backdropBlur: {
+        '2xs': '1px',
+        xs: '2px'
+      },
+      boxShadow: {
+        '2xs': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        xs: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
       }
     },
   },

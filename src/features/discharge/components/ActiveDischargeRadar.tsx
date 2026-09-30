@@ -23,6 +23,7 @@ import {
   FileCheck2,
   User
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const ActiveDischargeRadar: React.FC = () => {
   const {
@@ -38,6 +39,7 @@ export const ActiveDischargeRadar: React.FC = () => {
     clearPharmacyRts,
     approveHmoFinalLoa,
     settlePatientBalance,
+    printDocument,
     activeFilter,
     setActiveFilter
   } = useMedCore();
@@ -167,6 +169,8 @@ export const ActiveDischargeRadar: React.FC = () => {
   };
 
   const getBlockerDetails = (enc: Encounter) => {
+    const pName = enc.patient.fullName || enc.patient.maskedName;
+    const hmoName = enc.hmo.hmoName || enc.hmo.providerName;
     switch (enc.stage) {
       case 'DOCTOR_PF_PENDING':
         return {
@@ -174,9 +178,20 @@ export const ActiveDischargeRadar: React.FC = () => {
           explanation: `Attending physician declared ₱${enc.doctorAgreedFee.toLocaleString()} exceeding the HMO contracted ceiling by ₱${enc.doctorExcessPf.toLocaleString()}.`,
           actionType: 'ceiling',
           actionText: 'Apply Tariff Ceiling',
+          confirmText: 'Apply Ceiling',
+          modalTitle: 'Apply Doctor Accredited Tariff Ceiling?',
+          modalDescription: `Apply the statutory ${hmoName} accredited fee ceiling to Dr. ${enc.attendingDoctor}'s professional fee for ${pName}. This adjusts the balance due by ₱${enc.doctorExcessPf.toLocaleString()}.`,
+          contextInfo: [
+            { label: 'Patient', value: pName },
+            { label: 'Attending Doctor', value: enc.attendingDoctor },
+            { label: 'Excess PF', value: formatPhp(enc.doctorExcessPf) }
+          ],
+          isDangerous: true,
+          variant: 'warning' as const,
+          confirmVariant: 'warning' as const,
           buttonColor: 'bg-amber-600 hover:bg-amber-700 text-white',
-          onAction: (e: React.MouseEvent) => {
-            e.stopPropagation();
+          onAction: (e?: React.MouseEvent) => {
+            if (e) e.stopPropagation();
             selectEncounter(enc.id);
             applyAccreditedCeiling(enc.id);
           }
@@ -187,9 +202,20 @@ export const ActiveDischargeRadar: React.FC = () => {
           explanation: `${enc.unreturnedMedsCount} unreturned ward medicines require pharmacy credit slip reconciliation to prevent overcharging.`,
           actionType: 'pharmacy',
           actionText: 'Reconcile Ward Meds',
+          confirmText: 'Clear RTS',
+          modalTitle: 'Clear Pharmacy Return-to-Stock Audit?',
+          modalDescription: `Certify that ${enc.unreturnedMedsCount} unreturned medicines for ${pName} have been reconciled and credit slips issued by Central Pharmacy.`,
+          contextInfo: [
+            { label: 'Patient', value: pName },
+            { label: 'Ward/Bed', value: enc.roomBed },
+            { label: 'Unreturned Meds', value: String(enc.unreturnedMedsCount) }
+          ],
+          isDangerous: true,
+          variant: 'success' as const,
+          confirmVariant: 'success' as const,
           buttonColor: 'bg-teal-600 hover:bg-teal-700 text-white',
-          onAction: (e: React.MouseEvent) => {
-            e.stopPropagation();
+          onAction: (e?: React.MouseEvent) => {
+            if (e) e.stopPropagation();
             selectEncounter(enc.id);
             clearPharmacyRts(enc.id);
           }
@@ -197,12 +223,24 @@ export const ActiveDischargeRadar: React.FC = () => {
       case 'HMO_FINAL_LOA':
         return {
           title: 'HMO Final Letter of Authorization (eLOA) Awaiting Code',
-          explanation: `${enc.hmo.hmoName || enc.hmo.providerName} portal has not transmitted final coverage lock. Awaiting LOA authorization response.`,
+          explanation: `${hmoName} portal has not transmitted final coverage lock. Awaiting LOA authorization response.`,
           actionType: 'hmo',
           actionText: 'Review & Confirm eLOA',
+          confirmText: 'Approve eLOA',
+          modalTitle: 'Approve & Lock HMO Final eLOA?',
+          modalDescription: `Confirm final insurance adjudication and lock approved coverage amount of ${formatPhp(enc.waterfall.hmoApprovedAmount)} from ${hmoName} for ${pName}.`,
+          contextInfo: [
+            { label: 'Patient', value: pName },
+            { label: 'Payer', value: hmoName },
+            { label: 'Approved Amount', value: formatPhp(enc.waterfall.hmoApprovedAmount) },
+            { label: 'Net Patient Due', value: formatPhp(enc.waterfall.netPatientDue) }
+          ],
+          isDangerous: true,
+          variant: 'primary' as const,
+          confirmVariant: 'primary' as const,
           buttonColor: 'bg-blue-600 hover:bg-blue-700 text-white',
-          onAction: (e: React.MouseEvent) => {
-            e.stopPropagation();
+          onAction: (e?: React.MouseEvent) => {
+            if (e) e.stopPropagation();
             selectEncounter(enc.id);
             approveHmoFinalLoa(enc.id);
           }
@@ -213,9 +251,20 @@ export const ActiveDischargeRadar: React.FC = () => {
           explanation: `Net patient due of ${formatPhp(enc.waterfall.netPatientDue)} requires settlement at cashier or via QR Ph digital POS.`,
           actionType: 'settlement',
           actionText: 'Collect via QR Ph / POS',
+          confirmText: 'Record Payment',
+          modalTitle: 'Confirm QR Ph Patient Payment?',
+          modalDescription: `Record point-of-sale settlement of ${formatPhp(enc.waterfall.netPatientDue)} for ${pName}. This clears all financial holds.`,
+          contextInfo: [
+            { label: 'Patient', value: pName },
+            { label: 'Net Due', value: formatPhp(enc.waterfall.netPatientDue) },
+            { label: 'Channel', value: 'QR Ph / POS' }
+          ],
+          isDangerous: true,
+          variant: 'success' as const,
+          confirmVariant: 'success' as const,
           buttonColor: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-          onAction: (e: React.MouseEvent) => {
-            e.stopPropagation();
+          onAction: (e?: React.MouseEvent) => {
+            if (e) e.stopPropagation();
             selectEncounter(enc.id);
             settlePatientBalance(enc.id, 'QR_PH');
           }
@@ -226,9 +275,16 @@ export const ActiveDischargeRadar: React.FC = () => {
           explanation: 'All clinical and financial milestones cleared. Patient authorized for lobby exit.',
           actionType: 'cleared',
           actionText: 'View Digital Gate Pass',
+          confirmText: 'View Pass',
+          modalTitle: 'View Digital Exit Gate Pass?',
+          modalDescription: 'Open verified gate pass modal.',
+          contextInfo: [],
+          isDangerous: false,
+          variant: 'outline' as const,
+          confirmVariant: 'outline' as const,
           buttonColor: 'bg-emerald-600 hover:bg-emerald-700 text-white',
-          onAction: (e: React.MouseEvent) => {
-            e.stopPropagation();
+          onAction: (e?: React.MouseEvent) => {
+            if (e) e.stopPropagation();
             selectEncounter(enc.id);
             openGatePassModal();
           }
@@ -240,9 +296,16 @@ export const ActiveDischargeRadar: React.FC = () => {
           explanation: 'Initial discharge clearance sequence commenced. Audit checklist initialized.',
           actionType: 'review',
           actionText: 'Initiate Discharge Triage',
+          confirmText: 'Initiate Triage',
+          modalTitle: 'Initiate Discharge Triage?',
+          modalDescription: 'Open dossier drawer to begin checklist audit.',
+          contextInfo: [],
+          isDangerous: false,
+          variant: 'primary' as const,
+          confirmVariant: 'primary' as const,
           buttonColor: 'bg-blue-600 hover:bg-blue-700 text-white',
-          onAction: (e: React.MouseEvent) => {
-            e.stopPropagation();
+          onAction: (e?: React.MouseEvent) => {
+            if (e) e.stopPropagation();
             selectEncounter(enc.id);
             openDossierDrawer(enc);
           }
@@ -512,9 +575,9 @@ export const ActiveDischargeRadar: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Pane: Comlogik HIMS-Inspired Operational Workspace (Non-scrollable Additional Data) */}
+          {/* Right Pane: Comlogik HIMS-Inspired Operational Workspace (Responsive Localized Scroll) */}
           {currentSelectedEncounter ? (
-            <div className={`flex-1 bg-white p-3 sm:p-3.5 space-y-2 min-h-0 flex flex-col justify-between overflow-hidden ${mobileActivePane === 'DETAIL' ? 'flex' : 'hidden lg:flex'}`}>
+            <div className={`flex-1 bg-white p-2.5 sm:p-3 space-y-1.5 min-h-0 flex flex-col justify-between overflow-y-auto overscroll-contain ${mobileActivePane === 'DETAIL' ? 'flex' : 'hidden lg:flex'}`}>
               {/* 1. Patient Demographic & Clinical Intelligence Card (Compact & High-Density) */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 shadow-2xs space-y-1.5">
                 {/* Mobile Back to Queue (< lg) */}
@@ -592,12 +655,17 @@ export const ActiveDischargeRadar: React.FC = () => {
                     <button
                       onClick={() => {
                         selectEncounter(currentSelectedEncounter.id);
-                        openDossierDrawer(currentSelectedEncounter);
+                        printDocument({
+                          type: 'OFFICIAL_ESOA',
+                          title: `Official eSOA - ${currentSelectedEncounter.encounterNumber}`,
+                          data: { encounter: currentSelectedEncounter }
+                        });
                       }}
                       className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors shadow-2xs"
+                      title="Print Official BIR & PhilHealth eSOA Statement"
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-500" />
-                      <span>eSOA</span>
+                      <span>Print eSOA</span>
                     </button>
                   </div>
                 </div>
@@ -750,13 +818,33 @@ export const ActiveDischargeRadar: React.FC = () => {
                               {blocker.explanation}
                             </p>
                           </div>
-                          <button
-                            onClick={blocker.onAction}
-                            className={`py-1.5 px-3 rounded-lg font-bold text-xs shadow-2xs transition-all shrink-0 flex items-center gap-1 ${blocker.buttonColor}`}
-                          >
-                            <span>{blocker.actionText}</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
+                          {blocker.isDangerous ? (
+                            <ConfirmButton
+                              label={
+                                <span className="flex items-center gap-1">
+                                  <span>{blocker.actionText}</span>
+                                  <ChevronRight className="w-3.5 h-3.5" />
+                                </span>
+                              }
+                              modalTitle={blocker.modalTitle}
+                              modalDescription={blocker.modalDescription}
+                              contextInfo={blocker.contextInfo}
+                              confirmLabel={blocker.confirmText}
+                              variant={blocker.variant}
+                              confirmVariant={blocker.confirmVariant}
+                              size="xs"
+                              onConfirm={blocker.onAction}
+                              title={blocker.title}
+                            />
+                          ) : (
+                            <button
+                              onClick={blocker.onAction}
+                              className={`py-1.5 px-3 rounded-lg font-bold text-xs shadow-2xs transition-all shrink-0 flex items-center gap-1 ${blocker.buttonColor}`}
+                            >
+                              <span>{blocker.actionText}</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
@@ -856,21 +944,37 @@ export const ActiveDischargeRadar: React.FC = () => {
                             </span>
                           </div>
                         ) : (
-                          <button
-                            onClick={() => {
+                          <ConfirmButton
+                            label={
+                              <div className="flex items-center justify-between w-full">
+                                <div className="flex items-center gap-1.5">
+                                  <CreditCard className="w-3.5 h-3.5" />
+                                  <span>Record Payment / QR Ph</span>
+                                </div>
+                                <span className="font-mono text-[10px] bg-emerald-800/40 px-1.5 py-0.2 rounded">
+                                  {formatPhp(currentSelectedEncounter.waterfall.netPatientDue)}
+                                </span>
+                              </div>
+                            }
+                            modalTitle="Confirm QR Ph Patient Payment?"
+                            modalDescription={`Record point-of-sale settlement of ${formatPhp(currentSelectedEncounter.waterfall.netPatientDue)} for ${currentSelectedEncounter.patient.fullName || currentSelectedEncounter.patient.maskedName}. This will clear financial holds and authorize departure.`}
+                            contextInfo={[
+                              { label: 'Patient', value: currentSelectedEncounter.patient.fullName || currentSelectedEncounter.patient.maskedName },
+                              { label: 'Encounter', value: currentSelectedEncounter.encounterNumber },
+                              { label: 'Net Amount Due', value: formatPhp(currentSelectedEncounter.waterfall.netPatientDue) },
+                              { label: 'Method', value: 'Bangko Sentral QR Ph / POS' }
+                            ]}
+                            confirmLabel="Record Payment"
+                            variant="success"
+                            confirmVariant="success"
+                            size="sm"
+                            className="w-full py-1.5 px-2.5 rounded-lg font-bold text-xs shadow-2xs justify-between"
+                            onConfirm={() => {
                               selectEncounter(currentSelectedEncounter.id);
                               settlePatientBalance(currentSelectedEncounter.id, 'QR_PH');
                             }}
-                            className="w-full py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-between shadow-2xs transition-colors"
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <CreditCard className="w-3.5 h-3.5" />
-                              <span>Record Payment / QR Ph</span>
-                            </div>
-                            <span className="font-mono text-[10px] bg-emerald-800/40 px-1.5 py-0.2 rounded">
-                              {formatPhp(currentSelectedEncounter.waterfall.netPatientDue)}
-                            </span>
-                          </button>
+                            title="Record settlement of remaining patient out-of-pocket balance"
+                          />
                         )}
 
                         {/* Action 2: Doctor QuickSign */}
@@ -924,9 +1028,14 @@ export const ActiveDischargeRadar: React.FC = () => {
                         <button
                           onClick={() => {
                             selectEncounter(currentSelectedEncounter.id);
-                            openDossierDrawer(currentSelectedEncounter);
+                            printDocument({
+                              type: 'OFFICIAL_ESOA',
+                              title: `Official eSOA - ${currentSelectedEncounter.encounterNumber}`,
+                              data: { encounter: currentSelectedEncounter }
+                            });
                           }}
                           className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
+                          title="Print Official BIR & PhilHealth eSOA Statement"
                         >
                           <div className="flex items-center gap-1.5">
                             <Printer className="w-3.5 h-3.5 text-slate-500" />
@@ -1056,7 +1165,7 @@ export const ActiveDischargeRadar: React.FC = () => {
       ) : viewMode === 'TABLE' ? (
         /* DISCHARGE CLEARANCE FULL TABLE (Static Sticky Header + Scrollable Rows) */
         <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto overscroll-contain bg-white">
-          <table className="w-full text-left text-sm border-collapse">
+          <table className="w-full min-w-[950px] text-left text-sm border-collapse">
             <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-3.5 px-6 text-left">Patient &amp; MRN</th>
@@ -1151,13 +1260,33 @@ export const ActiveDischargeRadar: React.FC = () => {
 
                     <td className="py-3.5 px-6 text-left">
                       <div className="flex items-center justify-start gap-2">
-                        <button
-                          onClick={blocker.onAction}
-                          className={`py-1.5 px-3 rounded-lg font-bold text-xs shadow-2xs transition-all flex items-center gap-1 ${blocker.buttonColor}`}
-                        >
-                          <span>{blocker.actionText}</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
+                        {blocker.isDangerous ? (
+                          <ConfirmButton
+                            label={
+                              <span className="flex items-center gap-1">
+                                <span>{blocker.actionText}</span>
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              </span>
+                            }
+                            modalTitle={blocker.modalTitle}
+                            modalDescription={blocker.modalDescription}
+                            contextInfo={blocker.contextInfo}
+                            confirmLabel={blocker.confirmText}
+                            variant={blocker.variant}
+                            confirmVariant={blocker.confirmVariant}
+                            size="xs"
+                            onConfirm={blocker.onAction}
+                            title={blocker.title}
+                          />
+                        ) : (
+                          <button
+                            onClick={blocker.onAction}
+                            className={`py-1.5 px-3 rounded-lg font-bold text-xs shadow-2xs transition-all flex items-center gap-1 ${blocker.buttonColor}`}
+                          >
+                            <span>{blocker.actionText}</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1289,13 +1418,34 @@ export const ActiveDischargeRadar: React.FC = () => {
                     </button>
                   </div>
 
-                  <button
-                    onClick={blocker.onAction}
-                    className={`py-2 px-5 rounded-lg font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 ${blocker.buttonColor}`}
-                  >
-                    <span>{blocker.actionText}</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                  {blocker.isDangerous ? (
+                    <ConfirmButton
+                      label={
+                        <span className="flex items-center gap-1.5">
+                          <span>{blocker.actionText}</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </span>
+                      }
+                      modalTitle={blocker.modalTitle}
+                      modalDescription={blocker.modalDescription}
+                      contextInfo={blocker.contextInfo}
+                      confirmLabel={blocker.confirmText}
+                      variant={blocker.variant}
+                      confirmVariant={blocker.confirmVariant}
+                      size="sm"
+                      className="py-2 px-5 rounded-lg font-bold text-xs shadow-xs"
+                      onConfirm={blocker.onAction}
+                      title={blocker.title}
+                    />
+                  ) : (
+                    <button
+                      onClick={blocker.onAction}
+                      className={`py-2 px-5 rounded-lg font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 ${blocker.buttonColor}`}
+                    >
+                      <span>{blocker.actionText}</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             );

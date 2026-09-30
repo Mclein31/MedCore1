@@ -10,13 +10,16 @@ import {
   Building2,
   Check
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const DigitalGatePassModal: React.FC = () => {
   const {
     isGatePassModalOpen,
     closeGatePassModal,
     selectedEncounter,
-    issueDigitalGatePass
+    issueDigitalGatePass,
+    verifyGatePass,
+    printDocument
   } = useMedCore();
 
   const [verifiedAtLobby, setVerifiedAtLobby] = useState(false);
@@ -37,8 +40,12 @@ export const DigitalGatePassModal: React.FC = () => {
     hmacSignature: 'a8f102c918e38d721bf64098ad23ef10'
   };
 
+  const isVerified = pass.status === 'VERIFIED_AT_LOBBY' || verifiedAtLobby;
+  const deterministicPin = (pass.passNumber || enc.encounterNumber).replace(/\D/g, '').slice(-4).padStart(4, '0');
+
   const handleVerify = () => {
     setVerifiedAtLobby(true);
+    verifyGatePass(enc.id);
   };
 
   const copyToken = () => {
@@ -138,6 +145,9 @@ export const DigitalGatePassModal: React.FC = () => {
             <span className="text-[10px] font-mono text-slate-500 mt-1">
               HMAC SHA-256 Validated
             </span>
+            <div className="font-mono text-xs font-black tracking-widest text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded mt-1.5 border border-slate-200">
+              PIN: {deterministicPin}
+            </div>
           </div>
 
           {/* Details Table */}
@@ -180,14 +190,30 @@ export const DigitalGatePassModal: React.FC = () => {
 
           {/* Verification Trigger Button */}
           <div className="flex items-center gap-2 pt-2">
-            {!verifiedAtLobby ? (
-              <button
-                onClick={handleVerify}
-                className="flex-1 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors shadow-sm"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Security Officer: Verify & Permit Exit</span>
-              </button>
+            {!isVerified ? (
+              <ConfirmButton
+                label={
+                  <span className="flex items-center justify-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Security Officer: Verify &amp; Permit Exit</span>
+                  </span>
+                }
+                modalTitle="Authorize Hospital Departure & Permit Exit?"
+                modalDescription={`Security Officer: Verify that patient ${pass.patientName} has fulfilled all clinical, billing, and pharmacy clearances. Confirming will mark the gate pass as redeemed and conclude the hospital stay.`}
+                confirmLabel="Authorize Exit"
+                variant="success"
+                confirmVariant="success"
+                contextInfo={[
+                  { label: 'Patient', value: pass.patientName },
+                  { label: 'Pass No.', value: pass.passNumber },
+                  { label: 'Room/Bed', value: pass.roomBed || 'Discharged' },
+                  { label: 'Balance Due', value: '₱0.00 (Cleared)' }
+                ]}
+                size="md"
+                className="flex-1 py-3 px-4 rounded-lg font-semibold text-sm shadow-sm justify-center"
+                onConfirm={handleVerify}
+                title="Security Officer: Authorize final exit through hospital lobby"
+              />
             ) : (
               <div className="flex-1 py-3 px-4 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-bold flex items-center justify-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-emerald-600" />
@@ -195,7 +221,13 @@ export const DigitalGatePassModal: React.FC = () => {
               </div>
             )}
             <button
-              onClick={() => window.print()}
+              onClick={() =>
+                printDocument({
+                  type: 'DIGITAL_GATE_PASS',
+                  title: `Gate Pass - ${pass.passNumber}`,
+                  data: { encounter: enc, pass, verifiedAtLobby: isVerified }
+                })
+              }
               className="p-3 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors shadow-xs"
               title="Print Clearance Slip"
             >

@@ -13,6 +13,7 @@ import {
   Pill,
   QrCode
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 interface DischargeCardProps {
   encounter: Encounter;
@@ -49,17 +50,33 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
     switch (encounter.stage) {
       case 'MGH_DECLARED':
         return (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              selectEncounter(encounter.id);
-              advanceStage(encounter.id);
-            }}
-            className="w-full mt-3 py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-          >
-            <span>Initiate Discharge Audit</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <ConfirmButton
+              label={
+                <span className="flex items-center justify-center gap-1.5">
+                  <span>Initiate Discharge Audit</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </span>
+              }
+              modalTitle="Initiate Patient Discharge Audit?"
+              modalDescription={`Commence the formal discharge clearance audit for ${patientName} (${encounter.encounterNumber}). This initiates statutory calculations and pharmacy checks.`}
+              confirmLabel="Initiate Audit"
+              variant="primary"
+              confirmVariant="primary"
+              contextInfo={[
+                { label: 'Patient', value: patientName },
+                { label: 'Encounter', value: encounter.encounterNumber },
+                { label: 'Room/Bed', value: roomBed },
+                { label: 'Attending Doctor', value: doctorName }
+              ]}
+              size="xs"
+              fullWidth
+              onConfirm={() => {
+                selectEncounter(encounter.id);
+                advanceStage(encounter.id);
+              }}
+            />
+          </div>
         );
 
       case 'DOCTOR_PF_PENDING':
@@ -93,55 +110,101 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
 
       case 'PHARMACY_RTS_AUDIT':
         return (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              selectEncounter(encounter.id);
-              clearPharmacyRts(encounter.id);
-            }}
-            className="w-full mt-3 py-2 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-          >
-            <Pill className="w-3.5 h-3.5" />
-            <span>Clear RTS & Reconcile Meds</span>
-          </button>
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <ConfirmButton
+              label={
+                <span className="flex items-center justify-center gap-1.5">
+                  <Pill className="w-3.5 h-3.5" />
+                  <span>Clear RTS & Reconcile Meds</span>
+                </span>
+              }
+              modalTitle="Clear Pharmacy RTS & Reconcile Meds?"
+              modalDescription={`Certify that unadministered medicines for ${patientName} are reconciled and credited back by Central Pharmacy.`}
+              confirmLabel="Clear RTS"
+              variant="success"
+              confirmVariant="success"
+              contextInfo={[
+                { label: 'Patient', value: patientName },
+                { label: 'Room/Bed', value: roomBed },
+                { label: 'Payer', value: hmoName }
+              ]}
+              size="xs"
+              fullWidth
+              onConfirm={() => {
+                selectEncounter(encounter.id);
+                clearPharmacyRts(encounter.id);
+              }}
+            />
+          </div>
         );
 
       case 'HMO_FINAL_LOA':
         return (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              selectEncounter(encounter.id);
-              approveHmoFinalLoa(encounter.id);
-            }}
-            className="w-full mt-3 py-2 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Confirm eLOA Coverage</span>
-          </button>
+          <div className="mt-3" onClick={(e) => e.stopPropagation()}>
+            <ConfirmButton
+              label={
+                <span className="flex items-center justify-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5" />
+                  <span>Confirm eLOA Coverage</span>
+                </span>
+              }
+              modalTitle="Confirm HMO eLOA Coverage?"
+              modalDescription={`Confirm final insurance adjudication and lock approved coverage of ${formatPeso(encounter.waterfall.hmoApprovedAmount)} for ${patientName}.`}
+              confirmLabel="Confirm eLOA"
+              variant="primary"
+              confirmVariant="primary"
+              contextInfo={[
+                { label: 'Patient', value: patientName },
+                { label: 'HMO Provider', value: hmoName },
+                { label: 'Approved Amount', value: formatPeso(encounter.waterfall.hmoApprovedAmount) },
+                { label: 'Net Patient Due', value: formatPeso(encounter.waterfall.netPatientDue) }
+              ]}
+              size="xs"
+              fullWidth
+              onConfirm={() => {
+                selectEncounter(encounter.id);
+                approveHmoFinalLoa(encounter.id);
+              }}
+            />
+          </div>
         );
 
       case 'PENDING_SETTLEMENT':
         return (
-          <div className="flex gap-2 mt-3">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                selectEncounter(encounter.id);
-                settlePatientBalance(encounter.id, 'QR_PH');
-              }}
-              className="flex-1 py-2 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-xs"
-            >
-              <QrCode className="w-3.5 h-3.5" />
-              <span>QR Ph Pay</span>
-            </button>
+          <div className="flex gap-2 mt-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1">
+              <ConfirmButton
+                label={
+                  <span className="flex items-center justify-center gap-1">
+                    <QrCode className="w-3.5 h-3.5" />
+                    <span>QR Ph Pay</span>
+                  </span>
+                }
+                modalTitle="Confirm QR Ph Patient Payment?"
+                modalDescription={`Record QR Ph digital payment of ${formatPeso(encounter.waterfall.netPatientDue)} for ${patientName}.`}
+                confirmLabel="Record Payment"
+                variant="success"
+                confirmVariant="success"
+                contextInfo={[
+                  { label: 'Patient', value: patientName },
+                  { label: 'Encounter', value: encounter.encounterNumber },
+                  { label: 'Amount Due', value: formatPeso(encounter.waterfall.netPatientDue) }
+                ]}
+                size="xs"
+                fullWidth
+                onConfirm={() => {
+                  selectEncounter(encounter.id);
+                  settlePatientBalance(encounter.id, 'QR_PH');
+                }}
+              />
+            </div>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 selectEncounter(encounter.id);
                 openPromissoryModal(encounter.id);
               }}
-              className="py-2 px-2.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-medium text-slate-700 transition-colors"
+              className="py-1 px-2.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-medium text-slate-700 transition-colors"
               title="RA 9439 Promissory Note Guarantee"
             >
               RA 9439 Note

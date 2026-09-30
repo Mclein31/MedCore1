@@ -6,7 +6,8 @@ import { SearchModal } from '@/components/layout/SearchModal';
 import { WhyDoIOweThisDrawer } from '@/features/ledger';
 import { ContextualActionDrawer, DischargeDossierDrawer } from '@/features/discharge';
 import { PatientClarifyDrawer, PatientPortalStandalone } from '@/features/patient-clarify';
-import { DoctorQuickSignModal, DigitalPromissoryModal, DigitalGatePassModal } from '@/components/modals';
+import { DoctorQuickSignModal, DigitalPromissoryModal, DigitalGatePassModal, ConfirmationModal } from '@/components/modals';
+import { PrintDocumentContainer } from '@/components/printing';
 
 // 8 Task-Oriented Operational Route Pages
 import {
@@ -27,7 +28,9 @@ const MainLayout: React.FC = () => {
     setActiveRoute,
     setActiveRole,
     selectEncounter,
-    encounters
+    encounters,
+    confirmationState,
+    closeConfirmation
   } = useMedCore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -55,14 +58,38 @@ const MainLayout: React.FC = () => {
   // When patient portal route or guarantor role is active, render the dedicated patient portal experience
   if (activeRoute === 'PATIENT_PORTAL' || activeRole === 'PATIENT_GUARANTOR') {
     return (
-      <div className="min-h-screen w-screen bg-slate-100 text-slate-900 flex flex-col font-sans select-none antialiased">
-        <PatientPortalStandalone />
-        <SearchModal />
-        <WhyDoIOweThisDrawer />
-        <DoctorQuickSignModal />
-        <DigitalPromissoryModal />
-        <DigitalGatePassModal />
-      </div>
+      <>
+        <div id="medcore-app-root" className="min-h-screen w-full bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+          <PatientPortalStandalone />
+          <SearchModal />
+          <WhyDoIOweThisDrawer />
+          <DoctorQuickSignModal />
+          <DigitalPromissoryModal />
+          <DigitalGatePassModal />
+        </div>
+        {confirmationState && (
+          <ConfirmationModal
+            isOpen={confirmationState.isOpen}
+            title={confirmationState.title}
+            description={confirmationState.description}
+            confirmLabel={confirmationState.confirmLabel}
+            cancelLabel={confirmationState.cancelLabel}
+            variant={confirmationState.variant}
+            contextInfo={confirmationState.contextInfo}
+            onConfirm={async () => {
+              await confirmationState.onConfirm();
+              closeConfirmation();
+            }}
+            onCancel={() => {
+              if (confirmationState.onCancel) {
+                confirmationState.onCancel();
+              }
+              closeConfirmation();
+            }}
+          />
+        )}
+        <PrintDocumentContainer />
+      </>
     );
   }
 
@@ -90,31 +117,55 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans select-none antialiased">
-      {/* LEVEL 1: Global Context & Command Bar */}
-      <GlobalCommandBar />
+    <>
+      <div id="medcore-app-root" className="h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+        {/* LEVEL 1: Global Context & Command Bar */}
+        <GlobalCommandBar />
 
-      {/* Main Body: Operational Workflow Sidebar + Active Task View */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        <SidebarNav
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-        />
-        <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-          {renderActiveView()}
-        </main>
+        {/* Main Body: Operational Workflow Sidebar + Active Task View */}
+        <div className="flex-1 flex min-h-0 overflow-hidden">
+          <SidebarNav
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+          />
+          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            {renderActiveView()}
+          </main>
+        </div>
+
+        {/* Modals, Overlays & Slide-Over Drawers */}
+        <SearchModal />
+        <DischargeDossierDrawer />
+        <PatientClarifyDrawer />
+        <WhyDoIOweThisDrawer />
+        <ContextualActionDrawer />
+        <DoctorQuickSignModal />
+        <DigitalPromissoryModal />
+        <DigitalGatePassModal />
       </div>
-
-      {/* Modals, Overlays & Slide-Over Drawers */}
-      <SearchModal />
-      <DischargeDossierDrawer />
-      <PatientClarifyDrawer />
-      <WhyDoIOweThisDrawer />
-      <ContextualActionDrawer />
-      <DoctorQuickSignModal />
-      <DigitalPromissoryModal />
-      <DigitalGatePassModal />
-    </div>
+      {confirmationState && (
+        <ConfirmationModal
+          isOpen={confirmationState.isOpen}
+          title={confirmationState.title}
+          description={confirmationState.description}
+          confirmLabel={confirmationState.confirmLabel}
+          cancelLabel={confirmationState.cancelLabel}
+          variant={confirmationState.variant}
+          contextInfo={confirmationState.contextInfo}
+          onConfirm={async () => {
+            await confirmationState.onConfirm();
+            closeConfirmation();
+          }}
+          onCancel={() => {
+            if (confirmationState.onCancel) {
+              confirmationState.onCancel();
+            }
+            closeConfirmation();
+          }}
+        />
+      )}
+      <PrintDocumentContainer />
+    </>
   );
 };
 

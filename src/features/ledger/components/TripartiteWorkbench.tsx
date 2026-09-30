@@ -14,8 +14,10 @@ import {
   Send,
   Copy,
   Check,
-  Sparkles
+  Sparkles,
+  Printer
 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const TripartiteWorkbench: React.FC = () => {
   const {
@@ -27,6 +29,7 @@ export const TripartiteWorkbench: React.FC = () => {
     openPatientClarifyDrawer,
     finalizeBill,
     sendBillToPatient,
+    printDocument,
     setActiveRoute,
     setActiveRole
   } = useMedCore();
@@ -299,15 +302,27 @@ export const TripartiteWorkbench: React.FC = () => {
         <div className="flex items-center gap-2 flex-wrap">
           {/* Finalize Bill Action */}
           {enc.billState === 'DRAFT' ? (
-            <button
-              type="button"
-              onClick={() => finalizeBill(enc.id)}
-              className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
+            <ConfirmButton
+              label={
+                <span className="flex items-center gap-1.5">
+                  <FileCheck2 className="w-3.5 h-3.5" />
+                  <span>Finalize Bill</span>
+                </span>
+              }
+              modalTitle="Finalize Electronic Statement of Account (eSOA)?"
+              modalDescription={`This will lock all 6 statutory deduction stages and ${enc.items.length} chargemaster lines for ${pName}. Once finalized, changes to room upgrades or discounts require supervisor override.`}
+              confirmLabel="Finalize Bill"
+              variant="primary"
+              confirmVariant="primary"
+              size="sm"
+              contextInfo={[
+                { label: 'Patient', value: pName },
+                { label: 'Total Gross Charges', value: formatPhp(waterfall.grossTotal) },
+                { label: 'Net Patient Liability', value: formatPhp(waterfall.netPatientDue) }
+              ]}
+              onConfirm={() => finalizeBill(enc.id)}
               title="Lock hospital chargemaster lines and prepare official statement"
-            >
-              <FileCheck2 className="w-3.5 h-3.5" />
-              <span>Finalize Bill</span>
-            </button>
+            />
           ) : (
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -316,14 +331,42 @@ export const TripartiteWorkbench: React.FC = () => {
           )}
 
           {/* Send eSOA Action */}
+          <ConfirmButton
+            label={
+              <span className="flex items-center gap-1.5">
+                <Send className="w-3.5 h-3.5" />
+                <span>{enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'VIEWED' ? 'Resend eSOA' : 'Send eSOA (SMS/Link)'}</span>
+              </span>
+            }
+            modalTitle="Dispatch Plain-Language Statement (eSOA) to Patient?"
+            modalDescription={`This will generate a secure magic token and transmit the interactive digital statement to ${pName}'s registered mobile device via encrypted SMS.`}
+            confirmLabel="Dispatch eSOA"
+            variant="primary"
+            confirmVariant="primary"
+            size="sm"
+            contextInfo={[
+              { label: 'Recipient', value: pName },
+              { label: 'Net Balance Due', value: formatPhp(waterfall.netPatientDue) }
+            ]}
+            onConfirm={handleSendEsoa}
+            title="Dispatch plain-language eSOA magic link to patient mobile via SMS"
+          />
+
+          {/* Print eSOA / Ledger Document */}
           <button
             type="button"
-            onClick={handleSendEsoa}
-            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
-            title="Dispatch plain-language eSOA magic link to patient mobile via SMS"
+            onClick={() =>
+              printDocument({
+                type: 'OFFICIAL_ESOA',
+                title: `Official eSOA - ${enc.encounterNumber}`,
+                data: { encounter: enc }
+              })
+            }
+            className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
+            title="Print Official BIR & PhilHealth-compliant electronic Statement of Account (eSOA)"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>{enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'VIEWED' ? 'Resend eSOA' : 'Send eSOA (SMS/Link)'}</span>
+            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <span>Print eSOA</span>
           </button>
 
           {/* Direct Switcher into Full Patient Experience */}
@@ -463,8 +506,8 @@ export const TripartiteWorkbench: React.FC = () => {
         </div>
 
         {/* Table Contents (Comlogik Inspo 1 Style) */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
-          <table className="w-full text-left text-sm border-collapse">
+        <div className="flex-1 overflow-y-auto overflow-x-auto overscroll-contain">
+          <table className="w-full min-w-[950px] text-left text-sm border-collapse">
             <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
                 <th className="py-3.5 px-6 text-left">Item / Service Description</th>

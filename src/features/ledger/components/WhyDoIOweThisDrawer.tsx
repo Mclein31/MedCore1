@@ -2,6 +2,7 @@ import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
 import { X, CheckCircle2 } from 'lucide-react';
+import { ConfirmButton } from '@/components/common';
 
 export const WhyDoIOweThisDrawer: React.FC = () => {
   const {
@@ -207,8 +208,21 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
               Item Frozen on Dispute Desk
             </div>
           ) : (
-            <button
-              onClick={() => {
+            <ConfirmButton
+              label="Freeze on Dispute Desk"
+              modalTitle="Freeze Item on Dispute Desk?"
+              modalDescription={`This will place a temporary hold on "${item.description}" (${formatPhp(item.patientOop)} due) and transfer it to the hospital dispute queue for clinical billing review.`}
+              confirmLabel="Freeze Item"
+              variant="warning"
+              confirmVariant="warning"
+              size="md"
+              className="flex-1 py-2.5 px-3 rounded-lg font-semibold text-sm shadow-xs justify-center"
+              contextInfo={[
+                { label: 'Item Code', value: item.code },
+                { label: 'Description', value: item.description },
+                { label: 'Contested Out-of-Pocket', value: formatPhp(item.patientOop) }
+              ]}
+              onConfirm={() => {
                 freezeDisputeItem(
                   selectedEncounter.id,
                   item.id,
@@ -216,15 +230,26 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
                 );
                 closeWhyDoIOweThis();
               }}
-              className="flex-1 py-2.5 px-3 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold text-sm transition-colors shadow-xs"
-            >
-              Freeze on Dispute Desk
-            </button>
+              title="Move contested item to dispute queue"
+            />
           )}
 
-          {!isWaived && item.patientOop > 0 && item.status !== 'CONTESTED' && !item.isDisputed && (
-            <button
-              onClick={() => {
+          {!isWaived && item.patientOop > 0 && (
+            <ConfirmButton
+              label="Waive Balance"
+              modalTitle="Waive Patient Out-of-Pocket Balance?"
+              modalDescription={`This will apply a supervisory courtesy discount to waive the remaining ${formatPhp(item.patientOop)} patient balance on "${item.description}", resolving the dispute.`}
+              confirmLabel="Waive Balance"
+              variant="danger"
+              confirmVariant="danger"
+              size="md"
+              className="py-2.5 px-4 rounded-lg font-semibold text-sm shadow-xs justify-center"
+              contextInfo={[
+                { label: 'Item', value: item.description },
+                { label: 'Waiver Amount', value: formatPhp(item.patientOop) },
+                { label: 'Patient Due After Waiver', value: '₱0.00' }
+              ]}
+              onConfirm={() => {
                 supervisoryWaiveItem(
                   selectedEncounter.id,
                   item.id,
@@ -232,10 +257,8 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
                 );
                 closeWhyDoIOweThis();
               }}
-              className="py-2.5 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-colors shadow-xs"
-            >
-              Waive Balance
-            </button>
+              title="Apply courtesy credit to clear this item"
+            />
           )}
         </div>
       </div>

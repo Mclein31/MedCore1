@@ -18,6 +18,20 @@ import {
   generatePaymentId,
   createOrGetReceipt
 } from '@/features/patient-clarify';
+import { printEngine, PrintDocumentConfig } from '@/services/printEngine';
+import type { ConfirmationModalVariant, ConfirmationContextInfo } from '@/components/modals';
+
+export interface ConfirmModalRequest {
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: ConfirmationModalVariant;
+  contextInfo?: ConfirmationContextInfo[];
+  onConfirm: () => void | Promise<void>;
+  onCancel?: () => void;
+}
+
 
 interface MedCoreContextType {
   encounters: Encounter[];
@@ -80,6 +94,7 @@ interface MedCoreContextType {
   approveHmoFinalLoa: (encounterId: string) => void;
   settlePatientBalance: (encounterId: string, channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE') => void;
   issueDigitalGatePass: (encounterId: string) => void;
+  verifyGatePass: (encounterId: string) => void;
   executePromissoryNote: (
     encounterId: string,
     borrowerName: string,
@@ -108,7 +123,12 @@ interface MedCoreContextType {
     borrowerIdNumber?: string;
     bankName?: string;
   }) => Promise<{ success: boolean; paymentRecord?: DemoPaymentRecord; error?: string }>;
+  printDocument: (config: PrintDocumentConfig) => void;
+  confirmationState: (ConfirmModalRequest & { isOpen: boolean }) | null;
+  requestConfirmation: (request: ConfirmModalRequest) => void;
+  closeConfirmation: () => void;
 }
+
 
 const buildInitialEncounterState = (): Encounter[] => {
   return INITIAL_ENCOUNTERS.map((enc) => {
@@ -200,6 +220,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [dossierEncounter, setDossierEncounter] = useState<Encounter | null>(null);
   const [isPatientClarifyDrawerOpen, setIsPatientClarifyDrawerOpen] = useState(false);
   const [clarifyTokenEncounter, setClarifyTokenEncounter] = useState<Encounter | null>(null);
+
+  // Centralized Confirmation Modal State
+  const [confirmationState, setConfirmationState] = useState<(ConfirmModalRequest & { isOpen: boolean }) | null>(null);
+
+  const requestConfirmation = (request: ConfirmModalRequest) => {
+    setConfirmationState({
+      ...request,
+      isOpen: true
+    });
+  };
+
+  const closeConfirmation = () => {
+    setConfirmationState(null);
+  };
 
   // In-flight mutex lock to prevent concurrent double-processing of payments per encounter
   const inFlightPaymentsRef = useRef<Set<string>>(new Set());
@@ -433,6 +467,33 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       })
     );
     setIsGatePassModalOpen(true);
+  };
+
+  const verifyGatePass = (encounterId: string) => {
+    setEncounters((prev) =>
+      prev.map((enc) => {
+        if (enc.id !== encounterId) return enc;
+        const currentPass: DischargePass = enc.dischargePass || {
+          passNumber: `PASS-MC-${enc.encounterNumber.replace('ENC-2026-', '')}`,
+          encounterId: enc.id,
+          patientName: enc.patient.fullName || enc.patient.maskedName,
+          roomBed: enc.roomBed,
+          settledAmount: enc.waterfall.netPatientDue,
+          settlementChannel: 'QR_PH' as const,
+          issuedAt: new Date().toISOString(),
+          status: 'ACTIVE_READY_FOR_EXIT' as const,
+          hmacSignature: 'a8f102c918e38d721bf64098ad23ef10'
+        };
+        return {
+          ...enc,
+          dischargePass: {
+            ...currentPass,
+            status: 'VERIFIED_AT_LOBBY',
+            verifiedAt: new Date().toISOString()
+          }
+        };
+      })
+    );
   };
 
   const settlePatientBalance = (
@@ -966,6 +1027,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         approveHmoFinalLoa,
         settlePatientBalance,
         issueDigitalGatePass,
+        verifyGatePass,
         executePromissoryNote,
         freezeDisputeItem,
         supervisoryWaiveItem,
@@ -973,7 +1035,13 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sendBillToPatient,
         recordPatientViewed,
         fileBillingDispute,
-        processDemoPayment
+        processDemoPayment,
+        printDocument: (config: PrintDocumentConfig) => {
+          printEngine.print(config);
+        },
+        confirmationState,
+        requestConfirmation,
+        closeConfirmation
       }}
     >
       {children}
