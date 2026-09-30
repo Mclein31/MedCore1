@@ -158,7 +158,7 @@ export const FinancialVelocityTrendChart: React.FC<FinancialVelocityTrendChartPr
                 textAnchor="end"
                 className="text-[9px] fill-emerald-700 font-semibold"
               >
-                MedCore Digital Target Band (15–30m)
+                AQROMED Digital Target Band (15–30m)
               </text>
 
               {/* Grid Lines & Y-Axis Labels */}

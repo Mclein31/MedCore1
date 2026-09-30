@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { TripartiteWorkbench } from '@/features/ledger/components/TripartiteWorkbench';
 import { formatPhp } from '@/utils/formatters';
+import { UserPlus } from 'lucide-react';
 
 export const EncountersLedgerPage: React.FC = () => {
-  const { encounters, selectEncounter } = useMedCore();
+  const { encounters, selectEncounter, openAdmitPatientModal } = useMedCore();
   const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>('INPATIENT_LEDGER');
 
   // Estimator State
@@ -83,6 +84,19 @@ export const EncountersLedgerPage: React.FC = () => {
               Pre-admission cost estimator
             </button>
           </div>
+        </div>
+
+        {/* Right Header Action: Admit Inpatient */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={openAdmitPatientModal}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+            title="Admit new patient and allocate hospital bed"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Admit Inpatient</span>
+          </button>
         </div>
       </div>
 

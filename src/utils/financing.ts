@@ -210,7 +210,7 @@ export function calculatePatientFinancialRecord(encounter: Encounter): PatientFi
 }
 
 /**
- * Performs a comprehensive audit across all patient encounters in the MedCore dataset.
+ * Performs a comprehensive audit across all patient encounters in the AQROMED dataset.
  */
 export function auditEntireDataset(encounters: Encounter[]) {
   const auditRecords = encounters.map(calculatePatientFinancialRecord);

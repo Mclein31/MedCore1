@@ -1,15 +1,15 @@
-# PROJECT_CONTEXT.md — MedCore Operational Brain
+# PROJECT_CONTEXT.md — AQROMED Operational Brain
 
 > **Epistemic Status**: Verified Project Knowledge & Baseline Parameters  
-> **Last Synchronized**: September 30, 2026  
-> **Active Project**: MedCore (MedCore1)  
+> **Last Synchronized**: October 1, 2026  
+> **Active Project**: AQROMED (formerly MedCore / MedCore1)  
 > **Knowledge Layer**: Project Operational Brain (`.brain/`)
 
 ---
 
 ## 1. Executive Identification & Mission
 
-[FACT] **Project**: MedCore (Intelligent Financial Intelligence & Multi-Payer Reconciliation Platform for Philippine Healthcare)  
+[FACT] **Project**: AQROMED (formerly MedCore) (Intelligent Financial Intelligence & Multi-Payer Reconciliation Platform for Philippine Healthcare)  
 [DECISION] **Strategic Scope**: MedCore is **NOT** a Hospital Information System (HIS) or Electronic Medical Record (EMR). It does not manage ward nursing shifts, pharmacy inventory stockrooms, or clinical charts. MedCore is the dedicated **Financial Intelligence and Multi-Payer Reconciliation Middleware Layer** sitting between hospital systems (HIS/ERP), state/commercial payers (PhilHealth, HMOs), and patients to automate statutory deduction cascades, enforce clean claims, eliminate discharge clearance bottlenecks, and provide patient financial transparency.
 
 ### 1.1 Project Objectives (Input, Process, Output, Outcome Framework)
@@ -1175,5 +1175,64 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [FACT] **Zero Regression & Build Verification**:
 - **Test Suite (`npm test`)**: 250/250 patient records pass the 10-step Philippine statutory deduction waterfall and centavo-exact RA 9439 installment schedule with 0 errors.
 - **Production Build (`npm run build`)**: TypeScript check (`tsc -b`) and Vite production bundle succeeded with 0 errors in 966ms.
+
+---
+
+## 37. PostgreSQL 16+ Backend & Cloudflare Edge Routing Topology (Completed)
+
+[DECISION] **1. Official Platform Identity & Visual Branding**:
+- **Platform Name**: Renamed to **AQROMED** across the entire application, database layer, and routing topology.
+- **Brand Assets**: Integrated vector SVGs and responsive brand headers from `logo/aqromed_logo.svg` into navigation bars, global command search, login views, and regulatory print documents.
+
+[DECISION] **2. Database Layer & Schema Architecture (`server/db/schema.ts`)**:
+- **PostgreSQL 16+ via Drizzle ORM**: Authoritative relational storage deployed on `localhost:5432/aqromed` (and Hyperdrive in production).
+- **Core Relational Models**:
+  - `facilities`: Anchor hospital facility metadata (PAN, TIN, HITP identifiers, SLA thresholds).
+  - `users` & `user_sessions`: PBKDF2 with unique salt authentication, 32-byte secure session tokens, 8-hour shift lifespan.
+  - `beds`: Real-time inventory of 200 operational beds across 6 floors and specialized units.
+  - `patients`: Patient master index with unique constraint on `(facility_id, mrn)`.
+  - `encounters`: 250 inpatient encounters with stage tracking (`MGH_DECLARED` to `CLEARED_GATE_PASS`) and Philippine SLA monitor.
+  - `chargemaster_items`: Itemized charges categorized under `ROOM_BOARD`, `PHARMACY`, `LABORATORY`, `CENTRAL_SUPPLIES`, `PROFESSIONAL_FEE`.
+  - `statutory_waterfalls`: 10-step Philippine deduction breakdown (`NUMERIC(15, 2)`) with zero-centavo drift.
+  - `philhealth_claims`: PhilHealth claims, case rates (`P01`), and Circular 2023-0026 XML conformity metrics.
+  - `hmo_authorizations`: Commercial HMO LOA pre-auth, final approval codes, and MBL limits.
+  - `billing_disputes`: Contested line items with supervisory waiver audit trails.
+  - `payments` & `payment_receipts`: Multi-rail settlement records with idempotency key enforcement.
+  - `discharge_passes`: Cryptographic HMAC-SHA256 digital gate passes with deterministic PIN verification.
+  - `promissory_notes`: RA 9439 0% interest promissory agreements with centavo-exact amortization schedules.
+  - `system_audit_logs`: Immutable audit logging of administrative and financial operations.
+
+[DECISION] **3. Administrative CRUD Infrastructure**:
+- **Line Item Operations (`AddEditChargeModal.tsx`)**: Real-time addition, editing, and deletion of chargemaster items with automatic cascade waterfall recomputation.
+- **Inpatient Admissions (`AdmitPatientModal.tsx`)**: Patient intake and bed allocation with transactional safety.
+- **Encounter Maintenance (`EditEncounterModal.tsx`)**: Diagnosis updates, bed transfers, and SLA status management.
+- **Modal Hardening**: All administrative modals mounted via `createPortal(..., document.body)` with `z-[9999]` and active body scroll locking.
+
+---
+
+## 38. Architectural Remediation: 14/14 Findings (Completed)
+
+[DECISION] **1. Critical & High-Severity Remediations**:
+- **Chargemaster ID & Code Fallback (`Finding 1`)**: `addChargeItem` in `MedCoreContext` immediately hydrates optimistic items with the authoritative database UUID. `matchChargeItemCondition` in `server/utils/dbQuery.ts` safely queries by UUID or case-insensitive code.
+- **Authoritative Encounter Hydration on Admission (`Finding 2`)**: `admitPatient` maps client temporary identifiers (`enc-XXXX`) to server-returned encounter UUIDs and encounter numbers.
+- **Role Switch Schema Normalization (`Finding 3`)**: `POST /api/v1/auth/switch-role` and `apiClient.switchRole` support `{ role, targetRole }` interchangeably.
+- **Central Supplies Validation & Aliasing (`Finding 4`)**: Added `CENTRAL_SUPPLIES` to charge schemas and mapped legacy categories (`DIAGNOSTIC -> LABORATORY`, `MEDICAL_SUPPLIES -> CENTRAL_SUPPLIES`).
+- **Encounter Bed Persistence & SLA Normalization (`Findings 5 & 9`)**: `PATCH /encounters/:id` compares `updates.roomBed !== enc.roomBed`, updates `room_bed` in PostgreSQL, and normalizes `ON_TRACK` to `NORMAL`.
+- **Patient MRN Conflict Prevention (`Finding 6`)**: `POST /encounters` queries existing patients by `(facilityId, mrn)` before inserting, preventing unique constraint crashes on readmission.
+- **Demo Role Privilege Guard (`Finding 7`)**: Restricted `X-Demo-Role` override in `server/middleware/auth.ts` strictly to non-production environments with a whitelist role check.
+- **Payment Payload Integrity (`Finding 8`)**: Explicitly passed `payerName` and `payerContactMasked` to prevent 400 validation failures.
+
+[DECISION] **2. Structural & Architectural Hardening**:
+- **Demo Account Domain Alignment (`Finding 10`)**: Standardized demo account roles to official `UserRole` enums (`HMO_COORDINATOR`, `CLAIMS_ENCODER`, `LOBBY_SECURITY`).
+- **Modal Body Scroll Locking (`Finding 11`)**: Added `useEffect` hooks locking `document.body.style.overflow = 'hidden'` across `AddEditChargeModal`, `AdmitPatientModal`, and `EditEncounterModal`.
+- **Waterfall Calculation Deduplication (`Finding 12`)**: Replaced 70+ lines of duplicate logic in `clearance.ts` and `disputes.ts` with canonical `recalculateAndPersistWaterfall` in `server/services/waterfallPersistence.ts`.
+- **Database Transaction Atomicity (`Finding 13`)**: Wrapped multi-table operations in `POST /encounters` and `DELETE /encounters/:id` inside `await db.transaction(...)`.
+- **Standardized Session Cookie Lifespan (`Finding 14`)**: Configured cookies to `path: '/'` with documented 8-hour shift lifespan (`maxAge: 28800`).
+
+[FACT] **Verification & Audit Results**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.06s with 0 errors.
+- **Financial Audit (`npm test`)**: 250/250 encounters passed all 10 statutory calculation assertions with ₱0.00 centavo drift.
+- **Backend API Integration (`npm run test:api`)**: 65/65 automated integration tests passed with 0 failures.
 
 

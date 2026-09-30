@@ -53,7 +53,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
     link.setAttribute('href', encodedUri);
     link.setAttribute(
       'download',
-      `MedCore_RCM_Financial_Audit_${new Date().toISOString().slice(0, 10)}.csv`
+      `AQROMED_RCM_Financial_Audit_${new Date().toISOString().slice(0, 10)}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -241,7 +241,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <span>St. Jude Medical Center Manila · MedCore Enterprise RCM</span>
+          <span>St. Jude Medical Center Manila · AQROMED Enterprise RCM</span>
           <button
             type="button"
             onClick={onClose}

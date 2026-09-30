@@ -88,6 +88,7 @@
   }
 
   /* Hide screen-only elements, dashboard chrome, and open dialogs */
+  #aqromed-app-root,
   #medcore-app-root,
   .no-print,
   button,
@@ -103,6 +104,7 @@
   }
 
   /* Dedicated print root: centered document using full available printable page width */
+  #aqromed-print-root,
   #medcore-print-root {
     display: block !important;
     position: static !important;

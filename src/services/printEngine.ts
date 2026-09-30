@@ -47,14 +47,16 @@ class PrintService {
     this.notify();
 
     // Mark document body with printing attribute
+    document.body.setAttribute('data-aqromed-printing', config.type);
     document.body.setAttribute('data-medcore-printing', config.type);
 
-    // Allow React to mount the printable DOM in #medcore-print-root
+    // Allow React to mount the printable DOM in #aqromed-print-root
     setTimeout(() => {
       window.print();
 
       // Clean up on afterprint or extended fallback timeout
       const cleanup = () => {
+        document.body.removeAttribute('data-aqromed-printing');
         document.body.removeAttribute('data-medcore-printing');
         this.currentConfig = null;
         this.notify();

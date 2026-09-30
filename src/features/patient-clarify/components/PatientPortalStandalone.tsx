@@ -136,13 +136,15 @@ export const PatientPortalStandalone: React.FC = () => {
       <header className="h-16 bg-white border-b border-slate-200 px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-2xs">
         {/* Brand & Identity */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center text-xs sm:text-sm shadow-xs shrink-0">
-            SJ
-          </div>
+          <img
+            src="/AQROMED_logo.png"
+            alt="AQROMED"
+            className="h-8 sm:h-9 w-auto max-h-9 object-contain shrink-0"
+          />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-extrabold text-sm sm:text-base text-slate-900 leading-none truncate">
-                St. Jude Patient Clarify
+                AQROMED Patient Clarify
               </span>
               <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">
                 Demo Portal

@@ -68,7 +68,7 @@ export const ConfigurationPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  defaultValue="postgresql://medcore_ro:••••••••@his-replica.stjude.local:5432/bizbox_prod"
+                  defaultValue="postgresql://aqromed_ro:••••••••@his-replica.stjude.local:5432/bizbox_prod"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-sm font-mono"
                   readOnly
                 />
@@ -125,7 +125,7 @@ export const ConfigurationPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue="HITP-MEDCORE-MANILA-092"
+                    defaultValue="HITP-AQROMED-MANILA-092"
                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                   />
                 </div>
@@ -286,7 +286,7 @@ export const ConfigurationPage: React.FC = () => {
         {/* Action Button Bar */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-200">
           <div className="text-xs text-slate-500">
-            MedCore Enterprise Engine v3.2 · Philippine Hospital RCM Operating System
+            AQROMED Enterprise Engine v3.2 · Philippine Hospital RCM Operating System
           </div>
           <button
             type="submit"
