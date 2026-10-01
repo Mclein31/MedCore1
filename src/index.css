@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 :root {
+  font-size: 14.4px; /* 90% scaling baseline (16px * 0.9 = 14.4px) for intentional command workstation density */
+  --header-height: 3rem;
+  --sidebar-width: 14rem;
+
   --bg-app: #F8FAFC;
   --bg-surface: #FFFFFF;
   --bg-surface-elevated: #F1F5F9;
@@ -17,6 +21,20 @@
   --status-warning: #D97706;
   --status-danger: #E11D48;
   --status-info: #2563EB;
+}
+
+/* Ensure mobile touch targets remain comfortable */
+@media (max-width: 640px) {
+  :root {
+    font-size: 15px;
+  }
+}
+
+/* Ultra-wide 1920px+ monitors get slightly relaxed scale */
+@media (min-width: 1920px) {
+  :root {
+    font-size: 15px;
+  }
 }
 
 @layer base {

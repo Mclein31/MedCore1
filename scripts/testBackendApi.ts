@@ -281,30 +281,40 @@ async function runApiTests() {
   assert(analyticsData.waterfall.totalGrossRevenue > 0, 'Live RCM analytics aggregates gross hospital revenue');
   assert(analyticsData.summary.cleanFirstPassRate > 90, 'Executive dashboard reports >90% clean first-pass claims rate');
 
-  // 18. Chargemaster CRUD (Add, Edit, Delete Line Items)
+  // 18. Chargemaster CRUD (Add, Edit, Delete Line Items with Qty & Unit Price)
   const addChargeRes = await app.request('/api/v1/encounters/enc-8812/charges', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
     body: JSON.stringify({
       description: 'Comprehensive Metabolic Panel (Stat)',
       category: 'LABORATORY',
-      grossAmount: 1850.00
+      grossAmount: 3700.00,
+      qty: 2,
+      unitPrice: 1850.00,
+      coverageType: 'PHILHEALTH_FIRST'
     })
   });
   assert(addChargeRes.status === 200, 'POST /api/v1/encounters/:id/charges adds item to patient bill');
   const addChargeData = await addChargeRes.json();
   const addedChargeId = addChargeData.item.id;
   assert(!!addedChargeId, 'Charge item created with unique ID');
+  assert(Number(addChargeData.item.quantity) === 2, 'Charge item quantity correctly persisted');
+  assert(Number(addChargeData.item.unitPrice) === 1850.00, 'Charge item unitPrice correctly persisted');
 
   const patchChargeRes = await app.request(`/api/v1/charges/${addedChargeId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
     body: JSON.stringify({
       description: 'Comprehensive Metabolic Panel (Stat Urgent)',
-      grossAmount: 2000.00
+      grossAmount: 4000.00,
+      qty: 2,
+      unitPrice: 2000.00
     })
   });
   assert(patchChargeRes.status === 200, 'PATCH /api/v1/charges/:id updates charge item');
+  const patchedChargeData = await patchChargeRes.json();
+  assert(Number(patchedChargeData.item.quantity) === 2, 'Patched charge item quantity correctly updated');
+  assert(Number(patchedChargeData.item.unitPrice) === 2000.00, 'Patched charge item unitPrice correctly updated');
 
   const deleteChargeRes = await app.request(`/api/v1/charges/${addedChargeId}`, {
     method: 'DELETE',

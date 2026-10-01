@@ -24,6 +24,9 @@ const addChargeSchema = z.object({
     'PROFESSIONAL_FEE'
   ]),
   grossAmount: z.number().positive(),
+  qty: z.number().positive().optional(),
+  quantity: z.number().positive().optional(),
+  unitPrice: z.number().nonnegative().optional(),
   code: z.string().optional(),
   coverageType: z.enum(['PHILHEALTH_FIRST', 'HMO_COVERED', 'PATIENT_DIRECT']).default('PHILHEALTH_FIRST')
 });
@@ -36,7 +39,7 @@ chargesApp.post(
   zValidator('json', addChargeSchema),
   async (c) => {
     const encIdOrNumber = c.req.param('id');
-    const { description, category, grossAmount, code, coverageType } = c.req.valid('json');
+    const { description, category, grossAmount, qty, quantity, unitPrice, code, coverageType } = c.req.valid('json');
     const user = c.get('user');
 
     const encList = await db
@@ -59,6 +62,9 @@ chargesApp.post(
         ? 'CENTRAL_SUPPLIES'
         : (category as any);
 
+    const resolvedQty = quantity ?? qty ?? 1;
+    const resolvedUnitPrice = unitPrice !== undefined ? unitPrice : Number((grossAmount / resolvedQty).toFixed(2));
+
     const inserted = await db
       .insert(chargemasterItems)
       .values({
@@ -66,8 +72,8 @@ chargesApp.post(
         code: generatedCode,
         description,
         category: mappedCategory,
-        quantity: '1.00',
-        unitPrice: grossAmount.toFixed(2),
+        quantity: resolvedQty.toFixed(2),
+        unitPrice: resolvedUnitPrice.toFixed(2),
         grossAmount: grossAmount.toFixed(2),
         philhealthCovered: '0.00',
         hmoCovered: '0.00',
@@ -92,7 +98,7 @@ chargesApp.post(
       action: 'CHARGE_ITEM_ADDED',
       resourceType: 'chargemaster_items',
       resourceId: newItem.id,
-      newState: { description, category, grossAmount, code: generatedCode },
+      newState: { description, category, grossAmount, quantity: resolvedQty, unitPrice: resolvedUnitPrice, code: generatedCode, coverageType },
       ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
       userAgent: c.req.header('user-agent')
     });
@@ -110,6 +116,9 @@ chargesApp.post(
 const editChargeSchema = z.object({
   description: z.string().min(2).max(256).optional(),
   grossAmount: z.number().positive().optional(),
+  qty: z.number().positive().optional(),
+  quantity: z.number().positive().optional(),
+  unitPrice: z.number().nonnegative().optional(),
   category: z.enum([
     'PHARMACY',
     'LABORATORY',
@@ -158,6 +167,15 @@ chargesApp.patch(
       patchPayload.grossAmount = updates.grossAmount.toFixed(2);
       patchPayload.patientOop = updates.grossAmount.toFixed(2);
     }
+    const resolvedQty = updates.quantity ?? updates.qty;
+    if (resolvedQty !== undefined) {
+      patchPayload.quantity = resolvedQty.toFixed(2);
+    }
+    if (updates.unitPrice !== undefined) {
+      patchPayload.unitPrice = updates.unitPrice.toFixed(2);
+    } else if (resolvedQty !== undefined && updates.grossAmount !== undefined) {
+      patchPayload.unitPrice = (updates.grossAmount / resolvedQty).toFixed(2);
+    }
 
     const updated = await db
       .update(chargemasterItems)
@@ -175,7 +193,7 @@ chargesApp.patch(
       action: 'CHARGE_ITEM_UPDATED',
       resourceType: 'chargemaster_items',
       resourceId: item.id,
-      previousState: { grossAmount: item.grossAmount, description: item.description },
+      previousState: { grossAmount: item.grossAmount, description: item.description, quantity: item.quantity, unitPrice: item.unitPrice },
       newState: updates,
       ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
       userAgent: c.req.header('user-agent')

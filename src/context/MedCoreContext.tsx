@@ -1234,18 +1234,24 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
     if (!enc) return;
 
+    const qty = Number(itemData.qty) > 0 ? Number(itemData.qty) : 1;
+    const grossAmount = Number(itemData.grossAmount) > 0 ? Number(itemData.grossAmount) : 0;
+    const unitPrice = itemData.unitPrice !== undefined && Number(itemData.unitPrice) >= 0
+      ? Number(itemData.unitPrice)
+      : Number((grossAmount / qty).toFixed(2));
+
     const newItem: ChargemasterItem = {
       id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       code: itemData.code || `CHG-${itemData.category.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
       description: itemData.description,
       category: itemData.category,
-      qty: itemData.qty || 1,
-      unitPrice: itemData.grossAmount,
-      grossAmount: itemData.grossAmount,
+      qty,
+      unitPrice,
+      grossAmount,
       isVatable: true,
       philhealthCovered: 0,
       hmoCovered: 0,
-      patientOop: itemData.grossAmount,
+      patientOop: grossAmount,
       status: 'COVERED',
       isDisputed: false,
       plainLanguageExplainer: `Standard clinical hospital charge for ${itemData.description}.`
@@ -1278,9 +1284,12 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const res = await apiClient.addChargeItem(encounterId, {
         description: itemData.description,
         category: itemData.category === 'MEDICAL_SUPPLIES' ? 'CENTRAL_SUPPLIES' : itemData.category,
-        grossAmount: itemData.grossAmount,
-        qty: 1,
-        unitPrice: itemData.grossAmount
+        grossAmount,
+        qty,
+        quantity: qty,
+        unitPrice,
+        code: newItem.code,
+        coverageType: itemData.coverageType || 'PHILHEALTH_FIRST'
       });
       if (res && res.item) {
         setEncounters((prev) =>
@@ -1308,12 +1317,17 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const updatedItems = enc.items.map((i) => {
       if (i.id !== itemId) return i;
-      const grossAmount = updates.grossAmount !== undefined ? updates.grossAmount : i.grossAmount;
+      const qty = updates.qty !== undefined ? Number(updates.qty) : (i.qty || 1);
+      const grossAmount = updates.grossAmount !== undefined ? Number(updates.grossAmount) : i.grossAmount;
+      const unitPrice = updates.unitPrice !== undefined
+        ? Number(updates.unitPrice)
+        : Number((grossAmount / (qty || 1)).toFixed(2));
       return {
         ...i,
         ...updates,
+        qty,
         grossAmount,
-        unitPrice: grossAmount
+        unitPrice
       };
     });
 
@@ -1345,7 +1359,10 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       await apiClient.editChargeItem(targetId, {
         description: updates.description,
         category: updates.category === 'MEDICAL_SUPPLIES' ? 'CENTRAL_SUPPLIES' : updates.category,
-        grossAmount: updates.grossAmount
+        grossAmount: updates.grossAmount,
+        qty: updates.qty,
+        quantity: updates.qty,
+        unitPrice: updates.unitPrice
       });
     } catch (err) {
       console.warn('Backend editChargeItem sync notice:', err);

@@ -1235,4 +1235,126 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - **Financial Audit (`npm test`)**: 250/250 encounters passed all 10 statutory calculation assertions with ₱0.00 centavo drift.
 - **Backend API Integration (`npm run test:api`)**: 65/65 automated integration tests passed with 0 failures.
 
+---
+
+## 39. UI/UX Hierarchy Standardization & Workflow Revision (Completed)
+
+[DECISION] **1. Screenshot-Driven Interface Revision (`needs_fix/`)**:
+- **Coverage & Approvals Workflow (`CoverageApprovalsPage.tsx`)**:
+  - Separated the `View LOA` and `Approve LOA` actions into distinct, well-spaced action groups with `min-w-[210px]` column breathing room.
+  - Implemented an explicit secondary `[ View LOA ]` button with `ExternalLink` icon replacing ambiguous icon-only links.
+  - Standardized approval action to use `ConfirmButton` with `variant="success"` (`CheckCircle2` icon) and prominent modal review.
+  - Preserved clear visual indication for already-approved policies with a calm `[ ✓ Approved ]` status chip.
+- **Disputes & Exceptions Triage (`DisputesExceptionsPage.tsx` & `DualOperationalPipelines.tsx`)**:
+  - Divided cramped inline actions into two logical groups: **Review & Audit** (`[ Why? ]` with `HelpCircle` icon) and **Resolution Interventions** (`[ Waive Item ]` in destructive red and `[ Promissory Note ]` in statutory purple).
+  - Introduced subtle vertical dividers (`h-4 w-px bg-slate-200`) and standard `size="xs"` (32px / `h-8`) button heights.
+  - Set table column width to `min-w-[320px]` to eliminate cramped button wrapping across laptop and desktop screens.
+- **Tripartite Ledger & Lifecycle Strip (`TripartiteWorkbench.tsx`)**:
+  - Rearranged the top lifecycle toolbar into a strict, intuitive operational sequence:
+    1. **Primary Creation**: `+ Add Line Item` (`bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-xs`).
+    2. **Milestone Transition**: `Finalize Bill` (outline indigo in Draft) / `Bill Finalized` (emerald badge).
+    3. **Dispatch & Documentation**: `Send eSOA (SMS/Link)` and `Print eSOA` (neutral secondary buttons with dividers).
+    4. **Patient Experience**: `Open Patient Portal` (neutral secondary button).
+  - Aligned table row actions: safeguarded line item deletion with `ConfirmButton` modal checks, preventing accidental deletion of chargemaster items.
+- **Discharge Radar Decluttering (`ActiveDischargeRadar.tsx`)**:
+  - De-cluttered the patient detail pane: replaced confusing `Discharge` trash button with explicit `Release Bed` action backed by `ConfirmationModal`.
+  - Grouped navigation actions (`[ Patient View ]`, `[ Ledger Dossier ]`, `[ Print eSOA ]`) separately from administrative actions (`[ Edit ]`, `[ Release Bed ]`).
+  - Calmed down the **Quick Action Console**: standardized button heights, aligned typography, eliminated competing bright colors, and dynamically promoted the active milestone action (e.g. `Record Payment` when balance due, `Digital Exit Gate Pass` when cleared).
+  - Expanded vertical spacing (`space-y-3`) and harmonized metadata cards and statutory waterfall calculation strips.
+
+[FACT] **Verification & Test Status**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift.
+- **Backend API Integration (`npm run test:api`)**: 65/65 tests passed with 0 failures.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.06s with 0 warnings/errors.
+
+---
+
+## 40. Dashboard 90% Density Revision & Workstation Spatial Architecture (Completed)
+
+[DECISION] **1. Root REM-Scale Architecture (`src/index.css`)**:
+- **Baseline Root Scaling**: Configured `:root { font-size: 14.4px; --header-height: 3rem; --sidebar-width: 14rem; }`.
+  - Exactly 90% of default browser 16px (`16px * 0.9 = 14.4px`).
+  - Because Tailwind compiles all standard spacing (`p-*`, `m-*`, `gap-*`, `h-*`, `w-*`) and font scales (`text-xs`, `text-sm`, `text-base`) in `rem`, this natively shrinks the entire application's visual footprint by 10% across the DOM.
+  - Avoided `transform: scale(0.9)` which breaks native click targets, generates dead margin space, and displaces React Portals and fixed modals.
+  - Arbitrary pixel sizes (e.g. `text-[10px]`, `text-[11px]`) remain hardcoded at minimum legible thresholds, protecting critical Philippine statutory microcopy.
+  - Responsive overrides: `@media (max-width: 640px) { :root { font-size: 15px; } }` and `@media (min-width: 1920px) { :root { font-size: 15px; } }` maintain comfort across ultra-wide monitors and mobile devices.
+
+[DECISION] **2. Global Chrome & Navigation Density**:
+- **Global Command Bar (`GlobalCommandBar.tsx`)**:
+  - Compacted height from `h-14` (56px) to `h-12` (48px / 3rem) with `px-4`.
+  - Scaled AQROMED brand mark from `h-8` to `h-7`.
+  - Condensed user profile avatar to `w-7 h-7` and live clock container padding.
+- **Operational Workflow Sidebar (`SidebarNav.tsx`)**:
+  - Reduced expanded width from `w-64` (256px) to `w-56` (224px / 14rem) with `w-14` collapsed, giving +32px width back to the primary operational screens.
+  - Navigation buttons compacted to `py-1.5 px-2.5 text-xs` with `w-4 h-4` icons.
+  - Badges refined to `text-[10px] px-1.5 py-0.2 rounded-full font-bold`.
+  - Patient Clarify card streamlined to `p-2.5` with `text-[10px]` copy and `py-1 px-2` buttons, eliminating sidebar vertical scroll on laptop screens (1280×800 / 1440×900).
+
+[DECISION] **3. Viewport Containers & Operational Workstations**:
+- **Dynamic Header Height Variable**: Replaced hardcoded `h-[calc(100vh-56px)]` across `CommandCenterPage.tsx`, `DischargeClearancePage.tsx`, and `RcmAnalyticsPage.tsx` with dynamic `h-[calc(100vh-var(--header-height,3rem))] max-h-[calc(100vh-var(--header-height,3rem))]`.
+- **Priority Action Strip (`PriorityActionStrip.tsx`)**:
+  - Reduced outer padding from `px-3 sm:px-6 py-2` to `px-3 sm:px-4 py-1.5`.
+  - Compacted metric tile padding to `p-1.5 sm:px-2.5 sm:py-1.5` with `w-6 h-6 sm:w-7 sm:h-7` icon containers and `text-xs` metric typography, dropping total height from ~62px to ~42px.
+- **Active Discharge Radar Workstation (`ActiveDischargeRadar.tsx`)**:
+  - Re-allocated split-pane widths: left queue reduced from `lg:w-96 xl:w-[380px]` to `lg:w-80 xl:w-[320px]`, granting +60px horizontal space to the detail workstation.
+  - Queue row padding tightened from `px-3.5 py-2.5` to `px-3 py-2`, allowing 8-9 active patient cards to be displayed simultaneously.
+  - Right detail pane: compact padding `p-2.5 sm:p-3 space-y-2`, patient demographic card `p-2.5 sm:p-3`, avatar `w-9 h-9`, metadata cards `px-2.5 py-1.5`, blocker box `px-3 py-1.5`, net due card `p-3 sm:p-3.5`, and Quick Action Console `p-3 sm:p-3.5` with `py-1.5 px-2.5` buttons. Entire workstation fits within 900px vertical laptop screens without requiring page scrolling.
+- **Tripartite Ledger & Tables (`TripartiteWorkbench.tsx` & Pages)**:
+  - `TripartiteWorkbench.tsx`: Table filter bar adjusted to `px-4 py-2`, table `th` and `td` cells reduced from `py-3.5` to `py-2` with `text-xs`, fitting 10-12 chargemaster items on screen.
+  - `ClaimsEsoaPage.tsx`: Outer wrapper reduced to `p-4 sm:p-5 space-y-4` and KPI strip to `p-3.5 sm:p-4 gap-4`.
+  - `EncountersLedgerPage.tsx`: Top bar padding tightened to `px-4 py-2`.
+  - `RcmAnalyticsPage.tsx`: Header padding `px-4 py-2`, dashboard body `p-4 space-y-4`, grid gaps `gap-4`.
+
+[FACT] **Verification & Audit Results**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 encounters passed all statutory assertions with ₱0.00 zero centavo drift.
+- **Backend API Integration (`npm run test:api`)**: 65/65 automated integration tests passed with 0 failures.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.03s with 0 errors.
+
+---
+
+## 41. Pre-Commit Review Synchronization: Profile Interaction, Chargemaster Units, & Statutory Advisory (Completed)
+
+[DECISION] **1. Stateful Profile Menu & Touchscreen Interaction (`GlobalCommandBar.tsx`)**:
+- **Problem Resolved**: Pure CSS hover (`group-hover:block`) failed on tablet/touchscreen hospital workstations and produced awkward flickering upon rapid pointer movement.
+- **Architectural Implementation**:
+  - Replaced hover styling with explicit stateful toggle `isProfileMenuOpen` (`useState(false)`).
+  - Wired `useRef<HTMLDivElement>(null)` with document `mousedown` outside-click listener and `Escape` keyboard dismissal in a clean lifecycle hook.
+  - Added accessibility attributes (`aria-expanded`, `aria-haspopup="true"`) and interactive feedback (rotating `ChevronDown` indicator).
+  - Automatically dismisses the dropdown upon role selection (`setActiveRole`) or workstation lock modal trigger.
+
+[DECISION] **2. Chargemaster Quantity & Unit Price Synchronization (`AddEditChargeModal.tsx`, `MedCoreContext.tsx`, `charges.ts`)**:
+- **Problem Resolved**: Chargemaster modal previously accepted only gross amount and defaulted client/server line items to `qty: 1` and `unitPrice: grossAmount`, making multi-unit pharmacy items (e.g. 5 vials of Ceftriaxone) impossible to itemize properly.
+- **Frontend Input & UX Matrix**:
+  - Exposed 3-column synchronized input grid: **Quantity (`qty`)**, **Unit Price (`unitPrice`)**, and **Gross Total (`grossAmount`)**.
+  - Engineered bidirectional formula synchronization:
+    - Modifying `qty` recalculates `grossAmount = unitPrice * qty`.
+    - Modifying `unitPrice` recalculates `grossAmount = unitPrice * qty`.
+    - Modifying `grossAmount` recalculates `unitPrice = grossAmount / qty`.
+  - Initialized both add and edit states safely, pulling existing `qty` and calculating `unitPrice` from existing `grossAmount` if absent.
+- **Client & Backend Protocol Alignment**:
+  - Updated `MedCoreContext.tsx` (`addChargeItem` and `editChargeItem`) to pass `qty`, `quantity`, and `unitPrice` to `apiClient`.
+  - Updated `server/routes/charges.ts`:
+    - Augmented `addChargeSchema` and `editChargeSchema` with `qty`, `quantity`, and `unitPrice` optional validation schemas.
+    - Updated `POST /encounters/:id/charges` and `PATCH /charges/:id` to persist `quantity: resolvedQty.toFixed(2)` and `unitPrice: resolvedUnitPrice.toFixed(2)` to `chargemasterItems` table in PostgreSQL.
+    - Added automated test assertions in `scripts/testBackendApi.ts` verifying persistence of quantity and unit price.
+
+[DECISION] **3. Statutory Deductions Advisory Notice (`AddEditChargeModal.tsx`)**:
+- **Regulatory Clarification**: Implemented an explicit warning callout regarding `coverageType` selection under Republic Acts 11223 (Universal Health Care Act), 9994 (Expanded Senior Citizens Act), and 10754 (PWD Act).
+- **Statutory Hierarchy Explainer**: Notifies billing clerks that regardless of whether an item is designated as PhilHealth First, HMO, or Patient Direct, statutory discounts (VAT exemption, Senior/PWD 20% deduction, and PhilHealth Case Rates) are applied authoritatively as first-tier benefits before HMO MBL and patient OOP liabilities are settled.
+- Passed `coverageType` through `addChargeItem` payload to backend route.
+
+[DECISION] **4. Single-Facility Context Documentation (`LoginScreen.tsx`)**:
+- Documented `facilityCode` (`SJMC-MNL`) in `LoginScreen.tsx` as the default single-facility context for active hospital operations.
+- Annotated input with architectural context note and clear label tag indicating single-facility binding, paving the way for multi-facility enterprise multi-tenancy.
+
+[FACT] **Verification & Audit Results**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift.
+- **Backend API Integration (`npm run test:api`)**: 69/69 automated integration tests passed with 0 failures (including newly added quantity & unit price persistence assertions).
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.11s with 0 errors.
+
+
+
 
