@@ -8,6 +8,13 @@
       "when": 1790775418003,
       "tag": "0000_yielding_jocasta",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790871362380,
+      "tag": "0001_lazy_vulture",
+      "breakpoints": true
     }
   ]
 }

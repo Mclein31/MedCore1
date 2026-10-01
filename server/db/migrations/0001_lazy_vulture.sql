@@ -1,0 +1,1 @@
+ALTER TABLE "payments" ALTER COLUMN "idempotency_key" SET DATA TYPE varchar(128);

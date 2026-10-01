@@ -544,7 +544,7 @@ export const payments = pgTable(
     status: paymentStatusEnum('status').notNull().default('SUCCESS'),
     failureReason: text('failure_reason'),
     isSimulatedDemo: boolean('is_simulated_demo').notNull().default(false),
-    idempotencyKey: uuid('idempotency_key').notNull().unique(),
+    idempotencyKey: varchar('idempotency_key', { length: 128 }).notNull().unique(),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     settledAt: timestamp('settled_at', { withTimezone: true })
