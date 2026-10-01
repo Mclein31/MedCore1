@@ -32,6 +32,27 @@ export interface ApiResponse<T = any> {
 }
 
 class AqromedApiClient {
+  private activeDemoRole: string | null = null;
+
+  public setDemoRole(role: string | null) {
+    this.activeDemoRole = role;
+  }
+
+  public getDemoRole(): string | null {
+    return this.activeDemoRole;
+  }
+
+  private isProduction(): boolean {
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production') {
+      return true;
+    }
+    try {
+      return (import.meta as any)?.env?.PROD === true;
+    } catch {
+      return false;
+    }
+  }
+
   private async request<T = any>(
     endpoint: string,
     options: RequestInit = {}
@@ -41,6 +62,13 @@ class AqromedApiClient {
     const headers = new Headers(options.headers || {});
     if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
       headers.set('Content-Type', 'application/json');
+    }
+
+    // In development mode, transmit active demo role override if specified
+    if (!this.isProduction() && this.activeDemoRole) {
+      if (!headers.has('X-Demo-Role')) {
+        headers.set('X-Demo-Role', this.activeDemoRole);
+      }
     }
 
     const config: RequestInit = {
@@ -84,6 +112,7 @@ class AqromedApiClient {
   }
 
   async logout(): Promise<{ success: boolean }> {
+    this.setDemoRole(null);
     return this.request('/auth/logout', { method: 'POST' });
   }
 
@@ -92,6 +121,7 @@ class AqromedApiClient {
   }
 
   async switchRole(role: string): Promise<{ success: boolean; user: ApiUser }> {
+    this.setDemoRole(role);
     return this.request('/auth/switch-role', {
       method: 'POST',
       body: JSON.stringify({ role, targetRole: role })
@@ -109,6 +139,14 @@ class AqromedApiClient {
 
   async getEncounterLedger(id: string): Promise<any> {
     return this.request(`/encounters/${id}/ledger`);
+  }
+
+  async getStatement(id: string): Promise<any> {
+    return this.request(`/encounters/${id}/statement`);
+  }
+
+  async getInvoice(id: string): Promise<any> {
+    return this.request(`/encounters/${id}/invoice`);
   }
 
   async advanceStage(id: string): Promise<{ success: boolean; encounter: any }> {
