@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
-import { CheckCircle2, ShieldAlert, Search } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, Search, HelpCircle, FileText } from 'lucide-react';
 import { ConfirmButton } from '@/components/common';
 
 export const DisputesExceptionsPage: React.FC = () => {
@@ -201,7 +201,7 @@ export const DisputesExceptionsPage: React.FC = () => {
                       <th className="py-3 px-4 text-left">Category</th>
                       <th className="py-3 px-4 text-left">Amount</th>
                       <th className="py-3 px-6 text-left">Context / Reason</th>
-                      <th className="py-3 px-6 text-left">Actions</th>
+                      <th className="py-3 px-6 text-left min-w-[320px]">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -237,14 +237,23 @@ export const DisputesExceptionsPage: React.FC = () => {
                           {item.disputeReason || item.plainLanguageExplainer}
                         </td>
 
-                        <td className="py-3.5 px-6 text-left">
+                        <td className="py-3.5 px-6 text-left whitespace-nowrap">
                           <div className="flex items-center justify-start gap-2">
+                            {/* Review Action */}
                             <button
+                              type="button"
                               onClick={() => openWhyDoIOweThis(item)}
-                              className="px-2.5 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs transition-colors shrink-0"
+                              title="Review plain-language charge explainer"
                             >
-                              Why?
+                              <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Why?</span>
                             </button>
+
+                            {/* Visual Divider between Review and Interventions */}
+                            <div className="h-4 w-px bg-slate-200 shrink-0" />
+
+                            {/* Resolution Interventions */}
                             <ConfirmButton
                               label="Waive Item"
                               modalTitle="Waive Disputed Item Charges?"
@@ -252,7 +261,7 @@ export const DisputesExceptionsPage: React.FC = () => {
                               confirmLabel="Waive Item"
                               variant="danger"
                               confirmVariant="danger"
-                              size="sm"
+                              size="xs"
                               contextInfo={[
                                 { label: 'Patient', value: patientName },
                                 { label: 'Disputed Item', value: item.description },
@@ -267,14 +276,18 @@ export const DisputesExceptionsPage: React.FC = () => {
                               }}
                               title="Apply Supervisory Courtesy Discount & Waive Item"
                             />
+
                             <button
+                              type="button"
                               onClick={() => {
                                 selectEncounter(encounterId);
                                 openPromissoryModal(encounterId, item.patientOop, item.description);
                               }}
-                              className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-800 text-xs font-semibold transition-colors"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-semibold transition-colors shadow-2xs shrink-0"
+                              title="Issue legal promissory note for installment settlement"
                             >
-                              Promissory Note
+                              <FileText className="w-3.5 h-3.5 text-purple-600" />
+                              <span>Promissory Note</span>
                             </button>
                           </div>
                         </td>

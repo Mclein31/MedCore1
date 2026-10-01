@@ -144,9 +144,9 @@ export const RcmAnalyticsPage: React.FC = () => {
   const isEmpty = filteredEncounters.length === 0;
 
   return (
-    <div className="h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden flex flex-col bg-slate-50 text-slate-900">
+    <div className="h-[calc(100vh-var(--header-height,3rem))] max-h-[calc(100vh-var(--header-height,3rem))] overflow-hidden flex flex-col bg-slate-50 text-slate-900">
       {/* SECTION 1: Sticky Top Context & Filter Strip */}
-      <header className="flex-none bg-white border-b border-slate-200 px-6 py-3.5 z-10 shadow-2xs">
+      <header className="flex-none bg-white border-b border-slate-200 px-4 py-2 z-10 shadow-2xs">
         <AnalyticsFilterStrip
           filters={filters}
           onFilterChange={handleFilterChange}
@@ -159,14 +159,14 @@ export const RcmAnalyticsPage: React.FC = () => {
       </header>
 
       {/* SECTION 2: Scrollable Dashboard Body */}
-      <main className="flex-1 overflow-y-auto overscroll-contain p-6 space-y-6">
+      <main className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
         {isEmpty ? (
           /* Empty State */
-          <div className="p-12 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col items-center justify-center text-center space-y-3 my-8">
-            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-              <SearchX className="w-6 h-6" />
+          <div className="p-8 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col items-center justify-center text-center space-y-2.5 my-6">
+            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+              <SearchX className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-base text-slate-900">
+            <h3 className="font-bold text-sm sm:text-base text-slate-900">
               No Inpatient Encounters Match Selected Filter Criteria
             </h3>
             <p className="text-xs text-slate-500 max-w-md">
@@ -175,7 +175,7 @@ export const RcmAnalyticsPage: React.FC = () => {
             <button
               type="button"
               onClick={handleResetFilters}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset All Filters to Hospital Default</span>
@@ -201,7 +201,7 @@ export const RcmAnalyticsPage: React.FC = () => {
             />
 
             {/* Level 2: Multi-Payer Financing Waterfall & Pre-Flight Claims Radar (7 cols / 5 cols) */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
                 <HospitalFinancingWaterfall waterfall={waterfall} />
               </div>
@@ -219,7 +219,7 @@ export const RcmAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Level 3: TAT Descent & MedCore Cumulative Yield (7 cols / 5 cols) */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
                 <FinancialVelocityTrendChart />
               </div>
@@ -229,7 +229,7 @@ export const RcmAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Level 4: Operational Friction Pareto & Department Matrix (6 cols / 6 cols) */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-6">
                 <TrappedCapitalPareto
                   drivers={trappedPareto}
@@ -247,7 +247,7 @@ export const RcmAnalyticsPage: React.FC = () => {
             </div>
 
             {/* Level 5: Commercial HMO Carrier Ledger & Patient OOP / AR (7 cols / 5 cols) */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
                 <CommercialCarrierLedger
                   carriers={carrierMetrics}
@@ -255,7 +255,7 @@ export const RcmAnalyticsPage: React.FC = () => {
                   onSelectCarrier={(carrier) => handleFilterChange({ payer: carrier })}
                 />
               </div>
-              <div className="xl:col-span-5 space-y-6">
+              <div className="xl:col-span-5 space-y-4">
                 <PatientOopDriverCard oopData={oopDrivers} />
                 <ArAgingProfileCard agingBuckets={arAging} />
               </div>

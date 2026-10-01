@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, Clock, ArrowRight, Search } from 'lucide-react';
+import { CheckCircle2, Clock, ArrowRight, Search, HelpCircle, FileText } from 'lucide-react';
 import { ConfirmButton } from '@/components/common';
 
 export const DualOperationalPipelines: React.FC = () => {
@@ -198,9 +198,10 @@ export const DualOperationalPipelines: React.FC = () => {
                             modalTitle="Approve HMO LOA Coverage?"
                             modalDescription={`This will approve and lock the ${enc.hmo.providerName || enc.hmo.hmoName} electronic Letter of Authorization (eLOA) for ${pName}.`}
                             confirmLabel="Approve LOA"
-                            variant="primary"
-                            confirmVariant="primary"
+                            variant="success"
+                            confirmVariant="success"
                             size="xs"
+                            icon={CheckCircle2}
                             contextInfo={[
                               { label: 'Patient', value: pName },
                               { label: 'Carrier', value: enc.hmo.providerName || enc.hmo.hmoName },
@@ -327,10 +328,13 @@ export const DualOperationalPipelines: React.FC = () => {
 
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        type="button"
                         onClick={() => openWhyDoIOweThis(item)}
-                        className="px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-300 text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-2xs"
+                        title="Review plain-language charge explainer"
                       >
-                        Why?
+                        <HelpCircle className="w-3 h-3 text-slate-400" />
+                        <span>Why?</span>
                       </button>
                       <ConfirmButton
                         label="Waive"
@@ -355,13 +359,16 @@ export const DualOperationalPipelines: React.FC = () => {
                         title="Waive Contested Item"
                       />
                       <button
+                        type="button"
                         onClick={() => {
                           selectEncounter(item.encounterId);
                           openPromissoryModal(item.encounterId, item.patientOop, item.description);
                         }}
-                        className="px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors shadow-2xs"
+                        title="Issue legal promissory note for installment settlement"
                       >
-                        Promissory
+                        <FileText className="w-3 h-3 text-purple-600" />
+                        <span>Promissory</span>
                       </button>
                     </div>
                   </div>

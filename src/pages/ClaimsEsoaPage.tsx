@@ -107,14 +107,14 @@ export const ClaimsEsoaPage: React.FC = () => {
   const cleanCount = encounters.filter((e) => e.philhealth.status === 'CLEAN').length;
 
   return (
-    <div className="flex-1 overflow-y-auto p-8 space-y-6 bg-slate-50/50">
+    <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+          <h1 className="text-xl font-bold text-slate-900 tracking-tight">
             Claims &amp; eSOA XML Pre-Flight Scrubber
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 mt-0.5">
             PhilHealth eClaims 3.0 pre-flight auditing, CF1–CF4 consistency checks, and Circular 2023-0026 XML conformity validation.
           </p>
         </div>
@@ -126,31 +126,31 @@ export const ClaimsEsoaPage: React.FC = () => {
       </div>
 
       {/* Summary KPI Strip */}
-      <div className="p-5 rounded-xl bg-white border border-slate-200 shadow-2xs grid grid-cols-2 md:grid-cols-4 gap-6 text-sm divide-y md:divide-y-0 md:divide-x divide-slate-200">
+      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-2xs grid grid-cols-2 md:grid-cols-4 gap-4 text-sm divide-y md:divide-y-0 md:divide-x divide-slate-200">
         <div>
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">First-Pass Clean Rate</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1">93.3%</div>
-          <div className="text-xs text-emerald-700 font-semibold mt-0.5">✓ 14 of 15 Claims Ready</div>
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">First-Pass Clean Rate</div>
+          <div className="text-xl font-bold text-slate-900 mt-0.5">93.3%</div>
+          <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">✓ 14 of 15 Claims Ready</div>
         </div>
 
-        <div className="md:pl-6 pt-3 md:pt-0">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">RTH Risk Interceptions</div>
-          <div className="text-2xl font-bold text-rose-600 mt-1">{highRiskCount} Intercepted</div>
-          <div className="text-xs text-slate-500 mt-0.5">Halted before PhilHealth rejection</div>
+        <div className="md:pl-4 pt-2 md:pt-0">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">RTH Risk Interceptions</div>
+          <div className="text-xl font-bold text-rose-600 mt-0.5">{highRiskCount} Intercepted</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Halted before rejection</div>
         </div>
 
-        <div className="md:pl-6 pt-3 md:pt-0">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total ACR Claim Value</div>
-          <div className="text-2xl font-bold font-mono text-slate-900 mt-1">
+        <div className="md:pl-4 pt-2 md:pt-0">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total ACR Claim Value</div>
+          <div className="text-xl font-bold font-mono text-slate-900 mt-0.5">
             {formatPhp(encounters.reduce((acc, e) => acc + e.philhealth.totalCaseRate, 0))}
           </div>
-          <div className="text-xs text-blue-700 font-semibold mt-0.5">Across 15 Inpatient Cases</div>
+          <div className="text-[11px] text-blue-700 font-semibold mt-0.5">Across 15 Inpatient Cases</div>
         </div>
 
-        <div className="md:pl-6 pt-3 md:pt-0">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">eSOA XML Conformity</div>
-          <div className="text-2xl font-bold font-mono text-emerald-700 mt-1">100%</div>
-          <div className="text-xs text-slate-500 mt-0.5">Circular 2023-0026 Conforming</div>
+        <div className="md:pl-4 pt-2 md:pt-0">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">eSOA XML Conformity</div>
+          <div className="text-xl font-bold font-mono text-emerald-700 mt-0.5">100%</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Circular 2023-0026 Conforming</div>
         </div>
       </div>
 
