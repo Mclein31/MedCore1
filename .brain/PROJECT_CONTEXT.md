@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md — AQROMED Operational Brain
 
 > **Epistemic Status**: Verified Project Knowledge & Baseline Parameters  
-> **Last Synchronized**: October 1, 2026  
+> **Last Synchronized**: October 2, 2026  
 > **Active Project**: AQROMED (formerly MedCore / MedCore1)  
 > **Knowledge Layer**: Project Operational Brain (`.brain/`)
 
@@ -1353,8 +1353,102 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
 - **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift.
 - **Backend API Integration (`npm run test:api`)**: 69/69 automated integration tests passed with 0 failures (including newly added quantity & unit price persistence assertions).
-- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.11s with 0 errors.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.11s with 0 errors.---
 
+## 42. Backend Integration & Infrastructure Completion: Local Server, DB Hydration, Authoritative Payments, and eSOA Projection (Completed)
 
+[DECISION] **1. Node.js Local Standalone Runtime & Concurrently Dev Orchestration (`server/standalone.ts`, `package.json`, `server/index.ts`)**:
+- **Problem Resolved**: Cloudflare `wrangler dev` failed locally because `HYPERDRIVE` lacked `localConnectionString`, leaving frontend and backend disconnected during development.
+- **Architectural Implementation**:
+  - Implemented `server/standalone.ts` leveraging `@hono/node-server` (`serve({ fetch: app.fetch, port: 8787 })`).
+  - Updated `package.json` `"dev"` script with `concurrently` running `"dev:server"` and `"dev:client"` in parallel with colored process output.
+  - Augmented `server/index.ts` `/api/health` endpoint with live PostgreSQL query (`SELECT count(*)::int as count FROM encounters`) verifying latency (~10-14ms) and record count (250 encounters).
+  - Maintained backward compatibility by designating the system name as `MedCore (AQROMED) Enterprise Hospital RCM Backend`.
+
+[DECISION] **2. Frontend Hydration & Error Surfacing (`MedCoreContext.tsx`, `App.tsx`, `GlobalCommandBar.tsx`)**:
+- **Problem Resolved**: Frontend previously initialized primarily from static `mockData.ts` and silently caught mutation failures with `console.warn`, leaving users unaware when backend operations failed.
+- **Architectural Implementation**:
+  - Added `isLoadingEncounters`, `apiError`, `clearApiError`, and `refreshEncounters` to `MedCoreContext`.
+  - Wired authoritative `apiClient.getMe()` session validation on initial mount, automatically hydrating all 250 encounters directly from PostgreSQL upon verified session.
+  - Eliminated fake demo account mock fallbacks; authentication requires live PBKDF2 Web Crypto verification against PostgreSQL `users` and `user_sessions`.
+  - Mounted a dismissible floating toast in `App.tsx` (`renderApiErrorToast`) to surface any backend network or validation errors immediately.
+  - Added a live PostgreSQL database indicator pill (`PostgreSQL Live` / `Syncing DB...`) and updated branding to `MedCore` in `GlobalCommandBar.tsx`.
+
+[DECISION] **3. Philippine eSOA & BIR Official Receipt Data Model (`server/routes/encounters.ts`, `apiClient.ts`)**:
+- **Problem Resolved**: Clarified data model distinction between commercial "invoices" and Philippine hospital billing realities.
+- **Statutory Clarification**:
+  - Under Republic Acts 11223, 9994, 10754, and PhilHealth Circular 2023-0026, Philippine hospitals issue an **Electronic Statement of Account (eSOA / SOA)** and BIR-regulated **Official Receipts (OR)** rather than commercial invoices.
+  - Implemented canonical `GET /api/v1/encounters/:id/statement` and alias `GET /api/v1/encounters/:id/invoice` in `server/routes/encounters.ts`.
+  - Exposes an authoritative projection containing patient demographics, itemized chargemaster line items, the 10-step statutory waterfall, paid/remaining balances, payment records, BIR official receipt numbers, and statutory legal citations without creating redundant database tables.
+
+[DECISION] **4. Authoritative Payment Persistence & Receipt Idempotency (`payments.ts`, `MedCoreContext.tsx`, `encounters.ts`)**:
+- **Problem Resolved**: Optimistic client-side payments generated random transaction IDs and duplicate client receipts that disappeared or diverged upon page reload.
+- **Architectural Implementation**:
+  - Updated `processDemoPayment` in `MedCoreContext.tsx` to `await apiClient.processPayment` passing unique `Idempotency-Key` headers.
+  - Synchronized client state with the authoritative `res.encounter`, `res.payment`, and `res.receipt` returned by the server.
+  - Updated `getHydratedEncounter` in `server/routes/encounters.ts` to query `paymentReceipts` table in parallel and link every payment record to its corresponding BIR Official Receipt.
+  - Ensured exactly 1 payment produces exactly 1 receipt in PostgreSQL with full idempotency protection.
+
+[DECISION] **5. Workflow Mutation Hardening (`MedCoreContext.tsx`)**:
+- Updated `advanceStage`, `applyAccreditedCeiling`, `clearPharmacyRts`, `approveHmoFinalLoa`, `executePromissoryNote`, `freezeDisputeItem`, `supervisoryWaiveItem`, `editChargeItem`, `deleteChargeItem`, `editEncounter`, and `deleteEncounter` to await backend API responses, synchronize with server-computed waterfalls, and surface any errors via `setApiError`.
+
+[FACT] **Verification & Audit Results**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift across the 10-step statutory waterfall.
+- **Backend API Integration (`npm run test:api`)**: 69/69 automated integration tests passed with 0 failures.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.08s with 0 errors.
+- **Live Local Runtime Ping (`curl http://localhost:8787/api/health`)**: Verified live PostgreSQL connectivity (10ms latency, 250 encounters).
+- **Statement Projection (`curl http://localhost:8787/api/v1/encounters/enc-8812/statement`)**: Verified complete eSOA projection matching statutory requirements.
+---
+
+## 43. Payment Settlement Hardening: Idempotency Key Migration, Atomic Multi-Write Transactions, and Dev-Mode Role Elevation (Completed)
+
+[DECISION] **1. Alphanumeric Idempotency Key Schema & Live Migration (`server/db/schema.ts`, `server/db/migrations/0001_lazy_vulture.sql`)**:
+- **Problem Resolved**: When operators or the Patient Clarify simulator sent alphanumeric payment references (e.g. `TXN-DEMO-QRPH-123456`, `TXN-DEMO-GCASH-123456`) in the `Idempotency-Key` HTTP header, PostgreSQL rejected the write with a syntax error (`invalid input syntax for type uuid`), throwing an unhandled HTTP 500 error and breaking payment processing.
+- **Architectural Implementation**:
+  - Updated `server/db/schema.ts` to type `payments.idempotencyKey` as `varchar('idempotency_key', { length: 128 }).notNull().unique()`.
+  - Created and applied Drizzle migration `server/db/migrations/0001_lazy_vulture.sql` (`ALTER TABLE "payments" ALTER COLUMN "idempotency_key" SET DATA TYPE varchar(128);`).
+  - Preserved unique constraints and indices while guaranteeing 100% backward compatibility for existing UUID strings as well as modern alphanumeric payment reference strings up to 128 characters.
+  - Added request-level validation in `server/routes/payments.ts` rejecting keys > 128 characters with HTTP 400 (`INVALID_IDEMPOTENCY_KEY`).
+
+[DECISION] **2. Atomic Multi-Write Settlement Transactions (`server/routes/payments.ts`)**:
+- **Problem Resolved**: Payments previously executed 6 sequential, disconnected database mutations outside a transaction block. Any intermediate network glitch or failure left the hospital ledger vulnerable to orphaned financial states (e.g. payment recorded without an Official Receipt, or balance deducted without gate pass issuance).
+- **Architectural Implementation**:
+  - Wrapped all 6 database writes in `await db.transaction(async (tx) => { ... })`:
+    1. Insert Payment record into `payments` table.
+    2. Insert BIR Official Receipt into `paymentReceipts` table.
+    3. If fully settled: generate HMAC-signed Gate Pass into `dischargePasses` and release bed to `HOUSEKEEPING` in `beds`.
+    4. Reconcile remaining balance and bill state in `encounters` and `statutoryWaterfalls`.
+    5. Log encounter milestone to `encounterTimelineEvents`.
+    6. Record audit entry in `systemAuditLogs`.
+  - Added PostgreSQL concurrency race protection: catches error code `23505` on `idempotency_key` and returns the cached payment and receipt gracefully with 0 extra balance deduction.
+
+[DECISION] **3. Development-Mode Role Elevation Propagation (`src/services/apiClient.ts`, `src/context/MedCoreContext.tsx`)**:
+- **Problem Resolved**: Frontend role switching updated client React state but failed to propagate to subsequent backend API calls, causing unauthorized (HTTP 403) rejections when testing multi-role workflows like Doctor QuickSign.
+- **Architectural Implementation**:
+  - Added `activeDemoRole`, `setDemoRole()`, and `getDemoRole()` in `src/services/apiClient.ts`.
+  - Automatically attaches the `X-Demo-Role` header to all outgoing requests in non-production environments (`process.env.NODE_ENV !== 'production'` and `!import.meta.env.PROD`).
+  - Synchronized `MedCoreContext.tsx` to update `apiClient.setDemoRole(role)` upon initial session verification, login, and active role switching.
+  - Protected backend middleware (`server/middleware/auth.ts`) so `X-Demo-Role` is strictly ignored in production environments.
+
+[DECISION] **4. Repository Cleanliness (`.gitignore`)**:
+- Added `.wrangler/` to `.gitignore` to prevent transient Cloudflare CLI build cache, state, and credentials from polluting version control.
+
+[DECISION] **5. Project Documentation Update**:
+- **Durable Architectural Invariants Recorded**:
+  1. `payments.idempotency_key` is standardized as `varchar(128)` to accept both standard UUIDs and Philippine fintech transaction references (e.g. `TXN-DEMO-QRPH-*`, `TXN-DEMO-GCASH-*`).
+  2. All multi-step financial settlement mutations must be executed within `db.transaction(async (tx) => { ... })` blocks to guarantee ACID compliance and centavo-accurate ledger consistency.
+  3. Demo presentation role switching uses non-production `X-Demo-Role` HTTP header overrides to allow clinical and CFO quick-sign simulations without corrupting persistent database role records.
+
+[FACT] **Verification & Audit Results**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift across the 10-step statutory waterfall.
+- **Backend API Integration (`npm run test:api`)**: 78/78 automated integration tests passed with 0 failures:
+  - Verified alphanumeric QRPH reference (`TXN-DEMO-QRPH-123456`) and GCash reference (`TXN-DEMO-GCASH-123456`).
+  - Verified duplicate submission idempotency (returns cached record, exact matching payment ID, 0 duplicate debit).
+  - Verified header length validation (> 128 characters returns HTTP 400 `INVALID_IDEMPOTENCY_KEY`).
+  - Verified atomic transaction rollback guarantee (deliberate transaction error verified 0 rows committed to `payments`).
+  - Verified `X-Demo-Role: ATTENDING_PHYSICIAN` dev override successfully signs without HTTP 403.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.31s with 0 errors.
 
 
