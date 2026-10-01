@@ -1,4 +1,7 @@
 import app from '../server/index';
+import { db } from '../server/db';
+import { payments } from '../server/db/schema';
+import { eq } from 'drizzle-orm';
 
 async function runApiTests() {
   console.log('================================================================================');
@@ -94,6 +97,18 @@ async function runApiTests() {
   // Elena Santos is BILLING_SPECIALIST, doctor/sign requires ATTENDING_PHYSICIAN or HOSPITAL_CFO
   assert(unauthSignRes.status === 403, 'POST /api/v1/encounters/:id/doctor/sign rejects non-physician role with 403 Forbidden');
 
+  // Verify X-Demo-Role: ATTENDING_PHYSICIAN allows role override in dev/demo mode
+  const demoRoleSignRes = await app.request('/api/v1/encounters/enc-8812/doctor/sign', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookieHeader,
+      'X-Demo-Role': 'ATTENDING_PHYSICIAN'
+    },
+    body: JSON.stringify({ agreedFee: 15000 })
+  });
+  assert(demoRoleSignRes.status === 200, 'POST /api/v1/encounters/:id/doctor/sign succeeds with X-Demo-Role: ATTENDING_PHYSICIAN');
+
   // Switch to CFO or Doctor to sign
   const cfoLoginRes = await app.request('/api/v1/auth/login', {
     method: 'POST',
@@ -156,14 +171,34 @@ async function runApiTests() {
   });
   assert(waiveRes.status === 200, 'POST /api/v1/disputes/:id/supervisory-waive executes waiver and reconciles balance');
 
-  // 12. Payments: Idempotency & Gate Pass Settlement
-  const idempotencyKey = crypto.randomUUID();
-  const paymentPayload = {
-    amount: 5000,
-    paymentRail: 'GCASH',
+  // 12. Payments: Validation, Alphanumeric Idempotency, and Gate Pass Settlement
+  // 12a. Validate Idempotency-Key length constraint (> 128 chars returns 400 Bad Request)
+  const oversizedKey = 'A'.repeat(129);
+  const oversizedRes = await app.request('/api/v1/encounters/enc-8812/payments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookieHeader,
+      'Idempotency-Key': oversizedKey
+    },
+    body: JSON.stringify({
+      amount: 1000,
+      paymentRail: 'QR_PH',
+      payerName: 'Dela Cruz, Juan S.'
+    })
+  });
+  assert(oversizedRes.status === 400, 'POST /api/v1/encounters/:id/payments rejects Idempotency-Key > 128 characters with 400 Bad Request');
+  const oversizedData = await oversizedRes.json();
+  assert(oversizedData.error?.code === 'INVALID_IDEMPOTENCY_KEY', 'Error code is INVALID_IDEMPOTENCY_KEY for oversized header');
+
+  // 12b. Alphanumeric Idempotency Key (QRPH Reference Format)
+  const qrphKey = 'TXN-DEMO-QRPH-123456';
+  const qrphPayload = {
+    amount: 2500,
+    paymentRail: 'QR_PH',
     payerName: 'Dela Cruz, Juan S.',
     payerContactMasked: '0917-***-8812',
-    notes: 'Initial test partial payment'
+    notes: 'QRPH test partial settlement'
   };
 
   const payRes1 = await app.request('/api/v1/encounters/enc-8812/payments', {
@@ -171,28 +206,90 @@ async function runApiTests() {
     headers: {
       'Content-Type': 'application/json',
       Cookie: cookieHeader,
-      'Idempotency-Key': idempotencyKey
+      'Idempotency-Key': qrphKey
     },
-    body: JSON.stringify(paymentPayload)
+    body: JSON.stringify(qrphPayload)
   });
-  assert(payRes1.status === 200, 'POST /api/v1/encounters/:id/payments records payment');
+  assert(payRes1.status === 200, 'POST /api/v1/encounters/:id/payments records QRPH payment with alphanumeric key');
   const payData1 = await payRes1.json();
-  assert(payData1.receipt && payData1.receipt.officialReceiptNumber.startsWith('OR-SJMC-'), 'Official Receipt generated');
+  assert(payData1.receipt && payData1.receipt.officialReceiptNumber.startsWith('OR-SJMC-'), 'Official Receipt generated for QRPH payment');
+  assert(payData1.payment.idempotencyKey === qrphKey, 'Payment idempotency key matches alphanumeric QRPH string');
 
   // Duplicate payment with same Idempotency-Key header must return cached record with 0 extra debit
-  const payRes2 = await app.request('/api/v1/encounters/enc-8812/payments', {
+  const payResDuplicate = await app.request('/api/v1/encounters/enc-8812/payments', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Cookie: cookieHeader,
-      'Idempotency-Key': idempotencyKey
+      'Idempotency-Key': qrphKey
     },
-    body: JSON.stringify(paymentPayload)
+    body: JSON.stringify(qrphPayload)
   });
-  assert(payRes2.status === 200, 'Duplicate payment submission returns 200');
-  const payData2 = await payRes2.json();
-  assert(payData2.cached === true, 'Idempotency guard caught duplicate request and returned cached payment record');
-  assert(payData2.payment.id === payData1.payment.id, 'Idempotency key matched exact previous payment ID');
+  assert(payResDuplicate.status === 200, 'Duplicate payment submission returns 200 OK');
+  const payDataDuplicate = await payResDuplicate.json();
+  assert(payDataDuplicate.cached === true, 'Idempotency guard caught duplicate request and returned cached payment record');
+  assert(payDataDuplicate.payment.id === payData1.payment.id, 'Idempotency key matched exact previous payment ID');
+  assert(payDataDuplicate.encounter.remainingBalance === payData1.encounter.remainingBalance, 'Zero duplicate debit applied to encounter remaining balance');
+
+  // 12c. Alphanumeric Idempotency Key (GCASH Reference Format)
+  const gcashKey = 'TXN-DEMO-GCASH-123456';
+  const gcashPayload = {
+    amount: 2500,
+    paymentRail: 'GCASH',
+    payerName: 'Dela Cruz, Juan S.',
+    payerContactMasked: '0917-***-8812',
+    notes: 'GCash test partial settlement'
+  };
+
+  const payResGcash = await app.request('/api/v1/encounters/enc-8812/payments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Cookie: cookieHeader,
+      'Idempotency-Key': gcashKey
+    },
+    body: JSON.stringify(gcashPayload)
+  });
+  assert(payResGcash.status === 200, 'POST /api/v1/encounters/:id/payments records GCash payment with alphanumeric key');
+  const payData2 = await payResGcash.json();
+  assert(payData2.payment.idempotencyKey === gcashKey, 'Payment record persists alphanumeric TXN-DEMO-GCASH-123456 key');
+
+  // 12d. Atomic Transaction Rollback Guarantee
+  const rollbackKey = `TXN-DEMO-ROLLBACK-${Date.now()}`;
+  let txErrorCaught = false;
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(payments).values({
+        paymentReference: `PAY-ROLLBACK-${Date.now().toString().slice(-6)}`,
+        encounterId: payData1.payment.encounterId,
+        statementNumber: 'SOA-ROLLBACK-TEST',
+        amount: '1000.00',
+        currency: 'PHP',
+        paymentRail: 'GCASH',
+        channelReference: 'TXN-ROLLBACK',
+        gatewayAuthCode: 'AUTH-TEST',
+        officialReceiptNumber: 'OR-ROLLBACK-TEST',
+        payerName: 'Rollback Tester',
+        payerContactMasked: '0917-***-0000',
+        status: 'SUCCESS',
+        isSimulatedDemo: true,
+        idempotencyKey: rollbackKey,
+        settledAt: new Date()
+      });
+      // Force an intentional error to verify PostgreSQL atomic rollback
+      throw new Error('SIMULATED_TRANSACTION_FAILURE_ROLLBACK');
+    });
+  } catch (err: any) {
+    if (err.message === 'SIMULATED_TRANSACTION_FAILURE_ROLLBACK') {
+      txErrorCaught = true;
+    }
+  }
+  assert(txErrorCaught, 'Simulated transaction exception caught as expected');
+  const rollbackCheck = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.idempotencyKey, rollbackKey));
+  assert(rollbackCheck.length === 0, 'Atomic transaction rollback verified: 0 rows committed to payments table');
 
   // 13. Promissory Note: RA 9439 0% Interest Execution
   const promissoryRes = await app.request('/api/v1/encounters/enc-8812/promissory-notes', {
