@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "aqromed-backend",
+  "name": "medcore-backend",
   "main": "server/index.ts",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": [
@@ -14,7 +14,8 @@
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "aqromed-hyperdrive-local"
+      "id": "b611eac58efa4966b649dfa7d1631b2a",
+      "localConnectionString": "postgresql://mclein@localhost:5432/aqromed"
     }
   ],
   "r2_buckets": [

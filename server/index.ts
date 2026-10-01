@@ -31,11 +31,21 @@ app.use(
   })
 );
 
+import { db, getDb, runWithDb } from './db';
+import { sql } from 'drizzle-orm';
+
+// Hyperdrive Database Resolution Middleware for Cloudflare Workers
+app.use('*', async (c, next) => {
+  const hyperdrive = (c.env as any)?.HYPERDRIVE;
+  if (hyperdrive?.connectionString) {
+    const hyperdriveDb = getDb(hyperdrive.connectionString);
+    return runWithDb(hyperdriveDb, () => next());
+  }
+  return next();
+});
+
 // Global Session Authentication Middleware
 app.use('/api/*', authMiddleware);
-
-import { db } from './db';
-import { sql } from 'drizzle-orm';
 
 // Health Check with Live PostgreSQL Connectivity Verification
 app.get('/api/health', async (c) => {

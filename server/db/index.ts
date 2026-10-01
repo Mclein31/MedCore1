@@ -1,31 +1,45 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import * as schema from './schema';
 
 const { Pool } = pg;
 
-let pool: pg.Pool | null = null;
-let dbInstance: ReturnType<typeof drizzle<typeof schema>> | null = null;
+export type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 
-export function getDb(connectionString?: string) {
-  if (dbInstance && !connectionString) {
-    return dbInstance;
-  }
+const dbStorage = new AsyncLocalStorage<DrizzleDb>();
+const poolCache = new Map<string, { pool: pg.Pool; db: DrizzleDb }>();
 
+export function getDb(connectionString?: string): DrizzleDb {
   const url = connectionString || process.env.DATABASE_URL || 'postgresql://mclein@localhost:5432/aqromed';
-  
-  if (!pool || connectionString) {
-    pool = new Pool({
+
+  let cached = poolCache.get(url);
+  if (!cached) {
+    const pool = new Pool({
       connectionString: url,
-      max: 10,
+      max: connectionString ? 5 : 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 5000
+      connectionTimeoutMillis: 10000
     });
+    const dbInstance = drizzle(pool, { schema });
+    cached = { pool, db: dbInstance };
+    poolCache.set(url, cached);
   }
 
-  dbInstance = drizzle(pool, { schema });
-  return dbInstance;
+  return cached.db;
 }
 
-export const db = getDb();
+export function runWithDb<T>(dbInstance: DrizzleDb, fn: () => T): T {
+  return dbStorage.run(dbInstance, fn);
+}
+
+export const db: DrizzleDb = new Proxy({} as DrizzleDb, {
+  get(target, prop) {
+    const activeDb = dbStorage.getStore() || getDb();
+    const val = Reflect.get(activeDb, prop, activeDb);
+    return typeof val === 'function' ? val.bind(activeDb) : val;
+  }
+});
+
 export { schema };
+
