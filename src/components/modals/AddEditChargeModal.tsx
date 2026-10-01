@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useMedCore } from '@/context/MedCoreContext';
 import { ChargemasterItem } from '@/types/domain';
-import { X, Plus, Pencil, DollarSign, Tag, FileText } from 'lucide-react';
+import { X, Plus, Pencil, DollarSign, Tag, FileText, Hash, Info, Layers } from 'lucide-react';
 import { formatPhp } from '@/utils/formatters';
 
 export const AddEditChargeModal: React.FC = () => {
@@ -22,6 +22,8 @@ export const AddEditChargeModal: React.FC = () => {
 
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<ChargemasterItem['category']>('PHARMACY');
+  const [qty, setQty] = useState<number>(1);
+  const [unitPrice, setUnitPrice] = useState<number>(1500);
   const [grossAmount, setGrossAmount] = useState<number>(1500);
   const [coverageType, setCoverageType] = useState<'PHILHEALTH_FIRST' | 'HMO_COVERED' | 'PATIENT_DIRECT'>('PHILHEALTH_FIRST');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,10 +32,19 @@ export const AddEditChargeModal: React.FC = () => {
     if (chargeToEdit && isEditing) {
       setDescription(chargeToEdit.description);
       setCategory(chargeToEdit.category);
-      setGrossAmount(chargeToEdit.grossAmount);
+      const initialQty = chargeToEdit.qty && chargeToEdit.qty > 0 ? chargeToEdit.qty : 1;
+      const initialGross = chargeToEdit.grossAmount;
+      const initialUnitPrice = chargeToEdit.unitPrice && chargeToEdit.unitPrice > 0
+        ? chargeToEdit.unitPrice
+        : Number((initialGross / initialQty).toFixed(2));
+      setQty(initialQty);
+      setUnitPrice(initialUnitPrice);
+      setGrossAmount(initialGross);
     } else {
       setDescription('');
       setCategory('PHARMACY');
+      setQty(1);
+      setUnitPrice(1500);
       setGrossAmount(1500);
       setCoverageType('PHILHEALTH_FIRST');
     }
@@ -50,6 +61,26 @@ export const AddEditChargeModal: React.FC = () => {
 
   if (!isOpen || typeof document === 'undefined') return null;
 
+  const handleQtyChange = (val: number) => {
+    const validQty = Math.max(1, val);
+    setQty(validQty);
+    setGrossAmount(Number((unitPrice * validQty).toFixed(2)));
+  };
+
+  const handleUnitPriceChange = (val: number) => {
+    const validPrice = Math.max(0, val);
+    setUnitPrice(validPrice);
+    setGrossAmount(Number((validPrice * qty).toFixed(2)));
+  };
+
+  const handleGrossAmountChange = (val: number) => {
+    const validGross = Math.max(0, val);
+    setGrossAmount(validGross);
+    if (qty > 0) {
+      setUnitPrice(Number((validGross / qty).toFixed(2)));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!description.trim() || grossAmount <= 0) return;
@@ -60,16 +91,19 @@ export const AddEditChargeModal: React.FC = () => {
         await editChargeItem(selectedEncounterId, chargeToEdit.id, {
           description: description.trim(),
           category,
-          grossAmount
+          grossAmount,
+          qty,
+          unitPrice
         });
       } else {
         await addChargeItem(selectedEncounterId, {
           description: description.trim(),
           category,
           grossAmount,
+          qty,
+          unitPrice,
+          coverageType,
           code: `CHG-${category.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
-          quantity: 1,
-          unitPrice: grossAmount,
           status: 'COVERED',
           isVatable: true
         });
@@ -108,7 +142,7 @@ export const AddEditChargeModal: React.FC = () => {
           </div>
           <button
             onClick={closeAddEditChargeModal}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -131,46 +165,80 @@ export const AddEditChargeModal: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-blue-600" />
-                <span>Department Category</span>
-              </label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
-              >
-                {categories.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-blue-600" />
+              <span>Department Category</span>
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value as any)}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+            >
+              {categories.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
+          {/* 3-Column Quantity, Unit Price, and Gross Amount Grid */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-blue-600" />
-                <span>Gross Hospital Charge (₱)</span>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <Hash className="w-3.5 h-3.5 text-blue-600" />
+                <span>Quantity</span>
               </label>
               <input
                 type="number"
                 min="1"
+                step="1"
+                required
+                value={qty || ''}
+                onChange={(e) => handleQtyChange(parseInt(e.target.value, 10) || 1)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <DollarSign className="w-3.5 h-3.5 text-blue-600" />
+                <span>Unit Price (₱)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                value={unitPrice || ''}
+                onChange={(e) => handleUnitPriceChange(parseFloat(e.target.value) || 0)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Gross Total (₱)</span>
+              </label>
+              <input
+                type="number"
+                min="0.01"
                 step="0.01"
                 required
                 value={grossAmount || ''}
-                onChange={(e) => setGrossAmount(parseFloat(e.target.value) || 0)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
+                onChange={(e) => handleGrossAmountChange(parseFloat(e.target.value) || 0)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900 bg-slate-50/70"
               />
             </div>
           </div>
 
           {!isEditing && (
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Statutory Coverage Allocation
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-blue-600" />
+                <span>Statutory Coverage Allocation Target</span>
               </label>
               <select
                 value={coverageType}
@@ -184,14 +252,29 @@ export const AddEditChargeModal: React.FC = () => {
             </div>
           )}
 
-          {/* Statutory Waterfall Preview Note */}
+          {/* Statutory Waterfall Cascade Advisory Explainer */}
+          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900">
+            <div className="flex items-start gap-2">
+              <Info className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <div className="font-bold text-[11px] uppercase tracking-wider text-amber-800">
+                  Philippine Statutory Cascade Mandate (RA 11223 &amp; RA 9994)
+                </div>
+                <p className="text-[11px] text-amber-900 leading-relaxed mt-0.5">
+                  Regardless of allocation intent, Philippine Law mandates that VAT exemptions, Senior/PWD 20% discounts, and PhilHealth Case Rates are deducted first as statutory benefits before HMO MBL and patient out-of-pocket liabilities are adjudicated.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Automatic Waterfall Adjustment Summary */}
           <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900">
             <div className="font-bold mb-1 flex items-center justify-between">
               <span>Automatic Waterfall Adjustment</span>
-              <span className="font-mono">{formatPhp(grossAmount)}</span>
+              <span className="font-mono text-sm">{formatPhp(grossAmount)}</span>
             </div>
             <p className="text-[11px] text-blue-800 leading-relaxed">
-              Upon confirmation, the 10-step statutory deduction engine (VAT exemption, Senior/PWD 20% discount, PhilHealth HCI/PF, and HMO MBL ceiling) will authoritatively re-balance with zero-centavo drift.
+              Upon confirmation, the 10-step statutory deduction engine will authoritatively re-balance the ledger with zero-centavo drift.
             </p>
           </div>
 

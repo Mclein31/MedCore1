@@ -162,15 +162,18 @@ export const LoginScreen: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                  Facility Identifier
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                  <span>Facility Identifier</span>
+                  <span className="text-[10px] text-slate-400 font-normal">Single-Facility Context</span>
                 </label>
+                {/* Architectural Note: Defaults to San Jose Medical Center Manila ('SJMC-MNL'). Read-only for single-facility hospital deployment, extensible for future multi-tenant facility selector. */}
                 <input
                   type="text"
                   value={facilityCode}
                   onChange={(e) => setFacilityCode(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono bg-slate-50 text-slate-700"
                   readOnly
+                  title="San Jose Medical Center - Manila (SJMC-MNL): Default single-facility operational context"
                 />
               </div>
 

@@ -475,10 +475,10 @@ export const ActiveDischargeRadar: React.FC = () => {
           </div>
 
           {/* Left Pane: The Operational Work Queue (Inspo 3 style) */}
-          <div className={`w-full lg:w-96 xl:w-[380px] border-r border-slate-200 bg-white flex flex-col min-h-0 shrink-0 ${mobileActivePane === 'QUEUE' ? 'flex' : 'hidden lg:flex'}`}>
-            <div className="p-3.5 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider flex justify-between items-center shrink-0 sticky top-0 z-10">
+          <div className={`w-full lg:w-80 xl:w-[320px] border-r border-slate-200 bg-white flex flex-col min-h-0 shrink-0 ${mobileActivePane === 'QUEUE' ? 'flex' : 'hidden lg:flex'}`}>
+            <div className="px-3 py-2 bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider flex justify-between items-center shrink-0 sticky top-0 z-10">
               <span>Patient Queue ({filteredEncounters.length})</span>
-              <span className="text-[11px] text-slate-400 font-normal">Select to triage</span>
+              <span className="text-[10px] text-slate-400 font-normal">Select to triage</span>
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-slate-100 pb-6">
@@ -499,7 +499,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                       selectEncounter(enc.id);
                       setMobileActivePane('DETAIL');
                     }}
-                    className={`px-3.5 py-2.5 cursor-pointer transition-all border-l-4 ${
+                    className={`px-3 py-2 cursor-pointer transition-all border-l-4 ${
                       isSelected
                         ? 'bg-blue-50/70 border-l-blue-600 shadow-2xs'
                         : 'border-l-transparent hover:bg-slate-50'
@@ -594,11 +594,11 @@ export const ActiveDischargeRadar: React.FC = () => {
 
           {/* Right Pane: Comlogik HIMS-Inspired Operational Workspace (Responsive Localized Scroll) */}
           {currentSelectedEncounter ? (
-            <div className={`flex-1 bg-white p-2.5 sm:p-3 space-y-1.5 min-h-0 flex flex-col justify-between overflow-y-auto overscroll-contain ${mobileActivePane === 'DETAIL' ? 'flex' : 'hidden lg:flex'}`}>
-              {/* 1. Patient Demographic & Clinical Intelligence Card (Compact & High-Density) */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 shadow-2xs space-y-1.5">
+            <div className={`flex-1 bg-white p-2.5 sm:p-3 space-y-2 min-h-0 flex flex-col justify-between overflow-y-auto overscroll-contain ${mobileActivePane === 'DETAIL' ? 'flex' : 'hidden lg:flex'}`}>
+              {/* 1. Patient Demographic & Clinical Intelligence Card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-2.5 sm:p-3 shadow-2xs space-y-2">
                 {/* Mobile Back to Queue (< lg) */}
-                <div className="lg:hidden flex items-center justify-between pb-1 border-b border-slate-200">
+                <div className="lg:hidden flex items-center justify-between pb-1.5 border-b border-slate-200">
                   <button
                     onClick={() => setMobileActivePane('QUEUE')}
                     className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800"
@@ -612,9 +612,9 @@ export const ActiveDischargeRadar: React.FC = () => {
                 </div>
 
                 {/* Header Top: Patient Avatar, Full Name, Badges & Quick Action Utility Buttons */}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs ring-2 ring-blue-50">
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-white font-black text-xs flex items-center justify-center shrink-0 shadow-xs ring-2 ring-blue-50">
                       {(currentSelectedEncounter.patient.fullName || currentSelectedEncounter.patient.maskedName)
                         .split(' ')
                         .map((n) => n[0])
@@ -622,8 +622,8 @@ export const ActiveDischargeRadar: React.FC = () => {
                         .slice(0, 2)}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="text-base font-black text-slate-900 tracking-tight">
                           {currentSelectedEncounter.patient.fullName || currentSelectedEncounter.patient.maskedName}
                         </h3>
                         <span className="text-[10px] font-semibold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
@@ -648,28 +648,34 @@ export const ActiveDischargeRadar: React.FC = () => {
                   </div>
 
                   {/* Header Utility Buttons */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                    {/* Clinical Review Shortcuts */}
                     <button
+                      type="button"
                       onClick={() => {
                         selectEncounter(currentSelectedEncounter.id);
                         openPatientClarifyDrawer(currentSelectedEncounter);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
+                      title="Open interactive patient mobile view"
                     >
                       <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Clarify</span>
+                      <span>Patient View</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         selectEncounter(currentSelectedEncounter.id);
                         openDossierDrawer(currentSelectedEncounter);
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
+                      title="Open complete clinical and billing dossier"
                     >
                       <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Ledger</span>
+                      <span>Ledger Dossier</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         selectEncounter(currentSelectedEncounter.id);
                         printDocument({
@@ -678,37 +684,55 @@ export const ActiveDischargeRadar: React.FC = () => {
                           data: { encounter: currentSelectedEncounter }
                         });
                       }}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
                       title="Print Official BIR & PhilHealth eSOA Statement"
                     >
                       <Printer className="w-3.5 h-3.5 text-slate-500" />
                       <span>Print eSOA</span>
                     </button>
+
+                    {/* Subtle Divider */}
+                    <div className="h-4 w-px bg-slate-300 mx-0.5 hidden sm:block" />
+
+                    {/* Administrative Management */}
                     <button
                       type="button"
                       onClick={() => openEditEncounterModal(currentSelectedEncounter)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors shadow-2xs"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
                       title="Edit encounter details, diagnosis, or room transfer"
                     >
                       <Pencil className="w-3.5 h-3.5 text-slate-500" />
                       <span>Edit</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteEncounter(currentSelectedEncounter.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 hover:bg-rose-50 text-rose-600 font-bold text-xs transition-colors shadow-2xs"
-                      title="Remove encounter and release bed back to inventory"
-                    >
-                      <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Discharge</span>
-                    </button>
+                    <ConfirmButton
+                      label={
+                        <span className="flex items-center gap-1 text-rose-700">
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Release Bed</span>
+                        </span>
+                      }
+                      modalTitle="Remove Encounter & Release Bed?"
+                      modalDescription={`Are you sure you want to remove the encounter for ${currentSelectedEncounter.patient.fullName || currentSelectedEncounter.patient.maskedName} and release bed ${currentSelectedEncounter.roomBed} back to hospital inventory?`}
+                      confirmLabel="Release Bed"
+                      variant="outline"
+                      confirmVariant="danger"
+                      size="sm"
+                      className="border-slate-300 hover:border-rose-300 hover:bg-rose-50"
+                      contextInfo={[
+                        { label: 'Patient', value: currentSelectedEncounter.patient.fullName || currentSelectedEncounter.patient.maskedName },
+                        { label: 'Encounter Number', value: currentSelectedEncounter.encounterNumber },
+                        { label: 'Room & Bed', value: currentSelectedEncounter.roomBed }
+                      ]}
+                      onConfirm={() => deleteEncounter(currentSelectedEncounter.id)}
+                      title="Remove encounter and return bed to inventory"
+                    />
                   </div>
                 </div>
 
                 {/* Structured Metadata Grid (4 Compact Operational Cards) */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-slate-200">
                   <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                       Encounter / MRN
                     </span>
                     <div className="font-mono font-bold text-xs text-slate-900 mt-0.5 truncate">
@@ -717,7 +741,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                   </div>
 
                   <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                       Room &amp; Category
                     </span>
                     <div className="font-bold text-xs text-slate-900 mt-0.5 truncate">
@@ -726,7 +750,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                   </div>
 
                   <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                       Attending Specialist
                     </span>
                     <div className="font-bold text-xs text-slate-900 mt-0.5 truncate">
@@ -735,7 +759,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                   </div>
 
                   <div className="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                       Admitting Diagnosis
                     </span>
                     <div className="font-bold text-xs text-slate-900 mt-0.5 truncate" title={currentSelectedEncounter.primaryDiagnosis}>
@@ -745,7 +769,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                 </div>
 
                 {/* Sub-strip: Payer, ACR Benefit, eSOA Status & Declaration Time */}
-                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60 flex-wrap gap-2">
+                <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1.5 border-t border-slate-200/60 flex-wrap gap-2">
                   <div>
                     Payer: <strong className="text-slate-800 font-semibold">{currentSelectedEncounter.hmo.hmoName || currentSelectedEncounter.hmo.providerName}</strong> (MBL Rem: <span className="font-mono font-semibold">{formatPhp(currentSelectedEncounter.hmo.mblRemaining)}</span>)
                   </div>
@@ -829,7 +853,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                   {(() => {
                     const blocker = getBlockerDetails(currentSelectedEncounter);
                     return (
-                      <div className="px-3.5 py-2 rounded-xl border border-amber-300 bg-amber-50/80 shadow-2xs space-y-1">
+                      <div className="px-3 py-1.5 rounded-xl border border-amber-300 bg-amber-50/80 shadow-2xs space-y-1">
                         <div className="flex items-center justify-between pb-0.5">
                           <div className="flex items-center gap-2">
                             <div className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
@@ -886,16 +910,16 @@ export const ActiveDischargeRadar: React.FC = () => {
                   })()}
 
                   {/* Prominent Balance Due Box with Full Statutory Waterfall Reconciliation */}
-                  <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2">
-                    <div className="flex items-start justify-between flex-wrap gap-2 pb-1 border-b border-slate-100">
+                  <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-2.5">
+                    <div className="flex items-start justify-between flex-wrap gap-2 pb-1.5 border-b border-slate-100">
                       <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
                           Total Net Patient Due
                         </span>
                         <div className="text-2xl sm:text-3xl font-black font-mono text-slate-900 mt-0.5 tabular-nums">
                           {formatPhp(currentSelectedEncounter.waterfall.netPatientDue)}
                         </div>
-                        <p className="text-[10px] text-slate-500">
+                        <p className="text-[11px] text-slate-500 mt-0.5">
                           Net payable after PhilHealth and HMO coverage
                         </p>
                       </div>
@@ -914,36 +938,36 @@ export const ActiveDischargeRadar: React.FC = () => {
                     </div>
 
                     {/* Statutory Deduction Reconciliation Strip */}
-                    <div className="bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 text-[10px] flex items-center justify-between gap-1 flex-wrap">
-                      <span className="text-slate-400 font-bold uppercase tracking-wider">Waterfall:</span>
+                    <div className="bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 text-[11px] flex items-center justify-between gap-1 flex-wrap text-slate-600">
+                      <span className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Waterfall:</span>
                       <span>Gross <strong className="font-mono text-slate-900">{formatPhp(currentSelectedEncounter.waterfall.grossTotal)}</strong></span>
-                      <span className="text-slate-400">-</span>
+                      <span className="text-slate-300">-</span>
                       <span>PhilHealth <strong className="font-mono text-emerald-700">-{formatPhp(currentSelectedEncounter.waterfall.philhealthTotal)}</strong></span>
-                      <span className="text-slate-400">-</span>
+                      <span className="text-slate-300">-</span>
                       <span>HMO <strong className="font-mono text-blue-700">-{formatPhp(currentSelectedEncounter.waterfall.hmoApprovedAmount)}</strong></span>
-                      <span className="text-slate-400">-</span>
+                      <span className="text-slate-300">-</span>
                       <span>Relief <strong className="font-mono text-amber-700">-{formatPhp(currentSelectedEncounter.waterfall.seniorPwdDiscount + currentSelectedEncounter.waterfall.vatExemption)}</strong></span>
-                      <span className="text-slate-400">=</span>
+                      <span className="text-slate-300">=</span>
                       <span className="font-bold font-mono text-slate-900">{formatPhp(currentSelectedEncounter.waterfall.netPatientDue)}</span>
                     </div>
 
                     {/* 3-Driver Out-of-Pocket Breakdown */}
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                      <div className="p-2 bg-slate-50/80 border border-slate-200/80 rounded-lg">
                         <span className="text-[9px] text-slate-500 font-bold uppercase block">1. Room Diff</span>
                         <span className="text-xs font-bold font-mono text-slate-900 mt-0.5 block">
                           {formatPhp(currentSelectedEncounter.waterfall.roomUpgradeExcess)}
                         </span>
                       </div>
 
-                      <div className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                      <div className="p-2 bg-slate-50/80 border border-slate-200/80 rounded-lg">
                         <span className="text-[9px] text-slate-500 font-bold uppercase block">2. Excluded Sundry</span>
                         <span className="text-xs font-bold font-mono text-slate-900 mt-0.5 block">
                           {formatPhp(currentSelectedEncounter.waterfall.excludedConsumables)}
                         </span>
                       </div>
 
-                      <div className="px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200">
+                      <div className="p-2 bg-slate-50/80 border border-slate-200/80 rounded-lg">
                         <span className="text-[9px] text-slate-500 font-bold uppercase block">3. Excess PF</span>
                         <span className="text-xs font-bold font-mono text-slate-900 mt-0.5 block">
                           {formatPhp(currentSelectedEncounter.doctorExcessPf)}
@@ -955,26 +979,26 @@ export const ActiveDischargeRadar: React.FC = () => {
 
                 {/* Right Column: Inspo 1 Quick Action Console Pad (4-5 Cols) */}
                 <div className="lg:col-span-5 xl:col-span-4 flex flex-col">
-                  <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 shadow-2xs space-y-2">
+                  <div className="p-3 sm:p-3.5 rounded-xl border border-slate-200 bg-slate-50/70 shadow-2xs space-y-2">
                     <div>
                       <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
                           Quick Action Console
                         </span>
-                        <span className="text-[9px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.2 rounded">
-                          STATION
+                        <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
+                          Station Actions
                         </span>
                       </div>
 
                       <div className="space-y-1.5 pt-1.5">
                         {/* Action 1: Collect / Settle Patient Balance */}
                         {currentSelectedEncounter.stage === 'CLEARED_GATE_PASS' || currentSelectedEncounter.waterfall.netPatientDue === 0 ? (
-                          <div className="w-full py-1.5 px-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-between shadow-2xs">
+                          <div className="w-full py-1.5 px-2.5 rounded-lg bg-emerald-50 border border-emerald-300 text-emerald-800 font-semibold text-xs flex items-center justify-between shadow-2xs">
                             <div className="flex items-center gap-1.5">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>✓ Settled &amp; Cleared (Gate Pass Issued)</span>
+                              <span>✓ Settled &amp; Cleared</span>
                             </div>
-                            <span className="font-mono text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.2 rounded font-bold">
+                            <span className="font-mono text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded font-bold">
                               ₱0.00 DUE
                             </span>
                           </div>
@@ -986,7 +1010,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                                   <CreditCard className="w-3.5 h-3.5" />
                                   <span>Record Payment / QR Ph</span>
                                 </div>
-                                <span className="font-mono text-[10px] bg-emerald-800/40 px-1.5 py-0.2 rounded">
+                                <span className="font-mono text-[10px] bg-emerald-800/40 px-2 py-0.5 rounded">
                                   {formatPhp(currentSelectedEncounter.waterfall.netPatientDue)}
                                 </span>
                               </div>
@@ -1014,53 +1038,67 @@ export const ActiveDischargeRadar: React.FC = () => {
 
                         {/* Action 2: Doctor QuickSign */}
                         <button
+                          type="button"
                           onClick={() => {
                             selectEncounter(currentSelectedEncounter.id);
                             openDoctorQuickSign();
                           }}
-                          className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
+                          className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
                         >
                           <div className="flex items-center gap-1.5">
                             <Stethoscope className="w-3.5 h-3.5 text-blue-600" />
                             <span>Doctor QuickSign Portal</span>
                           </div>
-                          <span className="text-[10px] text-slate-400">Sign PF</span>
+                          <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium">Physician</span>
                         </button>
 
                         {/* Action 3: RA 9439 Promissory Note */}
                         <button
+                          type="button"
                           onClick={() => {
                             selectEncounter(currentSelectedEncounter.id);
                             openPromissoryModal(currentSelectedEncounter.id);
                           }}
-                          className="w-full py-1.5 px-2.5 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-900 font-semibold text-xs flex items-center justify-between transition-colors"
+                          className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-purple-50 border border-slate-200 text-slate-800 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
                         >
                           <div className="flex items-center gap-1.5">
                             <FileCheck2 className="w-3.5 h-3.5 text-purple-600" />
                             <span>Execute RA 9439 Note</span>
                           </div>
-                          <span className="text-[9px] font-bold bg-purple-200/60 px-1.5 py-0.2 rounded">
-                            Legal
+                          <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded font-medium">
+                            Legal (0% Int)
                           </span>
                         </button>
 
                         {/* Action 4: Issue Gate Pass */}
                         <button
+                          type="button"
                           onClick={() => {
                             selectEncounter(currentSelectedEncounter.id);
                             openGatePassModal();
                           }}
-                          className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
+                          className={`w-full py-1.5 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors shadow-2xs ${
+                            currentSelectedEncounter.stage === 'CLEARED_GATE_PASS'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white font-bold'
+                              : 'bg-white hover:bg-slate-50 border border-slate-200 text-slate-800'
+                          }`}
                         >
                           <div className="flex items-center gap-1.5">
-                            <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+                            <QrCode className={`w-3.5 h-3.5 ${currentSelectedEncounter.stage === 'CLEARED_GATE_PASS' ? 'text-white' : 'text-emerald-600'}`} />
                             <span>Digital Exit Gate Pass</span>
                           </div>
-                          <span className="text-[10px] text-slate-400">QR Exit</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                            currentSelectedEncounter.stage === 'CLEARED_GATE_PASS'
+                              ? 'bg-blue-700 text-white'
+                              : 'text-slate-500 bg-slate-100'
+                          }`}>
+                            Lobby Exit
+                          </span>
                         </button>
 
                         {/* Action 5: Print Official eSOA */}
                         <button
+                          type="button"
                           onClick={() => {
                             selectEncounter(currentSelectedEncounter.id);
                             printDocument({
@@ -1069,14 +1107,14 @@ export const ActiveDischargeRadar: React.FC = () => {
                               data: { encounter: currentSelectedEncounter }
                             });
                           }}
-                          className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
+                          className="w-full py-1.5 px-2.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-between transition-colors shadow-2xs"
                           title="Print Official BIR & PhilHealth eSOA Statement"
                         >
                           <div className="flex items-center gap-1.5">
                             <Printer className="w-3.5 h-3.5 text-slate-500" />
                             <span>Generate Official eSOA</span>
                           </div>
-                          <span className="text-[10px] text-slate-400">Print</span>
+                          <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-medium">Print PDF</span>
                         </button>
                       </div>
                     </div>

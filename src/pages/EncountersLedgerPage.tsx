@@ -55,8 +55,8 @@ export const EncountersLedgerPage: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col h-full bg-white overflow-hidden">
       {/* Top Navigation Tabs & Patient Strip */}
-      <div className="border-b border-slate-200 px-6 py-3 flex flex-wrap items-center justify-between gap-4 shrink-0 bg-white">
-        <div className="flex items-center gap-4">
+      <div className="border-b border-slate-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 shrink-0 bg-white">
+        <div className="flex items-center gap-3">
           <h2 className="text-base font-bold text-slate-900">
             Encounters &amp; Ledgers
           </h2>

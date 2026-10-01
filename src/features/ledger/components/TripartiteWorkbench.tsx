@@ -258,22 +258,22 @@ export const TripartiteWorkbench: React.FC = () => {
 
           <button
             onClick={() => openPatientClarifyDrawer(enc)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
+            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
           >
-            <Smartphone className="w-4 h-4 text-emerald-600" />
+            <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
             <span>Preview patient view</span>
           </button>
           <button
             onClick={() => openDossierDrawer(enc)}
-            className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors shadow-xs flex items-center gap-1.5"
+            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
           >
-            <ExternalLink className="w-4 h-4" />
+            <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
             <span>Open dossier</span>
           </button>
         </div>
       </div>
 
-      {/* 1.5 Billing Lifecycle & eSOA Dispatch Strip */}
+      {/* 1.5 Billing Lifecycle & eSOA Dispatch Strip (Rearranged & Structured) */}
       <div className="px-6 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0">
         <div className="flex items-center gap-2.5 flex-wrap">
           <span className="font-bold text-slate-500 uppercase tracking-wider text-[11px]">
@@ -305,8 +305,20 @@ export const TripartiteWorkbench: React.FC = () => {
           )}
         </div>
 
+        {/* Action Grouping: 1. Add Item (Primary) | 2. Finalize (Milestone) | 3. Dispatch / Print | 4. Portal */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Finalize Bill Action */}
+          {/* 1. Primary Action: Add Line Item */}
+          <button
+            type="button"
+            onClick={openAddChargeModal}
+            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5"
+            title="Add a new medication, laboratory test, medical supply, or doctor fee"
+          >
+            <Plus className="w-3.5 h-3.5 text-white" />
+            <span>Add Line Item</span>
+          </button>
+
+          {/* 2. Milestone Action: Finalize Bill */}
           {enc.billState === 'DRAFT' ? (
             <ConfirmButton
               label={
@@ -318,9 +330,10 @@ export const TripartiteWorkbench: React.FC = () => {
               modalTitle="Finalize Electronic Statement of Account (eSOA)?"
               modalDescription={`This will lock all 6 statutory deduction stages and ${enc.items.length} chargemaster lines for ${pName}. Once finalized, changes to room upgrades or discounts require supervisor override.`}
               confirmLabel="Finalize Bill"
-              variant="primary"
+              variant="outline"
               confirmVariant="primary"
               size="sm"
+              className="border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-800"
               contextInfo={[
                 { label: 'Patient', value: pName },
                 { label: 'Total Gross Charges', value: formatPhp(waterfall.grossTotal) },
@@ -330,24 +343,27 @@ export const TripartiteWorkbench: React.FC = () => {
               title="Lock hospital chargemaster lines and prepare official statement"
             />
           ) : (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+            <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <span>Bill Finalized</span>
             </span>
           )}
 
-          {/* Send eSOA Action */}
+          {/* Divider */}
+          <div className="h-4 w-px bg-slate-300 mx-0.5" />
+
+          {/* 3. Dispatch & Print Communications */}
           <ConfirmButton
             label={
               <span className="flex items-center gap-1.5">
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-3.5 h-3.5 text-slate-500" />
                 <span>{enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'VIEWED' ? 'Resend eSOA' : 'Send eSOA (SMS/Link)'}</span>
               </span>
             }
             modalTitle="Dispatch Plain-Language Statement (eSOA) to Patient?"
             modalDescription={`This will generate a secure magic token and transmit the interactive digital statement to ${pName}'s registered mobile device via encrypted SMS.`}
             confirmLabel="Dispatch eSOA"
-            variant="primary"
+            variant="outline"
             confirmVariant="primary"
             size="sm"
             contextInfo={[
@@ -358,7 +374,6 @@ export const TripartiteWorkbench: React.FC = () => {
             title="Dispatch plain-language eSOA magic link to patient mobile via SMS"
           />
 
-          {/* Print eSOA / Ledger Document */}
           <button
             type="button"
             onClick={() =>
@@ -371,22 +386,14 @@ export const TripartiteWorkbench: React.FC = () => {
             className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
             title="Print Official BIR & PhilHealth-compliant electronic Statement of Account (eSOA)"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-600" />
+            <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span>Print eSOA</span>
           </button>
 
-          {/* Add Chargemaster Line Item Button */}
-          <button
-            type="button"
-            onClick={openAddChargeModal}
-            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
-            title="Add a new medication, laboratory test, medical supply, or doctor fee"
-          >
-            <Plus className="w-3.5 h-3.5 text-white" />
-            <span>Add Line Item</span>
-          </button>
+          {/* Divider */}
+          <div className="h-4 w-px bg-slate-300 mx-0.5" />
 
-          {/* Direct Switcher into Full Patient Experience */}
+          {/* 4. Full Patient Experience Link */}
           <button
             type="button"
             onClick={() => {
@@ -500,13 +507,13 @@ export const TripartiteWorkbench: React.FC = () => {
       {/* 3. Category Filter & Line Item Table */}
       <div className="flex-1 flex flex-col min-h-0">
         {/* Table Filters */}
-        <div className="px-6 py-3 border-b border-slate-200 flex items-center justify-between gap-4 shrink-0 bg-white">
+        <div className="px-4 py-2 border-b border-slate-200 flex items-center justify-between gap-4 shrink-0 bg-white">
           <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
             {categories.map((c) => (
               <button
                 key={c.key}
                 onClick={() => setFilterCategory(c.key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
                   filterCategory === c.key
                     ? 'bg-slate-900 text-white shadow-2xs'
                     : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200'
@@ -527,14 +534,14 @@ export const TripartiteWorkbench: React.FC = () => {
           <table className="w-full min-w-[950px] text-left text-sm border-collapse">
             <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                <th className="py-3.5 px-6 text-left">Item / Service Description</th>
-                <th className="py-3.5 px-3 text-left">Qty</th>
-                <th className="py-3.5 px-4 text-left">Gross Total</th>
-                <th className="py-3.5 px-4 text-left">PhilHealth</th>
-                <th className="py-3.5 px-4 text-left">HMO Coverage</th>
-                <th className="py-3.5 px-4 text-left">Patient Balance</th>
-                <th className="py-3.5 px-4 text-left">Coverage Status</th>
-                <th className="py-3.5 px-6 text-left">Actions</th>
+                <th className="py-2 px-4 text-left">Item / Service Description</th>
+                <th className="py-2 px-2.5 text-left">Qty</th>
+                <th className="py-2 px-3.5 text-left">Gross Total</th>
+                <th className="py-2 px-3.5 text-left">PhilHealth</th>
+                <th className="py-2 px-3.5 text-left">HMO Coverage</th>
+                <th className="py-2 px-3.5 text-left">Patient Balance</th>
+                <th className="py-2 px-3.5 text-left">Coverage Status</th>
+                <th className="py-2 px-4 text-left">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -543,32 +550,32 @@ export const TripartiteWorkbench: React.FC = () => {
                   key={item.id}
                   className="hover:bg-slate-50 transition-colors"
                 >
-                  <td className="py-3.5 px-6 text-left">
-                    <div className="font-semibold text-slate-900 text-sm">
+                  <td className="py-2 px-4 text-left">
+                    <div className="font-semibold text-slate-900 text-xs sm:text-sm">
                       {item.description}
                     </div>
-                    <div className="text-xs text-slate-500 font-mono mt-0.5">
+                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">
                       {item.code} · {item.category.replace(/_/g, ' ')}
                     </div>
                   </td>
 
-                  <td className="py-3.5 px-3 text-left font-mono text-slate-600 font-semibold">
+                  <td className="py-2 px-2.5 text-left font-mono text-slate-600 font-semibold text-xs">
                     {item.qty}
                   </td>
 
-                  <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900 tabular-nums">
+                  <td className="py-2 px-3.5 text-left font-mono font-bold text-slate-900 tabular-nums text-xs">
                     {formatPhp(item.grossAmount)}
                   </td>
 
-                  <td className="py-3.5 px-4 text-left font-mono text-slate-600 tabular-nums">
+                  <td className="py-2 px-3.5 text-left font-mono text-slate-600 tabular-nums text-xs">
                     {item.philhealthCovered > 0 ? formatPhp(item.philhealthCovered) : '—'}
                   </td>
 
-                  <td className="py-3.5 px-4 text-left font-mono text-slate-600 tabular-nums">
+                  <td className="py-2 px-3.5 text-left font-mono text-slate-600 tabular-nums text-xs">
                     {item.hmoCovered > 0 ? formatPhp(item.hmoCovered) : '—'}
                   </td>
 
-                  <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900 tabular-nums">
+                  <td className="py-2 px-3.5 text-left font-mono font-bold text-slate-900 tabular-nums text-xs">
                     {(() => {
                       const isSeniorOrPwd = Boolean(
                         selectedEncounter.patient.seniorCitizenId ||
@@ -589,46 +596,55 @@ export const TripartiteWorkbench: React.FC = () => {
                     })()}
                   </td>
 
-                  <td className="py-3.5 px-4 text-left text-xs">
+                  <td className="py-2 px-3.5 text-left text-xs">
                     {item.status === 'CONTESTED' || item.isDisputed ? (
-                      <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-xs">
+                      <span className="inline-flex items-center gap-1 font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full text-[10px]">
                         <AlertCircle className="w-3 h-3 text-rose-600" />
                         <span>Contested</span>
                       </span>
                     ) : item.status === 'COVERED' ? (
-                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-xs">
+                      <span className="inline-flex items-center gap-1 font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px]">
                         <ShieldCheck className="w-3 h-3 text-emerald-600" />
                         <span>Covered</span>
                       </span>
                     ) : (
-                      <span className="font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-xs">
+                      <span className="font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-[10px]">
                         {item.status.replace(/_/g, ' ')}
                       </span>
                     )}
                   </td>
 
-                  <td className="py-3.5 px-6 text-left">
-                    <div className="flex items-center gap-1.5">
+                  <td className="py-2 px-4 text-left whitespace-nowrap">
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={() => openEditChargeModal(item)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
+                        className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
                         title="Edit line item description, category, or gross amount"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteChargeItem(enc.id, item.id)}
-                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors"
+                      <ConfirmButton
+                        label={<Trash2 className="w-3.5 h-3.5" />}
+                        modalTitle="Remove Line Item from Running Bill?"
+                        modalDescription={`Are you sure you want to remove "${item.description}" (${formatPhp(item.grossAmount)}) from ${pName}'s running bill?`}
+                        confirmLabel="Remove Item"
+                        variant="subtle"
+                        confirmVariant="danger"
+                        size="xs"
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors border border-transparent hover:border-rose-200"
+                        contextInfo={[
+                          { label: 'Patient', value: pName },
+                          { label: 'Item Description', value: item.description },
+                          { label: 'Amount', value: formatPhp(item.grossAmount) }
+                        ]}
+                        onConfirm={() => deleteChargeItem(enc.id, item.id)}
                         title="Remove line item from patient running bill"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      />
                       <button
                         type="button"
                         onClick={() => openWhyDoIOweThis(item)}
-                        className="px-2 py-1 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors shadow-2xs inline-flex items-center gap-1 ml-1"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors shadow-2xs ml-1"
                         title="Explain this charge in natural language"
                       >
                         <HelpCircle className="w-3 h-3 text-slate-400" />
