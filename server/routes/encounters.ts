@@ -59,6 +59,7 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
     passesList,
     notesList,
     paymentsList,
+    receiptsList,
     timelineList
   ] = await Promise.all([
     db.select().from(chargemasterItems).where(eq(chargemasterItems.encounterId, encounter.id)),
@@ -69,6 +70,7 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
     db.select().from(dischargePasses).where(eq(dischargePasses.encounterId, encounter.id)).orderBy(desc(dischargePasses.issuedAt)),
     db.select().from(promissoryNotes).where(eq(promissoryNotes.encounterId, encounter.id)).orderBy(desc(promissoryNotes.createdAt)),
     db.select().from(payments).where(eq(payments.encounterId, encounter.id)).orderBy(desc(payments.createdAt)),
+    db.select().from(paymentReceipts).where(eq(paymentReceipts.encounterId, encounter.id)).orderBy(desc(paymentReceipts.issuedAt)),
     db.select().from(encounterTimelineEvents).where(eq(encounterTimelineEvents.encounterId, encounter.id)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
   ]);
 
@@ -301,24 +303,78 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
     billFinalizedAt: encounter.billFinalizedAt?.toISOString(),
     billSentAt: encounter.billSentAt?.toISOString(),
     billFirstViewedAt: encounter.billFirstViewedAt?.toISOString(),
-    paymentHistory: paymentsList.map((p) => ({
-      id: p.id,
-      paymentId: p.paymentReference,
-      billId: p.statementNumber,
-      encounterId: p.encounterId,
-      amount: Number(p.amount),
-      currency: p.currency,
-      paymentRail: p.paymentRail,
-      channelReference: p.channelReference,
-      gatewayAuthCode: p.gatewayAuthCode,
-      payerName: p.payerName,
-      payerContactMasked: p.payerContactMasked,
-      timestamp: p.createdAt.toISOString(),
-      status: p.status,
-      officialReceiptNumber: p.officialReceiptNumber,
-      isSimulatedDemo: p.isSimulatedDemo,
-      notes: p.notes || undefined
-    }))
+    receipts: receiptsList.map((r) => ({
+      id: r.id,
+      receiptNumber: r.receiptNumber,
+      officialReceiptNumber: r.officialReceiptNumber,
+      paymentId: r.paymentId || '',
+      billId: encounter.billNumber || `SOA-SJMC-26-${encounter.encounterNumber.replace(/\D/g, '')}`,
+      encounterId: encounter.id,
+      patientName: patient.fullName,
+      payerName: r.payerName,
+      amount: Number(r.amount),
+      paymentRail: r.paymentRail as any,
+      issuedAt: r.issuedAt.toISOString(),
+      gatewayAuthCode: r.gatewayAuthCode,
+      tinNumber: 'TIN-004-982-110-000',
+      birPermitNumber: 'BIR-CAS-2026-09-00129',
+      qrCodePayload: `SJMC|OR|${r.officialReceiptNumber}|${r.amount}|${r.issuedAt.toISOString()}|${r.gatewayAuthCode}`,
+      lineItems: [
+        {
+          description: `Hospital Settlement - Statement ${encounter.billNumber || encounter.encounterNumber}`,
+          amount: Number(r.amount)
+        }
+      ]
+    })),
+    paymentHistory: paymentsList.map((p) => {
+      const matchedReceipt = receiptsList.find(
+        (r) => r.paymentId === p.id || r.officialReceiptNumber === p.officialReceiptNumber
+      );
+      return {
+        id: p.id,
+        paymentId: p.paymentReference,
+        billId: p.statementNumber,
+        encounterId: p.encounterId,
+        amount: Number(p.amount),
+        currency: p.currency,
+        paymentRail: p.paymentRail,
+        channelReference: p.channelReference,
+        gatewayAuthCode: p.gatewayAuthCode,
+        payerName: p.payerName,
+        payerContactMasked: p.payerContactMasked,
+        timestamp: p.createdAt.toISOString(),
+        status: p.status,
+        officialReceiptNumber: p.officialReceiptNumber,
+        isSimulatedDemo: p.isSimulatedDemo,
+        notes: p.notes || undefined,
+        receiptId: matchedReceipt?.id,
+        receipt: matchedReceipt
+          ? {
+              id: matchedReceipt.id,
+              receiptNumber: matchedReceipt.receiptNumber,
+              officialReceiptNumber: matchedReceipt.officialReceiptNumber,
+              paymentId: matchedReceipt.paymentId || p.id,
+              billId: p.statementNumber,
+              encounterId: p.encounterId,
+              patientName: patient.fullName,
+              payerName: matchedReceipt.payerName,
+              amount: Number(matchedReceipt.amount),
+              paymentRail: matchedReceipt.paymentRail as any,
+              issuedAt: matchedReceipt.issuedAt.toISOString(),
+              gatewayAuthCode: matchedReceipt.gatewayAuthCode,
+              tinNumber: 'TIN-004-982-110-000',
+              birPermitNumber: 'BIR-CAS-2026-09-00129',
+              qrCodePayload: `SJMC|OR|${matchedReceipt.officialReceiptNumber}|${matchedReceipt.amount}|${matchedReceipt.issuedAt.toISOString()}|${matchedReceipt.gatewayAuthCode}`,
+              lineItems: [
+                {
+                  description: `Hospital Settlement - Statement ${p.statementNumber}`,
+                  amount: Number(matchedReceipt.amount)
+                }
+              ]
+            }
+          : undefined
+      };
+    })
   };
 }
 
@@ -362,6 +418,61 @@ encountersApp.get('/:id/ledger', async (c) => {
     waterfall: enc.waterfall
   });
 });
+
+// GET /api/v1/encounters/:id/statement & /invoice - Canonical Statement of Account / Invoice Projection
+const handleStatement = async (c: any) => {
+  const id = c.req.param('id');
+  const enc = await getHydratedEncounter(id);
+  if (!enc) {
+    return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
+  }
+
+  const receipts = await db
+    .select()
+    .from(paymentReceipts)
+    .where(eq(paymentReceipts.encounterId, enc.uuid))
+    .orderBy(desc(paymentReceipts.issuedAt));
+
+  return c.json({
+    statementNumber: enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber.replace(/\D/g, '')}`,
+    encounterId: enc.id,
+    encounterUuid: enc.uuid,
+    encounterNumber: enc.encounterNumber,
+    patient: enc.patient,
+    roomBed: enc.roomBed,
+    admissionDate: enc.admissionDate,
+    dischargeDate: enc.mghOrderTimestamp,
+    attendingDoctor: enc.attendingDoctor,
+    billState: enc.billState,
+    items: enc.items,
+    waterfall: enc.waterfall,
+    amountPaid: enc.amountPaid,
+    remainingBalance: enc.remainingBalance,
+    isFullySettled: enc.remainingBalance <= 0,
+    payments: enc.paymentHistory,
+    receipts: receipts.map((r) => ({
+      id: r.id,
+      paymentId: r.paymentId,
+      receiptNumber: r.receiptNumber,
+      officialReceiptNumber: r.officialReceiptNumber,
+      amount: Number(r.amount),
+      paymentRail: r.paymentRail,
+      payerName: r.payerName,
+      issuedAt: r.issuedAt.toISOString()
+    })),
+    statutoryFramework: {
+      vatLaw: 'RA 10963 / Tax Reform for Acceleration and Inclusion (TRAIN)',
+      seniorCitizenLaw: 'RA 9994 (Expanded Senior Citizens Act of 2010)',
+      pwdLaw: 'RA 10754 (Persons with Disability Act of 2016)',
+      universalHealthCare: 'RA 11223 (Universal Health Care Act of 2019)',
+      antiHospitalDetentionLaw: 'RA 9439 (Anti-Hospital Detention Act)',
+      philHealthCircular: 'PhilHealth Circular No. 2023-0026'
+    }
+  });
+};
+
+encountersApp.get('/:id/statement', handleStatement);
+encountersApp.get('/:id/invoice', handleStatement);
 
 // POST /api/v1/encounters/:id/advance-stage
 const stageOrder = [

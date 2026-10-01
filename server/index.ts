@@ -34,13 +34,48 @@ app.use(
 // Global Session Authentication Middleware
 app.use('/api/*', authMiddleware);
 
-// Health Check
-app.get('/api/health', (c) => {
+import { db } from './db';
+import { sql } from 'drizzle-orm';
+
+// Health Check with Live PostgreSQL Connectivity Verification
+app.get('/api/health', async (c) => {
+  let dbStatus = 'CONNECTED';
+  let dbLatencyMs = 0;
+  let encountersCount = 0;
+
+  try {
+    const start = Date.now();
+    const res = await db.execute(sql`SELECT count(*)::int as count FROM encounters`);
+    dbLatencyMs = Date.now() - start;
+    encountersCount = Number(res.rows[0]?.count || 0);
+  } catch (err: any) {
+    dbStatus = 'DISCONNECTED';
+    console.error('Healthcheck DB ping failed:', err);
+    return c.json(
+      {
+        status: 'DEGRADED',
+        system: 'MedCore Enterprise Hospital RCM Backend',
+        version: '3.2.0',
+        database: {
+          status: 'DISCONNECTED',
+          error: err.message
+        },
+        timestamp: new Date().toISOString()
+      },
+      503
+    );
+  }
+
   return c.json({
     status: 'ONLINE',
-    system: 'AQROMED Enterprise Hospital RCM Backend',
+    system: 'MedCore (AQROMED) Enterprise Hospital RCM Backend',
     version: '3.2.0',
     facility: 'St. Jude Medical Center Manila',
+    database: {
+      status: dbStatus,
+      latencyMs: dbLatencyMs,
+      encountersCount
+    },
     statutoryCompliance: ['RA 9994', 'RA 10754', 'RA 11223', 'RA 9439', 'Circular 2024-0037'],
     timestamp: new Date().toISOString()
   });
