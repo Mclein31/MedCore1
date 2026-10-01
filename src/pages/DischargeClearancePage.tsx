@@ -7,16 +7,16 @@ export const DischargeClearancePage: React.FC = () => {
   const [subView, setSubView] = useState<'WORKSPACE' | 'KANBAN'>('WORKSPACE');
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-56px)] max-h-[calc(100vh-56px)] overflow-hidden bg-slate-50">
+    <div className="flex-1 flex flex-col h-[calc(100vh-var(--header-height,3rem))] max-h-[calc(100vh-var(--header-height,3rem))] overflow-hidden bg-slate-50">
       {/* Subview Navigation Bar */}
-      <div className="px-6 py-2.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
+      <div className="px-4 py-1.5 bg-white border-b border-slate-200 flex items-center justify-between shrink-0">
         <span className="text-xs text-slate-500 font-medium">
           Discharge Clearance Mission Control · 45-Min Statutory Target
         </span>
         <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-100">
           <button
             onClick={() => setSubView('WORKSPACE')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors ${
               subView === 'WORKSPACE'
                 ? 'bg-white text-blue-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
@@ -27,7 +27,7 @@ export const DischargeClearancePage: React.FC = () => {
           </button>
           <button
             onClick={() => setSubView('KANBAN')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors ${
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-colors ${
               subView === 'KANBAN'
                 ? 'bg-white text-blue-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
