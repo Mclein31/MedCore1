@@ -159,6 +159,12 @@ interface MedCoreContextType {
   confirmationState: (ConfirmModalRequest & { isOpen: boolean }) | null;
   requestConfirmation: (request: ConfirmModalRequest) => void;
   closeConfirmation: () => void;
+
+  // Data Loading & API Error State
+  isLoadingEncounters: boolean;
+  apiError: string | null;
+  clearApiError: () => void;
+  refreshEncounters: () => Promise<void>;
 }
 
 
@@ -236,10 +242,41 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeRoute, setActiveRoute] = useState<NavRoute>('COMMAND_CENTER');
   const [activeRole, setActiveRoleState] = useState<UserRole>('BILLING_SPECIALIST');
 
+  // API Loading & Error State
+  const [isLoadingEncounters, setIsLoadingEncounters] = useState<boolean>(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  const clearApiError = () => setApiError(null);
+
+  const refreshEncounters = async () => {
+    try {
+      setIsLoadingEncounters(true);
+      const res = await apiClient.getEncounters();
+      if (res && Array.isArray(res.items) && res.items.length > 0) {
+        setEncounters(res.items);
+        setApiError(null);
+        setSelectedEncounterId((prev) => {
+          if (res.items.some((e: any) => e.id === prev || e.encounterNumber === prev)) return prev;
+          return res.items[0].id;
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to load encounters from API:', err);
+      setApiError(`Backend API communication error: ${err.message || 'Cannot fetch encounters'}`);
+    } finally {
+      setIsLoadingEncounters(false);
+    }
+  };
+
   const setActiveRole = (role: UserRole) => {
     setActiveRoleState(role);
-    apiClient.switchRole(role).catch((err) => {
-      console.warn('API switchRole sync:', err);
+    apiClient.switchRole(role).then((res) => {
+      if (res?.user) {
+        setCurrentUser(res.user);
+      }
+    }).catch((err) => {
+      console.warn('API switchRole sync notice:', err);
+      setApiError(`Role switch synchronization failed on server: ${err.message}`);
     });
   };
 
@@ -295,32 +332,42 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       }
     }
-    return {
-      id: 'usr-billing-lead',
-      fullName: 'Elena Santos',
-      email: 'elena.santos@stjude.ph',
-      role: 'BILLING_SPECIALIST',
-      title: 'Inpatient Billing Specialist',
-      facilityName: 'St. Jude Medical Center Manila'
-    };
+    return null;
   });
 
-  // Verify backend session on mount
+  // Authoritative Session Verification & Data Hydration on mount
   useEffect(() => {
+    let isMounted = true;
     apiClient.getMe()
-      .then((res) => {
+      .then(async (res) => {
+        if (!isMounted) return;
         if (res?.user) {
           setIsAuthenticated(true);
           setCurrentUser(res.user);
+          if (res.user.role) {
+            setActiveRoleState(res.user.role as UserRole);
+            apiClient.setDemoRole(res.user.role);
+          }
           if (typeof window !== 'undefined') {
             localStorage.setItem('aqromed_auth', 'true');
             localStorage.setItem('aqromed_user', JSON.stringify(res.user));
           }
+          await refreshEncounters();
+        } else {
+          setIsAuthenticated(false);
+          setCurrentUser(null);
+          apiClient.setDemoRole(null);
         }
       })
       .catch(() => {
-        // Standalone or local fallback
+        if (!isMounted) return;
+        // Attempt encounter hydration anyway in case public endpoints are accessible
+        refreshEncounters();
       });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const login = async (credentials: { email: string; password?: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
@@ -335,39 +382,15 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         if (res.user.role) {
           setActiveRoleState(res.user.role as UserRole);
+          apiClient.setDemoRole(res.user.role);
         }
+        setApiError(null);
+        await refreshEncounters();
         return { success: true };
       }
       return { success: false, error: 'Login failed: Invalid server response' };
     } catch (err: any) {
-      // Fallback demo preset accounts
-      const demoAccounts = [
-        { email: 'elena.santos@stjude.ph', role: 'BILLING_SPECIALIST', name: 'Elena Santos', title: 'Inpatient Billing Specialist' },
-        { email: 'arthur.delgado@stjude.ph', role: 'HOSPITAL_CFO', name: 'Arthur Delgado', title: 'Hospital CFO / RCM Director' },
-        { email: 'manuel.reyes@stjude.ph', role: 'ATTENDING_PHYSICIAN', name: 'Dr. Manuel Reyes', title: 'Attending Physician (FPCP)' },
-        { email: 'marco.valenzuela@stjude.ph', role: 'HMO_COORDINATOR', name: 'Marco Valenzuela', title: 'HMO Liaison Coordinator' },
-        { email: 'grace.tan@stjude.ph', role: 'CLAIMS_ENCODER', name: 'Grace Tan', title: 'PhilHealth Claims Auditor' },
-        { email: 'bert.aquino@stjude.ph', role: 'LOBBY_SECURITY', name: 'Bert Aquino', title: 'Lobby Exit Security Officer' }
-      ];
-      const match = demoAccounts.find(d => d.email.toLowerCase() === credentials.email.toLowerCase());
-      if (match) {
-        const user = {
-          id: `usr-${match.role.toLowerCase()}`,
-          fullName: match.name,
-          email: match.email,
-          role: match.role,
-          title: match.title,
-          facilityName: 'St. Jude Medical Center Manila'
-        };
-        setIsAuthenticated(true);
-        setCurrentUser(user);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('aqromed_auth', 'true');
-          localStorage.setItem('aqromed_user', JSON.stringify(user));
-        }
-        setActiveRoleState(match.role as UserRole);
-        return { success: true };
-      }
+      console.error('API login failure:', err);
       return { success: false, error: err.message || 'Authentication failed' };
     }
   };
@@ -555,10 +578,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     'CLEARED_GATE_PASS'
   ];
 
-  const advanceStage = (encounterId: string) => {
-    apiClient.advanceStage(encounterId).catch((err) => {
-      console.warn('API advance-stage background sync:', err);
-    });
+  const advanceStage = async (encounterId: string) => {
+    try {
+      const res = await apiClient.advanceStage(encounterId);
+      if (res?.encounter) {
+        setEncounters((prev) =>
+          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+        );
+        return;
+      }
+    } catch (err: any) {
+      console.error('API advance-stage failure:', err);
+      setApiError(`Failed to advance stage on server: ${err.message || 'Unknown error'}`);
+    }
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -588,10 +621,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const applyAccreditedCeiling = (encounterId: string) => {
-    apiClient.applyAccreditedCeiling(encounterId).catch((err) => {
-      console.warn('API accredited-ceiling background sync:', err);
-    });
+  const applyAccreditedCeiling = async (encounterId: string) => {
+    try {
+      const res = await apiClient.applyAccreditedCeiling(encounterId);
+      if (res?.encounter) {
+        setEncounters((prev) =>
+          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+        );
+        return;
+      }
+    } catch (err: any) {
+      console.error('API accredited-ceiling failure:', err);
+      setApiError(`Failed to apply accredited ceiling on server: ${err.message || 'Unknown error'}`);
+    }
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -616,10 +659,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const clearPharmacyRts = (encounterId: string) => {
-    apiClient.clearPharmacyRts(encounterId).catch((err) => {
-      console.warn('API clear-pharmacy-rts background sync:', err);
-    });
+  const clearPharmacyRts = async (encounterId: string) => {
+    try {
+      const res = await apiClient.clearPharmacyRts(encounterId);
+      if (res?.encounter) {
+        setEncounters((prev) =>
+          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+        );
+        return;
+      }
+    } catch (err: any) {
+      console.error('API clear-pharmacy-rts failure:', err);
+      setApiError(`Failed to clear pharmacy RTS on server: ${err.message || 'Unknown error'}`);
+    }
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -633,10 +686,24 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const approveHmoFinalLoa = (encounterId: string) => {
-    apiClient.approveHmoFinalLoa(encounterId).catch((err) => {
-      console.warn('API approve-hmo-loa background sync:', err);
-    });
+  const approveHmoFinalLoa = async (encounterId: string) => {
+    const enc = encounters.find((e) => e.id === encounterId);
+    try {
+      const res = await apiClient.approveHmoFinalLoa(encounterId, {
+        approvedAmount: enc?.hmo?.approvedAmount || enc?.waterfall?.hmoApprovedAmount || 0,
+        disallowedConsumables: enc?.hmo?.disallowedConsumables || 0
+      });
+      if (res?.encounter) {
+        setEncounters((prev) =>
+          prev.map((e) => (e.id === encounterId || e.encounterNumber === res.encounter.encounterNumber ? res.encounter : e))
+        );
+        return;
+      }
+    } catch (err: any) {
+      console.error('API approve-hmo-loa failure:', err);
+      setApiError(`Failed to approve HMO Final LOA on server: ${err.message || 'Unknown error'}`);
+    }
+
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;
@@ -740,7 +807,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsGatePassModalOpen(true);
   };
 
-  const executePromissoryNote = (
+  const executePromissoryNote = async (
     encounterId: string,
     borrowerName: string,
     idType: 'PHILSYS_NATIONAL_ID' | 'UMID' | 'DRIVERS_LICENSE',
@@ -753,16 +820,27 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ? customPrincipal
       : (promissoryCustomAmount !== null ? promissoryCustomAmount : (encTarget?.waterfall.netPatientDue || 0));
 
-    apiClient.executePromissoryNote(encounterId, {
-      borrowerName,
-      borrowerRelationship: 'GUARANTOR',
-      borrowerIdType: idType,
-      borrowerIdNumber: idNumber,
-      installmentMonths: months,
-      principalAmount: targetPrincipal
-    }).catch((err) => {
-      console.warn('API promissory note sync:', err);
-    });
+    try {
+      const res = await apiClient.executePromissoryNote(encounterId, {
+        borrowerName,
+        borrowerRelationship: 'GUARANTOR',
+        borrowerIdType: idType,
+        borrowerIdNumber: idNumber,
+        installmentMonths: months,
+        principalAmount: targetPrincipal
+      });
+      if (res?.encounter) {
+        setEncounters((prev) =>
+          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+        );
+        setIsPromissoryModalOpen(false);
+        setIsGatePassModalOpen(true);
+        return;
+      }
+    } catch (err: any) {
+      console.error('API promissory note failure:', err);
+      setApiError(`Failed to execute promissory note on server: ${err.message || 'Unknown error'}`);
+    }
 
     setEncounters((prev) =>
       prev.map((enc) => {
@@ -808,14 +886,23 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsGatePassModalOpen(true);
   };
 
-  const freezeDisputeItem = (encounterId: string, itemId: string, reason: string) => {
-    apiClient.fileDispute(encounterId, {
-      chargeId: itemId,
-      reason,
-      disputeCategory: 'OTHER'
-    }).catch((err) => {
-      console.warn('API file dispute sync:', err);
-    });
+  const freezeDisputeItem = async (encounterId: string, itemId: string, reason: string) => {
+    try {
+      const res = await apiClient.fileDispute(encounterId, {
+        chargeId: itemId,
+        reason,
+        disputeCategory: 'OTHER'
+      });
+      if (res?.encounter) {
+        setEncounters((prev) =>
+          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+        );
+        return;
+      }
+    } catch (err: any) {
+      console.error('API file dispute failure:', err);
+      setApiError(`Failed to file dispute on server: ${err.message || 'Unknown error'}`);
+    }
 
     setEncounters((prev) =>
       prev.map((enc) => {
@@ -843,13 +930,22 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const supervisoryWaiveItem = (encounterId: string, itemId: string, notes: string) => {
+  const supervisoryWaiveItem = async (encounterId: string, itemId: string, notes: string) => {
     const encTarget = encounters.find((e) => e.id === encounterId);
     const targetDispute = encTarget?.disputes?.find((d) => d.itemId === itemId);
     if (targetDispute?.id) {
-      apiClient.waiveDispute(targetDispute.id, notes).catch((err) => {
-        console.warn('API supervisory waive sync:', err);
-      });
+      try {
+        const res = await apiClient.waiveDispute(targetDispute.id, notes);
+        if (res?.encounter) {
+          setEncounters((prev) =>
+            prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+          );
+          return;
+        }
+      } catch (err: any) {
+        console.error('API supervisory waive failure:', err);
+        setApiError(`Failed to execute supervisory waiver on server: ${err.message || 'Unknown error'}`);
+      }
     }
 
     setEncounters((prev) =>
@@ -1124,6 +1220,81 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         bankName: params.bankName
       };
 
+      let serverRes: any = null;
+      try {
+        serverRes = await apiClient.processPayment(
+          enc.id,
+          {
+            amount: params.amount,
+            paymentRail: params.paymentRail,
+            payerName: params.payerName || enc.patient.fullName || enc.patient.maskedName || 'Patient Guarantor',
+            payerContactMasked: params.payerContactMasked || '0917-***-****',
+            notes: (params as any).notes || `Settlement via ${params.paymentRail}`
+          },
+          txRef
+        );
+      } catch (err: any) {
+        console.error('API processPayment failure:', err);
+        setApiError(`Payment processing failed on server: ${err.message || 'Unknown error'}`);
+        return { success: false, error: err.message || 'Payment rejected by server' };
+      }
+
+      if (serverRes?.success && serverRes.payment) {
+        const canonicalReceipt: PaymentReceipt = {
+          id: serverRes.receipt?.id || `RCPT-${serverRes.payment.id.slice(0, 8)}`,
+          paymentId: serverRes.payment.paymentReference,
+          billId: serverRes.payment.statementNumber,
+          amount: Number(serverRes.payment.amount),
+          paymentMethod: serverRes.payment.paymentRail as DemoPaymentRail,
+          date: new Date(serverRes.receipt?.issuedAt || serverRes.payment.settledAt || Date.now()).toISOString(),
+          referenceNumber: serverRes.payment.channelReference,
+          officialReceiptNumber: serverRes.payment.officialReceiptNumber,
+          payerName: serverRes.receipt?.payerName || serverRes.payment.payerName,
+          payerContactMasked: serverRes.receipt?.payerContactMasked || serverRes.payment.payerContactMasked || '',
+          gatewayAuthCode: serverRes.receipt?.gatewayAuthCode || serverRes.payment.gatewayAuthCode,
+          notes: serverRes.payment.notes || undefined,
+          isSimulatedDemo: true
+        };
+
+        const paymentRecord: DemoPaymentRecord = {
+          id: serverRes.payment.id,
+          paymentId: serverRes.payment.paymentReference,
+          billId: serverRes.payment.statementNumber,
+          encounterId: enc.id,
+          amount: Number(serverRes.payment.amount),
+          currency: 'PHP',
+          paymentRail: serverRes.payment.paymentRail as DemoPaymentRail,
+          channelReference: serverRes.payment.channelReference,
+          gatewayAuthCode: serverRes.payment.gatewayAuthCode,
+          payerName: serverRes.payment.payerName,
+          payerContactMasked: serverRes.payment.payerContactMasked || '',
+          timestamp: new Date(serverRes.payment.settledAt || serverRes.payment.createdAt || Date.now()).toISOString(),
+          status: serverRes.payment.status,
+          officialReceiptNumber: serverRes.payment.officialReceiptNumber,
+          isSimulatedDemo: true,
+          notes: serverRes.payment.notes || undefined,
+          receiptId: canonicalReceipt.id,
+          receipt: canonicalReceipt
+        };
+
+        if (serverRes.encounter) {
+          setEncounters((prev) =>
+            prev.map((e) => (e.id === enc.id || e.encounterNumber === serverRes.encounter.encounterNumber ? serverRes.encounter : e))
+          );
+        }
+
+        broadcastBillingSync({
+          type: 'PAYMENT_SETTLED',
+          encounterId: enc.id,
+          payment: paymentRecord,
+          remainingBalance: Number(serverRes.encounter?.remainingBalance ?? 0),
+          isFullySettled: Number(serverRes.encounter?.remainingBalance ?? 0) === 0
+        });
+
+        return { success: true, paymentRecord };
+      }
+
+      // Offline / fallback calculation if server did not return payment record
       // Idempotently create exactly one receipt for this payment
       const receipt = createOrGetReceipt(newRecord, enc.receipts);
       newRecord.receiptId = receipt.id;
@@ -1173,7 +1344,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setEncounters((prev) =>
         prev.map((e) => {
           if (e.id !== params.encounterId) return e;
-          // Invariant: Never add duplicate payment record
           if (e.paymentHistory?.some((p) => p.paymentId === paymentId || p.id === newRecord.id)) {
             return e;
           }
@@ -1207,20 +1377,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         payment: newRecord,
         remainingBalance: newRemaining,
         isFullySettled
-      });
-
-      apiClient.processPayment(
-        enc.id,
-        {
-          amount: params.amount,
-          paymentRail: params.paymentRail,
-          payerName: params.payerName || enc.patient.fullName || enc.patient.maskedName || 'Patient Guarantor',
-          payerContactMasked: params.payerContactMasked || '0917-***-****',
-          notes: (params as any).notes || `Settlement via ${params.paymentRail}`
-        },
-        txRef
-      ).catch((err) => {
-        console.warn('API processPayment background sync:', err);
       });
 
       return { success: true, paymentRecord: newRecord };
@@ -1364,8 +1520,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         quantity: updates.qty,
         unitPrice: updates.unitPrice
       });
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Backend editChargeItem sync notice:', err);
+      setApiError(`Failed to update charge item on server: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -1416,8 +1573,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId);
           const targetId = isUuid ? itemId : (item?.code || itemId);
           await apiClient.deleteChargeItem(targetId);
-        } catch (err) {
+        } catch (err: any) {
           console.warn('Backend deleteChargeItem sync notice:', err);
+          setApiError(`Failed to delete charge item on server: ${err.message || 'Unknown error'}`);
         }
       }
     });
@@ -1619,8 +1777,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     try {
       await apiClient.editEncounter(encounterId, updates);
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Backend editEncounter sync notice:', err);
+      setApiError(`Failed to update encounter on server: ${err.message || 'Unknown error'}`);
     }
   };
 
@@ -1653,8 +1812,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
         try {
           await apiClient.deleteEncounter(encounterId);
-        } catch (err) {
+        } catch (err: any) {
           console.warn('Backend deleteEncounter sync notice:', err);
+          setApiError(`Failed to delete encounter on server: ${err.message || 'Unknown error'}`);
         }
       }
     });
@@ -1752,7 +1912,12 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
         confirmationState,
         requestConfirmation,
-        closeConfirmation
+        closeConfirmation,
+        // Data Loading & API Error State
+        isLoadingEncounters,
+        apiError,
+        clearApiError,
+        refreshEncounters
       }}
     >
       {children}

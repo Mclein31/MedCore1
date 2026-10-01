@@ -30,6 +30,8 @@ import {
   ConfigurationPage
 } from '@/pages';
 
+import { AlertCircle, X } from 'lucide-react';
+
 const MainLayout: React.FC = () => {
   const {
     activeRoute,
@@ -40,7 +42,9 @@ const MainLayout: React.FC = () => {
     selectEncounter,
     encounters,
     confirmationState,
-    closeConfirmation
+    closeConfirmation,
+    apiError,
+    clearApiError
   } = useMedCore();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -64,6 +68,27 @@ const MainLayout: React.FC = () => {
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [encounters, selectEncounter, setActiveRoute, setActiveRole]);
+
+  const renderApiErrorToast = () => {
+    if (!apiError) return null;
+    return (
+      <div className="fixed bottom-5 right-5 z-70 max-w-md bg-rose-50 border border-rose-300 text-rose-900 px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+        <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+        <div className="flex-1 text-xs">
+          <div className="font-bold text-rose-950">Backend API Sync Notice</div>
+          <div className="mt-0.5 text-rose-800 break-words">{apiError}</div>
+        </div>
+        <button
+          type="button"
+          onClick={clearApiError}
+          className="text-rose-400 hover:text-rose-700 p-1 rounded-lg hover:bg-rose-100 transition-colors"
+          title="Dismiss"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  };
 
   // If user is not authenticated and not on patient portal, present the enterprise login screen
   if (!isAuthenticated && activeRoute !== 'PATIENT_PORTAL' && activeRole !== 'PATIENT_GUARANTOR') {
@@ -91,6 +116,7 @@ const MainLayout: React.FC = () => {
             }}
           />
         )}
+        {renderApiErrorToast()}
       </>
     );
   }
@@ -129,6 +155,7 @@ const MainLayout: React.FC = () => {
           />
         )}
         <PrintDocumentContainer />
+        {renderApiErrorToast()}
       </>
     );
   }
@@ -208,6 +235,7 @@ const MainLayout: React.FC = () => {
         />
       )}
       <PrintDocumentContainer />
+      {renderApiErrorToast()}
     </>
   );
 };

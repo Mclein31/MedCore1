@@ -17,7 +17,8 @@ export const GlobalCommandBar: React.FC = () => {
     encounters,
     currentUser,
     logout,
-    requestConfirmation
+    requestConfirmation,
+    isLoadingEncounters
   } = useMedCore();
 
   const [currentTime, setCurrentTime] = useState<string>('');
@@ -92,13 +93,13 @@ export const GlobalCommandBar: React.FC = () => {
         <div className="flex items-center gap-2.5">
           <img
             src="/AQROMED_logo.png"
-            alt="AQROMED"
+            alt="MedCore"
             className="h-7 w-auto max-h-7 object-contain"
           />
           <div>
             <div className="flex items-center gap-1.5">
               <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-none">
-                AQROMED
+                MedCore
               </span>
               <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.2 rounded leading-none">
                 v2.4
@@ -123,7 +124,18 @@ export const GlobalCommandBar: React.FC = () => {
             <span>{currentTime || '14:32:05 PST'}</span>
           </div>
           <span className="text-slate-300">·</span>
-          <div>
+          <div className="flex items-center gap-2">
+            {isLoadingEncounters ? (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 border border-blue-200 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-ping"></span>
+                <span>Syncing DB...</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                <span>PostgreSQL Live</span>
+              </span>
+            )}
             {breachCount > 0 ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
