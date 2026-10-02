@@ -71,113 +71,121 @@ promissoryApp.post(
     // Digital signature hash
     const signatureHash = `sig_ra9439_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
 
-    // 1. Insert promissory note
-    const insertedNotes = await db
-      .insert(promissoryNotes)
-      .values({
-        noteNumber,
-        encounterId: enc.id,
-        borrowerName: params.borrowerName,
-        borrowerRelationship: params.borrowerRelationship,
-        borrowerIdType: params.borrowerIdType,
-        borrowerIdNumber: params.borrowerIdNumber,
-        principalAmount: plan.financedAmount.toFixed(2),
-        interestRate: '0.0000',
-        financingFee: '0.00',
-        totalRepayment: plan.totalRepayment.toFixed(2),
-        installmentMonths: params.installmentMonths,
-        monthlyInstallment: plan.monthlyInstallment.toFixed(2),
-        scheduleJson: plan.schedule,
-        firstDueDate: new Date('2026-10-25'),
-        digitalSignatureTimestamp: now,
-        digitalSignatureHash: signatureHash,
-        status: 'ACTIVE'
-      })
-      .returning();
-
-    const currentRemaining = Number(enc.remainingBalance);
-    const newRemaining = Math.max(0, Number((currentRemaining - params.principalAmount).toFixed(2)));
-
-    // 2. If covered / zero remaining: advance stage to CLEARED_GATE_PASS
-    let passRecord = null;
-    const isCleared = newRemaining === 0;
-
-    if (isCleared) {
-      const passNumber = `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`;
-      const hmac = await generateGatePassHmac(enc.id, params.principalAmount, now.toISOString());
-      const exitPin = generateDeterministicExitPin(passNumber);
-
-      const insertedPasses = await db
-        .insert(dischargePasses)
+    // Atomic transaction for promissory note, gate pass issuance, encounter stage, and audit logging
+    const txResult = await db.transaction(async (tx) => {
+      // 1. Insert promissory note
+      const insertedNotes = await tx
+        .insert(promissoryNotes)
         .values({
-          passNumber,
+          noteNumber,
           encounterId: enc.id,
-          patientName: params.borrowerName,
-          roomBed: enc.roomBed,
-          settledAmount: params.principalAmount.toFixed(2),
-          settlementChannel: 'PROMISSORY_NOTE',
-          promissoryNoteId: insertedNotes[0].id,
-          hmacSignature: hmac,
-          exitPin,
-          status: 'ACTIVE_READY_FOR_EXIT',
-          issuedAt: now
+          borrowerName: params.borrowerName,
+          borrowerRelationship: params.borrowerRelationship,
+          borrowerIdType: params.borrowerIdType,
+          borrowerIdNumber: params.borrowerIdNumber,
+          principalAmount: plan.financedAmount.toFixed(2),
+          interestRate: '0.0000',
+          financingFee: '0.00',
+          totalRepayment: plan.totalRepayment.toFixed(2),
+          installmentMonths: params.installmentMonths,
+          monthlyInstallment: plan.monthlyInstallment.toFixed(2),
+          scheduleJson: plan.schedule,
+          firstDueDate: new Date('2026-10-25'),
+          digitalSignatureTimestamp: now,
+          digitalSignatureHash: signatureHash,
+          status: 'ACTIVE'
         })
         .returning();
 
-      passRecord = insertedPasses[0];
+      const currentRemaining = Number(enc.remainingBalance);
+      const newRemaining = Math.max(0, Number((currentRemaining - params.principalAmount).toFixed(2)));
 
-      // Update bed status to HOUSEKEEPING
-      if (enc.bedId) {
-        await db
-          .update(beds)
-          .set({
-            status: 'HOUSEKEEPING',
-            currentEncounterId: null,
-            updatedAt: now
+      // 2. If covered / zero remaining: advance stage to CLEARED_GATE_PASS
+      let passRecord = null;
+      const isCleared = newRemaining === 0;
+
+      if (isCleared) {
+        const passNumber = `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`;
+        const hmac = await generateGatePassHmac(enc.id, params.principalAmount, now.toISOString());
+        const exitPin = generateDeterministicExitPin(passNumber);
+
+        const insertedPasses = await tx
+          .insert(dischargePasses)
+          .values({
+            passNumber,
+            encounterId: enc.id,
+            patientName: params.borrowerName,
+            roomBed: enc.roomBed,
+            settledAmount: params.principalAmount.toFixed(2),
+            settlementChannel: 'PROMISSORY_NOTE',
+            promissoryNoteId: insertedNotes[0].id,
+            hmacSignature: hmac,
+            exitPin,
+            status: 'ACTIVE_READY_FOR_EXIT',
+            issuedAt: now
           })
-          .where(eq(beds.id, enc.bedId));
+          .returning();
+
+        passRecord = insertedPasses[0];
+
+        // Update bed status to HOUSEKEEPING
+        if (enc.bedId) {
+          await tx
+            .update(beds)
+            .set({
+              status: 'HOUSEKEEPING',
+              currentEncounterId: null,
+              updatedAt: now
+            })
+            .where(eq(beds.id, enc.bedId));
+        }
       }
-    }
 
-    // 3. Update encounter
-    await db
-      .update(encounters)
-      .set({
-        remainingBalance: newRemaining.toFixed(2),
-        stage: isCleared ? 'CLEARED_GATE_PASS' : enc.stage,
-        updatedAt: now
-      })
-      .where(eq(encounters.id, enc.id));
+      // 3. Update encounter
+      await tx
+        .update(encounters)
+        .set({
+          remainingBalance: newRemaining.toFixed(2),
+          stage: isCleared ? 'CLEARED_GATE_PASS' : enc.stage,
+          updatedAt: now
+        })
+        .where(eq(encounters.id, enc.id));
 
-    // Timeline event
-    await db.insert(encounterTimelineEvents).values({
-      encounterId: enc.id,
-      eventType: 'LEGAL',
-      title: `RA 9439 0% Promissory Note Executed (${params.installmentMonths} Months)`,
-      description: `Financed ₱${params.principalAmount.toLocaleString()} for ${params.borrowerName}. Zero interest applied.`,
-      actorId: user.id,
-      actorName: user.fullName,
-      status: 'COMPLETED'
-    });
+      // 4. Timeline event
+      await tx.insert(encounterTimelineEvents).values({
+        encounterId: enc.id,
+        eventType: 'LEGAL',
+        title: `RA 9439 0% Promissory Note Executed (${params.installmentMonths} Months)`,
+        description: `Financed ₱${params.principalAmount.toLocaleString()} for ${params.borrowerName}. Zero interest applied.`,
+        actorId: user.id,
+        actorName: user.fullName,
+        status: 'COMPLETED'
+      });
 
-    // Audit log
-    await db.insert(systemAuditLogs).values({
-      facilityId: enc.facilityId,
-      userId: user.id,
-      actorRole: user.role,
-      action: 'PROMISSORY_NOTE_EXECUTED',
-      resourceType: 'promissory_notes',
-      resourceId: insertedNotes[0].id,
-      newState: { noteNumber, principal: params.principalAmount, months: params.installmentMonths },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
-      userAgent: c.req.header('user-agent')
+      // 5. Audit log
+      await tx.insert(systemAuditLogs).values({
+        facilityId: enc.facilityId,
+        userId: user.id,
+        actorRole: user.role,
+        action: 'PROMISSORY_NOTE_EXECUTED',
+        resourceType: 'promissory_notes',
+        resourceId: insertedNotes[0].id,
+        newState: { noteNumber, principal: params.principalAmount, months: params.installmentMonths },
+        ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+        userAgent: c.req.header('user-agent')
+      });
+
+      return {
+        promissoryNote: insertedNotes[0],
+        dischargePass: passRecord
+      };
     });
 
     const updated = await getHydratedEncounter(enc.id);
     return c.json({
       success: true,
-      promissoryNote: insertedNotes[0],
-      dischargePass: passRecord,
+      promissoryNote: txResult.promissoryNote,
+      dischargePass: txResult.dischargePass,
       encounter: updated
     });
   }

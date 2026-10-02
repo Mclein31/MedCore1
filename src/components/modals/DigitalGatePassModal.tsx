@@ -10,7 +10,7 @@ import {
   Building2,
   Check
 } from 'lucide-react';
-import { ConfirmButton } from '@/components/common';
+import { ConfirmButton, Button, IconButton } from '@/components/common';
 
 export const DigitalGatePassModal: React.FC = () => {
   const {
@@ -78,12 +78,13 @@ export const DigitalGatePassModal: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={closeGatePassModal}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Gate Pass Card */}
@@ -179,13 +180,15 @@ export const DigitalGatePassModal: React.FC = () => {
           {/* Cryptographic Hash token */}
           <div className="flex items-center justify-between px-3.5 py-2 rounded-lg bg-slate-100 text-xs font-mono text-slate-600">
             <span className="truncate max-w-[240px]">Sig: {pass.hmacSignature}</span>
-            <button
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={copiedToken ? Check : Copy}
               onClick={copyToken}
-              className="text-slate-700 hover:text-slate-900 font-semibold flex items-center gap-1 ml-2 shrink-0 transition-colors"
+              className="h-7 px-2.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
             >
-              {copiedToken ? <Check className="w-3.5 h-3.5 text-emerald-600 font-bold" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copiedToken ? 'Copied' : 'Copy'}</span>
-            </button>
+              {copiedToken ? 'Copied' : 'Copy'}
+            </Button>
           </div>
 
           {/* Verification Trigger Button */}
@@ -220,7 +223,13 @@ export const DigitalGatePassModal: React.FC = () => {
                 <span>Patient Exited Lobby • Case Concluded</span>
               </div>
             )}
-            <button
+            <IconButton
+              size="md"
+              variant="secondary"
+              icon={Printer}
+              title="Print Clearance Slip"
+              ariaLabel="Print Clearance Slip"
+              className="h-11 w-11 shrink-0"
               onClick={() =>
                 printDocument({
                   type: 'DIGITAL_GATE_PASS',
@@ -228,11 +237,7 @@ export const DigitalGatePassModal: React.FC = () => {
                   data: { encounter: enc, pass, verifiedAtLobby: isVerified }
                 })
               }
-              className="p-3 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 transition-colors shadow-xs"
-              title="Print Clearance Slip"
-            >
-              <Printer className="w-4 h-4" />
-            </button>
+            />
           </div>
         </div>
       </div>

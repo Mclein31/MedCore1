@@ -1451,4 +1451,198 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   - Verified `X-Demo-Role: ATTENDING_PHYSICIAN` dev override successfully signs without HTTP 403.
 - **Production Build (`npm run build`)**: Vite bundle succeeded in 1.31s with 0 errors.
 
+---
+
+## 44. Comprehensive UX/UI Refactoring: Information Architecture, Action Hierarchy, and Viewport Ergonomics (Completed)
+
+[DECISION] **1. Abolition of Scroll-Snap Trap & Sub-View Switcher (`src/pages/CommandCenterPage.tsx`)**:
+- **Problem Resolved**: The two full-screen scroll-snap sections (`snap-y snap-mandatory`) caused disorientation on small laptop screens (1280×800, 1366×768), trapping users and hiding ₱1.8M in pending HMO authorizations below the fold.
+- **Architectural Implementation**:
+  - Removed `snap-y`, `snap-mandatory`, `scroll-smooth`, and `snap-start`.
+  - Added sub-view tabs (`Discharge Clearance Radar` vs `Payer Approvals & Disputes`) with real-time badge counts for active discharges and pending pipeline items.
+  - Docked `VelocityRecoveryPulse` cleanly at the bottom of the workstation to maintain persistent situational awareness without vertical page scrolling.
+
+[DECISION] **2. Sidebar Nav Ergonomics & Density (`src/components/layout/SidebarNav.tsx`)**:
+- **Problem Resolved**: Click targets were cramped, and a 130px gradient promo card pushed essential statutory and analytics routes off the bottom of 768px/800px laptop screens.
+- **Architectural Implementation**:
+  - Enforced 40px touch targets (`h-10`) with 18px (`w-4.5 h-4.5`) icons across both collapsed and expanded states.
+  - Grouped navigation logically into 3 clear domains:
+    1. *Daily Operations*: Command Center, Discharge Clearance, Encounters & Ledgers, Coverage & Approvals.
+    2. *Statutory & Finance*: Disputes & Exceptions, Claims & eSOA XML, RCM Analytics.
+    3. *Governance & Admin*: Settings & Rules.
+  - Replaced the 130px promotional card with a compact 40px single-line `Patient Clarify` trigger with a green `LIVE` indicator.
+
+[DECISION] **3. De-Saturation & Typography Standardization (`src/features/command-center/components/PriorityActionStrip.tsx`)**:
+- **Problem Resolved**: Persistent neon red and amber tiles caused alert fatigue even when no SLA breaches existed, and micro-text (`text-[9px]`) degraded readability.
+- **Architectural Implementation**:
+  - Restricted high-saturation rose/amber alerts strictly to active exception counts (`breachCount > 0`, `hmoPending.length > 0`, `highRiskClaims.length > 0`). In normal states, tiles use calm neutral slate and emerald styling.
+  - Standardized typography to a minimum readable font size (`text-[11px]`), removed `font-mono` on non-numeric card titles, and preserved tabular numbers strictly for financial figures.
+
+[DECISION] **4. Active Discharge Radar Overhaul & 1-Badge Rule (`src/features/discharge/components/ActiveDischargeRadar.tsx`)**:
+- **Problem Resolved**: Queue cards suffered from severe "pill fatigue" (competing Senior, PWD, eSOA, and SLA tags), detail panes suffered from multi-scroll traps, and the 5-button "rainbow console" created decision paralysis for hospital operators.
+- **Architectural Implementation**:
+  - **1-Badge Rule**: Converted patient demographics to clean plain text (`Room 412 · 62 y/o F · SC · PWD · Maxicare`) and preserved exactly 1 badge per card representing operational SLA status.
+  - **Pinned Detail Header**: Pinned patient identity, attending doctor, diagnosis, net balance due, and the single contextual primary action CTA permanently to the top of the detail pane.
+  - **Single Contextual Primary CTA State Machine**: Replaced 5 competing buttons with a single primary CTA based on operational priority (Doctor QuickSign Portal -> Pharmacy RTS / HMO LOA Blocker -> Record Settlement QR Ph -> Authorize Gate Pass), relocating secondary/tertiary options into an overflow `[••• More Actions]` menu.
+  - **Zero-Scroll Tabs**: Partitioned the detail pane into 3 clean sub-views: `[Clearance & Sign-Offs]`, `[Itemized Charges & Waterfall]`, and `[Timeline & Compliance Logs]`.
+
+[DECISION] **5. Dual Operational Pipelines Decluttering (`src/features/command-center/components/DualOperationalPipelines.tsx`)**:
+- **Problem Resolved**: 24 repeating inline buttons (`[Why?]`, `[Waive]`, `[Promissory]`) generated extreme visual noise in the unresolved exceptions queue.
+- **Architectural Implementation**:
+  - Replaced inline button sprawl with row-selection highlighting (`border-blue-500 bg-blue-50/80`).
+  - Docked contextual supervisory actions (`[Why? Explainer]`, `[Waive Item]`, `[RA 9439 Note]`) into an anchored bottom bar triggered by the currently selected exception.
+
+[DECISION] **6. RCM Analytics Streamlining & Operational Bottleneck Radar (`src/pages/RcmAnalyticsPage.tsx`, `DepartmentTurnaroundBottleneckChart.tsx`)**:
+- **Problem Resolved**: Theoretical 12-month ROI projection curves represented "vanity metrics" rather than real-time operational tools, and statutory AR aging was buried at the bottom.
+- **Architectural Implementation**:
+  - Decommissioned `MedCoreCumulativeImpactChart`.
+  - Elevated `ArAgingProfileCard` (60-day statutory filing rule) to Level 2 alongside `HospitalFinancingWaterfall`.
+  - Created `DepartmentTurnaroundBottleneckChart` displaying real-time discharge turnaround metrics and active queue counts across Doctor PF, Pharmacy RTS, HMO LOA, Nursing, and PhilHealth CF4.
+
+[DECISION] **7. Statutory Validation Friction & Action Differentiation (`ConfirmationModal.tsx`, `ConfirmButton.tsx`, `MedCoreContext.tsx`)**:
+- **Problem Resolved**: High-stakes statutory actions (such as overriding RA 9439 detention protections or releasing occupied beds) could be accidentally triggered via simple clicks.
+- **Architectural Implementation**:
+  - Added mandatory keyword validation friction (requiring operators to type `"OVERRIDE"`, `"RELEASE"`, or `"CONFIRM"`) before destructive or statutory override actions can execute.
+  - Differentiated routine confirmation actions (`bg-blue-600`) from destructive operations (`bg-rose-600`).
+
+[DECISION] **8. Command Center Workstation Visual Alignment & Detail Density Refinements (`src/features/discharge/components/ActiveDischargeRadar.tsx`)**:
+- **Problem Resolved**: User feedback and annotated audit highlighted ergonomic and visual layout friction:
+  1. Primary operational tools (`Search` and `+ Admit Inpatient`) were squeezed in the center-right while the workstation title took redundant space.
+  2. Inconsistent control heights created visual clutter.
+  3. Filter pills were disconnected from view mode toggles.
+  4. The patient queue suffered from double-stacked headers (`Discharge Clearance Workstation` + `PATIENT QUEUE (250) SELECT TO TRIAGE`), wasting vertical screen real estate.
+  5. The patient queue could not be collapsed to allow the patient detail workspace to utilize 100% full screen width.
+  6. The `[Clearance & Sign-Offs]` tab had a large empty white space void below the 4 station sign-off cards.
+- **Architectural Implementation**:
+  - **Repositioned Header Controls**: Replaced redundant static title with a clean left-aligned control group: Patient Queue Toggle/Badge + vertical divider + Search Input + `+ Admit Inpatient` CTA.
+  - **Equal Height & Sizing Standard**: Enforced strictly `h-9` (36px) height and `rounded-lg` radius across the Queue toggle button, search input, and Admit Inpatient CTA for pixel-perfect vertical alignment.
+  - **Right-Aligned Filtering & View Switcher**: Pushed filter pills (`All`, `At Risk`, `Breached`, `Disputed`) to the far right, positioned directly adjacent to the view switcher (`Workspace | Table | Cards`).
+  - **Top-Aligned Queue Cards ("Move this up")**: Moved the patient queue count and status up into the top bar and removed the redundant sticky secondary header inside the left pane, allowing patient cards to start cleanly right under the top bar.
+  - **Collapsible Patient Queue (`isQueueCollapsed`)**: Added responsive toggle (`PanelLeftClose` / `PanelLeftOpen`) allowing operators to collapse the queue sidebar, expanding the detail pane to 100% full-width workspace on demand.
+  - **Eliminated Detail Whitespace Void**: Added three rich operational intelligence sections below the Mandatory Station Sign-Offs in the `CLEARANCE` tab:
+    1. *Discharge Turnaround Clock & SLA Benchmark*: MGH timestamp, elapsed turnaround vs 45m DOH SLA limit, dynamic progress bar, and throughput status.
+    2. *Philippine Statutory Compliance & Consumer Protections*: Dedicated audit cards for RA 9439 (Anti-Hospital Detention law guarantee with Promissory Note execution), RA 9994 / RA 10754 (Senior Citizen and PWD 20% discount + 12% VAT exemption validation), and PhilHealth Circular 2024-0037 deduction hierarchy.
+    3. *Financial Waterfall & Out-of-Pocket Breakdown Snapshot*: Reconciliation formula strip (`Gross - PhilHealth - HMO - Relief = Net Due`), 3 OOP cost drivers (Room Differential, Excluded Sundries, Doctor Excess PF), and quick-jump navigation to the itemized charges tab.
+
+[FACT] **Verification & Audit Results**:
+- **Type Checking (`npx tsc -b`)**: 0 TypeScript compilation errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift across the 10-step statutory waterfall.
+- **Backend API Integration (`npm run test:api`)**: 78/78 automated integration tests passed with 0 failures.
+- **Production Build (`npm run build`)**: Vite bundle succeeded in 1.05s with 0 errors.
+
+---
+
+## 45. Navigation Simplification, Executive Home Dashboard & Workstation De-Duplication (Completed)
+
+[DECISION] **1. "Command Center" Renamed to "Home" & Workstation De-Duplication (`src/components/layout/SidebarNav.tsx`, `src/pages/CommandCenterPage.tsx`)**:
+- **Problem Resolved**: User feedback and annotated screenshot (`needs_fix/06_dashboard/Screenshot 2026-10-02 at 13.50.29.png`) identified that:
+  1. The first sidebar item was named "Command Center", but users expected an intuitive top-level "Home" route.
+  2. The page duplicated the active patient triage queue (`ActiveDischargeRadar`), which is already the primary workspace of the "Discharge Clearance" tab.
+- **Architectural Implementation**:
+  - Renamed the first navigation item from "Command Center" to "Home" with Lucide `Home` icon.
+  - Retained `<PriorityActionStrip />` at the top with 4 quick nav tiles, with Metric 1 (`[25 Breached 45m SLA Discharge Queue ->]`) actively routing operators directly to `DISCHARGE_CLEARANCE` with the breached filter pre-selected.
+  - Eliminated the duplicate `ActiveDischargeRadar` from the Home page, cleanly decoupling high-level executive hospital monitoring from clinical discharge triage.
+  - Structured the Home page into an executive summary:
+    - *3-Pillar Operational Scorecard*: Real-time Census & Bed Capacity (182/200 occupied), Discharge Velocity (34.2m TAT vs 4.8h baseline, 28.5 hrs reclaimed), and Inpatient Receivables & Payer Portfolio.
+    - *Dual Operational Action Queues*: Critical HMO Coverage Authorizations (top 4 pending LOAs with quick approve CTA) & Contested Line Items (top 4 disputes with plain-language explainer and "Why Do I Owe?").
+    - *Philippine Statutory Healthcare Compliance Guarantees*: Dedicated audit badges for RA 9439, RA 9994/10754, and PhilHealth Circular 2024-0037.
+    - *Docked Persistent Footer*: Trailing 24h `<VelocityRecoveryPulse />` footer.
+
+[DECISION] **2. Combined "Approvals & Disputes" Unified Operational View (`src/components/layout/SidebarNav.tsx`, `src/pages/ApprovalsDisputesPage.tsx`, `src/app/App.tsx`)**:
+- **Problem Resolved**: User feedback (`needs_fix/06_dashboard/Screenshot 2026-10-02 at 15.18.13.png`) highlighted cognitive fragmentation having "Coverage & Approvals" (badge 40) and "Disputes & Exceptions" (badge 15) as two separate, disconnected navigation tabs.
+- **Architectural Implementation**:
+  - Merged both items into a single unified sidebar tab: **"Approvals & Disputes"** (`ShieldAlert` icon) with combined badge count (`hmoPendingCount + disputedCount`, e.g., 55), flashing attention when active disputes exist.
+  - Created `ApprovalsDisputesPage.tsx` featuring `DualOperationalPipelines` as the default primary side-by-side view (Payer Coverage Watch on left, Unresolved Disputes & Delayed Lines on right).
+  - Built a crisp sub-navigation switcher: `[Dual Pipelines]` (default), `[HMO Gateway Roster]`, and `[Disputes & Promissory]`.
+  - Wired up `onViewAllPayer` and `onViewAllExceptions` in `DualOperationalPipelines.tsx` so clicking "All" in either pipeline column immediately jumps to the dedicated full-table view.
+  - Updated `App.tsx` routing so both `COVERAGE_APPROVALS` and `DISPUTES_EXCEPTIONS` route through `ApprovalsDisputesPage`.
+
+[DECISION] **3. Prominent Bold Header for Discharge Clearance Workstation (`src/pages/DischargeClearancePage.tsx`)**:
+- **Problem Resolved**: User feedback (`needs_fix/06_dashboard/Screenshot 2026-10-02 at 15.20.20.png`) called out the weak, thin subheader styling ("make this bold, this is a header duh").
+- **Architectural Implementation**:
+  - Replaced the low-contrast subtitle text with a bold `h1` heading (`text-sm sm:text-base font-bold text-slate-900 tracking-tight`).
+  - Added a clean subtitle description and polished badge container styling to anchor the page's statutory target context.
+
+---
+
+## 46. UI Consistency Pass: Design Token Primitives, Button, Filter & Interactive Control Unification (Completed)
+
+[DECISION] **1. Core Design Tokens & Component Primitives Library (`src/components/common/`)**:
+- **Problem Resolved**: The dashboard previously suffered from visual fragmentation due to bespoke inline Tailwind button styles, conflicting heights (32px, 34px, 36px, 42px), mismatched border radii (`rounded-md`, `rounded-lg`, `rounded-xl`, `rounded-2xl`, `rounded-3xl`), unaligned icon sizes, and noisy neon pill filters.
+- **Architectural Implementation**:
+  - `controlTokens.ts`: Established authoritative sizing scales (`sm` = 32px `h-8`, `md` = 36-40px `h-9`/`h-10`, `lg` = 44px `h-11`), standardized padding, icon geometry (14px, 16px, 18px), and standard `rounded-lg` radius across the design system.
+  - `Button.tsx`: Unified enterprise button primitive supporting variants (`primary`, `secondary`, `tertiary`, `ghost`, `destructive`, `destructiveOutline`, `subtle`), loading spinner states (`isLoading`), left/right icon alignment, and keyboard accessibility.
+  - `IconButton.tsx`: Standardized square icon button with consistent hit areas, accessibility aria-labels, and hover/active transitions.
+  - `SearchInput.tsx`: Unified search input with embedded search icon, clear `X` button, and standard `h-8`/`h-9` sizing tokens.
+  - `Select.tsx`: Standardized dropdown wrapper with custom `ChevronDown`, uniform padding, border styling, and focus rings.
+  - `SegmentedTabs.tsx`: Unified segmented tab / filter switcher with calm neutral container, subtle semantic counters (`amber`, `rose`, `emerald`, `blue`, `purple`), and `fullWidth` responsiveness.
+  - `ConfirmButton.tsx`: Aligned default size tokens and consistent button variant styling.
+  - `index.ts`: Re-exported all primitives centrally from `@/components/common`.
+
+[DECISION] **2. Full-Dashboard Page & Component Standardization Pass**:
+- **Pages Standardized**:
+  - `CommandCenterPage.tsx`: Standardized header CTAs, scorecard quick links (`variant="ghost"` with right chevron), and action queue footers.
+  - `ActiveDischargeRadar.tsx`: Standardized header queue toggle, search input, Admit Inpatient CTA, filter pills (`SegmentedTabs`), view mode switcher, mobile pane switcher, and detail tabs.
+  - `DualOperationalPipelines.tsx`: Standardized payer search, exceptions search, "All (N)" jump buttons, pagination controls, and anchored action dock buttons.
+  - `CoverageApprovalsPage.tsx`: Standardized header actions, search bar, claim status filters with `SegmentedTabs`, payer dropdown, table actions, and pagination.
+  - `DisputesExceptionsPage.tsx`: Standardized search, filter switcher, table row action buttons, and pagination.
+  - `ClaimsEsoaPage.tsx`: Standardized claim status filter tabs, search field, inspect XML buttons, print pre-flight audit, and XML modal actions.
+  - `EncountersLedgerPage.tsx`: Standardized tab switcher, admit patient button, procedure select, and table row links.
+  - `ConfigurationPage.tsx`: Standardized save configuration CTAs and environment/schema select dropdowns.
+  - `RcmAnalyticsPage.tsx`: Standardized empty state reset button with `RotateCcw` icon.
+  - `DischargeClearancePage.tsx`: Standardized subview navigation bar with `SegmentedTabs`.
+  - `ApprovalsDisputesPage.tsx`: Standardized 3-way subview switcher (`Dual Pipelines`, `HMO Gateway Roster`, `Disputes & Promissory`) with `SegmentedTabs` and semantic badge counters.
+- **Analytics Features Standardized**:
+  - `AnalyticsFilterStrip.tsx`: Standardized "Run Financial Audit" and "Export Executive Report" CTAs, timeframe tabs, department/payer/claim selects, severity filter tabs, and reset triggers.
+  - `CommercialCarrierLedger.tsx`: Standardized carrier search input and pagination buttons (`IconButton`).
+  - `ActionableExceptionsWorklist.tsx`: Standardized search input, table row actions, and pagination buttons.
+  - `FinancialVelocityTrendChart.tsx`: Standardized mode toggle (`TAT_DESCENT` vs `INFLOW_RESOLUTION`) with `SegmentedTabs`.
+  - `ExecutiveReportModal.tsx`: Standardized Print/PDF, Download CSV, and close buttons.
+- **Operational & Patient Modals Standardized**:
+  - `ConfirmationModal.tsx`: Standardized close icon button, cancel secondary button, and confirmation action button.
+  - `AdmitPatientModal.tsx`: Standardized close icon button, cancel button, and submit CTA.
+  - `DigitalGatePassModal.tsx`: Standardized close icon button, HMAC token copy button, and print clearance slip icon button.
+  - `DigitalPromissoryModal.tsx`: Standardized close icon button, inpatient selector dropdown, government ID select, and execution CTA button.
+  - `AddEditChargeModal.tsx`: Standardized close icon button, category and coverage target selects, form inputs, and footer action buttons.
+  - `EditEncounterModal.tsx`: Standardized close icon button, room/bed select, form inputs, and save CTA.
+  - `DoctorQuickSignModal.tsx`: Standardized close icon button, ceiling capping button, declared fee button, and SMS nudge CTA.
+  - `DisputeItemModal.tsx`: Standardized close icon button, cancel button, and destructive file dispute CTA.
+  - `OfficialReceiptModal.tsx`: Standardized close icon button, digital gate pass CTA, print receipt button, and close receipt CTA.
+  - `DemoPaymentModal.tsx`: Standardized close icon button, full/partial settlement `SegmentedTabs`, and error dismiss button.
+
+[FACT] **Automated Verification & Integrity Audit**:
+- **TypeScript Compilation (`tsc -b`)**: 0 type errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 patient records verified with zero centavo drift across the 10-step statutory waterfall.
+- **Production Build (`npm run build`)**: Vite bundle built successfully in 1.06s with 0 errors.
+
+---
+
+## 47. Backend Pre-Commit Audit & Enterprise Hardening (Completed)
+
+[DECISION] **1. Foreign-Key Restriction & Guard on Disputed Chargemaster Items (`server/routes/charges.ts`)**:
+- **Problem Resolved**: Calling `DELETE /api/v1/charges/:id` on an item that has an associated record in `billing_disputes` triggered an unhandled PostgreSQL foreign key violation (`billing_disputes_charge_id_fkey`, `onDelete: 'restrict'`), returning HTTP 500.
+- **Durable Invariant**: Chargemaster line items have a foreign-key restriction (`onDelete: 'restrict'`) with `billing_disputes`. Deletion requests must validate that no active or logged disputes exist before executing. If linked disputes exist, the endpoint cleanly returns HTTP 400 Bad Request with error code `ITEM_HAS_DISPUTES` and message: *"Cannot delete a chargemaster item with an active or logged billing dispute. Resolve or archive the dispute first."*
+
+[DECISION] **2. Atomic Database Transactions for All Clearance & Settlement Transitions (`server/routes/promissory.ts`, `server/routes/payments.ts`)**:
+- **Problem Resolved**: Promissory note execution under RA 9439 performed 5 sequential mutations outside an atomic transaction block. If an exception occurred midway, the note was committed without advancing encounter stage or issuing gate passes.
+- **Durable Invariant**: All revenue cycle state transitions that result in patient clearance (cashier settlements, promissory notes under RA 9439, or supervisory balance waivers) must be executed inside `db.transaction()` blocks to guarantee synchronized bed availability (`status: 'HOUSEKEEPING'`), gate pass issuance, and 0-centavo ledger drift.
+
+[DECISION] **3. Foreign-Key Correction in Supervisory Waiver Audit Log (`server/routes/disputes.ts`)**:
+- **Problem Resolved**: The supervisory waiver endpoint previously referenced `disputeList[0].assignedStaffId` (a user UUID referencing `users.id`) for `systemAuditLogs.facilityId` (which references `facilities.id`), risking foreign key constraint failure.
+- **Resolution**: Populates `systemAuditLogs.facilityId` with `user.facilityId` (or fallback `'00000000-0000-0000-0000-000000000001'`), ensuring absolute relational integrity.
+
+[DECISION] **4. Discharge Exit Pass Verification Idempotency Guard (`server/routes/gatePass.ts`)**:
+- **Problem Resolved**: Re-verifying a gate pass that had already exited (`VERIFIED_AT_LOBBY`) continuously updated `verifiedAt` timestamps and spammed redundant audit records.
+- **Resolution**: Added idempotency guard check. If `pass.status === 'VERIFIED_AT_LOBBY'`, returns `verified: true`, `passAlreadyVerified: true`, and preserves the original `verifiedAt` timestamp without issuing redundant database writes.
+
+[FACT] **Automated Pre-Commit Suite Verification**:
+- **TypeScript Compilation (`tsc -b`)**: 0 type errors.
+- **API Integration & Security Suite (`npm run test:api`)**: 83/83 integration scenarios PASSED.
+- **Financial Calculation Suite (`npm test`)**: 250/250 records verified (100% exact waterfall reconciliation, zero centavo drift).
+- **Production Build (`npm run build`)**: Vite bundle built successfully in 1.05s with 0 errors.
+
+
+
+
+
 

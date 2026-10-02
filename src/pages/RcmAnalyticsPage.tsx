@@ -6,12 +6,11 @@ import {
 } from '@/features/analytics/components/AnalyticsFilterStrip';
 import { MacroRevenueScorecard } from '@/features/analytics/components/MacroRevenueScorecard';
 import { HospitalFinancingWaterfall } from '@/features/analytics/components/HospitalFinancingWaterfall';
-import { FinancialVelocityTrendChart } from '@/features/analytics/components/FinancialVelocityTrendChart';
+import { DepartmentTurnaroundBottleneckChart } from '@/features/analytics/components/DepartmentTurnaroundBottleneckChart';
 import { ClaimsScrutinyPipeline } from '@/features/analytics/components/ClaimsScrutinyPipeline';
 import { TrappedCapitalPareto } from '@/features/analytics/components/TrappedCapitalPareto';
 import { CommercialCarrierLedger } from '@/features/analytics/components/CommercialCarrierLedger';
 import { DepartmentExceptionMatrix } from '@/features/analytics/components/DepartmentExceptionMatrix';
-import { MedCoreCumulativeImpactChart } from '@/features/analytics/components/MedCoreCumulativeImpactChart';
 import { PatientOopDriverCard } from '@/features/analytics/components/PatientOopDriverCard';
 import { ArAgingProfileCard } from '@/features/analytics/components/ArAgingProfileCard';
 import { ActionableExceptionsWorklist } from '@/features/analytics/components/ActionableExceptionsWorklist';
@@ -31,6 +30,7 @@ import {
   extractActionableExceptions
 } from '@/utils/rcmAnalyticsCalculations';
 import { SearchX, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/common';
 
 export const RcmAnalyticsPage: React.FC = () => {
   const { encounters } = useMedCore();
@@ -83,7 +83,6 @@ export const RcmAnalyticsPage: React.FC = () => {
         } else if (filters.payer === 'Self-Pay') {
           if (enc.hmo?.providerName && enc.hmo.providerName !== 'None') return false;
         } else {
-          // Specific HMO Carrier
           const p = enc.hmo?.providerName || '';
           if (p.toLowerCase() !== filters.payer.toLowerCase()) {
             return false;
@@ -172,14 +171,14 @@ export const RcmAnalyticsPage: React.FC = () => {
             <p className="text-xs text-slate-500 max-w-md">
               No billing exceptions, claims, or active receivables match the selected combination of department, payer, and severity filters.
             </p>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="primary"
+              icon={RotateCcw}
               onClick={handleResetFilters}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-xs"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset All Filters to Hospital Default</span>
-            </button>
+              Reset All Filters to Hospital Default
+            </Button>
           </div>
         ) : (
           <>
@@ -200,10 +199,20 @@ export const RcmAnalyticsPage: React.FC = () => {
               }}
             />
 
-            {/* Level 2: Multi-Payer Financing Waterfall & Pre-Flight Claims Radar (7 cols / 5 cols) */}
+            {/* Level 2: Multi-Payer Financing Waterfall & Elevated AR Aging Profile (7 cols / 5 cols) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
                 <HospitalFinancingWaterfall waterfall={waterfall} />
+              </div>
+              <div className="xl:col-span-5">
+                <ArAgingProfileCard agingBuckets={arAging} />
+              </div>
+            </div>
+
+            {/* Level 3: Department Discharge Bottleneck Radar & Pre-Flight Claims (7 cols / 5 cols) */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
+              <div className="xl:col-span-7">
+                <DepartmentTurnaroundBottleneckChart />
               </div>
               <div className="xl:col-span-5">
                 <ClaimsScrutinyPipeline
@@ -215,16 +224,6 @@ export const RcmAnalyticsPage: React.FC = () => {
                     })
                   }
                 />
-              </div>
-            </div>
-
-            {/* Level 3: TAT Descent & MedCore Cumulative Yield (7 cols / 5 cols) */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-              <div className="xl:col-span-7">
-                <FinancialVelocityTrendChart />
-              </div>
-              <div className="xl:col-span-5">
-                <MedCoreCumulativeImpactChart />
               </div>
             </div>
 
@@ -246,7 +245,7 @@ export const RcmAnalyticsPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Level 5: Commercial HMO Carrier Ledger & Patient OOP / AR (7 cols / 5 cols) */}
+            {/* Level 5: Commercial HMO Carrier Ledger & Patient Out-of-Pocket Breakdown (7 cols / 5 cols) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
                 <CommercialCarrierLedger
@@ -255,9 +254,8 @@ export const RcmAnalyticsPage: React.FC = () => {
                   onSelectCarrier={(carrier) => handleFilterChange({ payer: carrier })}
                 />
               </div>
-              <div className="xl:col-span-5 space-y-4">
+              <div className="xl:col-span-5">
                 <PatientOopDriverCard oopData={oopDrivers} />
-                <ArAgingProfileCard agingBuckets={arAging} />
               </div>
             </div>
 

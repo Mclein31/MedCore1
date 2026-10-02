@@ -6,6 +6,12 @@ import {
 } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp } from '@/utils/formatters';
 import { TrendingDown, Activity, Calendar } from 'lucide-react';
+import { SegmentedTabs, SegmentedTabItem } from '@/components/common';
+
+const MODE_TABS: SegmentedTabItem<'TAT_DESCENT' | 'INFLOW_RESOLUTION'>[] = [
+  { id: 'TAT_DESCENT', label: 'Discharge TAT Descent' },
+  { id: 'INFLOW_RESOLUTION', label: 'Inflow vs. Resolution' }
+];
 
 interface FinancialVelocityTrendChartProps {
   currentTatMinutes?: number;
@@ -101,30 +107,12 @@ export const FinancialVelocityTrendChart: React.FC<FinancialVelocityTrendChartPr
           </p>
         </div>
 
-        <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-          <button
-            type="button"
-            onClick={() => setActiveMode('TAT_DESCENT')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-              activeMode === 'TAT_DESCENT'
-                ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/60'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Discharge TAT Descent
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveMode('INFLOW_RESOLUTION')}
-            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-              activeMode === 'INFLOW_RESOLUTION'
-                ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/60'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Inflow vs. Resolution
-          </button>
-        </div>
+        <SegmentedTabs
+          size="sm"
+          items={MODE_TABS}
+          activeId={activeMode}
+          onChange={setActiveMode}
+        />
       </div>
 
       {/* SVG Chart Container */}
@@ -158,7 +146,7 @@ export const FinancialVelocityTrendChart: React.FC<FinancialVelocityTrendChartPr
                 textAnchor="end"
                 className="text-[9px] fill-emerald-700 font-semibold"
               >
-                AQROMED Digital Target Band (15–30m)
+                MedCore Digital Target Band (15–30m)
               </text>
 
               {/* Grid Lines & Y-Axis Labels */}

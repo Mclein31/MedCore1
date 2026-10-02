@@ -11,6 +11,7 @@ import {
   Calendar,
   AlertCircle
 } from 'lucide-react';
+import { Button, IconButton, Select } from '@/components/common';
 
 export const DigitalPromissoryModal: React.FC = () => {
   const {
@@ -96,12 +97,13 @@ export const DigitalPromissoryModal: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={closePromissoryModal}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Form Body */}
@@ -134,14 +136,16 @@ export const DigitalPromissoryModal: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-700">
                   Select Patient with Outstanding Balance:
                 </label>
-                <select
+                <Select
+                  size="sm"
                   value=""
                   onChange={(e) => {
                     if (e.target.value) {
                       selectEncounter(e.target.value);
                     }
                   }}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20"
+                  wrapperClassName="w-full"
+                  className="w-full text-xs font-medium text-slate-800"
                 >
                   <option value="" disabled>Choose an inpatient with balance ({eligibleEncounters.length} available)...</option>
                   {eligibleEncounters.map((el) => (
@@ -149,18 +153,19 @@ export const DigitalPromissoryModal: React.FC = () => {
                       {el.patient.fullName || el.patient.maskedName} ({el.roomBed || el.bedNumber}) — {formatPeso(el.waterfall.netPatientDue)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
             <div className="pt-2">
-              <button
+              <Button
                 type="button"
+                size="sm"
+                variant="secondary"
                 onClick={closePromissoryModal}
-                className="py-2 px-4 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
@@ -183,17 +188,19 @@ export const DigitalPromissoryModal: React.FC = () => {
                   <span className="font-semibold text-slate-800 block">Encounter / Inpatient Account</span>
                   <span>{patientDisplayName} · Bed {enc.roomBed || enc.bedNumber}</span>
                 </div>
-                <select
+                <Select
+                  size="sm"
                   value={enc.id}
                   onChange={(e) => selectEncounter(e.target.value)}
-                  className="text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 bg-white font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500/20 max-w-[240px] truncate"
+                  wrapperClassName="max-w-[240px]"
+                  className="truncate text-xs font-medium text-slate-800"
                 >
                   {eligibleEncounters.map((el) => (
                     <option key={el.id} value={el.id}>
                       {el.patient.fullName || el.patient.maskedName} ({el.roomBed || el.bedNumber}) — {formatPeso(el.waterfall.netPatientDue)}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
@@ -229,15 +236,17 @@ export const DigitalPromissoryModal: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Government ID Type
                 </label>
-                <select
+                <Select
+                  size="md"
                   value={idType}
                   onChange={(e) => setIdType(e.target.value as any)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
+                  wrapperClassName="w-full"
+                  className="w-full text-sm text-slate-900"
                 >
                   <option value="PHILSYS_NATIONAL_ID">PhilSys National ID</option>
                   <option value="UMID">Unified Multi-Purpose ID (UMID)</option>
                   <option value="DRIVERS_LICENSE">LTO Driver's License</option>
-                </select>
+                </Select>
               </div>
             </div>
 
@@ -328,20 +337,23 @@ export const DigitalPromissoryModal: React.FC = () => {
 
             {/* Submit */}
             <div className="pt-2 flex items-center justify-end gap-3">
-              <button
+              <Button
                 type="button"
+                size="md"
+                variant="secondary"
                 onClick={closePromissoryModal}
-                className="py-2.5 px-4 rounded-lg text-slate-600 hover:bg-slate-100 text-sm font-semibold transition-colors"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                className="py-2.5 px-5 rounded-lg bg-purple-700 hover:bg-purple-800 text-white font-semibold text-sm flex items-center gap-2 transition-colors shadow-sm"
+                size="md"
+                variant="primary"
+                icon={FileText}
+                className="bg-purple-700 hover:bg-purple-800 focus-visible:ring-purple-500"
               >
-                <FileText className="w-4 h-4" />
-                <span>Execute Note & Issue Gate Pass</span>
-              </button>
+                Execute Note & Issue Gate Pass
+              </Button>
             </div>
           </form>
         )}

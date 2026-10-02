@@ -44,6 +44,8 @@ export interface ConfirmButtonProps {
   fullWidth?: boolean;
   stopPropagation?: boolean;
   ariaLabel?: string;
+  requiresValidationFriction?: boolean;
+  validationKeyword?: string;
   onConfirm: (e?: React.MouseEvent) => void | Promise<void>;
   onCancel?: () => void;
 }
@@ -67,6 +69,8 @@ export const ConfirmButton: React.FC<ConfirmButtonProps> = ({
   fullWidth = false,
   stopPropagation = true,
   ariaLabel,
+  requiresValidationFriction,
+  validationKeyword,
   onConfirm,
   onCancel
 }) => {
@@ -141,6 +145,8 @@ export const ConfirmButton: React.FC<ConfirmButtonProps> = ({
       cancelLabel,
       variant: resolvedModalVariant,
       contextInfo,
+      requiresValidationFriction,
+      validationKeyword,
       onConfirm: async () => {
         await onConfirm(e);
       },

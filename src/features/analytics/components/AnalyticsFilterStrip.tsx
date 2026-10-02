@@ -1,9 +1,24 @@
 import React from 'react';
 import { Filter, RotateCcw, FileText, CheckCircle2, ChevronDown, X } from 'lucide-react';
 import { CLINICAL_WARDS, ALL_HMO_CARRIERS } from '@/utils/rcmAnalyticsCalculations';
+import { Button, Select, SegmentedTabs, SegmentedTabItem } from '@/components/common';
 
 export type TimeframeOption = '30D' | '90D' | 'YTD' | 'ALL';
 export type SeverityOption = 'ALL' | 'CLEAN' | 'WARNINGS' | 'EXCEPTIONS';
+
+const TIMEFRAME_TABS: SegmentedTabItem<TimeframeOption>[] = [
+  { id: '30D', label: '30D' },
+  { id: '90D', label: '90D' },
+  { id: 'YTD', label: 'YTD' },
+  { id: 'ALL', label: 'ALL' }
+];
+
+const SEVERITY_TABS: SegmentedTabItem<SeverityOption>[] = [
+  { id: 'ALL', label: 'All Encounters' },
+  { id: 'CLEAN', label: 'Clean (0 Risks)' },
+  { id: 'WARNINGS', label: 'Warnings' },
+  { id: 'EXCEPTIONS', label: 'High / Critical Exceptions' }
+];
 
 export interface AnalyticsFilterState {
   timeframe: TimeframeOption;
@@ -62,25 +77,27 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
 
         <div className="flex items-center gap-2.5">
           {/* Audit Verification Trigger */}
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="secondary"
+            icon={CheckCircle2}
             onClick={onRunAudit}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors"
             title="Verify 100% statutory waterfall and centavo reconciliation across all inpatient cases"
           >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Run Financial Audit</span>
-          </button>
+            Run Financial Audit
+          </Button>
 
           {/* Export Executive Report Trigger */}
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="primary"
+            icon={FileText}
             onClick={onExportReport}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors"
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Export Executive Report</span>
-          </button>
+            Export Executive Report
+          </Button>
         </div>
       </div>
 
@@ -88,101 +105,68 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
       <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100">
         <div className="flex flex-wrap items-center gap-2.5">
           {/* Timeframe Selector */}
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-            {(['30D', '90D', 'YTD', 'ALL'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onFilterChange({ timeframe: t })}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                  filters.timeframe === t
-                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/60'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {t === 'ALL' ? 'All 250 Cases' : t}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            size="sm"
+            items={TIMEFRAME_TABS}
+            activeId={filters.timeframe}
+            onChange={(t) => onFilterChange({ timeframe: t })}
+          />
 
           <div className="h-5 w-px bg-slate-200 mx-0.5 hidden sm:block" />
 
           {/* Clinical Department Dropdown */}
-          <div className="relative inline-block">
-            <select
-              value={filters.department}
-              onChange={(e) => onFilterChange({ department: e.target.value })}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
-            >
-              {CLINICAL_WARDS.map((w) => (
-                <option key={w} value={w}>
-                  {w}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
-          </div>
+          <Select
+            size="sm"
+            value={filters.department}
+            onChange={(e) => onFilterChange({ department: e.target.value })}
+            className="text-xs"
+          >
+            {CLINICAL_WARDS.map((w) => (
+              <option key={w} value={w}>
+                {w}
+              </option>
+            ))}
+          </Select>
 
           {/* Payer & Commercial Carrier Dropdown */}
-          <div className="relative inline-block">
-            <select
-              value={filters.payer}
-              onChange={(e) => onFilterChange({ payer: e.target.value })}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
-            >
-              <option value="All Payers">All Payers &amp; Insurers</option>
-              <option value="PhilHealth Only">PhilHealth Only (Social)</option>
-              {ALL_HMO_CARRIERS.map((h) => (
-                <option key={h} value={h}>
-                  {h}
-                </option>
-              ))}
-              <option value="Self-Pay">Self-Pay / Non-Insured</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
-          </div>
+          <Select
+            size="sm"
+            value={filters.payer}
+            onChange={(e) => onFilterChange({ payer: e.target.value })}
+            className="text-xs"
+          >
+            <option value="All Payers">All Payers &amp; Insurers</option>
+            <option value="PhilHealth Only">PhilHealth Only (Social)</option>
+            {ALL_HMO_CARRIERS.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+            <option value="Self-Pay">Self-Pay / Non-Insured</option>
+          </Select>
 
           {/* Claim Status Dropdown */}
-          <div className="relative inline-block">
-            <select
-              value={filters.claimStatus}
-              onChange={(e) => onFilterChange({ claimStatus: e.target.value })}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs font-medium text-slate-800 hover:border-slate-300 focus:outline-none focus:ring-1 focus:ring-blue-500 shadow-2xs cursor-pointer"
-            >
-              <option value="All Statuses">All Claim Statuses</option>
-              <option value="CLEAN">Clean / Validated</option>
-              <option value="WARNING">Warnings / Advisory</option>
-              <option value="INTERCEPTED">Intercepted Pre-Flight</option>
-              <option value="RETURNED">Returned (RTH)</option>
-              <option value="APPROVED">Adjudicated &amp; Approved</option>
-            </select>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
-          </div>
+          <Select
+            size="sm"
+            value={filters.claimStatus}
+            onChange={(e) => onFilterChange({ claimStatus: e.target.value })}
+            className="text-xs"
+          >
+            <option value="All Statuses">All Claim Statuses</option>
+            <option value="CLEAN">Clean / Validated</option>
+            <option value="WARNING">Warnings / Advisory</option>
+            <option value="INTERCEPTED">Intercepted Pre-Flight</option>
+            <option value="RETURNED">Returned (RTH)</option>
+            <option value="APPROVED">Adjudicated &amp; Approved</option>
+          </Select>
 
           {/* Problem Severity Quick Pills */}
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50">
-            {(
-              [
-                { id: 'ALL', label: 'All Encounters' },
-                { id: 'CLEAN', label: 'Clean (0 Risks)' },
-                { id: 'WARNINGS', label: 'Warnings' },
-                { id: 'EXCEPTIONS', label: 'High / Critical Exceptions' }
-              ] as const
-            ).map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => onFilterChange({ severity: s.id })}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors ${
-                  filters.severity === s.id
-                    ? 'bg-white text-slate-900 shadow-2xs border border-slate-200/60'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedTabs
+            size="sm"
+            items={SEVERITY_TABS}
+            activeId={filters.severity}
+            onChange={(s) => onFilterChange({ severity: s })}
+          />
         </div>
 
         {/* Encounter Census Callout & Reset Trigger */}
@@ -192,14 +176,15 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           </span>
 
           {hasActiveFilters && (
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="subtle"
+              icon={RotateCcw}
               onClick={onResetFilters}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-slate-200 hover:border-rose-200 transition-colors font-semibold shadow-2xs"
             >
-              <RotateCcw className="w-3 h-3 text-slate-400 group-hover:text-rose-600" />
-              <span>Reset</span>
-            </button>
+              Reset
+            </Button>
           )}
         </div>
       </div>
@@ -266,13 +251,15 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
             </span>
           )}
 
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-1.5 text-xs text-slate-500 hover:text-slate-800"
             onClick={onResetFilters}
-            className="text-slate-500 hover:text-slate-800 underline text-[11px] ml-1"
           >
             Clear all
-          </button>
+          </Button>
         </div>
       )}
     </div>

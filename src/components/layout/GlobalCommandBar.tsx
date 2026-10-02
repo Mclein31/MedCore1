@@ -92,7 +92,7 @@ export const GlobalCommandBar: React.FC = () => {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2.5">
           <img
-            src="/AQROMED_logo.png"
+            src="/MedCore_Symbol_logo.png"
             alt="MedCore"
             className="h-7 w-auto max-h-7 object-contain"
           />
@@ -232,7 +232,7 @@ export const GlobalCommandBar: React.FC = () => {
                   setIsProfileMenuOpen(false);
                   requestConfirmation({
                     title: 'Sign Out & Lock Workstation',
-                    description: 'Are you sure you want to end your active session and lock the AQROMED terminal?',
+                    description: 'Are you sure you want to end your active session and lock the MedCore terminal?',
                     confirmLabel: 'Sign Out',
                     cancelLabel: 'Stay Logged In',
                     variant: 'warning',

@@ -29,6 +29,8 @@ export interface ConfirmModalRequest {
   cancelLabel?: string;
   variant?: ConfirmationModalVariant;
   contextInfo?: ConfirmationContextInfo[];
+  requiresValidationFriction?: boolean;
+  validationKeyword?: string;
   onConfirm: () => void | Promise<void>;
   onCancel?: () => void;
 }
@@ -315,7 +317,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Auth & Session State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('aqromed_auth');
+      const stored = localStorage.getItem('medcore_auth') || localStorage.getItem('aqromed_auth');
       return stored === 'true';
     }
     return false;
@@ -323,7 +325,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [currentUser, setCurrentUser] = useState<any>(() => {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('aqromed_user');
+      const stored = localStorage.getItem('medcore_user') || localStorage.getItem('aqromed_user');
       if (stored) {
         try {
           return JSON.parse(stored);
@@ -349,8 +351,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
             apiClient.setDemoRole(res.user.role);
           }
           if (typeof window !== 'undefined') {
-            localStorage.setItem('aqromed_auth', 'true');
-            localStorage.setItem('aqromed_user', JSON.stringify(res.user));
+            localStorage.setItem('medcore_auth', 'true');
+            localStorage.setItem('medcore_user', JSON.stringify(res.user));
           }
           await refreshEncounters();
         } else {
@@ -365,9 +367,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         refreshEncounters();
       });
 
-    return () => {
-      isMounted = false;
-    };
+  return () => {
+    isMounted = false;
+  };
   }, []);
 
   const login = async (credentials: { email: string; password?: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
@@ -377,8 +379,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsAuthenticated(true);
         setCurrentUser(res.user);
         if (typeof window !== 'undefined') {
-          localStorage.setItem('aqromed_auth', 'true');
-          localStorage.setItem('aqromed_user', JSON.stringify(res.user));
+          localStorage.setItem('medcore_auth', 'true');
+          localStorage.setItem('medcore_user', JSON.stringify(res.user));
         }
         if (res.user.role) {
           setActiveRoleState(res.user.role as UserRole);
@@ -404,6 +406,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsAuthenticated(false);
       setCurrentUser(null);
       if (typeof window !== 'undefined') {
+        localStorage.removeItem('medcore_auth');
+        localStorage.removeItem('medcore_user');
         localStorage.removeItem('aqromed_auth');
         localStorage.removeItem('aqromed_user');
       }
@@ -1081,7 +1085,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const sendBillToPatient = (encounterId: string) => {
     const nowIso = new Date().toISOString();
     const token = `tok_${encounterId.replace(/\D/g, '')}_${Math.random().toString(36).substring(2, 7)}`;
-    const magicLink = `https://aqromed.stjude.ph/clarify/${encounterId}?token=${token}`;
+    const magicLink = `https://medcore.stjude.ph/clarify/${encounterId}?token=${token}`;
     setEncounters((prev) =>
       prev.map((enc) => {
         if (enc.id !== encounterId) return enc;

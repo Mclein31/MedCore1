@@ -23,6 +23,7 @@ import {
   CommandCenterPage,
   DischargeClearancePage,
   EncountersLedgerPage,
+  ApprovalsDisputesPage,
   CoverageApprovalsPage,
   DisputesExceptionsPage,
   ClaimsEsoaPage,
@@ -125,7 +126,7 @@ const MainLayout: React.FC = () => {
   if (activeRoute === 'PATIENT_PORTAL' || activeRole === 'PATIENT_GUARANTOR') {
     return (
       <>
-        <div id="aqromed-app-root" className="min-h-screen w-full bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+        <div id="medcore-app-root" className="min-h-screen w-full bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
           <PatientPortalStandalone />
           <SearchModal />
           <WhyDoIOweThisDrawer />
@@ -142,6 +143,8 @@ const MainLayout: React.FC = () => {
             cancelLabel={confirmationState.cancelLabel}
             variant={confirmationState.variant}
             contextInfo={confirmationState.contextInfo}
+            requiresValidationFriction={confirmationState.requiresValidationFriction}
+            validationKeyword={confirmationState.validationKeyword}
             onConfirm={async () => {
               await confirmationState.onConfirm();
               closeConfirmation();
@@ -169,9 +172,8 @@ const MainLayout: React.FC = () => {
       case 'ENCOUNTERS_LEDGER':
         return <EncountersLedgerPage />;
       case 'COVERAGE_APPROVALS':
-        return <CoverageApprovalsPage />;
       case 'DISPUTES_EXCEPTIONS':
-        return <DisputesExceptionsPage />;
+        return <ApprovalsDisputesPage />;
       case 'CLAIMS_ESOA':
         return <ClaimsEsoaPage />;
       case 'RCM_ANALYTICS':
@@ -185,7 +187,7 @@ const MainLayout: React.FC = () => {
 
   return (
     <>
-      <div id="aqromed-app-root" className="h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+      <div id="medcore-app-root" className="h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
         {/* LEVEL 1: Global Context & Command Bar */}
         <GlobalCommandBar />
 
@@ -222,6 +224,8 @@ const MainLayout: React.FC = () => {
           cancelLabel={confirmationState.cancelLabel}
           variant={confirmationState.variant}
           contextInfo={confirmationState.contextInfo}
+          requiresValidationFriction={confirmationState.requiresValidationFriction}
+          validationKeyword={confirmationState.validationKeyword}
           onConfirm={async () => {
             await confirmationState.onConfirm();
             closeConfirmation();

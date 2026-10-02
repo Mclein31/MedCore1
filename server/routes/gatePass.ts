@@ -46,6 +46,20 @@ gatePassApp.post(
       return apiError(c, 400, 'INVALID_PIN', 'The 4-digit security exit PIN is incorrect.');
     }
 
+    // Guard against repeated exit pass verification (Idempotency)
+    if (pass.status === 'VERIFIED_AT_LOBBY') {
+      return c.json({
+        verified: true,
+        passAlreadyVerified: true,
+        passNumber: pass.passNumber,
+        patientName: pass.patientName,
+        roomBed: pass.roomBed,
+        status: 'VERIFIED_AT_LOBBY',
+        verifiedAt: pass.verifiedAt?.toISOString() || new Date().toISOString(),
+        message: 'Pass has already been verified at hospital lobby exit.'
+      });
+    }
+
     const now = new Date();
 
     await db

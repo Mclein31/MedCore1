@@ -133,7 +133,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              AQROMED Annual Yield
+              MedCore Annual Yield
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <TrendingDown className="w-4 h-4" />

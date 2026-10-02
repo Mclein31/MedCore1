@@ -6,7 +6,7 @@ export { ClaimsScrutinyPipeline } from './components/ClaimsScrutinyPipeline';
 export { CommercialCarrierLedger } from './components/CommercialCarrierLedger';
 export { DepartmentExceptionMatrix } from './components/DepartmentExceptionMatrix';
 export { ExecutiveReportModal } from './components/ExecutiveReportModal';
-export { FinancialVelocityTrendChart } from './components/FinancialVelocityTrendChart';
+export { DepartmentTurnaroundBottleneckChart } from './components/DepartmentTurnaroundBottleneckChart';
 export { HospitalFinancingWaterfall } from './components/HospitalFinancingWaterfall';
 export { MacroRevenueScorecard } from './components/MacroRevenueScorecard';
 export { MedCoreCumulativeImpactChart } from './components/MedCoreCumulativeImpactChart';

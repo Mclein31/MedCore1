@@ -46,7 +46,7 @@ export const MedCoreCumulativeImpactChart: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-base text-slate-900">
-              AQROMED Cumulative Economic Yield (12-Mo Horizon)
+              MedCore Cumulative Economic Yield (12-Mo Horizon)
             </h3>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -188,7 +188,7 @@ export const MedCoreCumulativeImpactChart: React.FC = () => {
             +412 Bed-Hours/Day
           </div>
           <div className="text-[10px] text-emerald-700 mt-0.5">
-            (288m baseline - 32.4m AQROMED)
+            (288m baseline - 32.4m MedCore)
           </div>
         </div>
 

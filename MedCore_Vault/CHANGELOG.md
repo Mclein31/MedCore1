@@ -4,6 +4,25 @@
 > **Knowledge Layer**: Product Intelligence Vault (`MedCore_Vault/`)  
 > **Standards Compliance**: Keep a Changelog & Semantic Versioning
 
+## [1.21.0] — 2026-10-02
+
+### Brand Restoration, Design Token Primitives, UX Overhaul & PostgreSQL 17 Backend Hardening
+
+#### Added
+- [FEATURE] **Design System Control Primitives Library (`src/components/common/`)**: Created unified UI control primitives: `Button.tsx`, `IconButton.tsx`, `SearchInput.tsx`, `Select.tsx`, `SegmentedTabs.tsx`, and `controlTokens.ts`. Standardized sizing scale (`sm` = 32px / `h-8`, `md` = 36-40px / `h-9`-`h-10`, `lg` = 44px / `h-11`), border radius (`rounded-lg`), font typography, and accessibility attributes across the entire product.
+- [FEATURE] **Unified "Approvals & Disputes" Workstation (`src/pages/ApprovalsDisputesPage.tsx`, `src/components/layout/SidebarNav.tsx`)**: Merged split coverage approvals and billing exceptions into a unified page featuring `DualOperationalPipelines` with a 3-way subview switcher (`Dual Pipelines`, `HMO Gateway Roster`, `Disputes & Promissory`) and consolidated sidebar attention badge count.
+- [FEATURE] **Discharge Radar Queue Collapse & Statutory Audit Clearance (`src/features/discharge/components/ActiveDischargeRadar.tsx`)**: Introduced `isQueueCollapsed` toggle (`PanelLeftClose`/`PanelLeftOpen`) enabling 100% full-width detail view for clinical coordinators. Eliminated whitespace void in `[CLEARANCE]` tab by embedding the 45-minute statutory SLA Turnaround Clock, Philippine Statutory Compliance audit cards (RA 9439, RA 9994/10754, Circular 2024-0037), and Out-of-Pocket breakdown snapshot.
+
+#### Changed
+- [BRANDING] **Restored Official MedCore Identity**: Reverted all legacy AqroMed text, alt tags, and logo instances across headers, navigation, print templates, and document engines using official assets from `logo/` (`MedCore _Symbol_logo.png`, `MedCore_Text_logo.png`, `public/logo.png`).
+- [UX] **Navigation & Layout Simplification (`src/components/layout/SidebarNav.tsx`, `src/pages/CommandCenterPage.tsx`)**: Renamed primary navigation link to "Home", decoupled patient triage queue from executive command center, and converted all ad-hoc buttons/filters to standardized design token primitives.
+
+#### Fixed
+- [SECURITY & STABILITY] **Disputed Chargemaster Deletion Restriction Guard (`server/routes/charges.ts`)**: Added pre-deletion validation checking against `billing_disputes`. Prevents unhandled PostgreSQL foreign key violation (`onDelete: 'restrict'`), returning clean HTTP 400 `ITEM_HAS_DISPUTES`.
+- [DATA INTEGRITY] **Atomic Database Transaction for Promissory Note Execution (`server/routes/promissory.ts`)**: Wrapped promissory note insertion, gate pass issuance, bed status housekeeping transition, encounter stage advancement, and audit logs inside atomic `await db.transaction()`.
+- [DATA INTEGRITY] **Foreign Key Correction in Supervisory Waiver Audit Log (`server/routes/disputes.ts`)**: Fixed audit log mapping to use `user.facilityId` rather than assigned user UUID, eliminating foreign key violation on `system_audit_logs_facility_id_facilities_id_fk`.
+- [IDEMPOTENCY] **Discharge Exit Pass Verification Idempotency Guard (`server/routes/gatePass.ts`)**: Preserves original `verifiedAt` timestamp and returns `passAlreadyVerified: true` without redundant database writes when verifying an already cleared pass.
+
 ## [1.20.0] — 2026-09-26
 
 ### Systemic Code Audit & Comprehensive Defect Resolution

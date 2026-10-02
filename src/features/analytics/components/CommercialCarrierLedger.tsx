@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { CommercialCarrierMetric } from '@/types/domain';
 import { formatPhp } from '@/utils/formatters';
-import { ShieldCheck, ChevronLeft, ChevronRight, Search, CheckCircle2, TrendingDown, ArrowDownRight } from 'lucide-react';
+import { ShieldCheck, ChevronLeft, ChevronRight, CheckCircle2, TrendingDown, ArrowDownRight } from 'lucide-react';
+import { IconButton, SearchInput } from '@/components/common';
 
 interface CommercialCarrierLedgerProps {
   carriers: CommercialCarrierMetric[];
@@ -78,16 +79,13 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
         </div>
 
         {/* Carrier Search */}
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="Search Carrier..."
-            className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-48 text-left"
-          />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
-        </div>
+        <SearchInput
+          size="sm"
+          value={searchQuery}
+          onChange={handleSearchChange}
+          placeholder="Search Carrier..."
+          className="w-48"
+        />
       </div>
 
       {/* Enterprise Left-Aligned Table (Strict text-left on all th and td) */}
@@ -170,25 +168,25 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="secondary"
+            icon={ChevronLeft}
             disabled={currentPage <= 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="w-4 h-4 text-slate-600" />
-          </button>
+            ariaLabel="Previous page"
+          />
           <span className="px-2 font-mono text-xs">
             {currentPage} / {totalPages}
           </span>
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="secondary"
+            icon={ChevronRight}
             disabled={currentPage >= totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronRight className="w-4 h-4 text-slate-600" />
-          </button>
+            ariaLabel="Next page"
+          />
         </div>
       </div>
 

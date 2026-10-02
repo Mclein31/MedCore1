@@ -4,6 +4,7 @@ import { useMedCore } from '@/context/MedCoreContext';
 import { ChargemasterItem } from '@/types/domain';
 import { X, Plus, Pencil, DollarSign, Tag, FileText, Hash, Info, Layers } from 'lucide-react';
 import { formatPhp } from '@/utils/formatters';
+import { Button, IconButton, Select } from '@/components/common';
 
 export const AddEditChargeModal: React.FC = () => {
   const {
@@ -124,11 +125,11 @@ export const AddEditChargeModal: React.FC = () => {
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
+            <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
               {isEditing ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             </div>
             <div>
@@ -140,12 +141,13 @@ export const AddEditChargeModal: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={closeAddEditChargeModal}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Form Body */}
@@ -161,7 +163,7 @@ export const AddEditChargeModal: React.FC = () => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Meropenem 1g IV Infusion / CBC w/ Platelet Count"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 
@@ -170,17 +172,19 @@ export const AddEditChargeModal: React.FC = () => {
               <Tag className="w-3.5 h-3.5 text-blue-600" />
               <span>Department Category</span>
             </label>
-            <select
+            <Select
+              size="md"
               value={category}
               onChange={(e) => setCategory(e.target.value as any)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              wrapperClassName="w-full"
+              className="w-full text-sm font-medium"
             >
               {categories.map((c) => (
                 <option key={c.value} value={c.value}>
                   {c.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           {/* 3-Column Quantity, Unit Price, and Gross Amount Grid */}
@@ -197,7 +201,7 @@ export const AddEditChargeModal: React.FC = () => {
                 required
                 value={qty || ''}
                 onChange={(e) => handleQtyChange(parseInt(e.target.value, 10) || 1)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-mono font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
               />
             </div>
 
@@ -213,7 +217,7 @@ export const AddEditChargeModal: React.FC = () => {
                 required
                 value={unitPrice || ''}
                 onChange={(e) => handleUnitPriceChange(parseFloat(e.target.value) || 0)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-mono font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900"
               />
             </div>
 
@@ -229,7 +233,7 @@ export const AddEditChargeModal: React.FC = () => {
                 required
                 value={grossAmount || ''}
                 onChange={(e) => handleGrossAmountChange(parseFloat(e.target.value) || 0)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900 bg-slate-50/70"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none text-slate-900 bg-slate-50/70"
               />
             </div>
           </div>
@@ -240,15 +244,17 @@ export const AddEditChargeModal: React.FC = () => {
                 <Layers className="w-3.5 h-3.5 text-blue-600" />
                 <span>Statutory Coverage Allocation Target</span>
               </label>
-              <select
+              <Select
+                size="md"
                 value={coverageType}
                 onChange={(e) => setCoverageType(e.target.value as any)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none bg-slate-50"
+                wrapperClassName="w-full"
+                className="w-full text-xs font-medium bg-slate-50"
               >
                 <option value="PHILHEALTH_FIRST">PhilHealth Statutory Case Rate First (Default)</option>
                 <option value="HMO_COVERED">HMO Primary Out-of-Pocket Coverage</option>
                 <option value="PATIENT_DIRECT">Patient Out-of-Pocket / Non-Covered Differential</option>
-              </select>
+              </Select>
             </div>
           )}
 
@@ -280,27 +286,23 @@ export const AddEditChargeModal: React.FC = () => {
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
+            <Button
               type="button"
+              size="md"
+              variant="secondary"
               onClick={closeAddEditChargeModal}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={isSubmitting || !description.trim() || grossAmount <= 0}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              size="md"
+              variant="primary"
+              disabled={!description.trim() || grossAmount <= 0}
+              isLoading={isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Re-balancing Ledger...</span>
-                </>
-              ) : (
-                <span>{isEditing ? 'Save Changes' : 'Post Charge to Statement'}</span>
-              )}
-            </button>
+              {isEditing ? 'Save Changes' : 'Post Charge to Statement'}
+            </Button>
           </div>
         </form>
       </div>
