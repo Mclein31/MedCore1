@@ -3,6 +3,7 @@ import { useMedCore } from '@/context/MedCoreContext';
 import { DemoPaymentRecord } from '../types/billing';
 import { formatPeso, formatPstDateTime } from '../utils/billFormatters';
 import { CheckCircle2, X, Printer, QrCode, ShieldCheck, Download } from 'lucide-react';
+import { Button, IconButton } from '@/components/common';
 
 interface Props {
   payment: DemoPaymentRecord | null;
@@ -31,7 +32,7 @@ export const OfficialReceiptModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-60 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
         {/* Success Banner */}
         <div className="bg-emerald-600 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -47,12 +48,14 @@ export const OfficialReceiptModal: React.FC<Props> = ({
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={onClose}
-            className="p-1.5 rounded-lg text-emerald-200 hover:text-white hover:bg-emerald-700/50 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+            ariaLabel="Close modal"
+            className="text-emerald-200 hover:text-white hover:bg-emerald-700/50"
+          />
         </div>
 
         {/* BIR Official Receipt Layout */}
@@ -147,18 +150,24 @@ export const OfficialReceiptModal: React.FC<Props> = ({
           {/* Action CTAs */}
           <div className="space-y-2 pt-1">
             {remainingBalance === 0 && onViewGatePass && (
-              <button
+              <Button
                 type="button"
+                fullWidth
+                size="md"
+                variant="primary"
+                icon={QrCode}
                 onClick={onViewGatePass}
-                className="w-full py-3 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2"
               >
-                <QrCode className="w-4 h-4" />
-                <span>View Digital Discharge Gate Pass →</span>
-              </button>
+                View Digital Discharge Gate Pass →
+              </Button>
             )}
 
-            <button
+            <Button
               type="button"
+              fullWidth
+              size="md"
+              variant="secondary"
+              icon={Printer}
               onClick={() =>
                 printDocument({
                   type: 'OFFICIAL_RECEIPT',
@@ -172,20 +181,20 @@ export const OfficialReceiptModal: React.FC<Props> = ({
                   }
                 })
               }
-              className="w-full py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors flex items-center justify-center gap-2"
               title="Print BIR-compliant Official Receipt"
             >
-              <Printer className="w-3.5 h-3.5 text-slate-600" />
-              <span>Print Official Receipt</span>
-            </button>
+              Print Official Receipt
+            </Button>
 
-            <button
+            <Button
               type="button"
+              fullWidth
+              size="md"
+              variant="subtle"
               onClick={onClose}
-              className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
             >
               Close Receipt
-            </button>
+            </Button>
           </div>
         </div>
       </div>

@@ -188,7 +188,7 @@ disputesApp.post(
 
     // 4. Audit log
     await db.insert(systemAuditLogs).values({
-      facilityId: disputeList[0].assignedStaffId || '00000000-0000-0000-0000-000000000001',
+      facilityId: user.facilityId || '00000000-0000-0000-0000-000000000001',
       userId: user.id,
       actorRole: user.role,
       action: 'SUPERVISORY_WAIVER_EXECUTED',

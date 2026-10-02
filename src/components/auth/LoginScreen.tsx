@@ -79,14 +79,14 @@ export const LoginScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img
-                src="/AQROMED_logo.png"
-                alt="AQROMED"
+                src="/MedCore_Symbol_logo.png"
+                alt="MedCore"
                 className="h-10 w-auto max-h-10 object-contain brightness-110"
               />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-lg tracking-tight text-white">
-                    AQROMED
+                    MedCore
                   </span>
                   <span className="text-[10px] font-bold text-blue-400 bg-blue-950/80 border border-blue-800 px-2 py-0.5 rounded">
                     v2.4 Enterprise
@@ -240,7 +240,7 @@ export const LoginScreen: React.FC = () => {
         {/* Card Footer */}
         <div className="bg-slate-50 px-8 py-3.5 border-t border-slate-200 text-[11px] text-slate-500 flex flex-wrap items-center justify-between gap-2">
           <span>Protected under RA 10173 (Data Privacy Act of 2012)</span>
-          <span className="font-mono text-slate-400">HITP-AQROMED-MANILA-092</span>
+          <span className="font-mono text-slate-400">HITP-MEDCORE-MANILA-092</span>
         </div>
       </div>
     </div>

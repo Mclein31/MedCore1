@@ -23,7 +23,7 @@ export const PrintDocumentContainer: React.FC = () => {
     address: 'Don Manuel Agregado St., Sampaloc, Manila 1008, Philippines',
     tin: 'VAT REG TIN: 004-819-201-000',
     pan: 'PhilHealth Accreditation: PAN-NCR-HOSP-004921',
-    hitp: 'HITP Gateway Client ID: HITP-AQROMED-MANILA-092',
+    hitp: 'HITP Gateway Client ID: HITP-MEDCORE-MANILA-092',
     phone: 'Tel: (02) 8888-SJMC / (02) 8731-5000'
   };
 
@@ -32,8 +32,8 @@ export const PrintDocumentContainer: React.FC = () => {
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-4">
           <img
-            src="/AQROMED_logo.png"
-            alt="AQROMED"
+            src="/MedCore_Symbol_logo.png"
+            alt="MedCore"
             className="h-12 w-auto max-h-12 object-contain"
           />
           <div>
@@ -72,7 +72,7 @@ export const PrintDocumentContainer: React.FC = () => {
           {reportTitle}
         </h2>
         <span className="text-[10px] font-mono text-slate-500">
-          Generated via AQROMED Enterprise RCM · Official Clinical/Financial Record
+          Generated via MedCore Enterprise RCM · Official Clinical/Financial Record
         </span>
       </div>
     </div>
@@ -103,7 +103,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const soaNumber = enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber}`;
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader(
           config.type === 'PATIENT_LEDGER'
@@ -292,7 +292,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const pName = enc.patient.fullName || enc.patient.maskedName;
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Official Digital Lobby Exit Clearance Slip & Gate Pass', pass?.passNumber || `PASS-MC-${enc.encounterNumber}`)}
 
@@ -352,7 +352,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const encNum = config.data.encounterNumber || 'ENC';
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Bureau of Internal Revenue (BIR) Electronic Official Receipt', payment.officialReceiptNumber)}
 
@@ -420,7 +420,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const { waterfall, kpis, carriers } = config.data;
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Hospital Financial Intelligence & Statutory RCM Audit Report', `RCM-AUDIT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`)}
 
@@ -548,7 +548,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const encounters: Encounter[] = config.data.encounters;
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Multi-Payer Inpatient Roster & Commercial HMO Electronic LOA Adjudication Report')}
 
@@ -608,7 +608,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const pName = enc.patient.fullName || enc.patient.maskedName;
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Inpatient Discharge Clearance Dossier & 45-Minute SLA Audit Sheet', enc.encounterNumber)}
 
@@ -719,7 +719,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const cl = enc.philhealth;
 
     return (
-      <div id="aqromed-print-root" className="w-full">
+      <div id="medcore-print-root" className="w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('PhilHealth eClaims 3.0 Pre-Flight Audit & CF1-CF4 Conformity Report', cl.id)}
 

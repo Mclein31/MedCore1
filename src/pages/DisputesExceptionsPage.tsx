@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
-import { CheckCircle2, ShieldAlert, Search, HelpCircle, FileText } from 'lucide-react';
-import { ConfirmButton } from '@/components/common';
+import { CheckCircle2, ShieldAlert, HelpCircle, FileText } from 'lucide-react';
+import { ConfirmButton, SegmentedTabs, SearchInput, Button } from '@/components/common';
 
 export const DisputesExceptionsPage: React.FC = () => {
   const {
@@ -108,6 +108,21 @@ export const DisputesExceptionsPage: React.FC = () => {
     safeNotesPage * pageSize
   );
 
+  const tabs = [
+    {
+      id: 'CONTESTED_ITEMS' as const,
+      label: 'Contested items',
+      badge: disputedItems.length,
+      badgeVariant: disputedItems.length > 0 ? ('rose' as const) : ('default' as const)
+    },
+    {
+      id: 'PROMISSORY_REGISTER' as const,
+      label: 'RA 9439 Promissory notes',
+      badge: promissoryNotes.length,
+      badgeVariant: 'purple' as const
+    }
+  ];
+
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 p-5 space-y-3.5 bg-slate-50/50 overflow-hidden">
       {/* Header */}
@@ -123,54 +138,38 @@ export const DisputesExceptionsPage: React.FC = () => {
 
         {/* Tab Controls & Search Bar */}
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5 text-xs">
-            <button
-              onClick={() => {
-                setActiveTab('CONTESTED_ITEMS');
-                setItemsPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
-                activeTab === 'CONTESTED_ITEMS'
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              Contested items ({disputedItems.length})
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('PROMISSORY_REGISTER');
-                setNotesPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
-                activeTab === 'PROMISSORY_REGISTER'
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              RA 9439 Promissory notes ({promissoryNotes.length})
-            </button>
-          </div>
+          <SegmentedTabs
+            items={tabs}
+            activeId={activeTab}
+            onChange={(id) => {
+              setActiveTab(id);
+              setItemsPage(1);
+              setNotesPage(1);
+            }}
+            size="sm"
+            ariaLabel="Disputes view selector"
+          />
 
-          {/* Search Input */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder={
-                activeTab === 'CONTESTED_ITEMS'
-                  ? 'Search patient, bed, contested item...'
-                  : 'Search borrower, note number, patient...'
-              }
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setItemsPage(1);
-                setNotesPage(1);
-              }}
-              className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-white border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-64 text-slate-800 placeholder-slate-400 shadow-2xs"
-            />
-          </div>
+          <SearchInput
+            size="sm"
+            placeholder={
+              activeTab === 'CONTESTED_ITEMS'
+                ? 'Search patient, bed, contested item...'
+                : 'Search borrower, note number, patient...'
+            }
+            value={searchQuery}
+            onChange={(val) => {
+              setSearchQuery(val);
+              setItemsPage(1);
+              setNotesPage(1);
+            }}
+            onClear={() => {
+              setSearchQuery('');
+              setItemsPage(1);
+              setNotesPage(1);
+            }}
+            className="w-56 sm:w-64"
+          />
         </div>
       </div>
 
@@ -240,15 +239,15 @@ export const DisputesExceptionsPage: React.FC = () => {
                         <td className="py-3.5 px-6 text-left whitespace-nowrap">
                           <div className="flex items-center justify-start gap-2">
                             {/* Review Action */}
-                            <button
-                              type="button"
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              icon={HelpCircle}
                               onClick={() => openWhyDoIOweThis(item)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs transition-colors shrink-0"
                               title="Review plain-language charge explainer"
                             >
-                              <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Why?</span>
-                            </button>
+                              Why?
+                            </Button>
 
                             {/* Visual Divider between Review and Interventions */}
                             <div className="h-4 w-px bg-slate-200 shrink-0" />
@@ -261,7 +260,7 @@ export const DisputesExceptionsPage: React.FC = () => {
                               confirmLabel="Waive Item"
                               variant="danger"
                               confirmVariant="danger"
-                              size="xs"
+                              size="sm"
                               contextInfo={[
                                 { label: 'Patient', value: patientName },
                                 { label: 'Disputed Item', value: item.description },
@@ -277,18 +276,19 @@ export const DisputesExceptionsPage: React.FC = () => {
                               title="Apply Supervisory Courtesy Discount & Waive Item"
                             />
 
-                            <button
-                              type="button"
+                            <Button
+                              size="sm"
+                              variant="subtle"
+                              icon={FileText}
                               onClick={() => {
                                 selectEncounter(encounterId);
                                 openPromissoryModal(encounterId, item.patientOop, item.description);
                               }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900 text-xs font-semibold transition-colors shadow-2xs shrink-0"
+                              className="border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-900"
                               title="Issue legal promissory note for installment settlement"
                             >
-                              <FileText className="w-3.5 h-3.5 text-purple-600" />
-                              <span>Promissory Note</span>
-                            </button>
+                              Promissory Note
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -298,32 +298,32 @@ export const DisputesExceptionsPage: React.FC = () => {
               </div>
 
               {/* Pagination Controls */}
-              <div className="px-6 py-3 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shrink-0">
+              <div className="px-6 py-2.5 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shrink-0">
                 <div>
                   Showing <strong className="text-slate-900">{filteredDisputedItems.length === 0 ? 0 : ((safeItemsPage - 1) * pageSize) + 1}</strong> to{' '}
                   <strong className="text-slate-900">{Math.min(safeItemsPage * pageSize, filteredDisputedItems.length)}</strong> of{' '}
                   <strong className="text-slate-900">{filteredDisputedItems.length}</strong> contested items
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     disabled={safeItemsPage <= 1}
                     onClick={() => setItemsPage((p) => Math.max(1, p - 1))}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
                   >
                     Previous
-                  </button>
-                  <span className="font-semibold text-slate-800 px-1">
+                  </Button>
+                  <span className="font-semibold text-slate-800 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
                     Page {safeItemsPage} of {totalItemsPages}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     disabled={safeItemsPage >= totalItemsPages}
                     onClick={() => setItemsPage((p) => Math.min(totalItemsPages, p + 1))}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -344,12 +344,13 @@ export const DisputesExceptionsPage: React.FC = () => {
               </p>
             </div>
 
-            <button
+            <Button
+              size="sm"
+              variant="primary"
               onClick={() => openPromissoryModal()}
-              className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-colors shadow-2xs"
             >
               + Issue Promissory Note
-            </button>
+            </Button>
           </div>
 
           {filteredPromissoryNotes.length === 0 ? (
@@ -421,32 +422,32 @@ export const DisputesExceptionsPage: React.FC = () => {
               </div>
 
               {/* Pagination Controls */}
-              <div className="px-6 py-3 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shrink-0">
+              <div className="px-6 py-2.5 bg-white border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shrink-0">
                 <div>
                   Showing <strong className="text-slate-900">{filteredPromissoryNotes.length === 0 ? 0 : ((safeNotesPage - 1) * pageSize) + 1}</strong> to{' '}
                   <strong className="text-slate-900">{Math.min(safeNotesPage * pageSize, filteredPromissoryNotes.length)}</strong> of{' '}
                   <strong className="text-slate-900">{filteredPromissoryNotes.length}</strong> promissory notes
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     disabled={safeNotesPage <= 1}
                     onClick={() => setNotesPage((p) => Math.max(1, p - 1))}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
                   >
                     Previous
-                  </button>
-                  <span className="font-semibold text-slate-800 px-1">
+                  </Button>
+                  <span className="font-semibold text-slate-800 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
                     Page {safeNotesPage} of {totalNotesPages}
                   </span>
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     disabled={safeNotesPage >= totalNotesPages}
                     onClick={() => setNotesPage((p) => Math.min(totalNotesPages, p + 1))}
-                    className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
                   >
                     Next
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>

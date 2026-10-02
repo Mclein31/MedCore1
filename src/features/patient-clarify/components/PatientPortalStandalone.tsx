@@ -137,14 +137,14 @@ export const PatientPortalStandalone: React.FC = () => {
         {/* Brand & Identity */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <img
-            src="/AQROMED_logo.png"
-            alt="AQROMED"
+            src="/MedCore_Symbol_logo.png"
+            alt="MedCore"
             className="h-8 sm:h-9 w-auto max-h-9 object-contain shrink-0"
           />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-extrabold text-sm sm:text-base text-slate-900 leading-none truncate">
-                AQROMED Patient Clarify
+                MedCore Patient Clarify
               </span>
               <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">
                 Demo Portal

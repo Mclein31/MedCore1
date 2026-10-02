@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { chargemasterItems, encounters, systemAuditLogs } from '../db/schema';
+import { chargemasterItems, encounters, systemAuditLogs, billingDisputes } from '../db/schema';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
@@ -229,6 +229,22 @@ chargesApp.delete(
 
     const item = itemList[0];
     const encounterId = item.encounterId;
+
+    // Guard against foreign key constraint violation (onDelete: 'restrict') on disputed charges
+    const linkedDisputes = await db
+      .select({ id: billingDisputes.id })
+      .from(billingDisputes)
+      .where(eq(billingDisputes.chargeId, item.id))
+      .limit(1);
+
+    if (linkedDisputes.length > 0) {
+      return apiError(
+        c,
+        400,
+        'ITEM_HAS_DISPUTES',
+        'Cannot delete a chargemaster item with an active or logged billing dispute. Resolve or archive the dispute first.'
+      );
+    }
 
     await db.delete(chargemasterItems).where(eq(chargemasterItems.id, item.id));
 

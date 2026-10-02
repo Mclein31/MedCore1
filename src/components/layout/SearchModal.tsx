@@ -257,7 +257,7 @@ export const SearchModal: React.FC = () => {
             <span>Esc Close</span>
           </div>
           <div className="text-slate-400 font-medium">
-            AQROMED Directory
+            MedCore Directory
           </div>
         </div>
       </div>

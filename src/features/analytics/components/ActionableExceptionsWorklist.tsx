@@ -5,7 +5,6 @@ import { useMedCore } from '@/context/MedCoreContext';
 import {
   ChevronLeft,
   ChevronRight,
-  Search,
   ExternalLink,
   AlertTriangle,
   CheckCircle2,
@@ -14,7 +13,7 @@ import {
   Clock,
   ShieldAlert
 } from 'lucide-react';
-import { ConfirmButton } from '@/components/common';
+import { ConfirmButton, Button, IconButton, SearchInput } from '@/components/common';
 
 interface ActionableExceptionsWorklistProps {
   exceptions: ActionableExceptionItem[];
@@ -145,16 +144,16 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
         </div>
 
         {/* Search Input */}
-        <div className="relative">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search patient, MRN, ward..."
-            className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 w-56 text-left"
-          />
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none" />
-        </div>
+        <SearchInput
+          size="sm"
+          value={searchQuery}
+          onChange={(v) => {
+            setSearchQuery(v);
+            setCurrentPage(1);
+          }}
+          placeholder="Search patient, MRN, ward..."
+          className="w-56"
+        />
       </div>
 
       {/* Universal Left-Aligned Table (Strict text-left on all th and td) */}
@@ -256,20 +255,20 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
                         ]}
                         variant="subtle"
                         confirmVariant="success"
-                        size="xs"
+                        size="sm"
                         onConfirm={() => {
                           selectEncounter(item.encounter.id);
                           clearPharmacyRts(item.encounter.id);
                         }}
                       />
                     ) : (
-                      <button
-                        type="button"
+                      <Button
+                        size="sm"
+                        variant="secondary"
                         onClick={() => handleAction(item)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-white border border-slate-200 hover:bg-blue-50 hover:border-blue-300 text-slate-700 hover:text-blue-700 shadow-2xs transition-colors"
                       >
-                        <span>{item.recommendedAction}</span>
-                      </button>
+                        {item.recommendedAction}
+                      </Button>
                     )}
                   </td>
                 </tr>
@@ -300,25 +299,25 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="secondary"
+            icon={ChevronLeft}
             disabled={currentPage <= 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="w-4 h-4 text-slate-600" />
-          </button>
+            ariaLabel="Previous page"
+          />
           <span className="px-2 font-mono text-xs">
             {currentPage} / {totalPages}
           </span>
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="secondary"
+            icon={ChevronRight}
             disabled={currentPage >= totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            className="p-1 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <ChevronRight className="w-4 h-4 text-slate-600" />
-          </button>
+            ariaLabel="Next page"
+          />
         </div>
       </div>
     </div>

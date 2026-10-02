@@ -3,6 +3,7 @@ import { useMedCore } from '@/context/MedCoreContext';
 import { TripartiteWorkbench } from '@/features/ledger/components/TripartiteWorkbench';
 import { formatPhp } from '@/utils/formatters';
 import { UserPlus } from 'lucide-react';
+import { SegmentedTabs, Button, Select } from '@/components/common';
 
 export const EncountersLedgerPage: React.FC = () => {
   const { encounters, selectEncounter, openAdmitPatientModal } = useMedCore();
@@ -10,6 +11,11 @@ export const EncountersLedgerPage: React.FC = () => {
 
   // Estimator State
   const [selectedProcedure, setSelectedProcedure] = useState('LAP_CHOLE');
+
+  const tabs = [
+    { id: 'INPATIENT_LEDGER' as const, label: `Active inpatients (${encounters.length})` },
+    { id: 'PRE_ADMISSION_INTAKE' as const, label: 'Pre-admission cost estimator' }
+  ];
 
   const procedures = [
     {
@@ -62,41 +68,27 @@ export const EncountersLedgerPage: React.FC = () => {
           </h2>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-1.5 text-xs">
-            <button
-              onClick={() => setActiveTab('INPATIENT_LEDGER')}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
-                activeTab === 'INPATIENT_LEDGER'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Active inpatients ({encounters.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('PRE_ADMISSION_INTAKE')}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
-                activeTab === 'PRE_ADMISSION_INTAKE'
-                  ? 'bg-slate-900 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Pre-admission cost estimator
-            </button>
-          </div>
+          <SegmentedTabs
+            items={tabs}
+            activeId={activeTab}
+            onChange={(id) => setActiveTab(id)}
+            size="sm"
+            ariaLabel="Encounters and Ledgers View Selector"
+          />
         </div>
 
         {/* Right Header Action: Admit Inpatient */}
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="button"
+            size="sm"
+            variant="primary"
+            icon={UserPlus}
             onClick={openAdmitPatientModal}
-            className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-colors flex items-center gap-1.5"
             title="Admit new patient and allocate hospital bed"
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Admit Inpatient</span>
-          </button>
+            Admit Inpatient
+          </Button>
         </div>
       </div>
 
@@ -133,17 +125,19 @@ export const EncountersLedgerPage: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Select clinical procedure bundle:
                 </label>
-                <select
+                <Select
+                  size="md"
                   value={selectedProcedure}
                   onChange={(e) => setSelectedProcedure(e.target.value)}
-                  className="w-full p-2.5 rounded-lg border border-slate-300 bg-white text-sm font-semibold text-slate-900"
+                  className="w-full font-semibold"
+                  wrapperClassName="w-full"
                 >
                   {procedures.map((p) => (
                     <option key={p.code} value={p.code}>
                       {p.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-sm">
@@ -165,12 +159,14 @@ export const EncountersLedgerPage: React.FC = () => {
                 </div>
               </div>
 
-              <button
+              <Button
+                fullWidth
+                size="md"
+                variant="primary"
                 onClick={() => alert(`Pre-admission orientation link generated for ${currentProc.name}`)}
-                className="w-full py-2.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm transition-colors shadow-xs"
               >
                 Send Upfront Orientation SMS
-              </button>
+              </Button>
             </div>
 
             {/* Scheduled Intake Encounters */}
@@ -216,15 +212,17 @@ export const EncountersLedgerPage: React.FC = () => {
                           {formatPhp(enc.waterfall.netPatientDue)}
                         </td>
                         <td className="py-3 px-3 text-left">
-                          <button
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 px-2 text-xs text-blue-600 hover:text-blue-800"
                             onClick={() => {
                               selectEncounter(enc.id);
                               setActiveTab('INPATIENT_LEDGER');
                             }}
-                            className="text-xs font-semibold text-blue-600 hover:text-blue-800 text-left"
                           >
                             Open ledger →
-                          </button>
+                          </Button>
                         </td>
                       </tr>
                     ))}

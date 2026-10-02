@@ -16,7 +16,7 @@ export type BillingSyncMessage = (
     }
 ) & { senderId?: string };
 
-const CHANNEL_NAME = 'aqromed_billing_sync';
+const CHANNEL_NAME = 'medcore_billing_sync';
 
 // Unique session identifier for the active window/tab to filter out self-broadcast echo
 export const TAB_SESSION_ID =
@@ -44,7 +44,7 @@ export function broadcastBillingSync(message: BillingSyncMessage): void {
 
     // 2. Storage event fallback for older environments
     try {
-      localStorage.setItem('aqromed_billing_sync_event', JSON.stringify({ ...payload, _ts: Date.now() }));
+      localStorage.setItem('medcore_billing_sync_event', JSON.stringify({ ...payload, _ts: Date.now() }));
     } catch {
       // ignore storage quota / sandbox restrictions
     }

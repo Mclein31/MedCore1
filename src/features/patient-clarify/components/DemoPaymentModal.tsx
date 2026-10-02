@@ -19,6 +19,12 @@ import {
   Zap,
   CheckCircle2
 } from 'lucide-react';
+import { Button, IconButton, SegmentedTabs, SegmentedTabItem } from '@/components/common';
+
+const PAYMENT_MODE_TABS: SegmentedTabItem<'FULL' | 'PARTIAL'>[] = [
+  { id: 'FULL', label: 'Full Settlement' },
+  { id: 'PARTIAL', label: 'Partial Amount' }
+];
 
 interface Props {
   isOpen: boolean;
@@ -128,7 +134,7 @@ export const DemoPaymentModal: React.FC<Props> = ({
   return (
     <>
       <div className="fixed inset-0 z-60 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-        <div className="bg-white rounded-3xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
+        <div className="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
           {/* Demo Sandbox Watermark Banner */}
           <div className="bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-black tracking-wider uppercase flex items-center justify-center gap-2 select-none shrink-0">
             <AlertTriangle className="w-4 h-4 text-slate-950 shrink-0" />
@@ -145,18 +151,19 @@ export const DemoPaymentModal: React.FC<Props> = ({
                 St. Jude Medical Center Manila · Discharge Desk
               </p>
             </div>
-            <button
+            <IconButton
+              size="sm"
+              variant="ghost"
+              icon={X}
               onClick={onClose}
-              className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
+              ariaLabel="Close modal"
+            />
           </div>
 
           {/* Body: Scrollable */}
           <div className="p-6 overflow-y-auto flex-1 space-y-5">
             {/* Amount Selection Section */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
@@ -168,30 +175,12 @@ export const DemoPaymentModal: React.FC<Props> = ({
                 </div>
 
                 {/* Full vs Partial Toggle */}
-                <div className="flex items-center bg-white p-1 rounded-xl border border-slate-200 shadow-2xs self-start sm:self-auto">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('FULL')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      paymentMode === 'FULL'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Full Settlement
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMode('PARTIAL')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                      paymentMode === 'PARTIAL'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    Partial Amount
-                  </button>
-                </div>
+                <SegmentedTabs
+                  size="sm"
+                  items={PAYMENT_MODE_TABS}
+                  activeId={paymentMode}
+                  onChange={setPaymentMode}
+                />
               </div>
 
               {/* Partial Amount Input */}
@@ -275,13 +264,15 @@ export const DemoPaymentModal: React.FC<Props> = ({
             {errorMessage && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 flex items-center justify-between">
                 <span>{errorMessage}</span>
-                <button
+                <Button
                   type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5 text-xs text-rose-600 hover:text-rose-800 font-bold ml-2"
                   onClick={() => setErrorMessage(null)}
-                  className="text-rose-500 hover:text-rose-700 font-bold ml-2"
                 >
                   Dismiss
-                </button>
+                </Button>
               </div>
             )}
 

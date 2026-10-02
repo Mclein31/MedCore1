@@ -9,7 +9,7 @@ import {
   Send,
   AlertTriangle
 } from 'lucide-react';
-import { ConfirmButton } from '@/components/common';
+import { ConfirmButton, Button, IconButton } from '@/components/common';
 
 export const DoctorQuickSignModal: React.FC = () => {
   const {
@@ -75,12 +75,13 @@ export const DoctorQuickSignModal: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={closeDoctorQuickSign}
-            className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Modal Body */}
@@ -203,16 +204,17 @@ export const DoctorQuickSignModal: React.FC = () => {
                   onConfirm={handleSignDeclared}
                   title="Sign fee as declared, charging excess to patient"
                 />
-                <button
+                <Button
+                  size="md"
+                  variant="secondary"
+                  icon={Send}
                   onClick={() => {
                     nudgeDoctor(selectedEncounter.id);
                     closeDoctorQuickSign();
                   }}
-                  className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-sm flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <Send className="w-4 h-4 text-slate-500" />
-                  <span>Send SMS Link</span>
-                </button>
+                  Send SMS Link
+                </Button>
               </div>
             </div>
           )}

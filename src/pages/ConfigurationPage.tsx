@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Button, Select } from '@/components/common';
 
 export const ConfigurationPage: React.FC = () => {
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -28,13 +29,14 @@ export const ConfigurationPage: React.FC = () => {
               ✓ Configurations saved successfully.
             </div>
           )}
-          <button
+          <Button
             type="submit"
             form="config-form"
-            className="py-2.5 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors shadow-xs"
+            size="md"
+            variant="primary"
           >
             Save Configurations
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -68,7 +70,7 @@ export const ConfigurationPage: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  defaultValue="postgresql://aqromed_ro:••••••••@his-replica.stjude.local:5432/bizbox_prod"
+                  defaultValue="postgresql://medcore_ro:••••••••@his-replica.stjude.local:5432/bizbox_prod"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-900 text-sm font-mono"
                   readOnly
                 />
@@ -88,10 +90,10 @@ export const ConfigurationPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Fallback Mode
                   </label>
-                  <select className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-medium">
+                  <Select size="md" wrapperClassName="w-full" className="w-full">
                     <option>HL7 FHIR R4 Microservice</option>
                     <option>Direct SQL Replication</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -125,7 +127,7 @@ export const ConfigurationPage: React.FC = () => {
                   </label>
                   <input
                     type="text"
-                    defaultValue="HITP-AQROMED-MANILA-092"
+                    defaultValue="HITP-MEDCORE-MANILA-092"
                     className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                   />
                 </div>
@@ -145,19 +147,19 @@ export const ConfigurationPage: React.FC = () => {
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     API Endpoint Environment
                   </label>
-                  <select className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-medium">
+                  <Select size="md" wrapperClassName="w-full" className="w-full">
                     <option>Production (api.philhealth.gov.ph)</option>
                     <option>Staging Testbed Sandbox</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     XML Schema Validation
                   </label>
-                  <select className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-medium">
+                  <Select size="md" wrapperClassName="w-full" className="w-full">
                     <option>Strict Circular 2023-0026 (Enforced)</option>
                     <option>Permissive Legacy Mode</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -286,14 +288,15 @@ export const ConfigurationPage: React.FC = () => {
         {/* Action Button Bar */}
         <div className="flex items-center justify-between pt-4 border-t border-slate-200">
           <div className="text-xs text-slate-500">
-            AQROMED Enterprise Engine v3.2 · Philippine Hospital RCM Operating System
+            MedCore Enterprise Engine v3.2 · Philippine Hospital RCM Operating System
           </div>
-          <button
+          <Button
             type="submit"
-            className="py-2.5 px-8 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors shadow-xs"
+            size="md"
+            variant="primary"
           >
             Save All System Configurations
-          </button>
+          </Button>
         </div>
       </form>
     </div>

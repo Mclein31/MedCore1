@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useMedCore } from '@/context/MedCoreContext';
 import { X, UserPlus, Building2, Stethoscope, Shield, CreditCard, BedDouble } from 'lucide-react';
+import { Button, IconButton } from '@/components/common';
 
 export const AdmitPatientModal: React.FC = () => {
   const {
@@ -94,12 +95,13 @@ export const AdmitPatientModal: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={closeAdmitPatientModal}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Scrollable Form Body */}
@@ -309,27 +311,23 @@ export const AdmitPatientModal: React.FC = () => {
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
+            <Button
               type="button"
+              variant="secondary"
+              size="md"
               onClick={closeAdmitPatientModal}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="primary"
+              size="md"
               disabled={isSubmitting || !fullName.trim() || !primaryDiagnosis.trim()}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              isLoading={isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Recording Admission...</span>
-                </>
-              ) : (
-                <span>Confirm Inpatient Admission</span>
-              )}
-            </button>
+              Confirm Inpatient Admission
+            </Button>
           </div>
         </form>
       </div>

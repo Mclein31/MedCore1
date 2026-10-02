@@ -3,6 +3,7 @@ import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
 import { WaterfallAggregate, MacroKpiMetrics, CommercialCarrierMetric } from '@/utils/rcmAnalyticsCalculations';
 import { X, Printer, Download, CheckCircle2, ShieldCheck, Building } from 'lucide-react';
+import { Button, IconButton } from '@/components/common';
 
 interface ExecutiveReportModalProps {
   isOpen: boolean;
@@ -53,7 +54,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
     link.setAttribute('href', encodedUri);
     link.setAttribute(
       'download',
-      `AQROMED_RCM_Financial_Audit_${new Date().toISOString().slice(0, 10)}.csv`
+      `MEDCORE_RCM_Financial_Audit_${new Date().toISOString().slice(0, 10)}.csv`
     );
     document.body.appendChild(link);
     link.click();
@@ -78,29 +79,32 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="secondary"
+              icon={Printer}
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors"
             >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / PDF</span>
-            </button>
-            <button
+              Print / PDF
+            </Button>
+            <Button
               type="button"
+              size="sm"
+              variant="primary"
+              icon={Download}
               onClick={handleExportCsv}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-xs transition-colors"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Download CSV</span>
-            </button>
-            <button
-              type="button"
+              Download CSV
+            </Button>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              icon={X}
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors ml-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
+              ariaLabel="Close modal"
+              className="ml-1"
+            />
           </div>
         </div>
 
@@ -241,14 +245,15 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
 
         {/* Modal Footer */}
         <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <span>St. Jude Medical Center Manila · AQROMED Enterprise RCM</span>
-          <button
+          <span>St. Jude Medical Center Manila · MedCore Enterprise RCM</span>
+          <Button
             type="button"
+            size="sm"
+            variant="secondary"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-semibold shadow-2xs"
           >
             Close Audit Summary
-          </button>
+          </Button>
         </div>
       </div>
     </div>

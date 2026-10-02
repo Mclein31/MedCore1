@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useMedCore } from '@/context/MedCoreContext';
 import { X, Pencil, BedDouble, Stethoscope, FileText, AlertCircle } from 'lucide-react';
+import { Button, IconButton, Select } from '@/components/common';
 
 export const EditEncounterModal: React.FC = () => {
   const {
@@ -65,11 +66,11 @@ export const EditEncounterModal: React.FC = () => {
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
+      <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-blue-100 text-blue-700">
+            <div className="p-2 rounded-lg bg-blue-100 text-blue-700">
               <Pencil className="w-4 h-4" />
             </div>
             <div>
@@ -81,12 +82,13 @@ export const EditEncounterModal: React.FC = () => {
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={closeEditEncounterModal}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Form Body */}
@@ -101,7 +103,7 @@ export const EditEncounterModal: React.FC = () => {
               required
               value={primaryDiagnosis}
               onChange={(e) => setPrimaryDiagnosis(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 
@@ -111,15 +113,17 @@ export const EditEncounterModal: React.FC = () => {
                 <BedDouble className="w-3.5 h-3.5 text-blue-600" />
                 <span>Room / Bed Transfer</span>
               </label>
-              <select
+              <Select
+                size="md"
                 value={roomBed}
                 onChange={(e) => setRoomBed(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                wrapperClassName="w-full"
+                className="w-full text-sm font-medium"
               >
                 {roomOptions.map((b) => (
                   <option key={b} value={b}>{b}</option>
                 ))}
-              </select>
+              </Select>
             </div>
 
             <div>
@@ -133,7 +137,7 @@ export const EditEncounterModal: React.FC = () => {
                 required
                 value={dailyRoomRate || ''}
                 onChange={(e) => setDailyRoomRate(parseFloat(e.target.value) || 0)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-600 focus:outline-none"
               />
             </div>
           </div>
@@ -148,7 +152,7 @@ export const EditEncounterModal: React.FC = () => {
               required
               value={attendingDoctor}
               onChange={(e) => setAttendingDoctor(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>
 
@@ -161,27 +165,23 @@ export const EditEncounterModal: React.FC = () => {
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <button
+            <Button
               type="button"
+              size="md"
+              variant="secondary"
               onClick={closeEditEncounterModal}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={isSubmitting || !primaryDiagnosis.trim()}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              size="md"
+              variant="primary"
+              disabled={!primaryDiagnosis.trim()}
+              isLoading={isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Updating Encounter...</span>
-                </>
-              ) : (
-                <span>Save Encounter Changes</span>
-              )}
-            </button>
+              Save Encounter Changes
+            </Button>
           </div>
         </form>
       </div>

@@ -1,10 +1,18 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, Clock, ArrowRight, Search, HelpCircle, FileText } from 'lucide-react';
-import { ConfirmButton } from '@/components/common';
+import { CheckCircle2, ArrowRight, HelpCircle, FileText, ChevronRight } from 'lucide-react';
+import { ConfirmButton, Button, SearchInput } from '@/components/common';
 
-export const DualOperationalPipelines: React.FC = () => {
+interface DualOperationalPipelinesProps {
+  onViewAllPayer?: () => void;
+  onViewAllExceptions?: () => void;
+}
+
+export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> = ({
+  onViewAllPayer,
+  onViewAllExceptions
+}) => {
   const {
     encounters,
     approveHmoFinalLoa,
@@ -15,14 +23,17 @@ export const DualOperationalPipelines: React.FC = () => {
     setActiveRoute
   } = useMedCore();
 
-  // Search & Pagination States (Expanded page sizes to maximize viewport space)
+  // Search & Pagination States
   const [payerSearch, setPayerSearch] = useState('');
   const [payerPage, setPayerPage] = useState(1);
-  const payerPageSize = 11;
+  const payerPageSize = 9;
 
   const [exceptionsSearch, setExceptionsSearch] = useState('');
   const [exceptionsPage, setExceptionsPage] = useState(1);
-  const exceptionsPageSize = 8;
+  const exceptionsPageSize = 7;
+
+  // Selected row state for Unresolved Exceptions to dock contextual actions
+  const [selectedExceptionKey, setSelectedExceptionKey] = useState<string | null>(null);
 
   // Active contested line items across all encounters (excluding waived)
   const allDisputedItems = encounters.flatMap((enc) =>
@@ -82,6 +93,12 @@ export const DualOperationalPipelines: React.FC = () => {
     safeExceptionsPage * exceptionsPageSize
   );
 
+  // Currently active selected exception
+  const activeSelectedException =
+    (selectedExceptionKey && filteredExceptions.find((i) => `${i.encounterId}-${i.id}` === selectedExceptionKey)) ||
+    filteredExceptions[0] ||
+    null;
+
   return (
     <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 overflow-hidden space-y-2">
       <div className="flex items-center justify-between shrink-0">
@@ -111,28 +128,31 @@ export const DualOperationalPipelines: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Search Input */}
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search patient, bed, HMO..."
-                    value={payerSearch}
-                    onChange={(e) => {
-                      setPayerSearch(e.target.value);
-                      setPayerPage(1);
-                    }}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-48 text-slate-800 placeholder-slate-400 shadow-2xs"
-                  />
-                </div>
+                <SearchInput
+                  size="sm"
+                  placeholder="Search patient, bed, HMO..."
+                  value={payerSearch}
+                  onChange={(val) => {
+                    setPayerSearch(val);
+                    setPayerPage(1);
+                  }}
+                  onClear={() => {
+                    setPayerSearch('');
+                    setPayerPage(1);
+                  }}
+                  className="w-44"
+                />
 
-                <button
-                  onClick={() => setActiveRoute('COVERAGE_APPROVALS')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors shrink-0"
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  iconPosition="right"
+                  icon={ArrowRight}
+                  className="text-blue-600 hover:text-blue-800"
+                  onClick={onViewAllPayer || (() => setActiveRoute('COVERAGE_APPROVALS'))}
                 >
-                  <span>All ({encounters.length})</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                  All ({encounters.length})
+                </Button>
               </div>
             </div>
 
@@ -141,15 +161,15 @@ export const DualOperationalPipelines: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span>Patient &amp; Bed</span>
                 <span className="text-slate-300">·</span>
-                <span>Payer &amp; Benefit Coverage</span>
+                <span>Payer &amp; Coverage</span>
               </div>
-              <div className="flex items-center gap-6">
-                <span>Adjudication</span>
-                <span className="w-16 text-left">Action</span>
+              <div className="flex items-center gap-4">
+                <span>Status</span>
+                <span className="w-20 text-right">Action</span>
               </div>
             </div>
 
-            {/* Paginated Rows Container (Bounded Localized Scroll) */}
+            {/* Paginated Rows Container */}
             <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
               {filteredPayerEncounters.length === 0 ? (
                 <div className="h-48 flex items-center justify-center text-xs text-slate-400 p-6 text-center">
@@ -163,7 +183,8 @@ export const DualOperationalPipelines: React.FC = () => {
                   return (
                     <div
                       key={enc.id}
-                      className="min-h-[46px] px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-100/90 flex items-center justify-between text-xs transition-colors shrink-0 shadow-2xs"
+                      onClick={() => selectEncounter(enc.id)}
+                      className="min-h-[46px] px-3 py-2 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-100/90 flex items-center justify-between text-xs transition-colors shrink-0 shadow-2xs cursor-pointer"
                     >
                       <div className="min-w-0 pr-2">
                         <div className="font-bold text-slate-900 text-xs truncate flex items-center gap-1.5">
@@ -178,29 +199,20 @@ export const DualOperationalPipelines: React.FC = () => {
                       </div>
 
                       <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1 text-[11px] font-semibold">
-                          {isApproved ? (
-                            <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Approved</span>
-                            </span>
-                          ) : (
-                            <span className="text-amber-700 font-bold flex items-center gap-1 text-[11px] bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                              <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              <span>Awaiting</span>
-                            </span>
-                          )}
-                        </div>
-
-                        {!isApproved && (
+                        {isApproved ? (
+                          <span className="text-emerald-700 font-bold flex items-center gap-1 text-[11px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Approved</span>
+                          </span>
+                        ) : (
                           <ConfirmButton
-                            label="Approve"
+                            label="Approve LOA"
                             modalTitle="Approve HMO LOA Coverage?"
                             modalDescription={`This will approve and lock the ${enc.hmo.providerName || enc.hmo.hmoName} electronic Letter of Authorization (eLOA) for ${pName}.`}
                             confirmLabel="Approve LOA"
                             variant="success"
                             confirmVariant="success"
-                            size="xs"
+                            size="sm"
                             icon={CheckCircle2}
                             contextInfo={[
                               { label: 'Patient', value: pName },
@@ -224,31 +236,31 @@ export const DualOperationalPipelines: React.FC = () => {
             <div>
               Showing <strong className="text-slate-900">{filteredPayerEncounters.length === 0 ? 0 : ((safePayerPage - 1) * payerPageSize) + 1}</strong>–<strong className="text-slate-900">{Math.min(safePayerPage * payerPageSize, filteredPayerEncounters.length)}</strong> of <strong className="text-slate-900">{filteredPayerEncounters.length}</strong>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="secondary"
                 disabled={safePayerPage <= 1}
                 onClick={() => setPayerPage((p) => Math.max(1, p - 1))}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
               >
                 Previous
-              </button>
-              <span className="font-semibold text-slate-800 px-1">
+              </Button>
+              <span className="font-semibold text-slate-800 px-1 text-xs">
                 Page {safePayerPage} of {totalPayerPages}
               </span>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
                 disabled={safePayerPage >= totalPayerPages}
                 onClick={() => setPayerPage((p) => Math.min(totalPayerPages, p + 1))}
-                className="px-3.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
               >
                 Next
-              </button>
+              </Button>
             </div>
           </div>
         </div>
 
-        {/* Right Pipeline: Unresolved Billing Exceptions */}
+        {/* Right Pipeline: Unresolved Billing Exceptions (Clean Row Selection + Anchored Action Dock) */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs flex flex-col min-h-0 overflow-hidden justify-between">
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
             {/* Card Header with Search Input */}
@@ -258,188 +270,192 @@ export const DualOperationalPipelines: React.FC = () => {
                   Unresolved Billing Exceptions
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Contested items, supply exclusions, and excess professional fees
+                  Select an exception to review rationale, waive courtesy, or issue promissory note
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                {/* Search Input */}
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="text"
-                    placeholder="Search exceptions, patient..."
-                    value={exceptionsSearch}
-                    onChange={(e) => {
-                      setExceptionsSearch(e.target.value);
-                      setExceptionsPage(1);
-                    }}
-                    className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-48 text-slate-800 placeholder-slate-400 shadow-2xs"
-                  />
-                </div>
+                <SearchInput
+                  size="sm"
+                  placeholder="Search exceptions, patient..."
+                  value={exceptionsSearch}
+                  onChange={(val) => {
+                    setExceptionsSearch(val);
+                    setExceptionsPage(1);
+                  }}
+                  onClear={() => {
+                    setExceptionsSearch('');
+                    setExceptionsPage(1);
+                  }}
+                  className="w-44"
+                />
 
-                <button
-                  onClick={() => setActiveRoute('DISPUTES_EXCEPTIONS')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors shrink-0"
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  iconPosition="right"
+                  icon={ArrowRight}
+                  className="text-blue-600 hover:text-blue-800"
+                  onClick={onViewAllExceptions || (() => setActiveRoute('DISPUTES_EXCEPTIONS'))}
                 >
-                  <span>All ({allDisputedItems.length})</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+                  All ({allDisputedItems.length})
+                </Button>
               </div>
             </div>
 
             {/* Table Header */}
             <div className="pb-2 pt-0.5 flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-100 mb-2 shrink-0">
               <div className="flex items-center gap-2">
-                <span>Contested Charge</span>
+                <span>Contested Line Item</span>
                 <span className="text-slate-300">·</span>
                 <span>Patient Context</span>
               </div>
-              <div className="flex items-center gap-6">
-                <span>Supervisory Actions</span>
+              <div>
+                <span>Patient Due</span>
               </div>
             </div>
 
-            {/* Paginated Rows Container (Bounded Localized Scroll) */}
+            {/* Paginated Rows Container with Selection Highlighting */}
             <div className="space-y-1.5 flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1">
               {filteredExceptions.length === 0 ? (
-                <div className="h-48 flex items-center justify-center text-xs text-slate-400 p-6 text-center">
+                <div className="h-40 flex items-center justify-center text-xs text-slate-400 p-6 text-center">
                   {exceptionsSearch ? `No exceptions matching "${exceptionsSearch}".` : 'Zero unresolved billing exceptions flagged.'}
                 </div>
               ) : (
-                paginatedExceptions.map((item) => (
-                  <div
-                    key={`${item.encounterId}-${item.id}`}
-                    className="min-h-[46px] px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-100/90 flex items-center justify-between text-xs transition-colors shrink-0 shadow-2xs"
-                  >
-                    <div className="min-w-0 pr-2">
-                      <div className="flex items-baseline gap-2 truncate">
-                        <span className="font-bold text-slate-900 truncate text-xs">
-                          {item.description}
-                        </span>
-                        <span className="text-xs font-bold text-rose-700 font-mono shrink-0">
+                paginatedExceptions.map((item) => {
+                  const itemKey = `${item.encounterId}-${item.id}`;
+                  const isSelected = activeSelectedException && `${activeSelectedException.encounterId}-${activeSelectedException.id}` === itemKey;
+
+                  return (
+                    <div
+                      key={itemKey}
+                      onClick={() => {
+                        setSelectedExceptionKey(itemKey);
+                        selectEncounter(item.encounterId);
+                      }}
+                      className={`min-h-[46px] px-3 py-2 rounded-lg border cursor-pointer transition-all flex items-center justify-between text-xs shrink-0 ${
+                        isSelected
+                          ? 'border-blue-500 bg-blue-50/80 shadow-xs ring-1 ring-blue-300'
+                          : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100/90 shadow-2xs'
+                      }`}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <div className="flex items-baseline gap-2 truncate">
+                          <span className={`font-bold truncate text-xs ${isSelected ? 'text-blue-900' : 'text-slate-900'}`}>
+                            {item.description}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                          {item.patientName} ({item.roomBed}) · {item.plainLanguageExplainer || item.disputeReason}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 shrink-0">
+                        <span className="text-xs font-bold text-rose-700 font-mono">
                           {formatPhp(item.patientOop)}
                         </span>
-                      </div>
-                      <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                        {item.patientName} ({item.roomBed}) · {item.plainLanguageExplainer || item.disputeReason}
+                        <ChevronRight className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => openWhyDoIOweThis(item)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold border border-slate-300 text-slate-700 bg-white hover:bg-slate-50 transition-colors shadow-2xs"
-                        title="Review plain-language charge explainer"
-                      >
-                        <HelpCircle className="w-3 h-3 text-slate-400" />
-                        <span>Why?</span>
-                      </button>
-                      <ConfirmButton
-                        label="Waive"
-                        modalTitle="Waive Contested Item?"
-                        modalDescription={`This will apply a supervisory courtesy credit to waive ${item.description || 'this disputed item'} (${formatPhp(item.grossAmount)}), removing the patient billing hold.`}
-                        confirmLabel="Waive Item"
-                        variant="danger"
-                        confirmVariant="danger"
-                        size="xs"
-                        contextInfo={[
-                          { label: 'Patient', value: item.patientName },
-                          { label: 'Item', value: item.description },
-                          { label: 'Amount', value: formatPhp(item.grossAmount) }
-                        ]}
-                        onConfirm={() =>
-                          supervisoryWaiveItem(
-                            item.encounterId,
-                            item.id,
-                            'Supervisory courtesy discount applied to prevent discharge delay'
-                          )
-                        }
-                        title="Waive Contested Item"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          selectEncounter(item.encounterId);
-                          openPromissoryModal(item.encounterId, item.patientOop, item.description);
-                        }}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition-colors shadow-2xs"
-                        title="Issue legal promissory note for installment settlement"
-                      >
-                        <FileText className="w-3 h-3 text-purple-600" />
-                        <span>Promissory</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
+
+            {/* Anchored Selection Action Bar (Docked context actions replacing inline button sprawl) */}
+            {activeSelectedException && (
+              <div className="mt-2 p-2.5 rounded-lg border border-blue-200 bg-blue-50/60 flex flex-wrap items-center justify-between gap-2 shrink-0 animate-in fade-in duration-100">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
+                      Selected Exception
+                    </span>
+                    <span className="text-xs font-bold text-slate-900 truncate">
+                      {activeSelectedException.description} ({formatPhp(activeSelectedException.patientOop)})
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 truncate mt-0.5">
+                    Patient: <strong>{activeSelectedException.patientName}</strong> ({activeSelectedException.roomBed})
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    icon={HelpCircle}
+                    onClick={() => openWhyDoIOweThis(activeSelectedException)}
+                    title="Review plain-language charge explainer"
+                  >
+                    Why?
+                  </Button>
+
+                  <ConfirmButton
+                    label="Waive"
+                    modalTitle="Waive Contested Item?"
+                    modalDescription={`This will apply a supervisory courtesy credit to waive ${activeSelectedException.description} (${formatPhp(activeSelectedException.grossAmount)}), removing the patient billing hold.`}
+                    confirmLabel="Waive Item"
+                    variant="danger"
+                    confirmVariant="danger"
+                    size="sm"
+                    contextInfo={[
+                      { label: 'Patient', value: activeSelectedException.patientName },
+                      { label: 'Item', value: activeSelectedException.description },
+                      { label: 'Amount', value: formatPhp(activeSelectedException.grossAmount) }
+                    ]}
+                    onConfirm={() =>
+                      supervisoryWaiveItem(
+                        activeSelectedException.encounterId,
+                        activeSelectedException.id,
+                        'Supervisory courtesy discount applied to prevent discharge delay'
+                      )
+                    }
+                    title="Waive Contested Item"
+                  />
+
+                  <Button
+                    size="sm"
+                    variant="subtle"
+                    icon={FileText}
+                    className="text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200"
+                    onClick={() => {
+                      selectEncounter(activeSelectedException.encounterId);
+                      openPromissoryModal(activeSelectedException.encounterId, activeSelectedException.patientOop, activeSelectedException.description);
+                    }}
+                    title="Issue legal promissory note for installment settlement"
+                  >
+                    RA 9439 Note
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Footer: Previous / Next Navigation + Statutory Compliance & Exposure Banner */}
-          <div className="mt-2.5 pt-2 border-t border-slate-100 flex flex-col gap-2 shrink-0">
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-between text-xs text-slate-600">
-              <div>
-                Showing <strong className="text-slate-900">{filteredExceptions.length === 0 ? 0 : ((safeExceptionsPage - 1) * exceptionsPageSize) + 1}</strong>–<strong className="text-slate-900">{Math.min(safeExceptionsPage * exceptionsPageSize, filteredExceptions.length)}</strong> of <strong className="text-slate-900">{filteredExceptions.length}</strong>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={safeExceptionsPage <= 1}
-                  onClick={() => setExceptionsPage((p) => Math.max(1, p - 1))}
-                  className="px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
-                >
-                  Previous
-                </button>
-                <span className="font-semibold text-slate-800 px-1">
-                  Page {safeExceptionsPage} of {totalExceptionsPages}
-                </span>
-                <button
-                  type="button"
-                  disabled={safeExceptionsPage >= totalExceptionsPages}
-                  onClick={() => setExceptionsPage((p) => Math.min(totalExceptionsPages, p + 1))}
-                  className="px-3 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
-                >
-                  Next
-                </button>
-              </div>
+          {/* Footer: Pagination & Exposure Summary */}
+          <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-600 shrink-0">
+            <div>
+              Exposure: <strong className="font-mono font-bold text-rose-700">{formatPhp(totalContestedAmount)}</strong> ({allDisputedItems.length} active exceptions)
             </div>
-
-            {/* Exposure Card (Compact) */}
-            <div className="p-2.5 rounded-lg border border-slate-200 bg-slate-50 flex flex-col justify-between shadow-2xs space-y-1 text-xs">
-              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                    Total Contested Exposure:
-                  </span>
-                  <span className="font-mono font-bold text-sm text-rose-700">
-                    {formatPhp(totalContestedAmount)}
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    ({allDisputedItems.length} active exceptions)
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold text-rose-800 bg-rose-100/90 border border-rose-200 px-2 py-0.2 rounded-full">
-                  Action Required
-                </span>
-              </div>
-
-              <div className="text-[11px] text-slate-600 leading-snug">
-                <strong className="text-slate-800">RA 9439 Compliance:</strong> Contested items can be supervisory-waived or guaranteed under a statutory 0% interest promissory note to unblock patient discharge without detention delay.
-              </div>
-
-              <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between text-[11px]">
-                <span className="text-slate-500 font-medium">Statutory Mandate: RA 9439 &amp; RA 9994</span>
-                <button
-                  onClick={() => setActiveRoute('DISPUTES_EXCEPTIONS')}
-                  className="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 transition-colors"
-                >
-                  <span>Open Disputes Desk</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={safeExceptionsPage <= 1}
+                onClick={() => setExceptionsPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="font-semibold text-slate-800 px-1 text-xs">
+                Page {safeExceptionsPage} of {totalExceptionsPages}
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={safeExceptionsPage >= totalExceptionsPages}
+                onClick={() => setExceptionsPage((p) => Math.min(totalExceptionsPages, p + 1))}
+              >
+                Next
+              </Button>
             </div>
           </div>
         </div>

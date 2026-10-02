@@ -162,6 +162,15 @@ async function runApiTests() {
   const disputeData = await disputeRes.json();
   const createdDisputeId = disputeData.dispute.id;
 
+  // 11b. Test Deletion Guard on Disputed Item (Finding 1)
+  const deleteDisputedRes = await app.request(`/api/v1/charges/${singleEncData.items[0].id}`, {
+    method: 'DELETE',
+    headers: { Cookie: cfoCookie }
+  });
+  assert(deleteDisputedRes.status === 400, 'DELETE /api/v1/charges/:id rejects deleting disputed item with 400 Bad Request');
+  const deleteDisputedData = await deleteDisputedRes.json();
+  assert(deleteDisputedData.error?.code === 'ITEM_HAS_DISPUTES', 'Error code is ITEM_HAS_DISPUTES when deleting disputed item');
+
   const waiveRes = await app.request(`/api/v1/disputes/${createdDisputeId}/supervisory-waive`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: cfoCookie },
@@ -334,6 +343,20 @@ async function runApiTests() {
   assert(verifyPassRes.status === 200, 'POST /api/v1/discharge/passes/verify verifies pass at exit lobby');
   const verifyData = await verifyPassRes.json();
   assert(verifyData.status === 'VERIFIED_AT_LOBBY', 'Discharge pass status updated to VERIFIED_AT_LOBBY');
+
+  // 14b. Test Exit Pass Re-Verification Idempotency (Finding 4)
+  const reVerifyPassRes = await app.request('/api/v1/discharge/passes/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Cookie: securityCookie },
+    body: JSON.stringify({
+      passNumber: gatePass.passNumber,
+      exitPin: gatePass.exitPin
+    })
+  });
+  assert(reVerifyPassRes.status === 200, 'POST /api/v1/discharge/passes/verify handles already verified pass gracefully');
+  const reVerifyData = await reVerifyPassRes.json();
+  assert(reVerifyData.passAlreadyVerified === true, 'Exit pass re-verification flags passAlreadyVerified: true');
+  assert(reVerifyData.verifiedAt === verifyData.verifiedAt, 'Exit pass re-verification preserves original verifiedAt timestamp');
 
   // Test invalid PIN rejection
   const invalidPinRes = await app.request('/api/v1/discharge/passes/verify', {

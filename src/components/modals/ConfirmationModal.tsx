@@ -6,9 +6,10 @@ import {
   CheckCircle2,
   ShieldAlert,
   ShieldCheck,
-  X,
-  Loader2
+  X
 } from 'lucide-react';
+import { Button } from '@/components/common/Button';
+import { IconButton } from '@/components/common/IconButton';
 
 export type ConfirmationModalVariant = 'primary' | 'danger' | 'warning' | 'success';
 
@@ -27,6 +28,8 @@ export interface ConfirmationModalProps {
   contextInfo?: ConfirmationContextInfo[];
   isLoading?: boolean;
   error?: string | null;
+  requiresValidationFriction?: boolean;
+  validationKeyword?: string;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 }
@@ -41,16 +44,39 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   contextInfo,
   isLoading = false,
   error = null,
+  requiresValidationFriction,
+  validationKeyword,
   onConfirm,
   onCancel
 }) => {
   const [internalLoading, setInternalLoading] = useState(false);
   const [internalError, setInternalError] = useState<string | null>(null);
+  const [inputValidationText, setInputValidationText] = useState('');
   const isExecutingRef = useRef(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
   const cancelBtnRef = useRef<HTMLButtonElement>(null);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Auto-detect friction for statutory overrides, bed release, or explicit flag
+  const isFrictionRequired =
+    requiresValidationFriction ||
+    title.toLowerCase().includes('override') ||
+    (variant === 'danger' &&
+      (title.toLowerCase().includes('release') ||
+        title.toLowerCase().includes('delete') ||
+        title.toLowerCase().includes('remove')));
+
+  const expectedKeyword =
+    validationKeyword ||
+    (title.toLowerCase().includes('override')
+      ? 'OVERRIDE'
+      : title.toLowerCase().includes('release')
+      ? 'RELEASE'
+      : 'CONFIRM');
+
+  const isKeywordMatching =
+    !isFrictionRequired || inputValidationText.trim().toUpperCase() === expectedKeyword.toUpperCase();
 
   const isBusy = isLoading || internalLoading;
   const activeError = error || internalError;
@@ -60,10 +86,10 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     if (isOpen) {
       setInternalLoading(false);
       setInternalError(null);
+      setInputValidationText('');
       isExecutingRef.current = false;
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-      // Focus the cancel button by default for safety
       const timer = setTimeout(() => {
         cancelBtnRef.current?.focus();
       }, 50);
@@ -74,6 +100,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     } else {
       setInternalLoading(false);
       setInternalError(null);
+      setInputValidationText('');
       isExecutingRef.current = false;
     }
   }, [isOpen]);
@@ -119,7 +146,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   }, [isOpen, isBusy, onCancel]);
 
   const handleConfirm = useCallback(async () => {
-    if (isExecutingRef.current || isBusy) return;
+    if (isExecutingRef.current || isBusy || !isKeywordMatching) return;
 
     isExecutingRef.current = true;
     setInternalLoading(true);
@@ -133,11 +160,11 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
       const msg = err instanceof Error ? err.message : 'The action could not be completed. Please try again.';
       setInternalError(msg);
     }
-  }, [isBusy, onConfirm]);
+  }, [isBusy, isKeywordMatching, onConfirm]);
 
   if (!isOpen) return null;
 
-  // Variant design tokens matching MedCore1 hospital command workstation language
+  // Variant design tokens distinguishing routine (blue) vs destructive (rose)
   const variantTokens = {
     primary: {
       badgeBg: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -203,15 +230,14 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={onCancel}
             disabled={isBusy}
-            aria-label="Close dialog"
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-40"
-          >
-            <X className="w-5 h-5" />
-          </button>
+            ariaLabel="Close dialog"
+          />
         </div>
 
         {/* Body Content */}
@@ -229,6 +255,32 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                   <span className="font-semibold text-slate-800 text-right">{info.value}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Validation Friction Box for Statutory Overrides & Destructive Actions */}
+          {isFrictionRequired && (
+            <div className="p-3 bg-amber-50/80 border border-amber-300 rounded-xl space-y-2">
+              <div className="flex items-center gap-1.5 text-amber-900">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="text-[11px] font-bold uppercase tracking-wider">
+                  Mandatory Operational Friction
+                </span>
+              </div>
+              <p className="text-xs text-amber-900 leading-snug">
+                To authorize this action, type{' '}
+                <strong className="font-mono font-bold text-amber-950 bg-amber-200/90 px-1.5 py-0.5 rounded">
+                  {expectedKeyword}
+                </strong>{' '}
+                below:
+              </p>
+              <input
+                type="text"
+                placeholder={`Type "${expectedKeyword}"`}
+                value={inputValidationText}
+                onChange={(e) => setInputValidationText(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs font-mono rounded-lg bg-white border border-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 placeholder-slate-400"
+              />
             </div>
           )}
 
@@ -250,32 +302,36 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
         {/* Footer Actions */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5">
-          <button
+          <Button
             ref={cancelBtnRef}
             type="button"
+            variant="secondary"
+            size="sm"
             onClick={onCancel}
             disabled={isBusy}
-            className="py-2 px-3.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition-colors shadow-2xs disabled:opacity-40"
           >
             {cancelLabel}
-          </button>
+          </Button>
 
-          <button
+          <Button
             ref={confirmBtnRef}
             type="button"
+            variant={
+              variant === 'danger'
+                ? 'destructive'
+                : variant === 'warning'
+                ? 'warning'
+                : variant === 'success'
+                ? 'success'
+                : 'primary'
+            }
+            size="sm"
             onClick={handleConfirm}
-            disabled={isBusy}
-            className={`py-2 px-4 rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed ${variantTokens.confirmBtn}`}
+            disabled={isBusy || !isKeywordMatching}
+            isLoading={isBusy}
           >
-            {isBusy ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Processing...</span>
-              </>
-            ) : (
-              <span>{confirmLabel}</span>
-            )}
-          </button>
+            {confirmLabel}
+          </Button>
         </div>
       </div>
     </div>

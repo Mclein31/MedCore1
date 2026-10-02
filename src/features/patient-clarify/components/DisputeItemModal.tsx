@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChargemasterItem } from '@/types/domain';
 import { formatPeso } from '../utils/billFormatters';
 import { AlertTriangle, X, Check, ShieldAlert } from 'lucide-react';
+import { Button, IconButton } from '@/components/common';
 
 interface Props {
   item: ChargemasterItem | null;
@@ -45,11 +46,11 @@ export const DisputeItemModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="p-5 border-b border-slate-200 bg-rose-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 text-rose-700 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
               <ShieldAlert className="w-5 h-5" />
             </div>
             <div>
@@ -61,12 +62,13 @@ export const DisputeItemModal: React.FC<Props> = ({
               </p>
             </div>
           </div>
-          <button
+          <IconButton
+            size="sm"
+            variant="ghost"
+            icon={X}
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200/50 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+            ariaLabel="Close modal"
+          />
         </div>
 
         {/* Item Summary */}
@@ -131,20 +133,22 @@ export const DisputeItemModal: React.FC<Props> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-3 pt-2">
-            <button
+            <Button
               type="button"
+              size="md"
+              variant="secondary"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={isSubmitting}
-              className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              size="md"
+              variant="destructive"
+              isLoading={isSubmitting}
             >
-              {isSubmitting ? 'Logging Ticket...' : 'Freeze & File Dispute'}
-            </button>
+              Freeze &amp; File Dispute
+            </Button>
           </div>
         </form>
       </div>

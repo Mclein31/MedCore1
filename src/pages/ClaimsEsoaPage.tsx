@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, Search, X, Printer } from 'lucide-react';
+import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer } from 'lucide-react';
+import { Button, IconButton, SearchInput, SegmentedTabs } from '@/components/common';
 
 export const ClaimsEsoaPage: React.FC = () => {
   const { encounters, printDocument } = useMedCore();
@@ -106,6 +107,13 @@ export const ClaimsEsoaPage: React.FC = () => {
   const highRiskCount = encounters.filter((e) => e.philhealth.rthRiskScore > 0.4 || e.philhealth.status === 'WARNING' || e.philhealth.status === 'INTERCEPTED').length;
   const cleanCount = encounters.filter((e) => e.philhealth.status === 'CLEAN').length;
 
+  const claimStatusTabs = [
+    { id: 'ALL', label: 'All Claims', badge: encounters.length },
+    { id: 'CLEAN', label: 'Clean', badge: cleanCount, badgeVariant: 'emerald' as const },
+    { id: 'WARNING', label: 'Warnings & Interceptions', badge: highRiskCount, badgeVariant: 'rose' as const },
+    { id: 'AGING', label: 'Aging >3 Days', badge: 3, badgeVariant: 'amber' as const }
+  ];
+
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
       {/* Header */}
@@ -167,75 +175,32 @@ export const ClaimsEsoaPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search patient, claim ID, diagnosis, ICD-10..."
-                value={claimSearch}
-                onChange={(e) => {
-                  setClaimSearch(e.target.value);
-                  setClaimPage(1);
-                }}
-                className="pl-9 pr-3.5 py-2 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-72 text-slate-800 placeholder-slate-400 shadow-2xs"
-              />
-            </div>
+            <SearchInput
+              size="sm"
+              placeholder="Search patient, claim ID, diagnosis..."
+              value={claimSearch}
+              onChange={(val) => {
+                setClaimSearch(val);
+                setClaimPage(1);
+              }}
+              onClear={() => {
+                setClaimSearch('');
+                setClaimPage(1);
+              }}
+              className="w-64 sm:w-72"
+            />
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs">
-            <button
-              onClick={() => {
-                setFilterClaimStatus('ALL');
-                setClaimPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
-                filterClaimStatus === 'ALL'
-                  ? 'bg-slate-900 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              All Claims ({encounters.length})
-            </button>
-            <button
-              onClick={() => {
-                setFilterClaimStatus('CLEAN');
-                setClaimPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold flex items-center gap-1.5 ${
-                filterClaimStatus === 'CLEAN'
-                  ? 'bg-emerald-600 text-white shadow-2xs'
-                  : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-              }`}
-            >
-              <span>✓ Clean ({cleanCount})</span>
-            </button>
-            <button
-              onClick={() => {
-                setFilterClaimStatus('WARNING');
-                setClaimPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold flex items-center gap-1.5 ${
-                filterClaimStatus === 'WARNING'
-                  ? 'bg-rose-600 text-white shadow-2xs'
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-              }`}
-            >
-              <span>! Warnings &amp; Interceptions ({highRiskCount})</span>
-            </button>
-            <button
-              onClick={() => {
-                setFilterClaimStatus('AGING');
-                setClaimPage(1);
-              }}
-              className={`px-3 py-1.5 rounded-lg transition-colors font-semibold ${
-                filterClaimStatus === 'AGING'
-                  ? 'bg-amber-600 text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              Aging &gt;3 Days (3)
-            </button>
-          </div>
+          <SegmentedTabs
+            items={claimStatusTabs}
+            activeId={filterClaimStatus}
+            onChange={(id) => {
+              setFilterClaimStatus(id);
+              setClaimPage(1);
+            }}
+            size="sm"
+            ariaLabel="PhilHealth claim status filter"
+          />
         </div>
 
         <div className="overflow-x-auto">
@@ -325,16 +290,18 @@ export const ClaimsEsoaPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-6 text-left">
-                      <button
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-semibold"
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedClaimId(enc.id);
                           setIsXmlModalOpen(true);
                         }}
-                        className="px-2.5 py-1 rounded-md text-xs font-semibold text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
                       >
                         Inspect XML →
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 );
@@ -351,25 +318,25 @@ export const ClaimsEsoaPage: React.FC = () => {
             <strong className="text-slate-900">{filteredClaims.length}</strong> claims
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               disabled={safeClaimPage <= 1}
               onClick={() => setClaimPage((p) => Math.max(1, p - 1))}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
             >
               Previous
-            </button>
-            <span className="font-semibold text-slate-800 px-1">
+            </Button>
+            <span className="font-semibold text-slate-800 px-1 text-xs">
               Page {safeClaimPage} of {totalClaimPages}
             </span>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               disabled={safeClaimPage >= totalClaimPages}
               onClick={() => setClaimPage((p) => Math.min(totalClaimPages, p + 1))}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-2xs transition-colors"
             >
               Next
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -388,8 +355,10 @@ export const ClaimsEsoaPage: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={Printer}
                 onClick={() =>
                   printDocument({
                     type: 'CLAIMS_ESOA_AUDIT_REPORT',
@@ -397,12 +366,10 @@ export const ClaimsEsoaPage: React.FC = () => {
                     data: { encounter: currentEncounter }
                   })
                 }
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-colors"
                 title="Print PhilHealth CF1-CF4 Conformity Report"
               >
-                <Printer className="w-3.5 h-3.5 text-slate-600" />
-                <span>Print Audit</span>
-              </button>
+                Print Audit
+              </Button>
               <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                 claim.status === 'CLEAN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
               }`}>
@@ -462,20 +429,22 @@ export const ClaimsEsoaPage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={copied ? Check : Copy}
                 onClick={handleCopyXml}
-                className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? 'Copied' : 'Copy XML'}</span>
-              </button>
-              <button
+                {copied ? 'Copied' : 'Copy XML'}
+              </Button>
+              <Button
+                size="sm"
+                variant="primary"
+                icon={Download}
                 onClick={handleDownloadXml}
-                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download .XML</span>
-              </button>
+                Download .XML
+              </Button>
             </div>
           </div>
 
@@ -519,26 +488,29 @@ export const ClaimsEsoaPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={copied ? Check : Copy}
                   onClick={handleCopyXml}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied' : 'Copy XML'}</span>
-                </button>
-                <button
+                  {copied ? 'Copied' : 'Copy XML'}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={Download}
                   onClick={handleDownloadXml}
-                  className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-xs"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Download .XML</span>
-                </button>
-                <button
+                  Download .XML
+                </Button>
+                <IconButton
+                  size="sm"
+                  variant="ghost"
+                  icon={X}
+                  ariaLabel="Close modal"
                   onClick={() => setIsXmlModalOpen(false)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors ml-2"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                />
               </div>
             </div>
 
@@ -588,12 +560,13 @@ export const ClaimsEsoaPage: React.FC = () => {
             {/* Modal Footer */}
             <div className="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
               <span>PhilHealth Circular No. 2023-0026 · Standard Electronic Statement of Account (eSOA)</span>
-              <button
+              <Button
+                size="sm"
+                variant="secondary"
                 onClick={() => setIsXmlModalOpen(false)}
-                className="px-4 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-50 font-semibold text-slate-700"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
         </div>

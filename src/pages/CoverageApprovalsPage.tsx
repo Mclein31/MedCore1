@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, Clock, AlertTriangle, Search, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
-import { ConfirmButton } from '@/components/common';
+import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { ConfirmButton, Button, SearchInput, Select, SegmentedTabs } from '@/components/common';
 
 export const CoverageApprovalsPage: React.FC = () => {
   const { encounters, approveHmoFinalLoa, openDossierDrawer, printDocument } = useMedCore();
@@ -86,6 +86,14 @@ export const CoverageApprovalsPage: React.FC = () => {
   const disallowedCount = encounters.filter((e) => e.hmo.finalLoaStatus === 'DISALLOWED_ITEMS').length;
   const pendingCount = encounters.filter((e) => e.hmo.finalLoaStatus === 'PENDING_SUBMISSION').length;
 
+  const statusTabs = [
+    { id: 'ALL', label: 'All Cases', badge: encounters.length },
+    { id: 'APPROVED', label: 'Approved', badge: approvedCount, badgeVariant: 'emerald' as const },
+    { id: 'AWAITING', label: 'Awaiting Code', badge: awaitingCount, badgeVariant: 'amber' as const },
+    { id: 'DISALLOWED', label: 'Disallowed Supplies', badge: disallowedCount, badgeVariant: 'rose' as const },
+    { id: 'PENDING', label: 'Draft / Pending', badge: pendingCount, badgeVariant: 'blue' as const }
+  ];
+
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 p-5 space-y-3.5 bg-slate-50/50 overflow-hidden">
       {/* Header */}
@@ -100,23 +108,26 @@ export const CoverageApprovalsPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={Printer}
             onClick={handlePrintRoster}
-            className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs flex items-center gap-1.5"
             title="Print Coverage Approvals Roster"
           >
-            <Printer className="w-3.5 h-3.5 text-slate-600" />
-            <span>Print Roster</span>
-          </button>
+            Print Roster
+          </Button>
 
-          <button
+          <Button
+            size="sm"
+            variant="primary"
+            icon={RefreshCw}
+            isLoading={isVerifying}
             onClick={triggerBatchVerification}
-            disabled={isVerifying}
-            className="px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors shadow-xs flex items-center gap-1.5"
+            title="Ping All Payer Gateways"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span>{isVerifying ? 'Pinging payer gateways...' : 'Ping All Payer Gateways'}</span>
-          </button>
+            {isVerifying ? 'Pinging payer gateways...' : 'Ping All Payer Gateways'}
+          </Button>
         </div>
       </div>
 
@@ -148,102 +159,47 @@ export const CoverageApprovalsPage: React.FC = () => {
             </div>
 
             {/* Search Input */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                placeholder="Search patient, card, approval code..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-50 border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500 w-60 text-slate-800 placeholder-slate-400"
-              />
-            </div>
+            <SearchInput
+              size="sm"
+              placeholder="Search patient, card, approval code..."
+              value={searchQuery}
+              onChange={(val) => {
+                setSearchQuery(val);
+                setCurrentPage(1);
+              }}
+              onClear={() => {
+                setSearchQuery('');
+                setCurrentPage(1);
+              }}
+              className="w-56 sm:w-64"
+            />
           </div>
 
-          {/* Filter Pills */}
+          {/* Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-2.5 pt-0.5">
             {/* Status Tabs */}
-            <div className="flex items-center gap-1.5 text-xs flex-wrap">
-              <button
-                onClick={() => {
-                  setFilterStatus('ALL');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-colors font-semibold text-xs ${
-                  filterStatus === 'ALL'
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                All Cases ({encounters.length})
-              </button>
-              <button
-                onClick={() => {
-                  setFilterStatus('APPROVED');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-colors font-semibold text-xs flex items-center gap-1.5 ${
-                  filterStatus === 'APPROVED'
-                    ? 'bg-emerald-600 text-white shadow-2xs'
-                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                }`}
-              >
-                <span>✓ Approved ({approvedCount})</span>
-              </button>
-              <button
-                onClick={() => {
-                  setFilterStatus('AWAITING');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-colors font-semibold text-xs flex items-center gap-1.5 ${
-                  filterStatus === 'AWAITING'
-                    ? 'bg-amber-600 text-white shadow-2xs'
-                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
-                }`}
-              >
-                <span>● Awaiting Code ({awaitingCount})</span>
-              </button>
-              <button
-                onClick={() => {
-                  setFilterStatus('DISALLOWED');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-colors font-semibold text-xs flex items-center gap-1.5 ${
-                  filterStatus === 'DISALLOWED'
-                    ? 'bg-rose-600 text-white shadow-2xs'
-                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                }`}
-              >
-                <span>! Disallowed Supplies ({disallowedCount})</span>
-              </button>
-              <button
-                onClick={() => {
-                  setFilterStatus('PENDING');
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 rounded-lg transition-colors font-semibold text-xs ${
-                  filterStatus === 'PENDING'
-                    ? 'bg-blue-600 text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Draft / Pending ({pendingCount})
-              </button>
-            </div>
+            <SegmentedTabs
+              items={statusTabs}
+              activeId={filterStatus}
+              onChange={(id) => {
+                setFilterStatus(id);
+                setCurrentPage(1);
+              }}
+              size="sm"
+              ariaLabel="Payer coverage status filter"
+            />
 
             {/* Payer Dropdown Filter */}
             <div className="flex items-center gap-2 text-xs">
               <span className="text-slate-400 font-medium">Payer:</span>
-              <select
+              <Select
+                size="sm"
                 value={filterPayer}
                 onChange={(e) => {
                   setFilterPayer(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-slate-50 text-slate-700 font-semibold text-xs"
+                className="font-semibold text-xs"
               >
                 <option value="ALL">All Commercial Payers ({encounters.length})</option>
                 {availablePayers.map((payer) => {
@@ -256,7 +212,7 @@ export const CoverageApprovalsPage: React.FC = () => {
                     </option>
                   );
                 })}
-              </select>
+              </Select>
             </div>
           </div>
         </div>
@@ -387,15 +343,15 @@ export const CoverageApprovalsPage: React.FC = () => {
                     <td className="py-2 px-6 text-left whitespace-nowrap">
                       <div className="flex items-center justify-start gap-2">
                         {/* Secondary View Action */}
-                        <button
-                          type="button"
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          icon={ExternalLink}
                           onClick={() => openDossierDrawer(enc)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs shrink-0"
                           title="Open Case Dossier and Review LOA"
                         >
-                          <ExternalLink className="w-3 h-3 text-slate-500" />
-                          <span>View LOA</span>
-                        </button>
+                          View LOA
+                        </Button>
 
                         {/* Primary Approval Action or Approved Status */}
                         {!isApproved ? (
@@ -406,7 +362,7 @@ export const CoverageApprovalsPage: React.FC = () => {
                             confirmLabel="Approve LOA"
                             variant="success"
                             confirmVariant="success"
-                            size="xs"
+                            size="sm"
                             icon={CheckCircle2}
                             contextInfo={[
                               { label: 'Patient', value: pName },
@@ -439,37 +395,32 @@ export const CoverageApprovalsPage: React.FC = () => {
             <strong className="text-slate-900">{filteredEncounters.length}</strong> active inpatient encounters
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               disabled={safeCurrentPage <= 1}
-              onClick={(e) => {
-                e.preventDefault();
-                handlePageChange(Math.max(1, safeCurrentPage - 1));
-              }}
+              onClick={() => handlePageChange(Math.max(1, safeCurrentPage - 1))}
+              icon={ChevronLeft}
               aria-label="Navigate to previous patients"
               title="Navigate to previous patients"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-slate-700 shadow-2xs transition-colors"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              <span>Previous</span>
-            </button>
-            <span className="font-bold text-slate-900 px-2.5 py-1 bg-slate-100 rounded-md border border-slate-200">
+              Previous
+            </Button>
+            <span className="font-semibold text-slate-800 px-2 py-0.5 bg-slate-100 rounded-md border border-slate-200 text-xs">
               Page {safeCurrentPage} of {totalPages}
             </span>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               disabled={safeCurrentPage >= totalPages}
-              onClick={(e) => {
-                e.preventDefault();
-                handlePageChange(Math.min(totalPages, safeCurrentPage + 1));
-              }}
+              onClick={() => handlePageChange(Math.min(totalPages, safeCurrentPage + 1))}
+              icon={ChevronRight}
+              iconPosition="right"
               aria-label="Navigate to next patients"
               title="Navigate to next patients"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed font-bold shadow-2xs transition-colors"
             >
-              <span>Next</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
+              Next
+            </Button>
           </div>
         </div>
       </div>

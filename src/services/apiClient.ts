@@ -1,5 +1,5 @@
 /**
- * AQROMED Enterprise API Client
+ * MedCore Enterprise API Client
  * Authoritative connection to PostgreSQL 16+ & Cloudflare Workers backend
  * Supports session cookies, zero-centavo drift payloads, and optimistic reconciliation
  */
@@ -31,7 +31,7 @@ export interface ApiResponse<T = any> {
   };
 }
 
-class AqromedApiClient {
+class MedCoreApiClient {
   private activeDemoRole: string | null = null;
 
   public setDemoRole(role: string | null) {
@@ -74,7 +74,7 @@ class AqromedApiClient {
     const config: RequestInit = {
       ...options,
       headers,
-      credentials: 'include' // Transmit aqromed_session HTTP-Only cookie
+      credentials: 'include' // Transmit session HTTP-Only cookie
     };
 
     const res = await fetch(url, config);
@@ -320,4 +320,5 @@ class AqromedApiClient {
   }
 }
 
-export const apiClient = new AqromedApiClient();
+export const apiClient = new MedCoreApiClient();
+export const AqromedApiClient = MedCoreApiClient;
