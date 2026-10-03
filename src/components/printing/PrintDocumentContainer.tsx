@@ -29,15 +29,25 @@ export const PrintDocumentContainer: React.FC = () => {
 
   const renderFacilityHeader = (reportTitle: string, documentNumber?: string) => (
     <div className="border-b-2 border-slate-900 pb-3 mb-4 text-left print-avoid-break">
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1 min-w-0">
           <img
             src="/MedCore_Symbol_logo.png"
             alt="MedCore"
-            className="h-12 w-auto max-h-12 object-contain"
+            className="print-logo shrink-0 object-contain"
+            style={{
+              width: '48px',
+              height: '48px',
+              minWidth: '48px',
+              maxWidth: '48px',
+              minHeight: '48px',
+              maxHeight: '48px',
+              objectFit: 'contain',
+              flexShrink: 0
+            }}
           />
-          <div>
-            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase font-sans">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-xl font-black tracking-tight text-slate-900 uppercase font-sans leading-tight">
               {facility.name}
             </h1>
             <p className="text-xs text-slate-700 font-medium">
@@ -53,7 +63,7 @@ export const PrintDocumentContainer: React.FC = () => {
         </div>
 
         {documentNumber && (
-          <div className="text-right font-mono">
+          <div className="text-right font-mono shrink-0">
             <span className="text-[10px] uppercase font-bold text-slate-500 block font-sans">
               Document Reference
             </span>

@@ -44,7 +44,7 @@ export function getDb(connectionString?: string, isProduction: boolean = false):
   if (!cached) {
     const pool = new Pool({
       connectionString: url,
-      max: connectionString ? 5 : 10,
+      max: 10,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000
     });

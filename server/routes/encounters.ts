@@ -513,24 +513,21 @@ encountersApp.get('/', async (c) => {
 
   const encIds = encRecords.map((r) => r.encounter.id);
 
-  // Batch fetch child relations across all matched encounters (10 queries in parallel instead of N * 10)
-  const [
-    allItems,
-    allWaterfalls,
-    allPhilhealth,
-    allDisputes,
-    allPasses,
-    allNotes,
-    allPayments,
-    allReceipts,
-    allTimeline
-  ] = await Promise.all([
+  // Batch fetch child relations across all matched encounters in 3 balanced batches
+  // to prevent Hyperdrive pool exhaustion (pool max: 10 connections)
+  const [allItems, allWaterfalls, allPhilhealth] = await Promise.all([
     db.select().from(chargemasterItems).where(inArray(chargemasterItems.encounterId, encIds)),
     db.select().from(statutoryWaterfalls).where(inArray(statutoryWaterfalls.encounterId, encIds)),
-    db.select().from(philhealthClaims).where(inArray(philhealthClaims.encounterId, encIds)),
+    db.select().from(philhealthClaims).where(inArray(philhealthClaims.encounterId, encIds))
+  ]);
+
+  const [allDisputes, allPasses, allNotes] = await Promise.all([
     db.select().from(billingDisputes).where(inArray(billingDisputes.encounterId, encIds)),
     db.select().from(dischargePasses).where(inArray(dischargePasses.encounterId, encIds)).orderBy(desc(dischargePasses.issuedAt)),
-    db.select().from(promissoryNotes).where(inArray(promissoryNotes.encounterId, encIds)).orderBy(desc(promissoryNotes.createdAt)),
+    db.select().from(promissoryNotes).where(inArray(promissoryNotes.encounterId, encIds)).orderBy(desc(promissoryNotes.createdAt))
+  ]);
+
+  const [allPayments, allReceipts, allTimeline] = await Promise.all([
     db.select().from(payments).where(inArray(payments.encounterId, encIds)).orderBy(desc(payments.createdAt)),
     db.select().from(paymentReceipts).where(inArray(paymentReceipts.encounterId, encIds)).orderBy(desc(paymentReceipts.issuedAt)),
     db.select().from(encounterTimelineEvents).where(inArray(encounterTimelineEvents.encounterId, encIds)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
