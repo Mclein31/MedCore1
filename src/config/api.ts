@@ -38,29 +38,33 @@ function resolveConfig(): ResolvedApiConfig {
   // Remove trailing slashes
   raw = raw.replace(/\/+$/, '');
 
-  let rootUrl = '';
-  let baseUrl = '/api/v1';
-
-  if (raw) {
-    // If user provided a path ending in /api/v1
-    if (raw.endsWith('/api/v1')) {
-      rootUrl = raw.slice(0, -'/api/v1'.length);
-      baseUrl = raw;
-    } else if (raw.endsWith('/api')) {
-      rootUrl = raw.slice(0, -'/api'.length);
-      baseUrl = `${raw}/v1`;
-    } else {
-      rootUrl = raw;
-      baseUrl = `${raw}/api/v1`;
-    }
-  }
-
   let isProduction = false;
   try {
     const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any)?.env : undefined;
     isProduction = metaEnv?.PROD === true || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production');
   } catch {
     isProduction = false;
+  }
+
+  // If in production and no explicit API URL is set, default to the deployed Cloudflare Worker
+  const defaultProductionBackend = 'https://medcore-backend.mcleinonza0531.workers.dev';
+  const effectiveRaw = raw || (isProduction ? defaultProductionBackend : '');
+
+  let rootUrl = '';
+  let baseUrl = '/api/v1';
+
+  if (effectiveRaw) {
+    // If user provided a path ending in /api/v1
+    if (effectiveRaw.endsWith('/api/v1')) {
+      rootUrl = effectiveRaw.slice(0, -'/api/v1'.length);
+      baseUrl = effectiveRaw;
+    } else if (effectiveRaw.endsWith('/api')) {
+      rootUrl = effectiveRaw.slice(0, -'/api'.length);
+      baseUrl = `${effectiveRaw}/v1`;
+    } else {
+      rootUrl = effectiveRaw;
+      baseUrl = `${effectiveRaw}/api/v1`;
+    }
   }
 
   return {

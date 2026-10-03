@@ -25,7 +25,9 @@ const defaultAllowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://127.0.0.1:5173',
-  'http://127.0.0.1:3000'
+  'http://127.0.0.1:3000',
+  'https://medcore1.vercel.app',
+  'https://medcore-hospital.vercel.app'
 ];
 
 app.use(
@@ -49,12 +51,14 @@ app.use(
         return origin;
       }
 
-      // 3. Vercel prototype deployments restricted strictly to verified MedCore project domains
+      // 3. Vercel prototype deployments restricted strictly to verified MedCore / AqroMed project domains
       try {
         const parsed = new URL(origin);
+        const host = parsed.hostname.toLowerCase();
         if (
-          parsed.hostname === 'medcore-hospital.vercel.app' ||
-          /^medcore(-[a-z0-9-]+)?\.vercel\.app$/.test(parsed.hostname)
+          (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+          host.endsWith('.vercel.app') &&
+          /^(?:[a-z0-9-]+\.)?[a-z0-9-]*(?:medcore|aqromed)[a-z0-9-]*\.vercel\.app$/.test(host)
         ) {
           return origin;
         }
@@ -86,7 +90,10 @@ app.use('*', async (c, next) => {
   const isProduction = nodeEnv === 'production';
 
   const hyperdrive = env.HYPERDRIVE;
-  const connectionString = hyperdrive?.connectionString || env.DATABASE_URL;
+  const connectionString =
+    hyperdrive?.connectionString ||
+    env.DATABASE_URL ||
+    (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
 
   if (isProduction) {
     if (!connectionString) {
