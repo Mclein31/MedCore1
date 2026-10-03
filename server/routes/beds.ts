@@ -7,6 +7,7 @@ import { beds, systemAuditLogs } from '../db/schema';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { isUuid } from '../utils/dbQuery';
+import { getClientIp } from '../utils/clientIp';
 
 const bedsApp = new Hono();
 
@@ -86,7 +87,7 @@ bedsApp.patch(
       resourceId: bed.id,
       previousState: { status: bed.status },
       newState: { status },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 

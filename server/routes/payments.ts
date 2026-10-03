@@ -18,6 +18,7 @@ import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
 import { matchEncounterCondition } from '../utils/dbQuery';
+import { getClientIp } from '../utils/clientIp';
 
 const paymentsApp = new Hono();
 
@@ -259,7 +260,7 @@ paymentsApp.post(
             newRemaining,
             isFullySettled
           },
-          ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+          ipAddress: getClientIp(c),
           userAgent: c.req.header('user-agent')
         });
 

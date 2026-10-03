@@ -23,6 +23,7 @@ import {
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { matchEncounterCondition } from '../utils/dbQuery';
+import { getClientIp } from '../utils/clientIp';
 
 const encountersApp = new Hono();
 
@@ -766,7 +767,7 @@ encountersApp.post(
       resourceId: enc.id,
       previousState: { stage: enc.stage },
       newState: { stage: nextStage },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -948,7 +949,7 @@ encountersApp.post(
         resourceType: 'encounters',
         resourceId: enc.id,
         newState: { encounterNumber: encNumber, patientName: data.fullName, roomBed: data.roomBed },
-        ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+        ipAddress: getClientIp(c),
         userAgent: c.req.header('user-agent')
       });
 
@@ -1021,7 +1022,7 @@ encountersApp.patch(
       resourceId: enc.id,
       previousState: { primaryDiagnosis: enc.primaryDiagnosis, slaStatus: enc.slaStatus },
       newState: updates,
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -1080,7 +1081,7 @@ encountersApp.delete(
         resourceType: 'encounters',
         resourceId: enc.id,
         previousState: { encounterNumber: enc.encounterNumber },
-        ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+        ipAddress: getClientIp(c),
         userAgent: c.req.header('user-agent')
       });
     });

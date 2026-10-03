@@ -9,6 +9,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
 import { matchEncounterCondition, matchChargeItemCondition } from '../utils/dbQuery';
 import { recalculateAndPersistWaterfall } from '../services/waterfallPersistence';
+import { getClientIp } from '../utils/clientIp';
 
 const chargesApp = new Hono();
 
@@ -99,7 +100,7 @@ chargesApp.post(
       resourceType: 'chargemaster_items',
       resourceId: newItem.id,
       newState: { description, category, grossAmount, quantity: resolvedQty, unitPrice: resolvedUnitPrice, code: generatedCode, coverageType },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -195,7 +196,7 @@ chargesApp.patch(
       resourceId: item.id,
       previousState: { grossAmount: item.grossAmount, description: item.description, quantity: item.quantity, unitPrice: item.unitPrice },
       newState: updates,
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -259,7 +260,7 @@ chargesApp.delete(
       resourceType: 'chargemaster_items',
       resourceId: item.id,
       previousState: { grossAmount: item.grossAmount, description: item.description },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
