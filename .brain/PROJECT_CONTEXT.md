@@ -1849,6 +1849,11 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   3. *Immediate Post-Print Teardown (`src/services/printEngine.ts`)*: Wrapped `window.print()` in a `try/finally` block that triggers `setTimeout(cleanup, 200)` as soon as the print modal closes, reducing the safety ceiling timeout from 60s down to 2s.
 - **Verification**: `npm run build` PASS (0 errors, 1.75s). Document is strictly visible to browser print dialogs and completely absent from screen viewport.
 
+[DECISION] **11. Public Asset Resolution for MedCore Badge Logo**:
+- **Root Cause**: Components (`LoginScreen.tsx`, `GlobalCommandBar.tsx`, `PrintDocumentContainer.tsx`, `PatientPortalStandalone.tsx`) were updated to reference `src="/logo/MedCore_Badge_Logo.png"`. However, the asset was located in `./logo/` at the repository root rather than inside Vite's `public/` directory. Because Vite only serves public root URLs (`/...`) from `public/` (and only copies files in `public/` to `dist/`), requests for `/logo/MedCore_Badge_Logo.png` returned 404 in development and on production Vercel builds.
+- **Resolution**: Created `public/logo/` containing `MedCore_Badge_Logo.png`, `MedCore_Text_logo.png`, and `AQROMED_logo.png`, and placed `MedCore_Badge_Logo.png` in `public/` for dual-path support (`/logo/MedCore_Badge_Logo.png` and `/MedCore_Badge_Logo.png`).
+- **Verification**: `npm run build` PASS. `dist/logo/MedCore_Badge_Logo.png` and `dist/MedCore_Badge_Logo.png` are produced and bundled with 0 errors.
+
 
 
 
