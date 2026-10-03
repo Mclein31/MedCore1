@@ -51,10 +51,10 @@ class PrintService {
 
     // Allow React to mount the printable DOM in #medcore-print-root
     setTimeout(() => {
-      window.print();
-
-      // Clean up on afterprint or extended fallback timeout
+      let isCleanedUp = false;
       const cleanup = () => {
+        if (isCleanedUp) return;
+        isCleanedUp = true;
         document.body.removeAttribute('data-medcore-printing');
         this.currentConfig = null;
         this.notify();
@@ -66,7 +66,16 @@ class PrintService {
       };
 
       window.addEventListener('afterprint', cleanup, { once: true });
-      this.printTimeout = setTimeout(cleanup, 60000); // 60s safety ceiling
+
+      try {
+        window.print();
+      } finally {
+        // Once the print modal closes (blocking call returns), clean up immediately
+        setTimeout(cleanup, 200);
+      }
+
+      // 2s safety ceiling fallback in case browser defers execution
+      this.printTimeout = setTimeout(cleanup, 2000);
     }, 120);
   }
 

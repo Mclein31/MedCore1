@@ -1838,6 +1838,17 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   - Verified consecutive `GET /api/v1/encounters` and `POST /api/v1/auth/login` requests return `HTTP/2 200 OK` with `access-control-allow-origin: https://med-core1.vercel.app` and `access-control-allow-credentials: true`.
   - Zero 1101 errors, zero hung sockets, and zero unhandled rejections in live tail logs.
 
+[DECISION] **10. Print Root Screen Isolation & Instant Lifecycle Cleanup**:
+- **Root Cause Analysis (Print Document Spilling Below Dashboard)**:
+  - *Missing Screen Mode Display Rule*: In `src/index.css`, `#medcore-print-root` was styled solely within the `@media print` query (`display: block !important`). No rule existed to hide it in `@media screen`. When `printEngine.print()` set `currentConfig`, React mounted `PrintDocumentContainer` (`<div id="medcore-print-root">`). In standard screen mode, `<div>` elements default to `display: block`.
+  - *DOM Positioning*: In `src/app/App.tsx`, `<PrintDocumentContainer />` is rendered directly as a sibling below `<div id="medcore-app-root">`. Because `#medcore-app-root` is `h-screen`, the mounted print document stretched out the page height directly underneath the dashboard, causing the full document to appear when the user scrolled down.
+  - *Prolonged Mounting Ceilings*: `printEngine.ts` relied on a 60-second safety timeout and `window.afterprint`, leaving the document visible in the DOM for up to a minute if `afterprint` was delayed by the browser.
+- **Architectural Fixes**:
+  1. *Global Screen Mode CSS Hiding (`src/index.css`)*: Explicitly defined `#aqromed-print-root, #medcore-print-root, .print-document { display: none !important; }` outside of `@media print`. This ensures print containers have zero dimensions and are completely hidden from screen rendering and layout calculation.
+  2. *Tailwind Redundancy (`src/components/printing/PrintDocumentContainer.tsx`)*: Added `className="hidden print:block w-full"` to all 7 root containers (`PATIENT_LEDGER`, `DIGITAL_GATE_PASS`, `OFFICIAL_RECEIPT`, `EXECUTIVE_RCM_REPORT`, `MULTI_PAYER_ROSTER`, `DISCHARGE_DOSSIER`, `CLAIMS_ESOA_AUDIT`).
+  3. *Immediate Post-Print Teardown (`src/services/printEngine.ts`)*: Wrapped `window.print()` in a `try/finally` block that triggers `setTimeout(cleanup, 200)` as soon as the print modal closes, reducing the safety ceiling timeout from 60s down to 2s.
+- **Verification**: `npm run build` PASS (0 errors, 1.75s). Document is strictly visible to browser print dialogs and completely absent from screen viewport.
+
 
 
 

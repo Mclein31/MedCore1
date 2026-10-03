@@ -82,6 +82,14 @@
 /* ==========================================================================
    PRINT SPECIFIC STYLES (Document-Style Hospital Reports, No Screenshots)
    ========================================================================== */
+
+/* Screen mode: strictly prevent print document roots from rendering on screen or spilling into dashboard layout */
+#aqromed-print-root,
+#medcore-print-root,
+.print-document {
+  display: none !important;
+}
+
 @media print {
   @page {
     size: auto;
