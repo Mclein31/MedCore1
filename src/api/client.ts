@@ -123,7 +123,8 @@ export class ApiClient {
     const url = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
     const headers = new Headers(options.headers || {});
-    if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    const method = (options.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type') && !(options.body instanceof FormData)) {
       headers.set('Content-Type', 'application/json');
     }
 

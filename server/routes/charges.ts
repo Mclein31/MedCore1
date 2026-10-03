@@ -6,7 +6,7 @@ import { db } from '../db';
 import { chargemasterItems, encounters, systemAuditLogs, billingDisputes } from '../db/schema';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { getHydratedEncounter } from './encounters';
+import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { matchEncounterCondition, matchChargeItemCondition } from '../utils/dbQuery';
 import { recalculateAndPersistWaterfall } from '../services/waterfallPersistence';
 import { getClientIp } from '../utils/clientIp';
@@ -104,6 +104,7 @@ chargesApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updatedEncounter = await getHydratedEncounter(enc.id);
     return c.json({
       success: true,
@@ -200,6 +201,7 @@ chargesApp.patch(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updatedEncounter = await getHydratedEncounter(item.encounterId);
     return c.json({
       success: true,
@@ -264,6 +266,7 @@ chargesApp.delete(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updatedEncounter = await getHydratedEncounter(encounterId);
     return c.json({
       success: true,

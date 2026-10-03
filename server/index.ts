@@ -79,7 +79,7 @@ app.use(
   })
 );
 
-import { db, getDb, runWithDb } from './db';
+import { db, getDb, runWithDb, createDbConnection } from './db';
 import { sql } from 'drizzle-orm';
 
 // Hyperdrive / Database Resolution Middleware for Cloudflare Workers
@@ -136,14 +136,30 @@ app.use('*', async (c, next) => {
     (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
 
   if (effectiveConn) {
-    const activeDb = getDb(effectiveConn, isProduction);
-    return runWithDb(activeDb, () => next());
+    const { db: activeDb, pool } = createDbConnection(effectiveConn, isProduction);
+    try {
+      return await runWithDb(activeDb, () => next());
+    } finally {
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(pool.end().catch(() => {}));
+      } else {
+        await pool.end().catch(() => {});
+      }
+    }
   }
 
   // Local development fallback
   if (!isProduction) {
-    const devDb = getDb(undefined, false);
-    return runWithDb(devDb, () => next());
+    const { db: devDb, pool } = createDbConnection(undefined, false);
+    try {
+      return await runWithDb(devDb, () => next());
+    } finally {
+      if (c.executionCtx?.waitUntil) {
+        c.executionCtx.waitUntil(pool.end().catch(() => {}));
+      } else {
+        await pool.end().catch(() => {});
+      }
+    }
   }
 
   return next();

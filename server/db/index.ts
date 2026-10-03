@@ -10,6 +10,57 @@ export type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 const dbStorage = new AsyncLocalStorage<DrizzleDb>();
 const poolCache = new Map<string, { pool: pg.Pool; db: DrizzleDb }>();
 
+export interface DbConnection {
+  db: DrizzleDb;
+  pool: pg.Pool;
+}
+
+export function createDbConnection(connectionString?: string, isProduction: boolean = false): DbConnection {
+  const isProd =
+    isProduction ||
+    (typeof process !== 'undefined' && process.env.NODE_ENV === 'production');
+  let url = connectionString || (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
+
+  if (!url) {
+    if (isProd) {
+      throw new Error(
+        '[MedCore Database Configuration Error] No database connection string provided in production. Configure Cloudflare Hyperdrive or set DATABASE_URL.'
+      );
+    }
+    url = 'postgresql://mclein@localhost:5432/aqromed';
+  }
+
+  // Prevent production from ever attempting to connect to localhost / 127.0.0.1 / loopback
+  if (isProd) {
+    const isLoopback =
+      url.includes('localhost') ||
+      url.includes('127.0.0.1') ||
+      url.includes('::1') ||
+      url.includes('0.0.0.0');
+
+    if (isLoopback) {
+      throw new Error(
+        `[MedCore Database Security Error] Refusing to connect to localhost / loopback database in production mode. Configure Cloudflare Hyperdrive or provide a remote PostgreSQL DATABASE_URL.`
+      );
+    }
+  }
+
+  const pool = new Pool({
+    connectionString: url,
+    max: isProd ? 5 : 10,
+    idleTimeoutMillis: 1000,
+    connectionTimeoutMillis: 5000
+  });
+
+  // Guard against unhandled error events on idle/disconnected sockets
+  pool.on('error', (err) => {
+    console.warn('[PostgreSQL Pool Socket Event]', err?.message || err);
+  });
+
+  const dbInstance = drizzle(pool, { schema });
+  return { db: dbInstance, pool };
+}
+
 export function getDb(connectionString?: string, isProduction: boolean = false): DrizzleDb {
   const isProd =
     isProduction ||
@@ -42,14 +93,8 @@ export function getDb(connectionString?: string, isProduction: boolean = false):
 
   let cached = poolCache.get(url);
   if (!cached) {
-    const pool = new Pool({
-      connectionString: url,
-      max: 10,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000
-    });
-    const dbInstance = drizzle(pool, { schema });
-    cached = { pool, db: dbInstance };
+    const conn = createDbConnection(url, isProd);
+    cached = conn;
     poolCache.set(url, cached);
   }
 
