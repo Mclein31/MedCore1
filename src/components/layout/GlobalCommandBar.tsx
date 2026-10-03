@@ -92,7 +92,7 @@ export const GlobalCommandBar: React.FC = () => {
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2.5">
           <img
-            src="/MedCore_Badge_Logo.png.png"
+            src="/MedCore_Badge_Logo.png"
             alt="MedCore"
             className="h-7 w-auto max-h-7 object-contain"
           />
