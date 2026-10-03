@@ -32,7 +32,7 @@ export const PrintDocumentContainer: React.FC = () => {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-4 flex-1 min-w-0">
           <img
-            src="/MedCore_Badge_Logo.png.png"
+            src="/MedCore_Badge_Logo..png"
             alt="MedCore"
             className="print-logo shrink-0 object-contain"
             style={{
