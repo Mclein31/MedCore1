@@ -46,9 +46,12 @@ function resolveConfig(): ResolvedApiConfig {
     isProduction = false;
   }
 
-  // If in production and no explicit API URL is set, default to the deployed Cloudflare Worker
-  const defaultProductionBackend = 'https://medcore-backend.mcleinonza0531.workers.dev';
-  const effectiveRaw = raw || (isProduction ? defaultProductionBackend : '');
+  // In web dashboard environments (Vercel production and Vite development),
+  // default to relative '/api/v1' so requests are same-origin and proxied
+  // seamlessly through vercel.json (or vite.config.ts), avoiding cross-origin
+  // third-party cookie blocks, CORS preflight latency, and domain mismatches.
+  // Explicit VITE_API_BASE_URL is respected when provided (e.g. for native mobile apps).
+  const effectiveRaw = raw;
 
   let rootUrl = '';
   let baseUrl = '/api/v1';

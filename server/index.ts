@@ -26,6 +26,8 @@ const defaultAllowedOrigins = [
   'http://localhost:3000',
   'http://127.0.0.1:5173',
   'http://127.0.0.1:3000',
+  'https://med-core1.vercel.app',
+  'https://med-core1-beige.vercel.app',
   'https://medcore1.vercel.app',
   'https://medcore-hospital.vercel.app'
 ];
@@ -58,7 +60,7 @@ app.use(
         if (
           (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
           host.endsWith('.vercel.app') &&
-          /^(?:[a-z0-9-]+\.)?[a-z0-9-]*(?:medcore|aqromed)[a-z0-9-]*\.vercel\.app$/.test(host)
+          /^(?:[a-z0-9-]+\.)?[a-z0-9-]*(?:med-?core|aqromed)[a-z0-9-]*\.vercel\.app$/i.test(host)
         ) {
           return origin;
         }
