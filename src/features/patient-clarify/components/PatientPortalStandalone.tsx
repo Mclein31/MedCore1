@@ -137,7 +137,7 @@ export const PatientPortalStandalone: React.FC = () => {
         {/* Brand & Identity */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <img
-            src="/MedCore_Symbol_logo.png"
+            src="/MedCore_Badge_Logo.png.png"
             alt="MedCore"
             className="h-8 sm:h-9 w-auto max-h-9 object-contain shrink-0"
           />

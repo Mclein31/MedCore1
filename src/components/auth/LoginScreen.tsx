@@ -79,7 +79,7 @@ export const LoginScreen: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img
-                src="/MedCore_Symbol_logo.png"
+                src="/MedCore_Badge_Logo.png.png"
                 alt="MedCore"
                 className="h-10 w-auto max-h-10 object-contain brightness-110"
               />
