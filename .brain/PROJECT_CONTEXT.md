@@ -1816,5 +1816,13 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - **Resolution**: Created `server/utils/clientIp.ts` (`getClientIp(c)`) which extracts `CF-Connecting-IP` or the first IP from `X-Forwarded-For` and strictly truncates to 45 characters. Replaced all occurrences across `server/routes/` (`auth.ts`, `beds.ts`, `charges.ts`, `clearance.ts`, `disputes.ts`, `encounters.ts`, `gatePass.ts`, `payments.ts`, `promissory.ts`).
 - **Informative Error Handling**: Updated `app.onError` in `server/index.ts` to surface the actual underlying error detail rather than masking all 500 exceptions under an opaque rollback banner.
 
+[DECISION] **7. Hyperdrive Pool Starvation & CPU Timeout (1101 Error) Resolution**:
+- **Root Cause**: On initial dashboard hydration, `server/routes/encounters.ts` executed 9 large relational queries with `inArray(..., encIds)` in a single `Promise.all` against Cloudflare Hyperdrive. With Hyperdrive connection pool `max` set to 5 in `server/db/index.ts`, concurrent worker requests suffered connection pool exhaustion, leading to socket timeout and Cloudflare Worker Error 1101 (CPU/wall-clock limit exceeded) when hydrating 250 encounters.
+- **Resolution**: Increased Hyperdrive pool `max` to 10 in `server/db/index.ts` and restructured the 9 child queries into 3 balanced batches executed sequentially. Deployed live Worker version `949320cc-5334-462f-8080-9a1127392b9a`. Verified live `GET /api/v1/encounters` returns all 250 patient records with `200 OK` in ~2s.
+
+[DECISION] **8. Print Document Header Layout & Logo Sizing Defect Resolution**:
+- **Root Cause**: In `src/index.css`, `@media print` declared generic unconstraining rules (`[class*="max-h-"], [class*="h-\["] { max-height: none !important; height: auto !important; }`) to allow scrollable tables to paginate. Because the facility logo `<img>` in `PrintDocumentContainer.tsx` included `max-h-12`, `@media print` stripped its max-height, allowing its native 2880x1440 resolution to expand full-width and crushing the facility address/TIN text into an unreadable vertical strip.
+- **Resolution**: Scoped container height unconstraining in `src/index.css` to block containers (`div.overflow-y-auto`, `div[class*="max-h-"]:not(.print-logo)`, etc.) and added an explicit print logo constraint rule (`.print-document img, #medcore-print-root img, img.print-logo { width: 48px !important; height: 48px !important; object-fit: contain !important; flex-shrink: 0 !important; }`). In `PrintDocumentContainer.tsx`, reinforced the header layout with strict inline dimensions (`48x48px`), `shrink-0`, and `flex-1 min-w-0` on adjacent text blocks.
+
 
 

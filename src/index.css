@@ -150,17 +150,35 @@
   }
 
   /* Expand all scrollable containers so hidden rows are completely printed across pages */
-  .overflow-y-auto,
-  .overflow-x-auto,
-  .overflow-auto,
-  [class*="overflow-y-"],
-  [class*="overflow-x-"],
-  [class*="overflow-auto"],
-  [class*="max-h-"],
-  [class*="h-\["] {
+  div.overflow-y-auto,
+  div.overflow-x-auto,
+  div.overflow-auto,
+  div[class*="overflow-y-"],
+  div[class*="overflow-x-"],
+  div[class*="overflow-auto"],
+  section[class*="overflow-"],
+  div[class*="max-h-"]:not(.print-logo),
+  div[class*="h-\["]:not(.print-logo),
+  section[class*="max-h-"] {
     overflow: visible !important;
     max-height: none !important;
     height: auto !important;
+  }
+
+  /* Protect print document logos and imagery from expansion */
+  .print-document img,
+  #medcore-print-root img,
+  #aqromed-print-root img,
+  img.print-logo {
+    display: inline-block !important;
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    object-fit: contain !important;
+    flex-shrink: 0 !important;
   }
 
   /* Full-width table formatting: do not inherit narrow dashboard card widths */
