@@ -9,7 +9,6 @@ import {
   FileCheck2,
   BarChart3,
   Settings,
-  Smartphone,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -28,7 +27,7 @@ interface NavItemConfig {
 }
 
 export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollapsed }) => {
-  const { activeRoute, setActiveRoute, encounters, openPatientClarifyDrawer } = useMedCore();
+  const { activeRoute, setActiveRoute, encounters } = useMedCore();
 
   const warningCount = encounters.filter((e) => e.slaStatus === 'WARNING' || e.slaStatus === 'BREACH').length;
   const disputedCount = encounters.filter(
@@ -177,49 +176,24 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
         {renderNavGroup('Governance & Admin', governanceAndAdminItems)}
       </div>
 
-      {/* Clean Single-Line Utility Trigger & Collapse Bar */}
+      {/* Clean Utility & Collapse Bar */}
       <div className="p-2 border-t border-slate-200 bg-white shrink-0">
         {!isCollapsed ? (
-          <div className="space-y-2">
+          <div className="flex items-center justify-between px-1 py-1">
+            <span className="text-[10px] font-medium text-slate-400">
+              RA 9439 · RA 9994/10754
+            </span>
             <button
               type="button"
-              onClick={() => openPatientClarifyDrawer()}
-              title="Open Patient Clarify Mobile Preview"
-              className="w-full h-10 px-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 flex items-center justify-between text-xs font-semibold transition-colors shadow-2xs"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Collapse sidebar"
             >
-              <div className="flex items-center gap-2 min-w-0">
-                <Smartphone className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
-                <span className="truncate">Patient Clarify</span>
-              </div>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded shrink-0">
-                LIVE
-              </span>
+              <ChevronLeft className="w-4 h-4" />
             </button>
-
-            <div className="pt-1 flex items-center justify-between px-1">
-              <span className="text-[10px] font-medium text-slate-400">
-                RA 9439 · RA 9994/10754
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                title="Collapse sidebar"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            </div>
           </div>
         ) : (
-          <div className="space-y-2 flex flex-col items-center">
-            <button
-              type="button"
-              onClick={() => openPatientClarifyDrawer()}
-              title="Launch Patient Clarify Mobile Preview"
-              className="h-10 w-10 rounded-lg flex items-center justify-center text-emerald-600 hover:bg-emerald-50 transition-colors"
-            >
-              <Smartphone className="w-4.5 h-4.5" />
-            </button>
+          <div className="flex flex-col items-center py-1">
             <button
               type="button"
               onClick={() => setIsCollapsed(!isCollapsed)}

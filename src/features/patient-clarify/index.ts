@@ -1,5 +1,3 @@
-export { PatientClarifyDrawer } from './components/PatientClarifyDrawer';
-export { PatientClarifyView } from './components/PatientClarifyView';
 export { PatientPortalStandalone } from './components/PatientPortalStandalone';
 export { PatientBillingInbox } from './components/PatientBillingInbox';
 export { PatientStatementView } from './components/PatientStatementView';

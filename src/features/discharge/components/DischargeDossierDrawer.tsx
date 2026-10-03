@@ -14,7 +14,7 @@ export const DischargeDossierDrawer: React.FC = () => {
     approveHmoFinalLoa,
     issueDigitalGatePass,
     openPromissoryModal,
-    openPatientClarifyDrawer,
+    sendBillToPatient,
     printDocument,
     setActiveRoute,
     selectEncounter
@@ -26,6 +26,17 @@ export const DischargeDossierDrawer: React.FC = () => {
   const patientName = enc.patient.fullName || enc.patient.maskedName;
   const remainingMinutes = 45 - enc.elapsedMinutes;
   const isBreached = remainingMinutes <= 0;
+
+  const [copiedLink, setCopiedLink] = React.useState(false);
+
+  const handleDispatchLink = () => {
+    const { magicLink } = sendBillToPatient(enc.id);
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(magicLink).catch(() => {});
+    }
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 3000);
+  };
 
   const handleOpenLedger = () => {
     selectEncounter(enc.id);
@@ -392,10 +403,10 @@ export const DischargeDossierDrawer: React.FC = () => {
           </div>
 
           <button
-            onClick={() => openPatientClarifyDrawer(enc)}
+            onClick={handleDispatchLink}
             className="w-full py-2 px-3 text-xs text-blue-600 hover:text-blue-800 font-semibold text-center transition-colors"
           >
-            Send Patient Clarify Magic Link (SMS / WhatsApp) →
+            {copiedLink ? '✓ eSOA Statement Dispatched & Copied to Clipboard!' : 'Dispatch Plain-Language Statement (eSOA Link) →'}
           </button>
         </div>
       </div>

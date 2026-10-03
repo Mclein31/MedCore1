@@ -15,7 +15,6 @@ import {
   CreditCard,
   QrCode,
   ExternalLink,
-  Smartphone,
   Columns,
   Table,
   List,
@@ -41,7 +40,6 @@ export const ActiveDischargeRadar: React.FC = () => {
     openDoctorQuickSign,
     openPromissoryModal,
     openGatePassModal,
-    openPatientClarifyDrawer,
     applyAccreditedCeiling,
     clearPharmacyRts,
     approveHmoFinalLoa,
@@ -761,18 +759,6 @@ export const ActiveDischargeRadar: React.FC = () => {
                           </div>
 
                           <div className="py-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsMoreActionsOpen(false);
-                                selectEncounter(currentSelectedEncounter.id);
-                                openPatientClarifyDrawer(currentSelectedEncounter);
-                              }}
-                              className="w-full px-3 py-1.5 text-left hover:bg-slate-50 flex items-center gap-2 font-medium"
-                            >
-                              <Smartphone className="w-4 h-4 text-emerald-600" />
-                              <span>Patient Mobile View</span>
-                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -1627,14 +1613,6 @@ export const ActiveDischargeRadar: React.FC = () => {
                 {/* Actions Bottom Bar */}
                 <div className="pt-2 flex items-center justify-between flex-wrap gap-2.5">
                   <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      icon={Smartphone}
-                      onClick={() => openPatientClarifyDrawer(enc)}
-                    >
-                      Patient Clarify
-                    </Button>
                     <Button
                       size="sm"
                       variant="secondary"

@@ -12,7 +12,7 @@ import {
   systemAuditLogs
 } from '../db/schema';
 import { computePromissorySchedule } from '../services/promissoryEngine';
-import { generateGatePassHmac, generateDeterministicExitPin } from '../services/gatePassService';
+import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../services/gatePassService';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
@@ -106,7 +106,13 @@ promissoryApp.post(
 
       if (isCleared) {
         const passNumber = `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`;
-        const hmac = await generateGatePassHmac(enc.id, params.principalAmount, now.toISOString());
+        const nodeEnv =
+          (c.env as any)?.NODE_ENV ||
+          (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+          'production';
+        const isProduction = nodeEnv === 'production';
+        const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
+        const hmac = await generateGatePassHmac(enc.id, params.principalAmount, now.toISOString(), secretKey);
         const exitPin = generateDeterministicExitPin(passNumber);
 
         const insertedPasses = await tx

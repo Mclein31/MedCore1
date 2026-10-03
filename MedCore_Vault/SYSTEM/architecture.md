@@ -146,3 +146,43 @@ The application coordinates 7 distinct operational routes:
 ### 5. Responsive Master-Detail Sizing
 - In `ActiveDischargeRadar`, viewports `>= 1024px` (`lg`) render the split-pane master-detail HIMS workstation (patient queue on left, clearance console on right).
 - Viewports `< 1024px` automatically activate a responsive segmented pane switcher (`QUEUE` | `DETAIL`) with a "← Back to Patient Queue" navigation button, preventing column squishing and maintaining high readability.
+
+---
+
+## 5. Client Separation & Multi-Platform Architecture
+
+[DECISION] **Strict Separation of Product Boundaries**:
+The MedCore architecture explicitly separates the web command-center application from future native mobile applications while sharing a single, authoritative backend:
+
+```text
+                    MEDCORE BACKEND
+                 PostgreSQL + API Layer
+                         │
+              ┌──────────┴──────────┐
+              │                     │
+              ▼                     ▼
+      MEDCORE DASHBOARD        MEDCORE MOBILE APP
+       Web / Desktop           Native Mobile
+       
+       Vercel hosting          Xcode / Android Studio
+       Prototype               Physical phones
+       (CURRENT)               (FUTURE)
+```
+
+### 1. MedCore Dashboard (CURRENT)
+- **Role**: Hospital Command Center for revenue cycle operations, claims pre-flight audit, bed management, billing disputes, and clinical clearance workflows.
+- **Form Factor**: Desktop/Web application running standard web browser stacks (React, TypeScript, Tailwind CSS, Vite).
+- **Deployment**: Vercel-ready static/SPA frontend with environment-driven API endpoint resolution (`VITE_API_URL`).
+- **Clean Command Center Scope**: All fake mobile preview shells, device frames, phone simulators, and mobile preview controls are decommissioned. Responsive web CSS is preserved so the web dashboard adapts naturally to narrow viewports without masquerading as a mobile simulator.
+
+### 2. MedCore Backend (CURRENT)
+- **Role**: Shared single source of truth for business logic, statutory waterfalls (RA 9994, RA 10754, RA 11223), PhilHealth case rates, HMO LOA approval limits, RA 9439 promissory notes, and ledger integrity.
+- **Data Store**: Authoritative PostgreSQL database (Neon / Cloudflare Hyperdrive). Both web and mobile clients access the exact same database.
+- **Cross-Client Transport**: Hardened CORS policy permitting verified dashboard origins (Vercel previews, custom domains, local development) while accepting direct HTTP/REST traffic from native mobile runtimes without `Origin` headers.
+- **Unified Authentication**: Supports dual authentication vectors—Session Cookies (for web/browser environments) and `Authorization: Bearer <token>` headers (for native mobile apps and cross-origin SPAs).
+
+### 3. MedCore Mobile App (FUTURE)
+- **Role**: Native mobile application for patients/guarantors (real-time bill breakdown, out-of-pocket tracking, mobile wallet payment, digital gate pass) and on-call physicians (remote PF sign-off).
+- **Toolchain**: Native iOS (Xcode / Swift / SwiftUI) and Android (Android Studio / Kotlin / Jetpack Compose).
+- **Standalone Independence**: Operates as a completely independent client project that communicates directly with the MedCore REST API. It does not depend on the web dashboard being open or active.
+

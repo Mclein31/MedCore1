@@ -10,8 +10,35 @@ export type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
 const dbStorage = new AsyncLocalStorage<DrizzleDb>();
 const poolCache = new Map<string, { pool: pg.Pool; db: DrizzleDb }>();
 
-export function getDb(connectionString?: string): DrizzleDb {
-  const url = connectionString || process.env.DATABASE_URL || 'postgresql://mclein@localhost:5432/aqromed';
+export function getDb(connectionString?: string, isProduction: boolean = false): DrizzleDb {
+  const isProd =
+    isProduction ||
+    (typeof process !== 'undefined' && process.env.NODE_ENV === 'production');
+  let url = connectionString || (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
+
+  if (!url) {
+    if (isProd) {
+      throw new Error(
+        '[MedCore Database Configuration Error] No database connection string provided in production. Configure Cloudflare Hyperdrive or set DATABASE_URL.'
+      );
+    }
+    url = 'postgresql://mclein@localhost:5432/aqromed';
+  }
+
+  // Prevent production from ever attempting to connect to localhost / 127.0.0.1 / loopback
+  if (isProd) {
+    const isLoopback =
+      url.includes('localhost') ||
+      url.includes('127.0.0.1') ||
+      url.includes('::1') ||
+      url.includes('0.0.0.0');
+
+    if (isLoopback) {
+      throw new Error(
+        `[MedCore Database Security Error] Refusing to connect to localhost / loopback database in production mode. Configure Cloudflare Hyperdrive or provide a remote PostgreSQL DATABASE_URL.`
+      );
+    }
+  }
 
   let cached = poolCache.get(url);
   if (!cached) {

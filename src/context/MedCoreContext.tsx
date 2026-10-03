@@ -20,7 +20,7 @@ import {
 } from '@/features/patient-clarify';
 import { printEngine, PrintDocumentConfig } from '@/services/printEngine';
 import type { ConfirmationModalVariant, ConfirmationContextInfo } from '@/components/modals';
-import { apiClient } from '@/services/apiClient';
+import { apiClient, ApiUser } from '@/api';
 
 export interface ConfirmModalRequest {
   title: string;
@@ -57,8 +57,6 @@ interface MedCoreContextType {
   isSearchModalOpen: boolean;
   isDossierDrawerOpen: boolean;
   dossierEncounter: Encounter | null;
-  isPatientClarifyDrawerOpen: boolean;
-  clarifyTokenEncounter: Encounter | null;
 
   // Actions
   selectEncounter: (id: string) => void;
@@ -86,8 +84,6 @@ interface MedCoreContextType {
   closeSearchModal: () => void;
   openDossierDrawer: (encounter: Encounter) => void;
   closeDossierDrawer: () => void;
-  openPatientClarifyDrawer: (encounter?: Encounter) => void;
-  closePatientClarifyDrawer: () => void;
 
   // Operational Transitions
   advanceStage: (encounterId: string) => void;
@@ -129,7 +125,7 @@ interface MedCoreContextType {
   // Auth & Session
   isAuthenticated: boolean;
   currentUser: any | null;
-  login: (credentials: { email: string; password?: string; facilityCode?: string }) => Promise<{ success: boolean; error?: string }>;
+  login: (credentials: { email: string; password: string; facilityCode?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 
   // CRUD Modal States
@@ -272,14 +268,17 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const setActiveRole = (role: UserRole) => {
     setActiveRoleState(role);
-    apiClient.switchRole(role).then((res) => {
-      if (res?.user) {
-        setCurrentUser(res.user);
-      }
-    }).catch((err) => {
-      console.warn('API switchRole sync notice:', err);
-      setApiError(`Role switch synchronization failed on server: ${err.message}`);
-    });
+    apiClient
+      .switchRole(role)
+      .then((res: { success: boolean; user: ApiUser }) => {
+        if (res?.user) {
+          setCurrentUser(res.user);
+        }
+      })
+      .catch((err: Error) => {
+        console.warn('API switchRole sync notice:', err);
+        setApiError(`Role switch synchronization failed on server: ${err.message}`);
+      });
   };
 
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -297,8 +296,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isDossierDrawerOpen, setIsDossierDrawerOpen] = useState(false);
   const [dossierEncounter, setDossierEncounter] = useState<Encounter | null>(null);
-  const [isPatientClarifyDrawerOpen, setIsPatientClarifyDrawerOpen] = useState(false);
-  const [clarifyTokenEncounter, setClarifyTokenEncounter] = useState<Encounter | null>(null);
 
   // Centralized Confirmation Modal State
   const [confirmationState, setConfirmationState] = useState<(ConfirmModalRequest & { isOpen: boolean }) | null>(null);
@@ -340,8 +337,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Authoritative Session Verification & Data Hydration on mount
   useEffect(() => {
     let isMounted = true;
-    apiClient.getMe()
-      .then(async (res) => {
+    apiClient
+      .getMe()
+      .then(async (res: { authenticated: boolean; user: ApiUser }) => {
         if (!isMounted) return;
         if (res?.user) {
           setIsAuthenticated(true);
@@ -361,18 +359,18 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           apiClient.setDemoRole(null);
         }
       })
-      .catch(() => {
+      .catch((_err: unknown) => {
         if (!isMounted) return;
         // Attempt encounter hydration anyway in case public endpoints are accessible
         refreshEncounters();
       });
 
-  return () => {
-    isMounted = false;
-  };
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const login = async (credentials: { email: string; password?: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
+  const login = async (credentials: { email: string; password: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await apiClient.login(credentials);
       if (res?.user) {
@@ -480,7 +478,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsWhyDoIOweThisOpen(false);
         setIsSearchModalOpen(false);
         setIsDossierDrawerOpen(false);
-        setIsPatientClarifyDrawerOpen(false);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -560,16 +557,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
   const closeDossierDrawer = () => {
     setIsDossierDrawerOpen(false);
-  };
-
-  const openPatientClarifyDrawer = (encounter?: Encounter) => {
-    const enc = encounter || selectedEncounter;
-    setClarifyTokenEncounter(enc);
-    setSelectedEncounterId(enc.id);
-    setIsPatientClarifyDrawerOpen(true);
-  };
-  const closePatientClarifyDrawer = () => {
-    setIsPatientClarifyDrawerOpen(false);
   };
 
   // Operational Transitions
@@ -1845,8 +1832,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isSearchModalOpen,
         isDossierDrawerOpen,
         dossierEncounter,
-        isPatientClarifyDrawerOpen,
-        clarifyTokenEncounter,
         // Auth & Session
         isAuthenticated,
         currentUser,
@@ -1893,8 +1878,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         closeSearchModal,
         openDossierDrawer,
         closeDossierDrawer,
-        openPatientClarifyDrawer,
-        closePatientClarifyDrawer,
         advanceStage,
         nudgeDoctor,
         applyAccreditedCeiling,

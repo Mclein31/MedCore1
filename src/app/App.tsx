@@ -5,7 +5,7 @@ import { SidebarNav } from '@/components/layout/SidebarNav';
 import { SearchModal } from '@/components/layout/SearchModal';
 import { WhyDoIOweThisDrawer } from '@/features/ledger';
 import { ContextualActionDrawer, DischargeDossierDrawer } from '@/features/discharge';
-import { PatientClarifyDrawer, PatientPortalStandalone } from '@/features/patient-clarify';
+import { PatientPortalStandalone } from '@/features/patient-clarify';
 import {
   DoctorQuickSignModal,
   DigitalPromissoryModal,
@@ -205,7 +205,6 @@ const MainLayout: React.FC = () => {
         {/* Modals, Overlays & Slide-Over Drawers */}
         <SearchModal />
         <DischargeDossierDrawer />
-        <PatientClarifyDrawer />
         <WhyDoIOweThisDrawer />
         <ContextualActionDrawer />
         <DoctorQuickSignModal />

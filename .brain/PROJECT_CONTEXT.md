@@ -206,7 +206,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
     6. `CLAIMS_ESOA`: PhilHealth eClaims 3.0 pre-flight scrubber, CF1–CF4 cross-auditor, statutory 60-day filing countdown clock, and live eSOA XML generator (PhilHealth Circular 2023-0026 & 2024-0037).
     7. `RCM_ANALYTICS`: Executive CFO suite with PhilHealth RTH Denial Pareto, 5-stage TAT distribution heatmap, and 250-bed economic impact ROI model (+₱31.4M/yr).
     8. `CONFIGURATION`: HIS read-replica CDC connection, PhilHealth HITP credentials, HMO policy exclusion rules, and SLA alarm timers.
-  - **Decoupled Patient Clarify PWA**: Mobile web preview drawer accessible by staff via instant preview drawer and SMS/WhatsApp magic link generation, completely decoupled from staff sidebar navigation.
+  - **Decoupled Patient Clarify PWA**: Mobile web preview drawer accessible by staff via instant preview drawer and SMS/WhatsApp magic link generation, completely decoupled from staff sidebar navigation. *(Note: In-dashboard simulator controls decommissioned in Section 48; patient-facing billing is served via standalone `PatientPortalStandalone.tsx` and future native mobile apps).*
 - **Command Center 5-Level Operational Hierarchy**:
   - **Level 1 (Global Context Bar)**: St. Jude Medical context, real-time PST operational clock, 7-role switcher dropdown, universal ⌘K command palette, and dark/light mode toggle.
   - **Level 2 (Priority Action Strip)**: 4 Bento action cards: SLA Breach Risks (45m ceiling), HMO LOA Delays (avg 52m TAT), High-Risk Claims (CF4 exceptions), and Trapped Capital (active wards).
@@ -241,7 +241,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
   - `ActiveDischargeRadar`: Primary operational workspace with generous row height (`py-4 px-6`), patient name visual anchor, plain text SLA indicators, clean tabular currency, and calm action buttons.
   - `DualOperationalPipelines` & `VelocityRecoveryPulse`: Clean two-column enterprise pipeline and quiet telemetry footer.
   - Drawers & Modals: Standardized `DischargeDossierDrawer`, `WhyDoIOweThisDrawer`, `DoctorQuickSignModal`, `DigitalPromissoryModal`, `DigitalGatePassModal`, `SearchModal`, `DischargeMissionControl`, and `DischargeCard`.
-  - Operational Views: Standardized `EncountersLedgerView`, `CoverageApprovalsView`, `DisputesExceptionsView`, `ClaimsEsoaView`, `RcmAnalyticsView`, `ConfigurationView`, and `PatientClarifyView`.
+  - Operational Views: Standardized `EncountersLedgerView`, `CoverageApprovalsView`, `DisputesExceptionsView`, `ClaimsEsoaView`, `RcmAnalyticsView`, and `ConfigurationView` *(Note: `PatientClarifyView` phone shell was decommissioned in Section 48)*.
 - **Verification**: `tsc -b && vite build` completed in 798ms with 0 errors. Dev server running and verified responsive on `http://localhost:5173`.
 
 ---
@@ -331,7 +331,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
 - **RCM Analytics (`RcmAnalyticsView.tsx`)**: 30-Day Discharge Turnaround Time (TAT) Descent visual chart (274m down to 32.4m), Trapped Capital Pareto by friction source, AR Aging Profile (0–30d, 31–60d, 61–90d, 90+d), and Multi-Payer Performance & Turnaround Matrix.
 - **Discharge Dossier Drawer (`DischargeDossierDrawer.tsx`)**: Live chronological Operational Timeline / Audit Log rendering timestamps, actors, and status pills.
 - **Disputes & Exceptions (`DisputesExceptionsView.tsx`)**: Active Chargemaster Disputes triage with 1-click supervisory waiver/promissory triggers, and RA 9439 Promissory Note Register with executed installment agreements.
-- **Encounters & Ledgers (`EncountersLedgerView.tsx`) & Patient Clarify (`PatientClarifyView.tsx`)**: Fully integrated with all 15 encounters for interactive multi-patient review and mobile preview.
+- **Encounters & Ledgers (`EncountersLedgerView.tsx`)**: Fully integrated with all 15 encounters for interactive multi-patient review *(Note: in-dashboard mobile preview decommissioned in Section 48 in favor of dedicated standalone views)*.
 
 [FACT] **Verification**:
 - `npx tsc -b && npm run build` successfully compiled with 0 errors in 817ms.
@@ -615,7 +615,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
   - Inpatient Pre-Flight Claims Worklist & Pre-Flight XML Inspection Modal (`ClaimsEsoaView.tsx`)
   - Payer Coordination Worklist (`CoverageApprovalsView.tsx`)
   - Commercial HMO Carrier Performance Matrix (`RcmAnalyticsView.tsx`)
-  - Drawers & Modals: `WhyDoIOweThisDrawer.tsx`, `ContextualActionDrawer.tsx`, `PatientClarifyDrawer.tsx`, `DischargeDossierDrawer.tsx`, `SearchModal.tsx`, and `SidebarNav.tsx`.
+  - Drawers & Modals: `WhyDoIOweThisDrawer.tsx`, `ContextualActionDrawer.tsx`, `DischargeDossierDrawer.tsx`, `SearchModal.tsx`, and `SidebarNav.tsx` *(Note: `PatientClarifyDrawer.tsx` decommissioned in Section 48)*.
 - Completely prevents scroll propagation without breaking normal parent page scrolling when the user's cursor is outside cards. Zero JavaScript scroll listener hacks used.
 
 [DECISION] **Discharge Clearance Workstation Non-Scrollable Additional Data Section (`ActiveDischargeRadar.tsx`)**:
@@ -1640,6 +1640,146 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - **API Integration & Security Suite (`npm run test:api`)**: 83/83 integration scenarios PASSED.
 - **Financial Calculation Suite (`npm test`)**: 250/250 records verified (100% exact waterfall reconciliation, zero centavo drift).
 - **Production Build (`npm run build`)**: Vite bundle built successfully in 1.05s with 0 errors.
+
+---
+
+## 48. Client Application Separation: Web Command Center (Dashboard) vs. Future Native Mobile App via Shared Backend (Completed)
+
+[DECISION] **1. Decommissioning of Mobile Preview & Phone Simulator Components**:
+- **Rationale**: The dashboard is the dedicated **Hospital Command Center** for billing, claims, bed management, and clinical clearance. It is no longer an environment for previewing future mobile apps.
+- **Removed UI Elements**:
+  - `SidebarNav.tsx`: Removed the "Patient Clarify" live mobile preview button from both expanded and collapsed sidebars.
+  - `SearchModal.tsx`: Removed the "Preview Mobile Patient Clarify Portal" command palette suggestion.
+  - `TripartiteWorkbench.tsx`: Removed the "Preview patient view" button with `Smartphone` icon.
+  - `ActiveDischargeRadar.tsx`: Removed the "Patient Mobile View" dropdown item and card action button.
+  - `ContextualActionDrawer.tsx`: Removed the "Patient Clarify" mobile preview launcher.
+  - `DischargeDossierDrawer.tsx`: Replaced the preview button with an operational "Dispatch Plain-Language Statement (eSOA Link)" action calling `sendBillToPatient` and copying the tokenized link to clipboard.
+- **Dead Code Eliminated**:
+  - Deleted `src/features/patient-clarify/components/PatientClarifyView.tsx` (the 375px mobile phone device shell with camera notch, status bar, and 9:41 clock).
+  - Deleted `src/features/patient-clarify/components/PatientClarifyDrawer.tsx` (the slide-over mobile preview drawer).
+  - Cleaned `src/context/MedCoreContext.tsx`: Removed `isPatientClarifyDrawerOpen`, `clarifyTokenEncounter`, `openPatientClarifyDrawer`, and `closePatientClarifyDrawer`.
+  - Preserved responsive CSS: Narrow viewport layout switches (such as `< lg` Queue/Detail tabs in `ActiveDischargeRadar`) remain fully functional.
+
+[DECISION] **2. Product Boundary Establishment**:
+- **MedCore Dashboard (CURRENT)**: Web/Desktop Hospital Command Center deployable to Vercel for prototype evaluation.
+- **MedCore Backend (CURRENT)**: Shared PostgreSQL 16+ API layer (Hono / Node.js) providing single source of truth for all statutory waterfall calculations, PhilHealth case rates, HMO deductions, and RBAC.
+- **MedCore Mobile App (FUTURE)**: Future standalone native mobile application built via Xcode (iOS) and Android Studio (Android). Communicates directly with the same backend API and database without any dashboard dependency.
+
+[DECISION] **3. Clean Modular API Client Boundary (`src/api/*`)**:
+- Partitioned monolithic API calls into domain-specific modules:
+  - `src/api/client.ts`: Core HTTP transport supporting configurable base URL (`VITE_API_URL`), Bearer token authorization, session cookies, and development role simulation.
+  - `src/api/auth.ts`: Authentication (`login`, `logout`, `getMe`, `switchRole`).
+  - `src/api/patients.ts`: Encounters and patient intake (`getEncounters`, `getEncounter`, `createEncounter`, `editEncounter`, `deleteEncounter`, `advanceStage`).
+  - `src/api/billing.ts`: Ledger and chargemaster items (`getEncounterLedger`, `getStatement`, `getInvoice`, `addChargeItem`, `editChargeItem`, `deleteChargeItem`).
+  - `src/api/coverage.ts`: Clinical and payer clearances (`doctorQuickSign`, `applyAccreditedCeiling`, `clearPharmacyRts`, `approveHmoFinalLoa`).
+  - `src/api/payments.ts`: Payments and statutory promissory notes (`processPayment`, `executePromissoryNote`, `verifyExitPass`).
+  - `src/api/disputes.ts`: Billing disputes and supervisory waivers (`fileDispute`, `waiveDispute`).
+  - `src/api/claims.ts`: PhilHealth eSOA XML streaming (`getPhilhealthEsoaXml`).
+  - `src/api/analytics.ts`: Bed management and RCM metrics (`getRcmMetrics`, `getBeds`, `updateBedStatus`).
+  - `src/api/index.ts`: Unified facade preserving backward compatibility with `apiClient` consumers while exporting all modular APIs.
+  - `src/services/apiClient.ts`: Purged in favor of direct `@/api` imports across the codebase.
+
+[DECISION] **4. Vercel Deployment & Environment Separation**:
+- Created `vercel.json` configuring SPA routing rewrites to `/index.html` and immutable asset caching.
+- Created `.env.example` documenting frontend (`VITE_API_URL`) and backend (`DATABASE_URL`, `PORT`, `ALLOWED_ORIGINS`) configurations.
+- Verified 0 hardcoded localhost/127.0.0.1 references in production frontend logic.
+
+[DECISION] **5. Backend Cross-Client Compatibility (CORS & Authentication)**:
+- **CORS (`server/index.ts`)**: Configured strict origin validation supporting MedCore Vercel preview domains (`medcore-*.vercel.app`), local development hosts, environment-specified origins, and requests with no `Origin` header (standard for native iOS/Android clients).
+- **Authentication (`server/middleware/auth.ts`, `server/routes/auth.ts`)**: Enhanced auth middleware to support both `Authorization: Bearer <token>` headers (for native mobile apps and cross-origin SPAs) and HTTP-only session cookies. Updated `/login` endpoint to return the session token in the JSON response payload.
+
+---
+
+## 49. Architecture Decoupling & Security Audit Remediation (Completed)
+
+[DECISION] **1. Strict Origin Validation on Vercel Domains (`server/index.ts`)**:
+- **Vulnerability Remediated**: Replaced insecure `.endsWith('.vercel.app')` wildcard matching with strict regex validation (`medcore-hospital.vercel.app`, `/^medcore(-[a-z0-9-]+)?\.vercel\.app$/`, and explicit `ALLOWED_ORIGINS`).
+- **Security Impact**: Blocks arbitrary external Vercel deployments from executing authenticated cross-origin requests with credentials against MedCore PHI endpoints.
+
+[DECISION] **2. PostgreSQL Seeder Safeguards (`scripts/seedPostgres.ts`)**:
+- **Safety Guard**: `seedPostgres.ts` now inspects the `DATABASE_URL` hostname. If connected to a non-localhost/remote database (e.g. Neon, AWS RDS), execution aborts immediately unless `--force` CLI flag or `FORCE_SEED=true` environment variable is explicitly provided.
+- **Data Protection**: Prevents accidental data destruction from unintended `TRUNCATE TABLE ... CASCADE;` runs on remote staging or production databases.
+
+[DECISION] **3. Mandatory Password Authentication (`src/api/auth.ts`, `src/context/MedCoreContext.tsx`)**:
+- **Security Remediation**: Eliminated hardcoded fallback seed password (`HospitalRCM2026!`). `LoginCredentials` now strictly requires `password`, and `MedCoreContext.login()` mandates an explicit password parameter.
+
+[DECISION] **4. Elimination of N+1 Query Cascade & Multi-Field Filtering (`server/routes/encounters.ts`)**:
+- **Performance Remediation**: Extracted pure `formatHydratedEncounter(ctx)` helper. Rewrote `GET /api/v1/encounters` to execute a single base join query followed by 10 parallel batch queries (`inArray(table.encounterId, encIds)`), reducing database roundtrips from 2,751 queries (11 queries × 250 records) to exactly 11 queries total.
+- **Filter Support**: Implemented query parameters (`search`, `status`, `stage`, `hmo`) supporting patient name/MRN/bed matching, SLA/bill status checks, and commercial HMO carrier filtering.
+
+[DECISION] **5. PhilHealth eSOA XML Generation Unification (`src/pages/ClaimsEsoaPage.tsx`)**:
+- **Consistency**: Integrated `claimsApi.getPhilhealthEsoaXml(claim.id)` into `ClaimsEsoaPage.tsx` with seamless fallback to deterministic client XML generation if the server is offline.
+- **Conformance**: Ensures client downloads, clipboard copying, and XML modal inspections conform strictly to PhilHealth Circular 2023-0026 schema rules generated by the canonical backend service.
+
+[DECISION] **6. Cross-Domain SameSite None & Secure Cookies (`server/routes/auth.ts`)**:
+- **Cross-Domain Readiness**: Configured `sameSite: isProduction ? 'None' : 'Lax'` and `secure: isProduction` on `medcore_session` and `aqromed_session` session cookies in `/login` and `/logout`.
+- **Interoperability**: Allows cross-origin Vercel SPA deployments to transmit credentialed session cookies across separate API subdomains while preserving local development convenience.
+
+[DECISION] **7. Redundant Facade Deprecation & Direct Modular Imports**:
+- **Cleanup**: Purged redundant proxy `src/services/apiClient.ts`. All application components, contexts, and hooks now import directly from `@/api`.
+
+[FACT] **Automated Verification**:
+- **TypeScript Compilation (`tsc --noEmit`)**: 0 errors.
+- **Production Build (`npm run build`)**: 0 errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 records verified (100% exact waterfall reconciliation, 0 centavo drift).
+
+---
+
+## 21. Cloudflare Workers Backend Deployment Preparation & Security Hardening (October 2026)
+
+[DECISION] **1. Configuration Sanitization & Secret Isolation (`wrangler.jsonc`)**:
+- **Zero Plaintext Secrets**: Purged plaintext `DATABASE_URL` and `GATE_PASS_SECRET` from `wrangler.jsonc`'s `vars` block. `vars` contains exclusively `"NODE_ENV": "production"`.
+- **Runtime Ingestion**: `GATE_PASS_SECRET` must be provisioned strictly through Cloudflare Workers encrypted secrets (`wrangler secret put GATE_PASS_SECRET`).
+- **Resource Integrity**: Hyperdrive binding (`b611eac58efa4966b649dfa7d1631b2a`) and R2 documents binding (`aqromed-documents`) are preserved without recreation or modification. The unrelated bucket `medrec-vault` is completely decoupled.
+
+[DECISION] **2. Contextual Environment & `process.env` Resolution (`server/`)**:
+- **Isolate Safety**: In Cloudflare Workers, bindings and secrets reside on request context (`c.env`). The backend strictly avoids mutating global `process.env` inside request middleware to eliminate race conditions and memory leaks across isolate invocations.
+- **Safe Fallback Pattern**: All configuration lookups (`NODE_ENV`, `ALLOWED_ORIGINS`, `GATE_PASS_SECRET`, `HYPERDRIVE`, `DATABASE_URL`) inspect `c.env` first, with safe fallback to `process.env` only in Node.js/local development environments (`typeof process !== 'undefined' ? process.env... : undefined`), defaulting to `'production'` when undefined.
+
+[DECISION] **3. Cryptographic Gate Pass HMAC Verification & Constant-Time Comparison (`server/routes/gatePass.ts`, `server/services/gatePassService.ts`)**:
+- **HMAC Enactment**: Re-computed gate pass HMAC in `POST /passes/verify` using `generateGatePassHmac(...)` and validated against `pass.hmacSignature`.
+- **Timing Side-Channel Protection**: Implemented `timingSafeEqualHex(a, b)` for constant-time cryptographic verification, preventing timing attacks on exit pass validations.
+- **Production Secret Guard**: `resolveGatePassSecret(...)` throws an explicit configuration error if `GATE_PASS_SECRET` is missing in production mode, blocking silent fallbacks to insecure dev secrets.
+
+[DECISION] **4. Elimination of Privilege Escalation in Production (`server/middleware/auth.ts`)**:
+- **Demo Role Override Lock**: In `authMiddleware`, `X-Demo-Role` headers are evaluated only when `isProduction === false`. In production mode (`c.env.NODE_ENV === 'production'`), `X-Demo-Role` header overrides are strictly discarded, preventing unauthorized role elevation.
+
+[DECISION] **5. Production Database Guard & Health Endpoint Sanitization (`server/index.ts`, `server/db/index.ts`)**:
+- **Loopback Blocking**: In production mode, database connection strings containing `localhost`, `127.0.0.1`, `::1`, or `0.0.0.0` are immediately rejected with a 500 `DATABASE_SECURITY_ERROR`.
+- **Configuration Fail-Fast**: If neither `c.env.HYPERDRIVE` nor `DATABASE_URL` is configured in production, request middleware fails fast with a 500 `DATABASE_CONFIGURATION_ERROR`.
+- **Information Leak Prevention**: The `/api/health` endpoint sanitizes internal database errors to a generic `"Database connection failed"` string while logging root causes internally to stderr, avoiding host, port, or credential leakage in API payloads.
+
+[FACT] **Final Automated Verification**:
+- **Cloudflare Types (`wrangler types`)**: Generated clean runtime bindings in `worker-configuration.d.ts`.
+- **TypeScript Compilation (`tsc --noEmit`)**: 0 errors across server and client.
+- **Production Build (`npm run build`)**: 0 errors (Vite production bundle built in 1.10s).
+- **Financial Calculation Suite (`npm test`)**: 250/250 records mathematically reconciled (0 errors, 0 centavo drift).
+
+---
+
+## 22. Frontend API Centralization & Cloudflare Workers Cross-Origin Readiness (October 2026)
+
+[DECISION] **1. Centralized Environment-Driven API Configuration (`src/config/api.ts`, `src/api/config.ts`)**:
+- **Unified Configuration Module**: Centralized API URL resolution into `src/config/api.ts` with typed exports (`getApiBaseUrl()`, `getApiRootUrl()`, `getHealthCheckUrl()`, `checkBackendHealth()`, `API_CONFIG`).
+- **Hierarchy & Normalization**: Evaluates `VITE_API_BASE_URL` first (primary), then `VITE_API_URL` (legacy), defaulting to `""` for seamless local Vite proxy operation (`/api` -> `http://127.0.0.1:8787`). Automatically normalizes trailing slashes and handles endpoints whether configured with or without `/api/v1`.
+- **Zero Hardcoded Secrets**: Verified that no backend secrets (`GATE_PASS_SECRET`, `DATABASE_URL`, Hyperdrive IDs) are accessible to Vite or included in client bundles.
+
+[DECISION] **2. Cross-Origin Dual-Mode Authentication Verification**:
+- **Session Transport**: The client includes `credentials: 'include'` for cross-domain cookie exchange and stores the session token in `localStorage.medcore_auth_token`, automatically attaching `Authorization: Bearer <token>` on all requests.
+- **Resilience Against Third-Party Cookie Blocking**: By combining `SameSite=None; Secure` cookies with active `Authorization: Bearer` headers, authenticated sessions function reliably even in restrictive browser environments (Safari ITP, Brave, Chrome third-party cookie restrictions).
+
+[DECISION] **3. Resilient Data Hydration Architecture**:
+- **Offline-First Initial State**: The dashboard initializes immediately with `INITIAL_ENCOUNTERS` to guarantee instant time-to-interactive and zero layout shift.
+- **Live Background Hydration**: On mount, `apiClient.getMe()` and `apiClient.getEncounters()` fetch live records from the deployed Cloudflare Worker (`https://medcore-backend.mcleinonza0531.workers.dev`), replacing the initial state upon receipt. If the backend is temporarily unreachable, the frontend seamlessly operates on cached/mock data and raises non-blocking UI notifications.
+
+[FACT] **Automated Verification**:
+- **TypeScript Compilation (`tsc --noEmit`)**: 0 errors.
+- **Production Build (`npm run build`)**: 0 errors.
+- **Financial Calculation Suite (`npm test`)**: 250/250 records verified (100% exact waterfall reconciliation, 0 centavo drift).
+- **Live Cloudflare Health Ping**: Online, 250 encounters, PostgreSQL via Hyperdrive.
+
+
+
 
 
 

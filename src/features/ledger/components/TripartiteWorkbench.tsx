@@ -3,7 +3,6 @@ import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
 import { BillLifecycleState } from '@/types/domain';
 import {
-  Smartphone,
   ExternalLink,
   HelpCircle,
   ShieldCheck,
@@ -29,7 +28,6 @@ export const TripartiteWorkbench: React.FC = () => {
     selectEncounter,
     openWhyDoIOweThis,
     openDossierDrawer,
-    openPatientClarifyDrawer,
     finalizeBill,
     sendBillToPatient,
     printDocument,
@@ -256,13 +254,6 @@ export const TripartiteWorkbench: React.FC = () => {
             )}
           </div>
 
-          <button
-            onClick={() => openPatientClarifyDrawer(enc)}
-            className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"
-          >
-            <Smartphone className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Preview patient view</span>
-          </button>
           <button
             onClick={() => openDossierDrawer(enc)}
             className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs"

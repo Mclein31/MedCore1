@@ -31,13 +31,17 @@ const defaultAllowedOrigins = [
 app.use(
   '*',
   cors({
-    origin: (origin) => {
+    origin: (origin, c) => {
       // 1. Direct native mobile apps (iOS / Android) or server-to-server requests have no Origin header
       if (!origin) return origin || '';
 
+      const env = (c as any)?.env || {};
+      const allowedOriginsEnv = env.ALLOWED_ORIGINS || process.env.ALLOWED_ORIGINS;
+      const nodeEnv = env.NODE_ENV || process.env.NODE_ENV || 'production';
+
       // 2. Explicitly allowed dashboard origins from environment (comma-separated)
-      const customOrigins = process.env.ALLOWED_ORIGINS
-        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+      const customOrigins = allowedOriginsEnv
+        ? allowedOriginsEnv.split(',').map((o: string) => o.trim())
         : [];
       const allowed = [...defaultAllowedOrigins, ...customOrigins];
 
@@ -57,7 +61,7 @@ app.use(
       } catch {}
 
       // 4. In development mode, allow any localhost / 127.0.0.1 port
-      if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      if (nodeEnv !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
         return origin;
       }
 
@@ -72,13 +76,67 @@ app.use(
 import { db, getDb, runWithDb } from './db';
 import { sql } from 'drizzle-orm';
 
-// Hyperdrive Database Resolution Middleware for Cloudflare Workers
+// Hyperdrive / Database Resolution Middleware for Cloudflare Workers
 app.use('*', async (c, next) => {
-  const hyperdrive = (c.env as any)?.HYPERDRIVE;
-  if (hyperdrive?.connectionString) {
-    const hyperdriveDb = getDb(hyperdrive.connectionString);
-    return runWithDb(hyperdriveDb, () => next());
+  const env = (c.env as any) || {};
+  const nodeEnv =
+    env.NODE_ENV ||
+    (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+    'production';
+  const isProduction = nodeEnv === 'production';
+
+  const hyperdrive = env.HYPERDRIVE;
+  const connectionString = hyperdrive?.connectionString || env.DATABASE_URL;
+
+  if (isProduction) {
+    if (!connectionString) {
+      console.error(
+        '[MedCore Configuration Error] Neither HYPERDRIVE nor DATABASE_URL is configured in production environment.'
+      );
+      return apiError(
+        c,
+        500,
+        'DATABASE_CONFIGURATION_ERROR',
+        'Database connection is not configured in production environment. Ensure Cloudflare Hyperdrive or DATABASE_URL is set.'
+      );
+    }
+
+    const isLoopback =
+      connectionString.includes('localhost') ||
+      connectionString.includes('127.0.0.1') ||
+      connectionString.includes('::1') ||
+      connectionString.includes('0.0.0.0');
+
+    if (isLoopback) {
+      console.error(
+        '[MedCore Security Error] Refusing loopback database connection in production:',
+        connectionString
+      );
+      return apiError(
+        c,
+        500,
+        'DATABASE_SECURITY_ERROR',
+        'Refusing to connect to localhost / loopback database in production mode. Configure a remote PostgreSQL database via Cloudflare Hyperdrive.'
+      );
+    }
   }
+
+  // Active connection string found
+  const effectiveConn =
+    connectionString ||
+    (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
+
+  if (effectiveConn) {
+    const activeDb = getDb(effectiveConn, isProduction);
+    return runWithDb(activeDb, () => next());
+  }
+
+  // Local development fallback
+  if (!isProduction) {
+    const devDb = getDb(undefined, false);
+    return runWithDb(devDb, () => next());
+  }
+
   return next();
 });
 
@@ -90,6 +148,8 @@ app.get('/api/health', async (c) => {
   let dbStatus = 'CONNECTED';
   let dbLatencyMs = 0;
   let encountersCount = 0;
+  const hyperdriveBinding = (c.env as any)?.HYPERDRIVE;
+  const hasHyperdrive = Boolean(hyperdriveBinding?.connectionString);
 
   try {
     const start = Date.now();
@@ -106,7 +166,8 @@ app.get('/api/health', async (c) => {
         version: '3.2.0',
         database: {
           status: 'DISCONNECTED',
-          error: err.message
+          driver: hasHyperdrive ? 'CLOUDFLARE_HYPERDRIVE' : 'DIRECT_POSTGRES',
+          error: 'Database connection failed'
         },
         timestamp: new Date().toISOString()
       },
@@ -121,6 +182,7 @@ app.get('/api/health', async (c) => {
     facility: 'St. Jude Medical Center Manila',
     database: {
       status: dbStatus,
+      driver: hasHyperdrive ? 'CLOUDFLARE_HYPERDRIVE' : 'DIRECT_POSTGRES',
       latencyMs: dbLatencyMs,
       encountersCount
     },

@@ -1,27 +1,25 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "medcore-backend",
-  "main": "server/index.ts",
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "vars": {
-    "NODE_ENV": "development",
-    "DATABASE_URL": "postgresql://mclein@localhost:5432/aqromed",
-    "GATE_PASS_SECRET": "aqromed_gate_pass_hmac_secret_2026_st_jude_manila"
-  },
-  "hyperdrive": [
-    {
-      "binding": "HYPERDRIVE",
-      "id": "b611eac58efa4966b649dfa7d1631b2a",
-      "localConnectionString": "postgresql://mclein@localhost:5432/aqromed"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "DOCUMENTS_BUCKET",
-      "bucket_name": "aqromed-documents"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "medcore-backend",
+	"main": "server/index.ts",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"NODE_ENV": "production"
+	},
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "b611eac58efa4966b649dfa7d1631b2a",
+			"localConnectionString": "postgresql://mclein@localhost:5432/aqromed"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "DOCUMENTS_BUCKET",
+			"bucket_name": "aqromed-documents"
+		}
+	]
 }
