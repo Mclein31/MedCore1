@@ -68,7 +68,11 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
 
   // Set HTTP-Only Secure Cookie (8-hour hospital shift session lifespan)
   // Cross-domain SPA on Vercel requires sameSite: 'None' and secure: true in production
-  const isProduction = process.env.NODE_ENV === 'production';
+  const nodeEnv =
+    (c.env as any)?.NODE_ENV ||
+    (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+    'production';
+  const isProduction = nodeEnv === 'production';
   const cookieOpts = {
     httpOnly: true,
     secure: isProduction,
@@ -117,7 +121,11 @@ authApp.post('/logout', requireAuth, async (c) => {
     await db.delete(userSessions).where(eq(userSessions.id, sessionId));
   }
 
-  const isProduction = process.env.NODE_ENV === 'production';
+  const logoutNodeEnv =
+    (c.env as any)?.NODE_ENV ||
+    (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+    'production';
+  const isProduction = logoutNodeEnv === 'production';
   const deleteOpts = {
     path: '/',
     secure: isProduction,

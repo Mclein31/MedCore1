@@ -9,8 +9,7 @@ import {
   ShieldCheck,
   QrCode,
   FileText,
-  ChevronRight,
-  Smartphone
+  ChevronRight
 } from 'lucide-react';
 import { ConfirmButton } from '@/components/common';
 
@@ -27,8 +26,7 @@ export const ContextualActionDrawer: React.FC = () => {
     settlePatientBalance,
     openDoctorQuickSign,
     openPromissoryModal,
-    openGatePassModal,
-    openPatientClarifyDrawer
+    openGatePassModal
   } = useMedCore();
 
   if (!isActionDrawerOpen) return null;
@@ -265,24 +263,14 @@ export const ContextualActionDrawer: React.FC = () => {
               </div>
             </div>
 
-            {/* 5. Gate Pass & Dispute Navigation */}
-            <div className="grid grid-cols-2 gap-2.5 pt-1">
+            {/* 5. Gate Pass Navigation */}
+            <div className="pt-1">
               <button
                 onClick={openGatePassModal}
-                className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                className="w-full py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
               >
                 <QrCode className="w-3.5 h-3.5 text-slate-500" />
                 <span>Lobby Gate Pass</span>
-              </button>
-              <button
-                onClick={() => {
-                  closeActionDrawer();
-                  openPatientClarifyDrawer(enc);
-                }}
-                className="py-2.5 px-3 rounded-lg border border-indigo-300 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Patient Clarify</span>
               </button>
             </div>
           </div>

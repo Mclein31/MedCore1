@@ -28,7 +28,14 @@ declare module 'hono' {
 }
 
 export async function authMiddleware(c: Context, next: Next) {
-  const token = getCookie(c, 'aqromed_session') || getCookie(c, 'medcore_session');
+  // Support both Bearer token (native mobile apps & cross-origin SPAs) and HTTP cookies
+  const authHeader = c.req.header('authorization') || c.req.header('Authorization');
+  let bearerToken: string | undefined;
+  if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+    bearerToken = authHeader.substring(7).trim();
+  }
+
+  const token = bearerToken || getCookie(c, 'medcore_session') || getCookie(c, 'aqromed_session');
 
   if (token) {
     try {
@@ -65,7 +72,13 @@ export async function authMiddleware(c: Context, next: Next) {
         ]);
 
         let effectiveRole = user.role;
-        if (process.env.NODE_ENV !== 'production') {
+        const nodeEnv =
+          (c.env as any)?.NODE_ENV ||
+          (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+          'production';
+        const isProduction = nodeEnv === 'production';
+
+        if (!isProduction) {
           const demoRoleOverride = c.req.header('x-demo-role');
           if (demoRoleOverride && VALID_DEMO_ROLES.has(demoRoleOverride)) {
             effectiveRole = demoRoleOverride;

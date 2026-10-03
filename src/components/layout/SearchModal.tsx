@@ -10,8 +10,7 @@ export const SearchModal: React.FC = () => {
     encounters,
     selectEncounter,
     setActiveRoute,
-    setActiveRole,
-    openPatientClarifyDrawer
+    setActiveRole
   } = useMedCore();
 
   const [query, setQuery] = useState('');
@@ -75,14 +74,6 @@ export const SearchModal: React.FC = () => {
         closeSearchModal();
       },
       category: 'Role'
-    },
-    {
-      title: 'Preview Mobile Patient Clarify Portal',
-      action: () => {
-        closeSearchModal();
-        openPatientClarifyDrawer();
-      },
-      category: 'Preview'
     }
   ].filter((c) => c.title.toLowerCase().includes(query.toLowerCase()));
 

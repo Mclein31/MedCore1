@@ -26,12 +26,12 @@ export const ClaimsEsoaPage: React.FC = () => {
     setXmlLoading(true);
     claimsApi
       .getPhilhealthEsoaXml(claim.id)
-      .then((xml) => {
+      .then((xml: string) => {
         if (isMounted && typeof xml === 'string' && xml.trim().startsWith('<?xml')) {
           setServerXml(xml);
         }
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         console.warn('Backend eSOA XML unavailable, falling back to local schema generation:', err);
       })
       .finally(() => {

@@ -8,6 +8,7 @@ import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 
 import { isUuid } from '../utils/dbQuery';
+import { generateGatePassHmac, resolveGatePassSecret, timingSafeEqualHex } from '../services/gatePassService';
 
 const gatePassApp = new Hono();
 
@@ -44,6 +45,29 @@ gatePassApp.post(
     // Assert PIN matches
     if (pass.exitPin !== exitPin) {
       return apiError(c, 400, 'INVALID_PIN', 'The 4-digit security exit PIN is incorrect.');
+    }
+
+    // Cryptographic HMAC Verification
+    const nodeEnv =
+      (c.env as any)?.NODE_ENV ||
+      (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+      'production';
+    const isProduction = nodeEnv === 'production';
+    const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
+    const expectedHmac = await generateGatePassHmac(
+      pass.encounterId,
+      Number(pass.settledAmount),
+      pass.issuedAt.toISOString(),
+      secretKey
+    );
+
+    if (!timingSafeEqualHex(pass.hmacSignature, expectedHmac)) {
+      return apiError(
+        c,
+        403,
+        'INVALID_HMAC_SIGNATURE',
+        'Digital gate pass cryptographic signature verification failed. The pass record may have been tampered with.'
+      );
     }
 
     // Guard against repeated exit pass verification (Idempotency)

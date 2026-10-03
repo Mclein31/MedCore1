@@ -2,7 +2,7 @@ import pg from 'pg';
 import { INITIAL_ENCOUNTERS } from '../src/data/mockData';
 import { hashPassword } from '../server/services/authService';
 import { computePromissorySchedule } from '../server/services/promissoryEngine';
-import { generateGatePassHmac, generateDeterministicExitPin } from '../server/services/gatePassService';
+import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../server/services/gatePassService';
 
 const { Pool } = pg;
 
@@ -709,8 +709,8 @@ async function seed() {
         const settledAmount = dp?.settledAmount !== undefined ? dp.settledAmount : w.netPatientDue;
         const channel = dp?.settlementChannel || 'QR_PH';
         const issuedTs = dp?.issuedAt ? new Date(dp.issuedAt) : new Date();
-        const verifiedTs = dp?.verifiedAt ? new Date(dp.verifiedAt) : (dp?.status === 'VERIFIED_AT_LOBBY' ? new Date() : null);
-        const hmac = dp?.hmacSignature || (await generateGatePassHmac(insertedEncounterId, settledAmount, issuedTs.toISOString()));
+        const seedSecret = resolveGatePassSecret(process.env.GATE_PASS_SECRET, false);
+        const hmac = dp?.hmacSignature || (await generateGatePassHmac(insertedEncounterId, settledAmount, issuedTs.toISOString(), seedSecret));
         const exitPin = generateDeterministicExitPin(passNum);
 
         await client.query(

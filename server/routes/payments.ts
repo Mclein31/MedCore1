@@ -13,7 +13,7 @@ import {
   encounterTimelineEvents,
   systemAuditLogs
 } from '../db/schema';
-import { generateGatePassHmac, generateDeterministicExitPin } from '../services/gatePassService';
+import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../services/gatePassService';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
@@ -173,7 +173,13 @@ paymentsApp.post(
         let gatePassRecord = null;
         if (isFullySettled) {
           const passNumber = `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`;
-          const hmac = await generateGatePassHmac(enc.id, newAmountPaid, now.toISOString());
+          const nodeEnv =
+            (c.env as any)?.NODE_ENV ||
+            (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+            'production';
+          const isProduction = nodeEnv === 'production';
+          const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
+          const hmac = await generateGatePassHmac(enc.id, newAmountPaid, now.toISOString(), secretKey);
           const exitPin = generateDeterministicExitPin(passNumber);
 
           const insertedPasses = await tx
