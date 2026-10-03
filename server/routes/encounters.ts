@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, and, desc, sql, ilike, or } from 'drizzle-orm';
+import { eq, and, desc, sql, ilike, or, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import {
   encounters,
@@ -26,55 +26,43 @@ import { matchEncounterCondition } from '../utils/dbQuery';
 
 const encountersApp = new Hono();
 
-// Helper to format encounter for client compatibility
-export async function getHydratedEncounter(encounterIdOrNumber: string) {
-  // Match by id or encounterNumber using helper
-  const encRecord = await db
-    .select({
-      encounter: encounters,
-      patient: patients,
-      bed: beds,
-      doctor: users
-    })
-    .from(encounters)
-    .innerJoin(patients, eq(encounters.patientId, patients.id))
-    .leftJoin(beds, eq(encounters.bedId, beds.id))
-    .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
-    .where(matchEncounterCondition(encounterIdOrNumber))
-    .limit(1);
+export interface HydrationContext {
+  encounter: typeof encounters.$inferSelect;
+  patient: typeof patients.$inferSelect;
+  bed?: typeof beds.$inferSelect | null;
+  doctor?: typeof users.$inferSelect | null;
+  itemsList: (typeof chargemasterItems.$inferSelect)[];
+  waterfall?: typeof statutoryWaterfalls.$inferSelect | null;
+  philhealth?: typeof philhealthClaims.$inferSelect | null;
+  hmo?: typeof hmoAuthorizations.$inferSelect | null;
+  dischargePass?: typeof dischargePasses.$inferSelect | null;
+  promissoryNote?: typeof promissoryNotes.$inferSelect | null;
+  disputesList: (typeof billingDisputes.$inferSelect)[];
+  timelineList: (typeof encounterTimelineEvents.$inferSelect)[];
+  receiptsList: (typeof paymentReceipts.$inferSelect)[];
+  paymentsList: (typeof payments.$inferSelect)[];
+}
 
-  if (encRecord.length === 0) {
-    return null;
-  }
-
-  const { encounter, patient, bed, doctor } = encRecord[0];
-
-  // Fetch related records in parallel
-  const [
+// Pure helper to format encounter for client compatibility
+export function formatHydratedEncounter(ctx: HydrationContext) {
+  const {
+    encounter,
+    patient,
+    bed,
+    doctor,
     itemsList,
-    waterfallList,
-    philhealthList,
-    hmoList,
+    waterfall: rawWaterfall,
+    philhealth,
+    hmo,
+    dischargePass,
+    promissoryNote,
     disputesList,
-    passesList,
-    notesList,
-    paymentsList,
+    timelineList,
     receiptsList,
-    timelineList
-  ] = await Promise.all([
-    db.select().from(chargemasterItems).where(eq(chargemasterItems.encounterId, encounter.id)),
-    db.select().from(statutoryWaterfalls).where(eq(statutoryWaterfalls.encounterId, encounter.id)),
-    db.select().from(philhealthClaims).where(eq(philhealthClaims.encounterId, encounter.id)),
-    db.select().from(hmoAuthorizations).where(eq(hmoAuthorizations.encounterId, encounter.id)),
-    db.select().from(billingDisputes).where(eq(billingDisputes.encounterId, encounter.id)),
-    db.select().from(dischargePasses).where(eq(dischargePasses.encounterId, encounter.id)).orderBy(desc(dischargePasses.issuedAt)),
-    db.select().from(promissoryNotes).where(eq(promissoryNotes.encounterId, encounter.id)).orderBy(desc(promissoryNotes.createdAt)),
-    db.select().from(payments).where(eq(payments.encounterId, encounter.id)).orderBy(desc(payments.createdAt)),
-    db.select().from(paymentReceipts).where(eq(paymentReceipts.encounterId, encounter.id)).orderBy(desc(paymentReceipts.issuedAt)),
-    db.select().from(encounterTimelineEvents).where(eq(encounterTimelineEvents.encounterId, encounter.id)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
-  ]);
+    paymentsList
+  } = ctx;
 
-  const waterfall = waterfallList[0] || {
+  const waterfall = rawWaterfall || {
     grossHospitalCharges: '0.00',
     grossDoctorFee: '0.00',
     grossTotal: '0.00',
@@ -91,11 +79,6 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
     netPatientDue: '0.00',
     patientPaid: '0.00'
   };
-
-  const philhealth = philhealthList[0];
-  const hmo = hmoList[0];
-  const dischargePass = passesList[0];
-  const promissoryNote = notesList[0];
 
   return {
     id: encounter.encounterNumber.toLowerCase().replace('enc-2026-', 'enc-'),
@@ -378,19 +361,255 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
   };
 }
 
+// Helper to format a single encounter by ID or encounter number for client compatibility
+export async function getHydratedEncounter(encounterIdOrNumber: string) {
+  const encRecord = await db
+    .select({
+      encounter: encounters,
+      patient: patients,
+      bed: beds,
+      doctor: users
+    })
+    .from(encounters)
+    .innerJoin(patients, eq(encounters.patientId, patients.id))
+    .leftJoin(beds, eq(encounters.bedId, beds.id))
+    .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
+    .where(matchEncounterCondition(encounterIdOrNumber))
+    .limit(1);
+
+  if (encRecord.length === 0) {
+    return null;
+  }
+
+  const { encounter, patient, bed, doctor } = encRecord[0];
+
+  const [
+    itemsList,
+    waterfallList,
+    philhealthList,
+    hmoList,
+    disputesList,
+    passesList,
+    notesList,
+    paymentsList,
+    receiptsList,
+    timelineList
+  ] = await Promise.all([
+    db.select().from(chargemasterItems).where(eq(chargemasterItems.encounterId, encounter.id)),
+    db.select().from(statutoryWaterfalls).where(eq(statutoryWaterfalls.encounterId, encounter.id)),
+    db.select().from(philhealthClaims).where(eq(philhealthClaims.encounterId, encounter.id)),
+    db.select().from(hmoAuthorizations).where(eq(hmoAuthorizations.encounterId, encounter.id)),
+    db.select().from(billingDisputes).where(eq(billingDisputes.encounterId, encounter.id)),
+    db.select().from(dischargePasses).where(eq(dischargePasses.encounterId, encounter.id)).orderBy(desc(dischargePasses.issuedAt)),
+    db.select().from(promissoryNotes).where(eq(promissoryNotes.encounterId, encounter.id)).orderBy(desc(promissoryNotes.createdAt)),
+    db.select().from(payments).where(eq(payments.encounterId, encounter.id)).orderBy(desc(payments.createdAt)),
+    db.select().from(paymentReceipts).where(eq(paymentReceipts.encounterId, encounter.id)).orderBy(desc(paymentReceipts.issuedAt)),
+    db.select().from(encounterTimelineEvents).where(eq(encounterTimelineEvents.encounterId, encounter.id)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
+  ]);
+
+  return formatHydratedEncounter({
+    encounter,
+    patient,
+    bed,
+    doctor,
+    itemsList,
+    waterfall: waterfallList[0],
+    philhealth: philhealthList[0],
+    hmo: hmoList[0],
+    dischargePass: passesList[0],
+    promissoryNote: notesList[0],
+    disputesList,
+    timelineList,
+    receiptsList,
+    paymentsList
+  });
+}
+
 // GET /api/v1/encounters
 encountersApp.get('/', async (c) => {
-  const encs = await db
-    .select({ id: encounters.id })
+  const { search, status, stage, hmo } = c.req.query();
+  const conditions = [];
+
+  if (search && search.trim()) {
+    const searchPattern = `%${search.trim()}%`;
+    conditions.push(
+      or(
+        ilike(patients.fullName, searchPattern),
+        ilike(patients.mrn, searchPattern),
+        ilike(encounters.encounterNumber, searchPattern),
+        ilike(encounters.roomBed, searchPattern)
+      )!
+    );
+  }
+
+  if (stage && stage !== 'ALL') {
+    const s = stage.toUpperCase();
+    const validStages = [
+      'MGH_DECLARED',
+      'DOCTOR_PF_PENDING',
+      'PHARMACY_RTS_AUDIT',
+      'HMO_FINAL_LOA',
+      'PENDING_SETTLEMENT',
+      'CLEARED_GATE_PASS'
+    ];
+    if (validStages.includes(s)) {
+      conditions.push(eq(encounters.stage, s as any));
+    }
+  }
+
+  if (status && status !== 'ALL') {
+    const s = status.toUpperCase();
+    const validSlaStatuses = ['NORMAL', 'WARNING', 'BREACH'];
+    const validBillStates = [
+      'DRAFT',
+      'FINALIZED',
+      'SENT_TO_PATIENT',
+      'VIEWED',
+      'DISPUTED',
+      'PARTIALLY_PAID',
+      'PAID',
+      'OVERDUE',
+      'CANCELLED'
+    ];
+    const statusOr = [];
+    if (validSlaStatuses.includes(s)) {
+      statusOr.push(eq(encounters.slaStatus, s as any));
+    }
+    if (validBillStates.includes(s)) {
+      statusOr.push(eq(encounters.billState, s as any));
+    }
+    if (statusOr.length > 0) {
+      conditions.push(statusOr.length === 1 ? statusOr[0] : or(...statusOr)!);
+    }
+  }
+
+  if (hmo && hmo !== 'ALL') {
+    conditions.push(ilike(hmoAuthorizations.providerName, `%${hmo.trim()}%`));
+  }
+
+  let baseQuery = db
+    .select({
+      encounter: encounters,
+      patient: patients,
+      bed: beds,
+      doctor: users,
+      hmo: hmoAuthorizations
+    })
     .from(encounters)
+    .innerJoin(patients, eq(encounters.patientId, patients.id))
+    .leftJoin(beds, eq(encounters.bedId, beds.id))
+    .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
+    .leftJoin(hmoAuthorizations, eq(encounters.id, hmoAuthorizations.encounterId))
     .orderBy(encounters.admissionTimestamp);
 
-  const hydrated = await Promise.all(encs.map((e) => getHydratedEncounter(e.id)));
-  const validItems = hydrated.filter(Boolean);
+  const encRecords = conditions.length > 0
+    ? await baseQuery.where(and(...conditions))
+    : await baseQuery;
+
+  if (encRecords.length === 0) {
+    return c.json({ items: [], total: 0 });
+  }
+
+  const encIds = encRecords.map((r) => r.encounter.id);
+
+  // Batch fetch child relations across all matched encounters (10 queries in parallel instead of N * 10)
+  const [
+    allItems,
+    allWaterfalls,
+    allPhilhealth,
+    allDisputes,
+    allPasses,
+    allNotes,
+    allPayments,
+    allReceipts,
+    allTimeline
+  ] = await Promise.all([
+    db.select().from(chargemasterItems).where(inArray(chargemasterItems.encounterId, encIds)),
+    db.select().from(statutoryWaterfalls).where(inArray(statutoryWaterfalls.encounterId, encIds)),
+    db.select().from(philhealthClaims).where(inArray(philhealthClaims.encounterId, encIds)),
+    db.select().from(billingDisputes).where(inArray(billingDisputes.encounterId, encIds)),
+    db.select().from(dischargePasses).where(inArray(dischargePasses.encounterId, encIds)).orderBy(desc(dischargePasses.issuedAt)),
+    db.select().from(promissoryNotes).where(inArray(promissoryNotes.encounterId, encIds)).orderBy(desc(promissoryNotes.createdAt)),
+    db.select().from(payments).where(inArray(payments.encounterId, encIds)).orderBy(desc(payments.createdAt)),
+    db.select().from(paymentReceipts).where(inArray(paymentReceipts.encounterId, encIds)).orderBy(desc(paymentReceipts.issuedAt)),
+    db.select().from(encounterTimelineEvents).where(inArray(encounterTimelineEvents.encounterId, encIds)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
+  ]);
+
+  const itemsByEnc = new Map<string, (typeof chargemasterItems.$inferSelect)[]>();
+  const waterfallByEnc = new Map<string, typeof statutoryWaterfalls.$inferSelect>();
+  const philhealthByEnc = new Map<string, typeof philhealthClaims.$inferSelect>();
+  const disputesByEnc = new Map<string, (typeof billingDisputes.$inferSelect)[]>();
+  const passesByEnc = new Map<string, (typeof dischargePasses.$inferSelect)[]>();
+  const notesByEnc = new Map<string, (typeof promissoryNotes.$inferSelect)[]>();
+  const paymentsByEnc = new Map<string, (typeof payments.$inferSelect)[]>();
+  const receiptsByEnc = new Map<string, (typeof paymentReceipts.$inferSelect)[]>();
+  const timelineByEnc = new Map<string, (typeof encounterTimelineEvents.$inferSelect)[]>();
+
+  for (const it of allItems) {
+    const list = itemsByEnc.get(it.encounterId) || [];
+    list.push(it);
+    itemsByEnc.set(it.encounterId, list);
+  }
+  for (const w of allWaterfalls) {
+    waterfallByEnc.set(w.encounterId, w);
+  }
+  for (const p of allPhilhealth) {
+    philhealthByEnc.set(p.encounterId, p);
+  }
+  for (const d of allDisputes) {
+    const list = disputesByEnc.get(d.encounterId) || [];
+    list.push(d);
+    disputesByEnc.set(d.encounterId, list);
+  }
+  for (const p of allPasses) {
+    const list = passesByEnc.get(p.encounterId) || [];
+    list.push(p);
+    passesByEnc.set(p.encounterId, list);
+  }
+  for (const n of allNotes) {
+    const list = notesByEnc.get(n.encounterId) || [];
+    list.push(n);
+    notesByEnc.set(n.encounterId, list);
+  }
+  for (const p of allPayments) {
+    const list = paymentsByEnc.get(p.encounterId) || [];
+    list.push(p);
+    paymentsByEnc.set(p.encounterId, list);
+  }
+  for (const r of allReceipts) {
+    const list = receiptsByEnc.get(r.encounterId) || [];
+    list.push(r);
+    receiptsByEnc.set(r.encounterId, list);
+  }
+  for (const t of allTimeline) {
+    const list = timelineByEnc.get(t.encounterId) || [];
+    list.push(t);
+    timelineByEnc.set(t.encounterId, list);
+  }
+
+  const items = encRecords.map((r) => {
+    const encId = r.encounter.id;
+    return formatHydratedEncounter({
+      encounter: r.encounter,
+      patient: r.patient,
+      bed: r.bed,
+      doctor: r.doctor,
+      itemsList: itemsByEnc.get(encId) || [],
+      waterfall: waterfallByEnc.get(encId),
+      philhealth: philhealthByEnc.get(encId),
+      hmo: r.hmo,
+      dischargePass: passesByEnc.get(encId)?.[0],
+      promissoryNote: notesByEnc.get(encId)?.[0],
+      disputesList: disputesByEnc.get(encId) || [],
+      timelineList: timelineByEnc.get(encId) || [],
+      receiptsList: receiptsByEnc.get(encId) || [],
+      paymentsList: paymentsByEnc.get(encId) || []
+    });
+  });
 
   return c.json({
-    items: validItems,
-    total: validItems.length
+    items,
+    total: items.length
   });
 });
 
