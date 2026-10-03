@@ -8,6 +8,7 @@ import { users, userSessions, facilities, systemAuditLogs } from '../db/schema';
 import { verifyPassword, generateSessionToken, hashSessionToken } from '../services/authService';
 import { apiError } from '../middleware/error';
 import { requireAuth } from '../middleware/auth';
+import { getClientIp } from '../utils/clientIp';
 
 const authApp = new Hono();
 
@@ -61,7 +62,7 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
   await db.insert(userSessions).values({
     userId: user.id,
     tokenHash,
-    ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+    ipAddress: getClientIp(c),
     userAgent: c.req.header('user-agent'),
     expiresAt
   });
@@ -92,7 +93,7 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
     resourceType: 'users',
     resourceId: user.id,
     newState: { username: user.username, role: user.role },
-    ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+    ipAddress: getClientIp(c),
     userAgent: c.req.header('user-agent')
   });
 
@@ -142,7 +143,7 @@ authApp.post('/logout', requireAuth, async (c) => {
       action: 'USER_LOGOUT',
       resourceType: 'users',
       resourceId: user.id,
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
   }

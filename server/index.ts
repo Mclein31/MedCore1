@@ -222,11 +222,12 @@ app.notFound((c) => {
 // Global Exception Handler
 app.onError((err, c) => {
   console.error('Unhandled AQROMED API Error:', err);
+  const detail = err instanceof Error ? err.message : String(err);
   return apiError(
     c,
     500,
     'INTERNAL_SERVER_ERROR',
-    'An internal server error occurred. Transaction rolled back.'
+    `An internal server error occurred: ${detail}`
   );
 });
 

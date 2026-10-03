@@ -18,6 +18,7 @@ import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
 import { matchEncounterCondition, matchChargeItemCondition, matchDisputeCondition } from '../utils/dbQuery';
+import { getClientIp } from '../utils/clientIp';
 
 const disputesApp = new Hono();
 
@@ -102,7 +103,7 @@ disputesApp.post(
       resourceType: 'billing_disputes',
       resourceId: insertedDisputes[0].id,
       newState: { chargeId: item.id, reason, contestedAmount: item.patientOop },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -195,7 +196,7 @@ disputesApp.post(
       resourceType: 'billing_disputes',
       resourceId: dispute.id,
       newState: { supervisorNotes, status: 'SUPERVISOR_WAIVED' },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 

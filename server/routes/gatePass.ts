@@ -9,6 +9,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 
 import { isUuid } from '../utils/dbQuery';
 import { generateGatePassHmac, resolveGatePassSecret, timingSafeEqualHex } from '../services/gatePassService';
+import { getClientIp } from '../utils/clientIp';
 
 const gatePassApp = new Hono();
 
@@ -104,7 +105,7 @@ gatePassApp.post(
       resourceType: 'discharge_passes',
       resourceId: pass.id,
       newState: { passNumber: pass.passNumber, status: 'VERIFIED_AT_LOBBY', exitPin },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 

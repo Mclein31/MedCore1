@@ -18,6 +18,7 @@ import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
 import { matchEncounterCondition } from '../utils/dbQuery';
+import { getClientIp } from '../utils/clientIp';
 
 const clearanceApp = new Hono();
 
@@ -79,7 +80,7 @@ clearanceApp.post(
       resourceType: 'encounters',
       resourceId: enc.id,
       newState: { agreedFee, stage: 'PHARMACY_RTS_AUDIT' },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -140,7 +141,7 @@ clearanceApp.post(
       resourceType: 'encounters',
       resourceId: enc.id,
       newState: { doctorExcessPf: 0, stage: 'PHARMACY_RTS_AUDIT' },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -199,7 +200,7 @@ clearanceApp.post(
       resourceType: 'encounters',
       resourceId: enc.id,
       newState: { pharmacyRtsCleared: true, unreturnedMedsCount: 0, stage: 'HMO_FINAL_LOA' },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 
@@ -287,7 +288,7 @@ clearanceApp.post(
       resourceType: 'hmo_authorizations',
       resourceId: enc.id,
       newState: { approvalCode: code, approvedAmount: finalAmount, stage: 'PENDING_SETTLEMENT' },
-      ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+      ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });
 

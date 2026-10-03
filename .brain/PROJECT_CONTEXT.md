@@ -1797,7 +1797,7 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [DECISION] **4. Safe Production Transport Diagnostics (`src/api/client.ts`, `src/components/auth/LoginScreen.tsx`)**:
 - **Diagnostic Logging**: Added structured, non-sensitive logging to `console.error` that differentiates network/CORS blockages from server-side 4xx/5xx HTTP errors. Passwords and credentials remain strictly redacted.
 
-[FACT] **5. Live Edge Deployment & Verification (`ca3b60ae-ebb6-4dd7-bad3-5a66b8552216`)**:
+[FACT] **5. Live Edge Deployment & Verification (`a97e7299-97ff-4eee-842c-115546fbc491`)**:
 - **Deployment**: Uploaded updated `medcore-backend` with `wrangler deploy` on October 3, 2026.
 - **Edge CORS Verification**: Verified live preflight `OPTIONS /api/v1/auth/login` from `Origin: https://med-core1.vercel.app`:
   - Returns `HTTP/2 204`
@@ -1810,5 +1810,11 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   - Database connectivity verified via Cloudflare Hyperdrive to PostgreSQL (`encountersCount: 250`)
   - Issues Dual-Auth tokens: JSON `token` and `medcore_session` cookie (`SameSite=None; Secure; HttpOnly; Max-Age=28800`).
 - **Domain Flexibility**: Explicit support for `https://med-core1.vercel.app`, `https://med-core1-beige.vercel.app`, and `https://medcore1.vercel.app`, with wildcard regex for all MedCore/AqroMed Vercel deployments.
+
+[DECISION] **6. Resolution of 500 Internal Server Error ("Transaction rolled back")**:
+- **Root Cause**: In multi-CDN production environments (client -> Vercel edge -> Cloudflare Worker), `X-Forwarded-For` contains a chained list of proxy hops (e.g. `client_ip, vercel_ip`). For IPv6 connections or multi-hop proxies, this string easily reached 70+ characters, exceeding the PostgreSQL `varchar(45)` column limit on `user_sessions.ip_address` and `system_audit_logs.ip_address`. When attempting insertion during login and auditable state changes, PostgreSQL aborted the transaction with `value too long for type character varying(45)`, triggering `app.onError` to return the generic 500 error.
+- **Resolution**: Created `server/utils/clientIp.ts` (`getClientIp(c)`) which extracts `CF-Connecting-IP` or the first IP from `X-Forwarded-For` and strictly truncates to 45 characters. Replaced all occurrences across `server/routes/` (`auth.ts`, `beds.ts`, `charges.ts`, `clearance.ts`, `disputes.ts`, `encounters.ts`, `gatePass.ts`, `payments.ts`, `promissory.ts`).
+- **Informative Error Handling**: Updated `app.onError` in `server/index.ts` to surface the actual underlying error detail rather than masking all 500 exceptions under an opaque rollback banner.
+
 
 

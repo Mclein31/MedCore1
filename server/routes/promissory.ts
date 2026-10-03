@@ -17,6 +17,7 @@ import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter } from './encounters';
 import { matchEncounterCondition } from '../utils/dbQuery';
+import { getClientIp } from '../utils/clientIp';
 
 const promissoryApp = new Hono();
 
@@ -177,7 +178,7 @@ promissoryApp.post(
         resourceType: 'promissory_notes',
         resourceId: insertedNotes[0].id,
         newState: { noteNumber, principal: params.principalAmount, months: params.installmentMonths },
-        ipAddress: c.req.header('x-forwarded-for') || '127.0.0.1',
+        ipAddress: getClientIp(c),
         userAgent: c.req.header('user-agent')
       });
 
