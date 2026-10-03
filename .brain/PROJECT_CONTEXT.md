@@ -1778,6 +1778,26 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - **Financial Calculation Suite (`npm test`)**: 250/250 records verified (100% exact waterfall reconciliation, 0 centavo drift).
 - **Live Cloudflare Health Ping**: Online, 250 encounters, PostgreSQL via Hyperdrive.
 
+---
+
+## 23. Vercel Production Authentication & CORS Resolution (October 2026)
+
+[DECISION] **1. Root Cause Identification for "Failed to fetch" on Vercel**:
+- **CORS Hostname Mismatch**: The backend's previous regex `/^medcore(-[a-z0-9-]+)?\.vercel\.app$/` strictly required a hyphen after `medcore`, thereby rejecting `medcore1.vercel.app` (which has a digit `1` rather than a `-`). Because preflight `OPTIONS` requests from `https://medcore1.vercel.app` did not receive an `Access-Control-Allow-Origin` header, the browser blocked the network request with a generic `TypeError: Failed to fetch`.
+- **Missing API Rewrite Fallback**: If `VITE_API_BASE_URL` was not configured in Vercel project environment variables, the frontend defaulted to a relative path (`/api/v1/auth/login`) which was caught by Vercel's catch-all SPA rewrite and returned `index.html` rather than proxying to the Cloudflare Worker.
+
+[DECISION] **2. Comprehensive CORS Hardening (`server/index.ts`)**:
+- **Allowed Subdomains**: Expanded regex to `/^(?:[a-z0-9-]+\.)?[a-z0-9-]*(?:medcore|aqromed)[a-z0-9-]*\.vercel\.app$/i`, matching `medcore1.vercel.app`, `medcore-1.vercel.app`, `medcore-hospital.vercel.app`, and git preview deployments while strictly rejecting arbitrary or malicious origins.
+- **Default Allowed Origins**: Added `https://medcore1.vercel.app` directly to `defaultAllowedOrigins`.
+
+[DECISION] **3. Dual Redundancy: Vercel Proxy Rewrite & Production Default URL (`vercel.json`, `src/config/api.ts`)**:
+- **Vercel Reverse Proxy**: Configured `"source": "/api/:path*", "destination": "https://medcore-backend.mcleinonza0531.workers.dev/api/:path*"` in `vercel.json` before the catch-all SPA rule.
+- **Production Fallback**: If neither `VITE_API_BASE_URL` nor `VITE_API_URL` is set in a production build, `src/config/api.ts` automatically defaults to `https://medcore-backend.mcleinonza0531.workers.dev` while preserving local dev proxying in development mode.
+
+[DECISION] **4. Safe Production Transport Diagnostics (`src/api/client.ts`, `src/components/auth/LoginScreen.tsx`)**:
+- **Diagnostic Logging**: Added structured, non-sensitive logging to `console.error` that differentiates network/CORS blockages from server-side 4xx/5xx HTTP errors. Passwords and credentials remain strictly redacted.
+
+
 
 
 

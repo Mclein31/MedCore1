@@ -145,7 +145,32 @@ export class ApiClient {
       credentials: 'include' // Transmit session HTTP-Only cookie when available
     };
 
-    const res = await fetch(url, config);
+    let res: Response;
+    try {
+      res = await fetch(url, config);
+    } catch (networkErr: any) {
+      const isFailedToFetch =
+        networkErr instanceof TypeError &&
+        (networkErr.message === 'Failed to fetch' || networkErr.message.includes('fetch'));
+      const diagnostic = isFailedToFetch
+        ? `Browser could not reach API endpoint (${url}). Possible causes: CORS preflight rejection, network offline, or mixed-content blockage.`
+        : (networkErr?.message || 'Network request failed');
+
+      console.error('[MedCore API Transport Failure]', {
+        endpoint: url,
+        method: config.method || 'GET',
+        errorType: networkErr?.name || 'Error',
+        errorMessage: networkErr?.message || 'Failed to fetch',
+        diagnostic
+      });
+
+      throw new ApiError(
+        `Unable to reach MedCore API at ${url}. ${diagnostic}`,
+        0,
+        'NETWORK_CONNECTION_ERROR',
+        { url, method: config.method || 'GET', originalError: networkErr?.message }
+      );
+    }
 
     // Handle XML streaming (e.g. PhilHealth eSOA claims)
     if (res.headers.get('content-type')?.includes('application/xml')) {
@@ -157,7 +182,14 @@ export class ApiClient {
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
-      const errorMsg = data?.error?.message || `Request failed with status ${res.status}`;
+      console.warn('[MedCore API Response Error]', {
+        endpoint: url,
+        status: res.status,
+        statusText: res.statusText,
+        errorCode: data?.error?.code,
+        errorMessage: data?.error?.message
+      });
+      const errorMsg = data?.error?.message || `Request to ${url} failed with status ${res.status} (${res.statusText})`;
       throw new ApiError(errorMsg, res.status, data?.error?.code, data?.error?.details);
     }
 

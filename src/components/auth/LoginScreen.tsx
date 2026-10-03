@@ -116,9 +116,9 @@ export const LoginScreen: React.FC = () => {
           </div>
 
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in duration-200">
-              <div className="w-2 h-2 rounded-full bg-rose-600" />
-              <span>{errorMessage}</span>
+            <div className="p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-start gap-2.5 animate-in fade-in duration-200">
+              <div className="w-2 h-2 rounded-full bg-rose-600 shrink-0 mt-1" />
+              <div className="flex-1 break-words leading-relaxed">{errorMessage}</div>
             </div>
           )}
 
