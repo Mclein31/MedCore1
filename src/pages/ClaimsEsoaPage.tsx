@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
+import { claimsApi } from '@/api';
 import { formatPhp } from '@/utils/formatters';
 import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer } from 'lucide-react';
 import { Button, IconButton, SearchInput, SegmentedTabs } from '@/components/common';
@@ -11,12 +12,39 @@ export const ClaimsEsoaPage: React.FC = () => {
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
   const [filterClaimStatus, setFilterClaimStatus] = useState<string>('ALL');
   const [claimSearch, setClaimSearch] = useState<string>('');
+  const [serverXml, setServerXml] = useState<string | null>(null);
+  const [xmlLoading, setXmlLoading] = useState(false);
 
   const currentEncounter = encounters.find((e) => e.id === selectedClaimId) || encounters[0];
   const claim = currentEncounter.philhealth;
 
-  // Generate real PhilHealth Circular 2023-0026 eSOA XML conforming payload
-  const eSoaXmlString = `<?xml version="1.0" encoding="UTF-8"?>
+  // Unify PhilHealth Circular 2023-0026 eSOA XML generation with backend claimsApi
+  useEffect(() => {
+    let isMounted = true;
+    if (!claim?.id) return;
+
+    setXmlLoading(true);
+    claimsApi
+      .getPhilhealthEsoaXml(claim.id)
+      .then((xml) => {
+        if (isMounted && typeof xml === 'string' && xml.trim().startsWith('<?xml')) {
+          setServerXml(xml);
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend eSOA XML unavailable, falling back to local schema generation:', err);
+      })
+      .finally(() => {
+        if (isMounted) setXmlLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [claim?.id, currentEncounter?.encounterNumber]);
+
+  // Deterministic PhilHealth Circular 2023-0026 eSOA XML conforming fallback payload
+  const fallbackXmlString = `<?xml version="1.0" encoding="UTF-8"?>
 <eSOA xmlns="http://www.philhealth.gov.ph/claims/esoa/v3" version="3.0">
   <Header>
     <HospitalCode>HOSP-NCR-004921</HospitalCode>
@@ -53,6 +81,8 @@ export const ClaimsEsoaPage: React.FC = () => {
     </StatutoryWaterfalls>
   </ClaimDetails>
 </eSOA>`;
+
+  const eSoaXmlString = serverXml || fallbackXmlString;
 
   const handleCopyXml = () => {
     navigator.clipboard.writeText(eSoaXmlString);

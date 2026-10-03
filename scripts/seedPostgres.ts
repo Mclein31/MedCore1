@@ -14,6 +14,17 @@ async function seed() {
   console.log('Database Target:', DATABASE_URL);
   console.log('================================================================================\n');
 
+  // Security guard against accidental truncation of remote staging or production databases
+  const isLocalDb = DATABASE_URL.includes('localhost') || DATABASE_URL.includes('127.0.0.1');
+  const isForce = process.env.FORCE_SEED === 'true' || process.argv.includes('--force');
+
+  if (!isLocalDb && !isForce) {
+    console.error('\n[SECURITY BLOCKER] Refusing to seed non-localhost / remote database without FORCE_SEED=true or --force flag.');
+    console.error('Target Database:', DATABASE_URL);
+    console.error('To proceed against a remote staging/test instance, set FORCE_SEED=true or pass --force.\n');
+    process.exit(1);
+  }
+
   const pool = new Pool({ connectionString: DATABASE_URL });
   const client = await pool.connect();
 

@@ -67,13 +67,17 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
   });
 
   // Set HTTP-Only Secure Cookie (8-hour hospital shift session lifespan)
-  setCookie(c, 'aqromed_session', token, {
+  // Cross-domain SPA on Vercel requires sameSite: 'None' and secure: true in production
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOpts = {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Lax',
+    secure: isProduction,
+    sameSite: (isProduction ? 'None' : 'Lax') as 'None' | 'Lax',
     path: '/',
     maxAge: 28800 // 8 hours in seconds
-  });
+  };
+  setCookie(c, 'medcore_session', token, cookieOpts);
+  setCookie(c, 'aqromed_session', token, cookieOpts);
 
   // Log in system audit logs
   await db.insert(systemAuditLogs).values({
@@ -90,6 +94,7 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
 
   return c.json({
     success: true,
+    token,
     user: {
       id: user.id,
       username: user.username,
@@ -112,8 +117,14 @@ authApp.post('/logout', requireAuth, async (c) => {
     await db.delete(userSessions).where(eq(userSessions.id, sessionId));
   }
 
-  deleteCookie(c, 'aqromed_session', { path: '/' });
-  deleteCookie(c, 'medcore_session', { path: '/' });
+  const isProduction = process.env.NODE_ENV === 'production';
+  const deleteOpts = {
+    path: '/',
+    secure: isProduction,
+    sameSite: (isProduction ? 'None' : 'Lax') as 'None' | 'Lax'
+  };
+  deleteCookie(c, 'medcore_session', deleteOpts);
+  deleteCookie(c, 'aqromed_session', deleteOpts);
 
   if (user) {
     await db.insert(systemAuditLogs).values({

@@ -20,11 +20,49 @@ const app = new Hono();
 // Global Logger
 app.use('*', logger());
 
-// CORS configuration for Vite frontend
+// CORS configuration for Vite/Vercel dashboard and native mobile clients (iOS / Android)
+const defaultAllowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:3000'
+];
+
 app.use(
   '*',
   cors({
-    origin: (origin) => origin || '*',
+    origin: (origin) => {
+      // 1. Direct native mobile apps (iOS / Android) or server-to-server requests have no Origin header
+      if (!origin) return origin || '';
+
+      // 2. Explicitly allowed dashboard origins from environment (comma-separated)
+      const customOrigins = process.env.ALLOWED_ORIGINS
+        ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+        : [];
+      const allowed = [...defaultAllowedOrigins, ...customOrigins];
+
+      if (allowed.includes(origin)) {
+        return origin;
+      }
+
+      // 3. Vercel prototype deployments restricted strictly to verified MedCore project domains
+      try {
+        const parsed = new URL(origin);
+        if (
+          parsed.hostname === 'medcore-hospital.vercel.app' ||
+          /^medcore(-[a-z0-9-]+)?\.vercel\.app$/.test(parsed.hostname)
+        ) {
+          return origin;
+        }
+      } catch {}
+
+      // 4. In development mode, allow any localhost / 127.0.0.1 port
+      if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+        return origin;
+      }
+
+      return null;
+    },
     credentials: true,
     allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Demo-Role'],
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
