@@ -426,9 +426,35 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
   });
 }
 
+// In-memory cache for default encounters list payload to prevent Worker CPU limit breaches
+let cachedEncountersPayload: {
+  json: string;
+  timestamp: number;
+} | null = null;
+
+export function invalidateEncountersCache() {
+  cachedEncountersPayload = null;
+}
+
 // GET /api/v1/encounters
 encountersApp.get('/', async (c) => {
   const { search, status, stage, hmo } = c.req.query();
+
+  const isDefaultFetch =
+    (!search || !search.trim()) &&
+    (!status || status === 'ALL') &&
+    (!stage || stage === 'ALL') &&
+    (!hmo || hmo === 'ALL');
+
+  // 1. In-memory isolate cache (0ms CPU)
+  if (isDefaultFetch && cachedEncountersPayload && Date.now() - cachedEncountersPayload.timestamp < 300000) {
+    return c.body(cachedEncountersPayload.json, 200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=10, s-maxage=30, stale-while-revalidate=60',
+      'X-Cache-Status': 'HIT-MEMORY'
+    });
+  }
+
   const conditions = [];
 
   if (search && search.trim()) {
@@ -494,13 +520,17 @@ encountersApp.get('/', async (c) => {
       patient: patients,
       bed: beds,
       doctor: users,
-      hmo: hmoAuthorizations
+      hmo: hmoAuthorizations,
+      waterfall: statutoryWaterfalls,
+      philhealth: philhealthClaims
     })
     .from(encounters)
     .innerJoin(patients, eq(encounters.patientId, patients.id))
     .leftJoin(beds, eq(encounters.bedId, beds.id))
     .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
     .leftJoin(hmoAuthorizations, eq(encounters.id, hmoAuthorizations.encounterId))
+    .leftJoin(statutoryWaterfalls, eq(encounters.id, statutoryWaterfalls.encounterId))
+    .leftJoin(philhealthClaims, eq(encounters.id, philhealthClaims.encounterId))
     .orderBy(encounters.admissionTimestamp);
 
   const encRecords = conditions.length > 0
@@ -512,30 +542,38 @@ encountersApp.get('/', async (c) => {
   }
 
   const encIds = encRecords.map((r) => r.encounter.id);
+  const isAll = conditions.length === 0;
 
-  // Batch fetch child relations across all matched encounters in 3 balanced batches
-  // to prevent Hyperdrive pool exhaustion (pool max: 10 connections)
-  const [allItems, allWaterfalls, allPhilhealth] = await Promise.all([
-    db.select().from(chargemasterItems).where(inArray(chargemasterItems.encounterId, encIds)),
-    db.select().from(statutoryWaterfalls).where(inArray(statutoryWaterfalls.encounterId, encIds)),
-    db.select().from(philhealthClaims).where(inArray(philhealthClaims.encounterId, encIds))
+  // Batch fetch child relations across matched encounters
+  // If fetching all encounters, scan directly without sending 250 UUID parameters in SQL
+  const [allItems, allDisputes, allPasses] = await Promise.all([
+    isAll
+      ? db.select().from(chargemasterItems)
+      : db.select().from(chargemasterItems).where(inArray(chargemasterItems.encounterId, encIds)),
+    isAll
+      ? db.select().from(billingDisputes)
+      : db.select().from(billingDisputes).where(inArray(billingDisputes.encounterId, encIds)),
+    isAll
+      ? db.select().from(dischargePasses).orderBy(desc(dischargePasses.issuedAt))
+      : db.select().from(dischargePasses).where(inArray(dischargePasses.encounterId, encIds)).orderBy(desc(dischargePasses.issuedAt))
   ]);
 
-  const [allDisputes, allPasses, allNotes] = await Promise.all([
-    db.select().from(billingDisputes).where(inArray(billingDisputes.encounterId, encIds)),
-    db.select().from(dischargePasses).where(inArray(dischargePasses.encounterId, encIds)).orderBy(desc(dischargePasses.issuedAt)),
-    db.select().from(promissoryNotes).where(inArray(promissoryNotes.encounterId, encIds)).orderBy(desc(promissoryNotes.createdAt))
-  ]);
-
-  const [allPayments, allReceipts, allTimeline] = await Promise.all([
-    db.select().from(payments).where(inArray(payments.encounterId, encIds)).orderBy(desc(payments.createdAt)),
-    db.select().from(paymentReceipts).where(inArray(paymentReceipts.encounterId, encIds)).orderBy(desc(paymentReceipts.issuedAt)),
-    db.select().from(encounterTimelineEvents).where(inArray(encounterTimelineEvents.encounterId, encIds)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
+  const [allNotes, allPayments, allReceipts, allTimeline] = await Promise.all([
+    isAll
+      ? db.select().from(promissoryNotes).orderBy(desc(promissoryNotes.createdAt))
+      : db.select().from(promissoryNotes).where(inArray(promissoryNotes.encounterId, encIds)).orderBy(desc(promissoryNotes.createdAt)),
+    isAll
+      ? db.select().from(payments).orderBy(desc(payments.createdAt))
+      : db.select().from(payments).where(inArray(payments.encounterId, encIds)).orderBy(desc(payments.createdAt)),
+    isAll
+      ? db.select().from(paymentReceipts).orderBy(desc(paymentReceipts.issuedAt))
+      : db.select().from(paymentReceipts).where(inArray(paymentReceipts.encounterId, encIds)).orderBy(desc(paymentReceipts.issuedAt)),
+    isAll
+      ? db.select().from(encounterTimelineEvents).orderBy(desc(encounterTimelineEvents.eventTimestamp))
+      : db.select().from(encounterTimelineEvents).where(inArray(encounterTimelineEvents.encounterId, encIds)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
   ]);
 
   const itemsByEnc = new Map<string, (typeof chargemasterItems.$inferSelect)[]>();
-  const waterfallByEnc = new Map<string, typeof statutoryWaterfalls.$inferSelect>();
-  const philhealthByEnc = new Map<string, typeof philhealthClaims.$inferSelect>();
   const disputesByEnc = new Map<string, (typeof billingDisputes.$inferSelect)[]>();
   const passesByEnc = new Map<string, (typeof dischargePasses.$inferSelect)[]>();
   const notesByEnc = new Map<string, (typeof promissoryNotes.$inferSelect)[]>();
@@ -547,12 +585,6 @@ encountersApp.get('/', async (c) => {
     const list = itemsByEnc.get(it.encounterId) || [];
     list.push(it);
     itemsByEnc.set(it.encounterId, list);
-  }
-  for (const w of allWaterfalls) {
-    waterfallByEnc.set(w.encounterId, w);
-  }
-  for (const p of allPhilhealth) {
-    philhealthByEnc.set(p.encounterId, p);
   }
   for (const d of allDisputes) {
     const list = disputesByEnc.get(d.encounterId) || [];
@@ -593,8 +625,8 @@ encountersApp.get('/', async (c) => {
       bed: r.bed,
       doctor: r.doctor,
       itemsList: itemsByEnc.get(encId) || [],
-      waterfall: waterfallByEnc.get(encId),
-      philhealth: philhealthByEnc.get(encId),
+      waterfall: r.waterfall,
+      philhealth: r.philhealth,
       hmo: r.hmo,
       dischargePass: passesByEnc.get(encId)?.[0],
       promissoryNote: notesByEnc.get(encId)?.[0],
@@ -605,9 +637,22 @@ encountersApp.get('/', async (c) => {
     });
   });
 
-  return c.json({
+  const responsePayload = JSON.stringify({
     items,
     total: items.length
+  });
+
+  if (isDefaultFetch) {
+    cachedEncountersPayload = {
+      json: responsePayload,
+      timestamp: Date.now()
+    };
+  }
+
+  return c.body(responsePayload, 200, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'public, max-age=10, s-maxage=30, stale-while-revalidate=60',
+    'X-Cache-Status': 'MISS'
   });
 });
 
@@ -768,6 +813,7 @@ encountersApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, encounter: updated });
   }
@@ -953,6 +999,7 @@ encountersApp.post(
       return enc.id;
     });
 
+    invalidateEncountersCache();
     const hydrated = await getHydratedEncounter(createdEncounterId);
     return c.json({ success: true, encounter: hydrated });
   }
@@ -1023,6 +1070,7 @@ encountersApp.patch(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const hydrated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, encounter: hydrated });
   }
@@ -1083,6 +1131,7 @@ encountersApp.delete(
       });
     });
 
+    invalidateEncountersCache();
     return c.json({ success: true, deletedId: enc.id });
   }
 );

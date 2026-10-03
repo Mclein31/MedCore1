@@ -16,7 +16,7 @@ import {
 import { recalculateAndPersistWaterfall } from '../services/waterfallPersistence';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { getHydratedEncounter } from './encounters';
+import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { matchEncounterCondition, matchChargeItemCondition, matchDisputeCondition } from '../utils/dbQuery';
 import { getClientIp } from '../utils/clientIp';
 
@@ -107,6 +107,7 @@ disputesApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, dispute: insertedDisputes[0], encounter: updated });
   }
@@ -200,6 +201,7 @@ disputesApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(encounterId);
     return c.json({ success: true, encounter: updated });
   }

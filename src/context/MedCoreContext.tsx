@@ -246,7 +246,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearApiError = () => setApiError(null);
 
-  const refreshEncounters = async () => {
+  const refreshEncounters = async (retries = 2): Promise<void> => {
     try {
       setIsLoadingEncounters(true);
       const res = await apiClient.getEncounters();
@@ -259,8 +259,17 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       }
     } catch (err: any) {
-      console.error('Failed to load encounters from API:', err);
-      setApiError(`Backend API communication error: ${err.message || 'Cannot fetch encounters'}`);
+      if (retries > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        return refreshEncounters(retries - 1);
+      }
+      console.warn('Failed to load encounters from API after retries:', err);
+      setEncounters((current) => {
+        if (!current || current.length === 0) {
+          setApiError(`Backend API communication error: ${err.message || 'Cannot fetch encounters'}`);
+        }
+        return current;
+      });
     } finally {
       setIsLoadingEncounters(false);
     }

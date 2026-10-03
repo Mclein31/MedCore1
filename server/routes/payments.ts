@@ -16,7 +16,7 @@ import {
 import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../services/gatePassService';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { getHydratedEncounter } from './encounters';
+import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { matchEncounterCondition } from '../utils/dbQuery';
 import { getClientIp } from '../utils/clientIp';
 
@@ -299,6 +299,7 @@ paymentsApp.post(
       throw err;
     }
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({
       success: true,

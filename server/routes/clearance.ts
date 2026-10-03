@@ -16,7 +16,7 @@ import {
 import { recalculateAndPersistWaterfall } from '../services/waterfallPersistence';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { getHydratedEncounter } from './encounters';
+import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { matchEncounterCondition } from '../utils/dbQuery';
 import { getClientIp } from '../utils/clientIp';
 
@@ -84,6 +84,7 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, encounter: updated });
   }
@@ -145,6 +146,7 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, encounter: updated });
   }
@@ -204,6 +206,7 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, encounter: updated });
   }
@@ -292,6 +295,7 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+    invalidateEncountersCache();
     const updated = await getHydratedEncounter(enc.id);
     return c.json({ success: true, encounter: updated });
   }
