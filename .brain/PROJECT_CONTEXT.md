@@ -1797,12 +1797,18 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [DECISION] **4. Safe Production Transport Diagnostics (`src/api/client.ts`, `src/components/auth/LoginScreen.tsx`)**:
 - **Diagnostic Logging**: Added structured, non-sensitive logging to `console.error` that differentiates network/CORS blockages from server-side 4xx/5xx HTTP errors. Passwords and credentials remain strictly redacted.
 
-
-
-
-
-
-
-
+[FACT] **5. Live Edge Deployment & Verification (`ca3b60ae-ebb6-4dd7-bad3-5a66b8552216`)**:
+- **Deployment**: Uploaded updated `medcore-backend` with `wrangler deploy` on October 3, 2026.
+- **Edge CORS Verification**: Verified live preflight `OPTIONS /api/v1/auth/login` from `Origin: https://med-core1.vercel.app`:
+  - Returns `HTTP/2 204`
+  - `access-control-allow-origin: https://med-core1.vercel.app`
+  - `access-control-allow-credentials: true`
+  - `access-control-allow-headers: Content-Type,Authorization,Idempotency-Key,X-Demo-Role`
+  - `access-control-allow-methods: GET,POST,PUT,PATCH,DELETE,OPTIONS`
+- **Live Authentication**: Verified live `POST /api/v1/auth/login` with database user `elena.santos@stjude.ph` from `Origin: https://med-core1.vercel.app`:
+  - Returns `HTTP/2 200`
+  - Database connectivity verified via Cloudflare Hyperdrive to PostgreSQL (`encountersCount: 250`)
+  - Issues Dual-Auth tokens: JSON `token` and `medcore_session` cookie (`SameSite=None; Secure; HttpOnly; Max-Age=28800`).
+- **Domain Flexibility**: Explicit support for `https://med-core1.vercel.app`, `https://med-core1-beige.vercel.app`, and `https://medcore1.vercel.app`, with wildcard regex for all MedCore/AqroMed Vercel deployments.
 
 
