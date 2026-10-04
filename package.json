@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -p \"[{name}]\" -n \"backend,frontend\" -c \"cyan,magenta\" \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:client": "vite",
-    "dev:server": "npx tsx server/standalone.ts",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
+    "dev:client": "vite --config apps/dashboard/vite.config.ts",
+    "dev:server": "npx tsx apps/server/src/standalone.ts",
+    "build": "tsc -p apps/dashboard/tsconfig.json && vite build --config apps/dashboard/vite.config.ts",
+    "preview": "vite preview --config apps/dashboard/vite.config.ts",
     "seed": "npx tsx scripts/seedPostgres.ts",
     "test": "npx tsx scripts/auditFinancials.ts",
     "test:api": "npx tsx scripts/seedPostgres.ts && npx tsx scripts/testBackendApi.ts"

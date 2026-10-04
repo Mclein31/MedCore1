@@ -1,6 +1,6 @@
-import app from '../server/index';
-import { db } from '../server/db';
-import { payments } from '../server/db/schema';
+import app from '../apps/server/src/index';
+import { db } from '../apps/server/src/db';
+import { payments } from '../apps/server/src/db/schema';
 import { eq } from 'drizzle-orm';
 
 async function runApiTests() {

@@ -17,8 +17,8 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["apps/dashboard/src/*"]
     }
   },
-  "include": ["src"]
+  "include": ["apps/dashboard/src"]
 }

@@ -1,8 +1,8 @@
 import pg from 'pg';
-import { INITIAL_ENCOUNTERS } from '../src/data/mockData';
-import { hashPassword } from '../server/services/authService';
-import { computePromissorySchedule } from '../server/services/promissoryEngine';
-import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../server/services/gatePassService';
+import { INITIAL_ENCOUNTERS } from '../apps/dashboard/src/data/mockData';
+import { hashPassword } from '../apps/server/src/services/authService';
+import { computePromissorySchedule } from '../apps/server/src/services/promissoryEngine';
+import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../apps/server/src/services/gatePassService';
 
 const { Pool } = pg;
 
