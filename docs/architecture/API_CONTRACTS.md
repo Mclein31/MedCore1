@@ -132,7 +132,7 @@ When creating the standalone native mobile project (iOS in Xcode, Android in And
 - Base URL configurable via `VITE_API_URL` environment variable:
   - Local Dev: `VITE_API_URL=` (proxied to `http://127.0.0.1:8787`)
   - Prototype / Demo: `VITE_API_URL=https://api.medcore.example.com`
-- CORS: Allowed via `server/index.ts` (accepts `*.vercel.app` preview URLs and custom domains).
+- CORS: Allowed via `apps/server/src/index.ts` (accepts `*.vercel.app` preview URLs and custom domains).
 - Auth: Automatically passes session cookies and/or `Authorization: Bearer <token>`.
 
 ### Native Mobile App (iOS / Android)

@@ -82,6 +82,14 @@ app.use(
 import { db, getDb, runWithDb, createDbConnection } from './db';
 import { sql } from 'drizzle-orm';
 
+function getExecutionContext(c: any) {
+  try {
+    return c.executionCtx;
+  } catch {
+    return undefined;
+  }
+}
+
 // Hyperdrive / Database Resolution Middleware for Cloudflare Workers
 app.use('*', async (c, next) => {
   const env = (c.env as any) || {};
@@ -140,8 +148,9 @@ app.use('*', async (c, next) => {
     try {
       return await runWithDb(activeDb, () => next());
     } finally {
-      if (c.executionCtx?.waitUntil) {
-        c.executionCtx.waitUntil(pool.end().catch(() => {}));
+      const executionCtx = getExecutionContext(c);
+      if (executionCtx?.waitUntil) {
+        executionCtx.waitUntil(pool.end().catch(() => {}));
       } else {
         await pool.end().catch(() => {});
       }
@@ -154,8 +163,9 @@ app.use('*', async (c, next) => {
     try {
       return await runWithDb(devDb, () => next());
     } finally {
-      if (c.executionCtx?.waitUntil) {
-        c.executionCtx.waitUntil(pool.end().catch(() => {}));
+      const executionCtx = getExecutionContext(c);
+      if (executionCtx?.waitUntil) {
+        executionCtx.waitUntil(pool.end().catch(() => {}));
       } else {
         await pool.end().catch(() => {});
       }

@@ -1,5 +1,5 @@
-import { INITIAL_ENCOUNTERS } from '../src/data/mockData';
-import { auditEntireDataset, calculatePatientFinancialRecord } from '../src/utils/financing';
+import { INITIAL_ENCOUNTERS } from '../apps/dashboard/src/data/mockData';
+import { auditEntireDataset, calculatePatientFinancialRecord } from '../apps/dashboard/src/utils/financing';
 
 console.log('='.repeat(80));
 console.log('MEDCORE REVENUE CYCLE MANAGEMENT: 100% FINANCIAL CALCULATION AUDIT');
