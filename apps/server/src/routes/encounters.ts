@@ -363,7 +363,7 @@ export function formatHydratedEncounter(ctx: HydrationContext) {
 }
 
 // Helper to format a single encounter by ID or encounter number for client compatibility
-export async function getHydratedEncounter(encounterIdOrNumber: string) {
+export async function getHydratedEncounter(encounterIdOrNumber: string, facilityId?: string) {
   const encRecord = await db
     .select({
       encounter: encounters,
@@ -375,7 +375,7 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
     .innerJoin(patients, eq(encounters.patientId, patients.id))
     .leftJoin(beds, eq(encounters.bedId, beds.id))
     .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
-    .where(matchEncounterCondition(encounterIdOrNumber))
+    .where(and(matchEncounterCondition(encounterIdOrNumber), facilityId ? eq(encounters.facilityId, facilityId) : undefined))
     .limit(1);
 
   if (encRecord.length === 0) {
@@ -427,35 +427,16 @@ export async function getHydratedEncounter(encounterIdOrNumber: string) {
 }
 
 // In-memory cache for default encounters list payload to prevent Worker CPU limit breaches
-let cachedEncountersPayload: {
-  json: string;
-  timestamp: number;
-} | null = null;
-
 export function invalidateEncountersCache() {
-  cachedEncountersPayload = null;
+  // Patient/census records are deliberately not cached across DB bindings.
 }
 
 // GET /api/v1/encounters
 encountersApp.get('/', async (c) => {
+  const facilityId = c.get('user').facilityId;
   const { search, status, stage, hmo } = c.req.query();
 
-  const isDefaultFetch =
-    (!search || !search.trim()) &&
-    (!status || status === 'ALL') &&
-    (!stage || stage === 'ALL') &&
-    (!hmo || hmo === 'ALL');
-
-  // 1. In-memory isolate cache (0ms CPU)
-  if (isDefaultFetch && cachedEncountersPayload && Date.now() - cachedEncountersPayload.timestamp < 300000) {
-    return c.body(cachedEncountersPayload.json, 200, {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=10, s-maxage=30, stale-while-revalidate=60',
-      'X-Cache-Status': 'HIT-MEMORY'
-    });
-  }
-
-  const conditions = [];
+  const conditions = [eq(encounters.facilityId, facilityId)];
 
   if (search && search.trim()) {
     const searchPattern = `%${search.trim()}%`;
@@ -642,16 +623,9 @@ encountersApp.get('/', async (c) => {
     total: items.length
   });
 
-  if (isDefaultFetch) {
-    cachedEncountersPayload = {
-      json: responsePayload,
-      timestamp: Date.now()
-    };
-  }
-
   return c.body(responsePayload, 200, {
     'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=10, s-maxage=30, stale-while-revalidate=60',
+    'Cache-Control': 'private, no-store',
     'X-Cache-Status': 'MISS'
   });
 });
@@ -659,7 +633,7 @@ encountersApp.get('/', async (c) => {
 // GET /api/v1/encounters/:id
 encountersApp.get('/:id', async (c) => {
   const id = c.req.param('id');
-  const enc = await getHydratedEncounter(id);
+  const enc = await getHydratedEncounter(id, c.get('user').facilityId);
   if (!enc) {
     return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
   }
@@ -669,7 +643,7 @@ encountersApp.get('/:id', async (c) => {
 // GET /api/v1/encounters/:id/ledger
 encountersApp.get('/:id/ledger', async (c) => {
   const id = c.req.param('id');
-  const enc = await getHydratedEncounter(id);
+  const enc = await getHydratedEncounter(id, c.get('user').facilityId);
   if (!enc) {
     return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
   }
@@ -684,7 +658,7 @@ encountersApp.get('/:id/ledger', async (c) => {
 // GET /api/v1/encounters/:id/statement & /invoice - Canonical Statement of Account / Invoice Projection
 const handleStatement = async (c: any) => {
   const id = c.req.param('id');
-  const enc = await getHydratedEncounter(id);
+  const enc = await getHydratedEncounter(id, c.get('user').facilityId);
   if (!enc) {
     return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
   }
@@ -752,12 +726,13 @@ encountersApp.post(
   requireRole(['BILLING_SPECIALIST', 'HOSPITAL_CFO']),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
     const encRecord = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encRecord.length === 0) {
@@ -882,7 +857,7 @@ encountersApp.post(
       const bedList = await tx
         .select()
         .from(beds)
-        .where(eq(beds.bedNumber, data.roomBed))
+        .where(and(eq(beds.bedNumber, data.roomBed), eq(beds.facilityId, user.facilityId)))
         .limit(1);
 
       const bedId = bedList[0]?.id || null;
@@ -899,18 +874,16 @@ encountersApp.post(
           bedId,
           roomBed: data.roomBed,
           attendingPhysicianId: data.attendingPhysicianId || user.id,
-          doctorPan: user.philhealthPan || 'PAN-1092-4418',
+          doctorPan: user.panNumber || '',
           admissionTimestamp: new Date(),
           stage: 'MGH_DECLARED',
           stageEnteredAt: new Date(),
           elapsedMinutes: 0,
-          targetTatMinutes: 45,
           slaStatus: 'NORMAL',
           primaryIcd10: 'Z00.0',
           primaryDiagnosis: data.primaryDiagnosis,
           roomCategory: data.roomCategory,
           dailyRoomRate: data.dailyRoomRate.toFixed(2),
-          totalGrossCharges: '0.00',
           remainingBalance: '0.00'
         })
         .returning();
@@ -963,10 +936,12 @@ encountersApp.post(
       if (data.hmoProvider) {
         await tx.insert(hmoAuthorizations).values({
           encounterId: enc.id,
-          hmoProvider: data.hmoProvider,
-          policyNumber: data.hmoPolicyNumber || `POL-${Math.floor(100000 + Math.random() * 900000)}`,
-          preAuthStatus: 'CONFIRMED',
-          finalLoaStatus: 'PENDING_APPROVAL',
+          providerName: data.hmoProvider,
+          cardNumberMasked: data.hmoPolicyNumber ? `****${data.hmoPolicyNumber.slice(-4)}` : 'Not provided',
+          policyMbl: '0.00',
+          mblRemaining: '0.00',
+          dailyRoomAllowance: '0.00',
+          finalLoaStatus: 'PENDING_SUBMISSION',
           approvedAmount: '0.00',
           disallowedConsumables: '0.00'
         });
@@ -1020,13 +995,14 @@ encountersApp.patch(
   zValidator('json', editEncounterSchema),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const updates = c.req.valid('json');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {
@@ -1044,7 +1020,7 @@ encountersApp.patch(
 
     if (updates.roomBed && updates.roomBed !== enc.roomBed) {
       patchData.roomBed = updates.roomBed;
-      const newBed = await db.select().from(beds).where(eq(beds.bedNumber, updates.roomBed)).limit(1);
+      const newBed = await db.select().from(beds).where(and(eq(beds.bedNumber, updates.roomBed), eq(beds.facilityId, user.facilityId))).limit(1);
       if (newBed.length > 0) {
         // Free old bed
         if (enc.bedId) {
@@ -1083,12 +1059,13 @@ encountersApp.delete(
   requireRole(['HOSPITAL_CFO', 'BILLING_SPECIALIST']),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {

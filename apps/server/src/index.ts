@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { apiAccess } from './middleware/access';
 import { authMiddleware } from './middleware/auth';
 import { apiError } from './middleware/error';
 import authApp from './routes/auth';
@@ -14,6 +15,7 @@ import claimsApp from './routes/claims';
 import bedsApp from './routes/beds';
 import analyticsApp from './routes/analytics';
 import chargesApp from './routes/charges';
+import patientApp from './routes/patient';
 
 const app = new Hono();
 
@@ -53,22 +55,12 @@ app.use(
         return origin;
       }
 
-      // 3. Vercel prototype deployments restricted strictly to verified MedCore / AqroMed project domains
-      try {
-        const parsed = new URL(origin);
-        const host = parsed.hostname.toLowerCase();
-        if (
-          (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
-          host.endsWith('.vercel.app') &&
-          /^(?:[a-z0-9-]+\.)?[a-z0-9-]*(?:med-?core|aqromed)[a-z0-9-]*\.vercel\.app$/i.test(host)
-        ) {
-          return origin;
-        }
-      } catch {}
-
-      // 4. In development mode, allow any localhost / 127.0.0.1 port
-      if (nodeEnv !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-        return origin;
+      // Preview deployments must be explicitly listed in ALLOWED_ORIGINS.
+      if (nodeEnv !== 'production') {
+        try {
+          const parsed = new URL(origin);
+          if (['http:', 'https:'].includes(parsed.protocol) && ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)) return origin;
+        } catch { /* Reject malformed origins. */ }
       }
 
       return null;
@@ -126,8 +118,7 @@ app.use('*', async (c, next) => {
 
     if (isLoopback) {
       console.error(
-        '[MedCore Security Error] Refusing loopback database connection in production:',
-        connectionString
+        '[MedCore Security Error] Refusing loopback database connection in production.'
       );
       return apiError(
         c,
@@ -177,6 +168,7 @@ app.use('*', async (c, next) => {
 
 // Global Session Authentication Middleware
 app.use('/api/*', authMiddleware);
+app.use('/api/v1/*', apiAccess);
 
 // Health Check with Live PostgreSQL Connectivity Verification
 app.get('/api/health', async (c) => {
@@ -239,6 +231,7 @@ app.route('/api/v1/claims', claimsApp);
 app.route('/api/v1/beds', bedsApp);
 app.route('/api/v1/analytics', analyticsApp);
 app.route('/api/v1', chargesApp);
+app.route('/api/v1/patient', patientApp);
 
 // 404 Not Found Handler
 app.notFound((c) => {
@@ -247,14 +240,9 @@ app.notFound((c) => {
 
 // Global Exception Handler
 app.onError((err, c) => {
-  console.error('Unhandled AQROMED API Error:', err);
-  const detail = err instanceof Error ? err.message : String(err);
-  return apiError(
-    c,
-    500,
-    'INTERNAL_SERVER_ERROR',
-    `An internal server error occurred: ${detail}`
-  );
+  // Do not log SQL parameters, tokens, connection URLs or medical records.
+  console.error('Unhandled API error', { name: err.name });
+  return apiError(c, 500, 'INTERNAL_SERVER_ERROR', 'The server could not complete this request. Please try again.');
 });
 
 export default app;

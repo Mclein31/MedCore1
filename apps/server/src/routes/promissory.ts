@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, or, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { db } from '../db';
 import {
   promissoryNotes,
@@ -15,8 +15,8 @@ import { computePromissorySchedule } from '../services/promissoryEngine';
 import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../services/gatePassService';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { getHydratedEncounter } from './encounters';
-import { matchEncounterCondition } from '../utils/dbQuery';
+import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
+import { encounterAccessCondition, isCentavoAmount } from '../utils/encounterAccess';
 import { getClientIp } from '../utils/clientIp';
 
 const promissoryApp = new Hono();
@@ -24,12 +24,14 @@ const promissoryApp = new Hono();
 // GET /api/v1/promissory-notes
 promissoryApp.get('/', requireAuth, async (c) => {
   const notes = await db
-    .select()
+    .select({ note: promissoryNotes })
     .from(promissoryNotes)
+    .innerJoin(encounters, eq(encounters.id, promissoryNotes.encounterId))
+    .where(eq(encounters.facilityId, c.get('user').facilityId))
     .orderBy(desc(promissoryNotes.createdAt));
 
   return c.json({
-    items: notes,
+    items: notes.map((row) => row.note),
     total: notes.length
   });
 });
@@ -39,9 +41,9 @@ const promissorySchema = z.object({
   borrowerName: z.string().min(2).max(128),
   borrowerRelationship: z.enum(['PATIENT', 'SPOUSE', 'CHILD', 'GUARANTOR']).default('GUARANTOR'),
   borrowerIdType: z.enum(['PHILSYS_NATIONAL_ID', 'UMID', 'DRIVERS_LICENSE', 'PASSPORT']),
-  borrowerIdNumber: z.string().min(4),
+  borrowerIdNumber: z.string().min(4).max(64),
   installmentMonths: z.union([z.literal(3), z.literal(6), z.literal(12)]),
-  principalAmount: z.number().positive()
+  principalAmount: z.number().positive().refine(isCentavoAmount, 'Enter a positive amount with at most two decimal places.')
 });
 
 promissoryApp.post(
@@ -51,29 +53,54 @@ promissoryApp.post(
   zValidator('json', promissorySchema),
   async (c) => {
     const encIdOrNumber = c.req.param('id');
+    if (!encIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const params = c.req.valid('json');
     const user = c.get('user');
 
-    const encList = await db
-      .select()
-      .from(encounters)
-      .where(matchEncounterCondition(encIdOrNumber))
-      .limit(1);
-
-    if (encList.length === 0) {
-      return apiError(c, 404, 'NOT_FOUND', `Encounter ${encIdOrNumber} not found.`);
-    }
-
-    const enc = encList[0];
-    const plan = computePromissorySchedule(params.principalAmount, params.installmentMonths);
-    const now = new Date();
-    const noteNumber = `PN-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    // Digital signature hash
-    const signatureHash = `sig_ra9439_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
-
-    // Atomic transaction for promissory note, gate pass issuance, encounter stage, and audit logging
+    const accessCondition = await encounterAccessCondition(user, encIdOrNumber);
     const txResult = await db.transaction(async (tx) => {
+      const encList = await tx.select().from(encounters)
+        .where(accessCondition).limit(1).for('update');
+      if (encList.length === 0) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
+      const enc = encList[0];
+
+      // Recover an uncertain response without signing a second legal agreement.
+      const activeNotes = await tx.select().from(promissoryNotes)
+        .where(and(eq(promissoryNotes.encounterId, enc.id), eq(promissoryNotes.status, 'ACTIVE')))
+        .orderBy(desc(promissoryNotes.createdAt)).limit(1);
+      if (activeNotes.length > 0) {
+        const note = activeNotes[0];
+        if (Number(note.principalAmount) !== params.principalAmount ||
+            note.installmentMonths !== params.installmentMonths ||
+            note.borrowerName !== params.borrowerName ||
+            note.borrowerRelationship !== params.borrowerRelationship ||
+            note.borrowerIdType !== params.borrowerIdType || note.borrowerIdNumber !== params.borrowerIdNumber) {
+          return apiError(c, 409, 'ACTIVE_PROMISSORY_NOTE', 'An active promissory note already exists for this stay. Contact the hospital billing desk to review it.');
+        }
+        const passes = await tx.select().from(dischargePasses)
+          .where(eq(dischargePasses.promissoryNoteId, note.id)).limit(1);
+        return { promissoryNote: note, dischargePass: passes[0] || null, encounterId: enc.id, cached: true };
+      }
+
+      if (user.role === 'PATIENT_GUARANTOR' && enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'BILL_NOT_READY', 'Your hospital is still completing discharge checks. Contact the billing desk before executing a note.');
+      const nodeEnv = (c.env as { NODE_ENV?: string })?.NODE_ENV || process.env.NODE_ENV || 'production';
+      if (user.role === 'PATIENT_GUARANTOR' && nodeEnv === 'production') return apiError(c, 403, 'ONLINE_NOTE_UNAVAILABLE', 'Online promissory notes are not available yet. Please contact the hospital billing desk.');
+      const remainingCents = Math.round(Number(enc.remainingBalance) * 100);
+      const principalCents = Math.round(params.principalAmount * 100);
+      if (!Number.isSafeInteger(remainingCents)) {
+        return apiError(c, 500, 'INVALID_BALANCE', 'This statement needs review by the hospital billing team.');
+      }
+      if (remainingCents <= 0) {
+        return apiError(c, 400, 'ALREADY_SETTLED', 'This statement is already fully settled.');
+      }
+      if (principalCents > remainingCents) {
+        return apiError(c, 400, 'EXCEEDS_BALANCE', 'The financed amount cannot exceed the remaining balance.');
+      }
+      const plan = computePromissorySchedule(params.principalAmount, params.installmentMonths);
+      const now = new Date();
+      const noteNumber = `PN-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const signatureHash = `sig_ra9439_${Math.random().toString(36).substring(2, 12)}_${Date.now()}`;
+
       // 1. Insert promissory note
       const insertedNotes = await tx
         .insert(promissoryNotes)
@@ -91,19 +118,18 @@ promissoryApp.post(
           installmentMonths: params.installmentMonths,
           monthlyInstallment: plan.monthlyInstallment.toFixed(2),
           scheduleJson: plan.schedule,
-          firstDueDate: new Date('2026-10-25'),
+          firstDueDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000),
           digitalSignatureTimestamp: now,
           digitalSignatureHash: signatureHash,
           status: 'ACTIVE'
         })
         .returning();
 
-      const currentRemaining = Number(enc.remainingBalance);
-      const newRemaining = Math.max(0, Number((currentRemaining - params.principalAmount).toFixed(2)));
+      const newRemaining = (remainingCents - principalCents) / 100;
 
       // 2. If covered / zero remaining: advance stage to CLEARED_GATE_PASS
       let passRecord = null;
-      const isCleared = newRemaining === 0;
+      const isCleared = newRemaining === 0 && enc.stage === 'PENDING_SETTLEMENT';
 
       if (isCleared) {
         const passNumber = `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`;
@@ -182,18 +208,27 @@ promissoryApp.post(
         userAgent: c.req.header('user-agent')
       });
 
-      return {
-        promissoryNote: insertedNotes[0],
-        dischargePass: passRecord
-      };
+      return { promissoryNote: insertedNotes[0], dischargePass: passRecord, encounterId: enc.id, cached: false };
     });
 
-    const updated = await getHydratedEncounter(enc.id);
+    if (txResult instanceof Response) return txResult;
+    if (!txResult.cached) invalidateEncountersCache();
+    const patientResponse = user.role === 'PATIENT_GUARANTOR';
+    const note = txResult.promissoryNote;
+    const pass = txResult.dischargePass;
     return c.json({
       success: true,
-      promissoryNote: txResult.promissoryNote,
-      dischargePass: txResult.dischargePass,
-      encounter: updated
+      cached: txResult.cached,
+      promissoryNote: patientResponse ? {
+        id: note.id, noteNumber: note.noteNumber, borrowerName: note.borrowerName,
+        principalAmount: Number(note.principalAmount), interestRate: Number(note.interestRate),
+        financingFee: Number(note.financingFee), totalRepayment: Number(note.totalRepayment),
+        installmentMonths: note.installmentMonths, monthlyInstallment: Number(note.monthlyInstallment),
+        scheduleJson: note.scheduleJson, firstDueDate: note.firstDueDate, status: note.status,
+        executedAt: note.digitalSignatureTimestamp
+      } : note,
+      dischargePass: patientResponse && pass ? { passNumber: pass.passNumber, status: pass.status } : pass,
+      encounter: patientResponse ? undefined : await getHydratedEncounter(txResult.encounterId)
     });
   }
 );

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { statutoryWaterfalls, encounters, philhealthClaims, hmoAuthorizations, beds } from '../db/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
@@ -10,12 +11,14 @@ analyticsApp.get(
   requireAuth,
   requireRole(['HOSPITAL_CFO', 'BILLING_SPECIALIST']),
   async (c) => {
+    const facilityId = c.get('user').facilityId;
+    const ownedEncounters = db.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, facilityId));
     const [allWaterfalls, allEncounters, allClaims, allHmos, allBeds] = await Promise.all([
-      db.select().from(statutoryWaterfalls),
-      db.select().from(encounters),
-      db.select().from(philhealthClaims),
-      db.select().from(hmoAuthorizations),
-      db.select().from(beds)
+      db.select().from(statutoryWaterfalls).where(inArray(statutoryWaterfalls.encounterId, ownedEncounters)),
+      db.select().from(encounters).where(eq(encounters.facilityId, facilityId)),
+      db.select().from(philhealthClaims).where(inArray(philhealthClaims.encounterId, ownedEncounters)),
+      db.select().from(hmoAuthorizations).where(inArray(hmoAuthorizations.encounterId, ownedEncounters)),
+      db.select().from(beds).where(eq(beds.facilityId, facilityId))
     ]);
 
     let totalGrossRevenue = 0;

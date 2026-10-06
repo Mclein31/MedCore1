@@ -18,6 +18,7 @@ export interface AuthUser {
   prcLicense?: string | null;
   panNumber?: string | null;
   contactNumber?: string | null;
+  linkedMrn?: string | null;
 }
 
 declare module 'hono' {
@@ -61,7 +62,7 @@ export async function authMiddleware(c: Context, next: Next) {
 
         // Demo presenter mode: allow role override via X-Demo-Role ONLY in non-production environments
         // for verified authenticated sessions and restricted to valid domain roles.
-        const VALID_DEMO_ROLES = new Set([
+        const VALID_DEMO_ROLES: ReadonlySet<string> = new Set([
           'BILLING_SPECIALIST',
           'HMO_COORDINATOR',
           'CLAIMS_ENCODER',
@@ -78,10 +79,10 @@ export async function authMiddleware(c: Context, next: Next) {
           'production';
         const isProduction = nodeEnv === 'production';
 
-        if (!isProduction) {
+        if (!isProduction && user.role !== 'PATIENT_GUARANTOR') {
           const demoRoleOverride = c.req.header('x-demo-role');
           if (demoRoleOverride && VALID_DEMO_ROLES.has(demoRoleOverride)) {
-            effectiveRole = demoRoleOverride;
+            effectiveRole = demoRoleOverride as typeof user.role;
           }
         }
 
@@ -97,11 +98,13 @@ export async function authMiddleware(c: Context, next: Next) {
           avatarInitials: user.avatarInitials,
           prcLicense: user.prcLicense,
           panNumber: user.panNumber,
-          contactNumber: user.contactNumber
+          contactNumber: user.contactNumber,
+          linkedMrn: (user as any).linkedMrn ?? null
         });
       }
     } catch (e) {
-      console.error('Session lookup error:', e);
+      console.error('Session lookup failed.');
+      return apiError(c, 503, 'AUTH_UNAVAILABLE', 'We could not verify your session right now. Please try again.');
     }
   }
 

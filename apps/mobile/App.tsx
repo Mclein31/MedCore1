@@ -1,0 +1,48 @@
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './src/lib/auth';
+import { useNotificationSetup } from './src/lib/notifications';
+import RootNavigator from './src/navigation/Tabs';
+
+function NotificationsInit() {
+  useNotificationSetup();
+  return null;
+}
+
+class AppErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string | null }> {
+  state: { error: string | null } = { error: null };
+
+  static getDerivedStateFromError() {
+    return { error: 'Something went wrong while starting the app.' };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#F3F5F9', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: '#101E33', textAlign: 'center' }}>MedCore could not start</Text>
+          <Text style={{ fontSize: 14, color: '#5C6C84', textAlign: 'center' }}>{this.state.error}</Text>
+          <Text style={{ fontSize: 13, color: '#5C6C84', textAlign: 'center' }}>Try again. If this persists, contact your hospital for help.</Text>
+          <Pressable accessibilityRole="button" onPress={() => this.setState({ error: null })} style={{ minHeight: 48, justifyContent: 'center', padding: 16 }}><Text style={{ color: '#2563EB', fontWeight: '700' }}>Try again</Text></Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppErrorBoundary>
+        <AuthProvider>
+          <NotificationsInit />
+          <RootNavigator />
+          <StatusBar style="dark" />
+        </AuthProvider>
+      </AppErrorBoundary>
+    </SafeAreaProvider>
+  );
+}

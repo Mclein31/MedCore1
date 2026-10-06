@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { chargemasterItems, encounters, systemAuditLogs, billingDisputes } from '../db/schema';
 import { apiError } from '../middleware/error';
@@ -40,13 +40,14 @@ chargesApp.post(
   zValidator('json', addChargeSchema),
   async (c) => {
     const encIdOrNumber = c.req.param('id');
+    if (!encIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { description, category, grossAmount, qty, quantity, unitPrice, code, coverageType } = c.req.valid('json');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(encIdOrNumber))
+      .where(and(matchEncounterCondition(encIdOrNumber), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {
@@ -139,13 +140,14 @@ chargesApp.patch(
   zValidator('json', editChargeSchema),
   async (c) => {
     const chargeId = c.req.param('id');
+    if (!chargeId) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const updates = c.req.valid('json');
     const user = c.get('user');
 
     const itemList = await db
       .select()
       .from(chargemasterItems)
-      .where(matchChargeItemCondition(chargeId))
+      .where(and(matchChargeItemCondition(chargeId), inArray(chargemasterItems.encounterId, db.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, user.facilityId)))))
       .limit(1);
 
     if (itemList.length === 0) {
@@ -218,12 +220,13 @@ chargesApp.delete(
   requireRole(['BILLING_SPECIALIST', 'HOSPITAL_CFO']),
   async (c) => {
     const chargeId = c.req.param('id');
+    if (!chargeId) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
     const itemList = await db
       .select()
       .from(chargemasterItems)
-      .where(matchChargeItemCondition(chargeId))
+      .where(and(matchChargeItemCondition(chargeId), inArray(chargemasterItems.encounterId, db.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, user.facilityId)))))
       .limit(1);
 
     if (itemList.length === 0) {

@@ -15,6 +15,13 @@
       "when": 1790871362380,
       "tag": "0001_lazy_vulture",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791275335789,
+      "tag": "0002_rapid_the_call",
+      "breakpoints": true
     }
   ]
 }

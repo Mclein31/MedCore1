@@ -16,7 +16,7 @@ export interface ApiErrorEnvelope {
 
 export function apiError(
   c: Context,
-  status: 400 | 401 | 403 | 404 | 409 | 500,
+  status: 400 | 401 | 403 | 404 | 409 | 500 | 503,
   code: string,
   message: string,
   details?: ApiErrorDetail[]

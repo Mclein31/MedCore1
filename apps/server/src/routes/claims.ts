@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, and } from 'drizzle-orm';
 import { db } from '../db';
 import {
   philhealthClaims,
@@ -24,6 +24,7 @@ claimsApp.get(
   requireRole(['CLAIMS_ENCODER', 'HOSPITAL_CFO', 'BILLING_SPECIALIST']),
   async (c) => {
     const claimId = c.req.param('claimId');
+    if (!claimId) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
 
     const claimList = await db
       .select({
@@ -38,7 +39,7 @@ claimsApp.get(
       .innerJoin(patients, eq(encounters.patientId, patients.id))
       .innerJoin(facilities, eq(encounters.facilityId, facilities.id))
       .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
-      .where(matchPhilHealthClaimCondition(claimId))
+      .where(and(matchPhilHealthClaimCondition(claimId), eq(encounters.facilityId, c.get('user').facilityId)))
       .limit(1);
 
     if (claimList.length === 0) {

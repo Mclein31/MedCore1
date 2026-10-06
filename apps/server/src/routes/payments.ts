@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import {
   payments,
@@ -17,13 +17,13 @@ import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecr
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
-import { matchEncounterCondition } from '../utils/dbQuery';
+import { encounterAccessCondition, isCentavoAmount } from '../utils/encounterAccess';
 import { getClientIp } from '../utils/clientIp';
 
 const paymentsApp = new Hono();
 
 const paymentSchema = z.object({
-  amount: z.number().positive(),
+  amount: z.number().positive().refine(isCentavoAmount, 'Enter a positive amount with at most two decimal places.'),
   paymentRail: z.enum([
     'QR_PH',
     'GCASH',
@@ -35,6 +35,9 @@ const paymentSchema = z.object({
   ]),
   payerName: z.string().min(2),
   payerContactMasked: z.string().default('0917-***-****'),
+  cardBrand: z.string().max(16).optional(),
+  cardLast4: z.string().length(4).optional(),
+  bankName: z.string().max(64).optional(),
   notes: z.string().optional()
 });
 
@@ -45,7 +48,8 @@ paymentsApp.post(
   zValidator('json', paymentSchema),
   async (c) => {
     const encIdOrNumber = c.req.param('id');
-    const { amount, paymentRail, payerName, payerContactMasked, notes } = c.req.valid('json');
+    if (!encIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
+    const { amount, paymentRail, payerName, payerContactMasked, cardBrand, cardLast4, bankName, notes } = c.req.valid('json');
     const user = c.get('user');
 
     // Idempotency-Key Check
@@ -60,74 +64,62 @@ paymentsApp.post(
     }
     const rawIdempotencyKey = headerKey || crypto.randomUUID();
 
-    const existingPayment = await db
-      .select()
-      .from(payments)
-      .where(eq(payments.idempotencyKey, rawIdempotencyKey))
-      .limit(1);
-
-    if (existingPayment.length > 0) {
-      // Return cached payment immediately for idempotency guarantee
-      const receipt = await db
-        .select()
-        .from(paymentReceipts)
-        .where(eq(paymentReceipts.paymentId, existingPayment[0].id))
-        .limit(1);
-
-      const hydrated = await getHydratedEncounter(existingPayment[0].encounterId);
-      return c.json({
-        success: true,
-        cached: true,
-        payment: existingPayment[0],
-        receipt: receipt[0] || null,
-        encounter: hydrated
-      });
-    }
-
-    const encList = await db
-      .select()
-      .from(encounters)
-      .where(matchEncounterCondition(encIdOrNumber))
-      .limit(1);
-
-    if (encList.length === 0) {
-      return apiError(c, 404, 'NOT_FOUND', `Encounter ${encIdOrNumber} not found.`);
-    }
-
-    const enc = encList[0];
-    const currentRemaining = Number(enc.remainingBalance);
-
-    if (currentRemaining <= 0 && paymentRail !== 'PROMISSORY_NOTE') {
-      return apiError(
-        c,
-        400,
-        'ALREADY_SETTLED',
-        'This statement is already fully settled (Remaining Balance: ₱0.00).'
-      );
-    }
-
-    if (amount > currentRemaining + 0.05) {
-      return apiError(
-        c,
-        400,
-        'EXCEEDS_BALANCE',
-        `Payment amount (₱${amount.toFixed(2)}) cannot exceed remaining balance (₱${currentRemaining.toFixed(2)}).`
-      );
-    }
-
-    const now = new Date();
-    const paymentRef = `PAY-${enc.id.slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-6)}`;
-    const orNumber = `OR-SJMC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-    const authCode = `AUTH-${Math.floor(10000 + Math.random() * 90000)}`;
-    const statementNumber = enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber.replace(/\D/g, '') || '8812'}`;
-
-    const newAmountPaid = Number((Number(enc.amountPaid) + amount).toFixed(2));
-    const newRemaining = Math.max(0, Number((currentRemaining - amount).toFixed(2)));
-    const isFullySettled = newRemaining === 0;
-
+    const accessCondition = await encounterAccessCondition(user, encIdOrNumber);
     let txResult;
     try {
       txResult = await db.transaction(async (tx) => {
+        // Serializes different payment keys and promissory notes for this stay.
+        const encList = await tx.select().from(encounters)
+          .where(accessCondition).limit(1).for('update');
+        if (encList.length === 0) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
+        const enc = encList[0];
+
+        const existing = await tx.select().from(payments)
+          .where(eq(payments.idempotencyKey, rawIdempotencyKey)).limit(1);
+        if (existing.length > 0) {
+          const payment = existing[0];
+          if (payment.encounterId !== enc.id || Number(payment.amount) !== amount ||
+              payment.paymentRail !== paymentRail || payment.payerName !== payerName ||
+              payment.payerContactMasked !== payerContactMasked ||
+              (payment.cardBrand ?? null) !== (cardBrand ?? null) ||
+              (payment.cardLast4 ?? null) !== (cardLast4 ?? null) ||
+              (payment.bankName ?? null) !== (bankName ?? null) ||
+              (payment.notes ?? null) !== (notes ?? null)) {
+            return apiError(c, 409, 'IDEMPOTENCY_CONFLICT', 'This payment reference was already used for another request.');
+          }
+          const receipt = await tx.select().from(paymentReceipts)
+            .where(eq(paymentReceipts.paymentId, payment.id)).limit(1);
+          const pass = await tx.select().from(dischargePasses)
+            .where(eq(dischargePasses.encounterId, enc.id)).limit(1);
+          return { paymentRecord: payment, receiptRecord: receipt[0] || null,
+            gatePassRecord: pass[0] || null, encounterId: enc.id, cached: true };
+        }
+
+        if (user.role === 'PATIENT_GUARANTOR' && enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'BILL_NOT_READY', 'Your hospital is still reviewing your final bill. Please wait for the billing desk.');
+        const nodeEnv = (c.env as { NODE_ENV?: string })?.NODE_ENV || process.env.NODE_ENV || 'production';
+        if (user.role === 'PATIENT_GUARANTOR' && nodeEnv === 'production') return apiError(c, 403, 'PAYMENT_GATEWAY_UNAVAILABLE', 'Online payments are not available yet. Please pay at the hospital cashier.');
+        const remainingCents = Math.round(Number(enc.remainingBalance) * 100);
+        const amountCents = Math.round(amount * 100);
+        const paidCents = Math.round(Number(enc.amountPaid) * 100);
+        if (!Number.isSafeInteger(remainingCents) || !Number.isSafeInteger(paidCents)) {
+          return apiError(c, 500, 'INVALID_BALANCE', 'This statement needs review by the hospital billing team.');
+        }
+        if (remainingCents <= 0) {
+          return apiError(c, 400, 'ALREADY_SETTLED', 'This statement is already fully settled (Remaining Balance: ₱0.00).');
+        }
+        if (amountCents > remainingCents) {
+          return apiError(c, 400, 'EXCEEDS_BALANCE', 'The payment amount cannot exceed the remaining balance.');
+        }
+        const now = new Date();
+        const paymentRef = `PAY-${enc.id.slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+        const orNumber = `OR-SJMC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+        const authCode = `AUTH-${Math.floor(10000 + Math.random() * 90000)}`;
+        const statementNumber = enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber.replace(/\D/g, '') || '8812'}`;
+        const newAmountPaid = (paidCents + amountCents) / 100;
+        const newRemaining = (remainingCents - amountCents) / 100;
+        const isFullySettled = newRemaining === 0;
+        const releasePass = isFullySettled && enc.stage === 'PENDING_SETTLEMENT';
+
         // 1. Insert Payment
         const insertedPayments = await tx
           .insert(payments)
@@ -143,6 +135,9 @@ paymentsApp.post(
             officialReceiptNumber: orNumber,
             payerName,
             payerContactMasked,
+            cardBrand: cardBrand ?? null,
+            cardLast4: cardLast4 ?? null,
+            bankName: bankName ?? null,
             status: 'SUCCESS',
             isSimulatedDemo: true,
             idempotencyKey: rawIdempotencyKey,
@@ -172,7 +167,7 @@ paymentsApp.post(
 
         // 3. If Fully Settled: Issue Gate Pass & Release Bed to Housekeeping
         let gatePassRecord = null;
-        if (isFullySettled) {
+        if (releasePass) {
           const passNumber = `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`;
           const nodeEnv =
             (c.env as any)?.NODE_ENV ||
@@ -220,7 +215,7 @@ paymentsApp.post(
             amountPaid: newAmountPaid.toFixed(2),
             remainingBalance: newRemaining.toFixed(2),
             billState: isFullySettled ? 'PAID' : 'PARTIALLY_PAID',
-            stage: isFullySettled ? 'CLEARED_GATE_PASS' : enc.stage,
+            stage: releasePass ? 'CLEARED_GATE_PASS' : enc.stage,
             updatedAt: now
           })
           .where(eq(encounters.id, enc.id));
@@ -264,49 +259,42 @@ paymentsApp.post(
           userAgent: c.req.header('user-agent')
         });
 
-        return {
-          paymentRecord,
-          receiptRecord: insertedReceipts[0],
-          gatePassRecord
-        };
+        return { paymentRecord, receiptRecord: insertedReceipts[0], gatePassRecord,
+          encounterId: enc.id, cached: false };
       });
-    } catch (err: any) {
-      // Concurrency race guard: if duplicate key inserted concurrently, return cached record
-      if (err?.code === '23505' && (err?.detail?.includes('idempotency_key') || err?.constraint?.includes('idempotency_key'))) {
-        const existing = await db
-          .select()
-          .from(payments)
-          .where(eq(payments.idempotencyKey, rawIdempotencyKey))
-          .limit(1);
-
-        if (existing.length > 0) {
-          const receipt = await db
-            .select()
-            .from(paymentReceipts)
-            .where(eq(paymentReceipts.paymentId, existing[0].id))
-            .limit(1);
-
-          const hydrated = await getHydratedEncounter(existing[0].encounterId);
-          return c.json({
-            success: true,
-            cached: true,
-            payment: existing[0],
-            receipt: receipt[0] || null,
-            encounter: hydrated
-          });
-        }
+    } catch (err: unknown) {
+      const cause = err as { code?: string; detail?: string; constraint?: string; cause?: { code?: string; detail?: string; constraint?: string } };
+      const pgError = cause.cause || cause;
+      // The same key racing on a different stay must not disclose that payment.
+      if (pgError.code === '23505' &&
+          (pgError.detail?.includes('idempotency_key') || pgError.constraint?.includes('idempotency_key'))) {
+        return apiError(c, 409, 'IDEMPOTENCY_CONFLICT', 'This payment reference was already used for another request.');
       }
       throw err;
     }
 
-    invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
+    if (txResult instanceof Response) return txResult;
+    if (!txResult.cached) invalidateEncountersCache();
+    const patientResponse = user.role === 'PATIENT_GUARANTOR';
+    const payment = txResult.paymentRecord;
+    const receipt = txResult.receiptRecord;
+    const pass = txResult.gatePassRecord;
     return c.json({
       success: true,
-      payment: txResult.paymentRecord,
-      receipt: txResult.receiptRecord,
-      dischargePass: txResult.gatePassRecord,
-      encounter: updated
+      cached: txResult.cached,
+      payment: patientResponse ? {
+        id: payment.id, paymentReference: payment.paymentReference, amount: Number(payment.amount),
+        paymentRail: payment.paymentRail, status: payment.status,
+        officialReceiptNumber: payment.officialReceiptNumber, payerName: payment.payerName,
+        createdAt: payment.createdAt, settledAt: payment.settledAt, isSimulatedDemo: payment.isSimulatedDemo
+      } : payment,
+      receipt: patientResponse && receipt ? {
+        id: receipt.id, receiptNumber: receipt.receiptNumber,
+        officialReceiptNumber: receipt.officialReceiptNumber, amount: Number(receipt.amount),
+        paymentRail: receipt.paymentRail, payerName: receipt.payerName, issuedAt: receipt.issuedAt
+      } : receipt,
+      dischargePass: patientResponse && pass ? { passNumber: pass.passNumber, status: pass.status } : pass,
+      encounter: patientResponse ? undefined : await getHydratedEncounter(txResult.encounterId)
     });
   }
 );

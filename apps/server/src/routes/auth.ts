@@ -4,8 +4,8 @@ import { zValidator } from '@hono/zod-validator';
 import { setCookie, deleteCookie } from 'hono/cookie';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
-import { users, userSessions, facilities, systemAuditLogs } from '../db/schema';
-import { verifyPassword, generateSessionToken, hashSessionToken } from '../services/authService';
+import { users, userSessions, facilities, patients, systemAuditLogs } from '../db/schema';
+import { verifyPassword, hashPassword, generateSessionToken, hashSessionToken } from '../services/authService';
 import { apiError } from '../middleware/error';
 import { requireAuth } from '../middleware/auth';
 import { getClientIp } from '../utils/clientIp';
@@ -114,8 +114,172 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
   });
 });
 
-authApp.post('/logout', requireAuth, async (c) => {
-  const sessionId = c.get('sessionId');
+const registerSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6).max(128),
+  fullName: z.string().min(2).max(255),
+  mrn: z.string().min(2).max(64),
+  contactNumber: z.string().min(4).max(32),
+  facilityCode: z.string().default('SJMC-MNL')
+});
+
+// Patient self-registration: verifies MRN + contact number against the
+// hospital census, then creates a PATIENT_GUARANTOR login linked to that
+// patient record. No staff privileges are ever granted here.
+authApp.post('/register', zValidator('json', registerSchema), async (c) => {
+  const { email, password, fullName, mrn, contactNumber, facilityCode } = c.req.valid('json');
+
+  const facilityList = await db
+    .select()
+    .from(facilities)
+    .where(eq(facilities.code, facilityCode))
+    .limit(1);
+
+  if (facilityList.length === 0) {
+    return apiError(c, 404, 'FACILITY_NOT_FOUND', `Facility ${facilityCode} does not exist.`);
+  }
+
+  const facility = facilityList[0];
+
+  const matchedPatients = await db
+    .select()
+    .from(patients)
+    .where(and(eq(patients.facilityId, facility.id), eq(patients.mrn, mrn.trim())))
+    .limit(1);
+
+  if (matchedPatients.length === 0) {
+    return apiError(
+      c,
+      404,
+      'PATIENT_NOT_FOUND',
+      'No patient record matches the provided MRN and contact number. Please verify the details on your admission slip.'
+    );
+  }
+
+  const patient = matchedPatients[0];
+  const normalizedProvided = contactNumber.replace(/[\s-]/g, '');
+  const normalizedRecord = (patient.contactNumber || '').replace(/[\s-]/g, '');
+  if (!normalizedRecord || normalizedProvided !== normalizedRecord) {
+    return apiError(
+      c,
+      404,
+      'PATIENT_NOT_FOUND',
+      'No patient record matches the provided MRN and contact number. Please verify the details on your admission slip.'
+    );
+  }
+
+  const existingUsers = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email.toLowerCase().trim()))
+    .limit(1);
+
+  if (existingUsers.length > 0) {
+    return apiError(c, 409, 'USER_EXISTS', 'An account with this email already exists. Please log in instead.');
+  }
+
+  const usernameBase = email.toLowerCase().trim().split('@')[0].replace(/[^a-z0-9.]/g, '').slice(0, 48) || 'patient';
+  let username = usernameBase;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const clash = await db.select({ id: users.id }).from(users).where(eq(users.username, username)).limit(1);
+    if (clash.length === 0) break;
+    username = `${usernameBase}${Math.floor(10 + Math.random() * 89)}`;
+  }
+
+  const { hash, salt } = await hashPassword(password);
+  const nameParts = fullName.trim().split(/\s+/);
+  const initials = (nameParts[0]?.[0] || 'P') + (nameParts.length > 1 ? nameParts[nameParts.length - 1][0] : 'G');
+
+  const inserted = await db
+    .insert(users)
+    .values({
+      facilityId: facility.id,
+      username,
+      email: email.toLowerCase().trim(),
+      passwordHash: hash,
+      salt,
+      fullName: fullName.trim(),
+      role: 'PATIENT_GUARANTOR',
+      title: 'Patient Family Guarantor',
+      avatarInitials: initials.toUpperCase(),
+      contactNumber: patient.contactNumber,
+      linkedMrn: patient.mrn
+    })
+    .returning();
+
+  const user = inserted[0];
+
+  const token = generateSessionToken();
+  const tokenHash = await hashSessionToken(token);
+  const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+
+  await db.insert(userSessions).values({
+    userId: user.id,
+    tokenHash,
+    ipAddress: getClientIp(c),
+    userAgent: c.req.header('user-agent'),
+    expiresAt
+  });
+
+  const nodeEnv =
+    (c.env as any)?.NODE_ENV ||
+    (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
+    'production';
+  const isProduction = nodeEnv === 'production';
+  const cookieOpts = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: (isProduction ? 'None' : 'Lax') as 'None' | 'Lax',
+    path: '/',
+    maxAge: 28800
+  };
+  setCookie(c, 'medcore_session', token, cookieOpts);
+  setCookie(c, 'aqromed_session', token, cookieOpts);
+
+  await db.insert(systemAuditLogs).values({
+    facilityId: facility.id,
+    userId: user.id,
+    actorRole: user.role,
+    action: 'PATIENT_REGISTERED',
+    resourceType: 'users',
+    resourceId: user.id,
+    newState: { username: user.username, linkedMrn: patient.mrn },
+    ipAddress: getClientIp(c),
+    userAgent: c.req.header('user-agent')
+  });
+
+  return c.json({
+    success: true,
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      title: user.title,
+      avatarInitials: user.avatarInitials,
+      facilityId: facility.id,
+      facilityName: facility.name
+    }
+  });
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email()
+});
+
+// Intentionally generic response to avoid account enumeration. Password
+// reset delivery (email/SMS) is not yet wired; hospital billing desk
+// assists patients until then.
+authApp.post('/forgot-password', zValidator('json', forgotPasswordSchema), async (c) => {
+  return c.json({
+    success: true,
+    message: 'If an account exists for this email, reset instructions will be sent. You may also visit the hospital billing desk for assistance.'
+  });
+});
+
+authApp.post('/logout', requireAuth, async (c) => {  const sessionId = c.get('sessionId');
   const user = c.get('user');
 
   if (sessionId) {
