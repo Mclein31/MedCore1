@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, and } from 'drizzle-orm';
 import { db } from '../db';
 import { beds, systemAuditLogs } from '../db/schema';
 import { apiError } from '../middleware/error';
@@ -13,7 +13,7 @@ const bedsApp = new Hono();
 
 // GET /api/v1/beds
 bedsApp.get('/', async (c) => {
-  const allBeds = await db.select().from(beds).orderBy(beds.floorNumber, beds.bedNumber);
+  const allBeds = await db.select().from(beds).where(eq(beds.facilityId, c.get('user').facilityId)).orderBy(beds.floorNumber, beds.bedNumber);
 
   const total = allBeds.length;
   const occupied = allBeds.filter((b) => b.status === 'OCCUPIED').length;
@@ -48,6 +48,7 @@ bedsApp.patch(
   zValidator('json', updateStatusSchema),
   async (c) => {
     const bedIdOrNumber = c.req.param('id');
+    if (!bedIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { status } = c.req.valid('json');
     const user = c.get('user');
 
@@ -58,7 +59,7 @@ bedsApp.patch(
     const bedList = await db
       .select()
       .from(beds)
-      .where(bedQuery)
+      .where(and(bedQuery, eq(beds.facilityId, user.facilityId)))
       .limit(1);
 
     if (bedList.length === 0) {

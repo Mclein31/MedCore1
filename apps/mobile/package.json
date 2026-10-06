@@ -1,0 +1,42 @@
+{
+  "name": "medcore-mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-native-community/netinfo": "^12.0.1",
+    "@react-navigation/bottom-tabs": "^7.20.0",
+    "@react-navigation/native": "^7.5.0",
+    "@react-navigation/native-stack": "^7.20.0",
+    "expo": "~57.0.26",
+    "expo-crypto": "^57.0.3",
+    "expo-notifications": "^57.0.21",
+    "expo-secure-store": "^57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "lucide-react-native": "^1.52.0",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "^5.10.1",
+    "react-native-screens": "^4.28.0",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "0.21.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "dev": "npm run dev:server --prefix ../..",
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import ../../node_modules/tsx/dist/loader.mjs __tests__/run.ts",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
+    "typecheck:server": "tsc --project ../server/tsconfig.json",
+    "test:server": "node --import ../../node_modules/tsx/dist/loader.mjs ../server/__tests__/patientWorkflows.ts"
+  },
+  "private": true
+}

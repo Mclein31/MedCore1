@@ -14,16 +14,20 @@ export function computePromissorySchedule(
   principal: number,
   months: 3 | 6 | 12
 ): PromissoryScheduleResult {
-  const financed = Number(principal.toFixed(2));
-  const baseMonthly = Number((financed / months).toFixed(2));
+  const principalCents = Math.round(principal * 100);
+  if (!Number.isSafeInteger(principalCents) || principalCents <= 0) {
+    throw new Error('Promissory principal must be a positive centavo amount.');
+  }
+  const financed = principalCents / 100;
+  const monthlyCents = Math.floor(principalCents / months);
+  const baseMonthly = monthlyCents / 100;
   const schedule: number[] = [];
   
   for (let i = 0; i < months - 1; i++) {
     schedule.push(baseMonthly);
   }
   
-  const priorSum = Number((baseMonthly * (months - 1)).toFixed(2));
-  const lastPayment = Number((financed - priorSum).toFixed(2));
+  const lastPayment = (principalCents - monthlyCents * (months - 1)) / 100;
   schedule.push(lastPayment);
 
   // Assert zero centavo drift on sum of installments

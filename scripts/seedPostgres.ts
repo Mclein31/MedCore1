@@ -709,6 +709,7 @@ async function seed() {
         const settledAmount = dp?.settledAmount !== undefined ? dp.settledAmount : w.netPatientDue;
         const channel = dp?.settlementChannel || 'QR_PH';
         const issuedTs = dp?.issuedAt ? new Date(dp.issuedAt) : new Date();
+        const verifiedTs = dp?.verifiedAt ? new Date(dp.verifiedAt) : null;
         const seedSecret = resolveGatePassSecret(process.env.GATE_PASS_SECRET, false);
         const hmac = dp?.hmacSignature || (await generateGatePassHmac(insertedEncounterId, settledAmount, issuedTs.toISOString(), seedSecret));
         const exitPin = generateDeterministicExitPin(passNum);

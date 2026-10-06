@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, or } from 'drizzle-orm';
+import { eq, or, and } from 'drizzle-orm';
 import { db } from '../db';
-import { dischargePasses, systemAuditLogs } from '../db/schema';
+import { dischargePasses, encounters, systemAuditLogs } from '../db/schema';
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 
@@ -32,16 +32,18 @@ gatePassApp.post(
       : eq(dischargePasses.passNumber, passNumber);
 
     const passList = await db
-      .select()
+      .select({ pass: dischargePasses })
       .from(dischargePasses)
-      .where(passQuery)
+      .innerJoin(encounters, eq(encounters.id, dischargePasses.encounterId))
+      .where(and(passQuery, eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (passList.length === 0) {
       return apiError(c, 404, 'PASS_NOT_FOUND', `Discharge pass ${passNumber} not found.`);
     }
 
-    const pass = passList[0];
+    const pass = passList[0].pass;
+    if (pass.status !== 'ACTIVE_READY_FOR_EXIT' && pass.status !== 'VERIFIED_AT_LOBBY') return apiError(c, 403, 'PASS_NOT_ACTIVE', 'This discharge pass is no longer valid. Please contact hospital billing.');
 
     // Assert PIN matches
     if (pass.exitPin !== exitPin) {
@@ -104,7 +106,7 @@ gatePassApp.post(
       action: 'GATE_PASS_VERIFIED_LOBBY',
       resourceType: 'discharge_passes',
       resourceId: pass.id,
-      newState: { passNumber: pass.passNumber, status: 'VERIFIED_AT_LOBBY', exitPin },
+      newState: { passNumber: pass.passNumber, status: 'VERIFIED_AT_LOBBY' },
       ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });

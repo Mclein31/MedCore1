@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md — AQROMED Operational Brain
 
 > **Epistemic Status**: Verified Project Knowledge & Baseline Parameters  
-> **Last Synchronized**: October 2, 2026  
+> **Last Synchronized**: October 6, 2026
 > **Active Project**: AQROMED (formerly MedCore / MedCore1)  
 > **Knowledge Layer**: Project Operational Brain (`.brain/`)
 
@@ -1857,3 +1857,27 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 
 
 
+
+
+## Mobile patient companion — October 6, 2026 progress review
+
+[FACT] **Current implementation supersedes the historical future-mobile status in Section 48**: `apps/mobile` now contains an Expo 57 / React Native 0.86 / React 19 patient financial companion. It connects directly to the shared Hono/PostgreSQL backend. MedCore mobile remains a billing, coverage, payment and discharge product; it does not expand into an EMR.
+
+[FACT] **Patient flows implemented and polished**:
+- Patient registration/sign-in, hospital-assisted recovery, protected navigation and logout; native session persistence with memory fallback and retryable session verification. Web preview sessions are in memory.
+- Shared account-scoped patient state, focus/foreground refresh, visible refresh failures, accurate remaining balances and statutory discounts.
+- Home priorities, searchable itemized charge explanations, coverage/claim status, payment history/plans, account-scoped notifications, and selected document details including the current discharge pass/exit PIN.
+- Responsive ledger values, safe areas, keyboard handling, password visibility, accessible controls and a retryable startup boundary. The user requested visual references; further visual direction remains pending those screenshots.
+
+[DECISION] **Backend and financial safety invariants**:
+- API authentication precedes internal records; patient accounts use only own-record reads and ownership-checked mutations. Relevant staff reads/mutations and analytics are facility-scoped. Patient responses are allowlisted and private/no-store; census PHI is not shared-cached across facilities/database bindings.
+- Credentialed CORS uses exact trusted/configured origins. Blank hospital contact, stale MRN association and phone-only patient selection fail closed. Session lookup outages return 503, distinct from confirmed expired-session 401 responses. Raw SQL errors, DB credentials, pass signatures and signing identifiers are not exposed to patients.
+- Payments and notes serialize against an encounter row lock, enforce positive centavo amounts/remaining balance, authorize before cached recovery, and retain immutable retries. Native pending payment requests are encrypted in SecureStore before transmission and complete only the matching key. Web demo recovery is memory-only.
+- Waterfall recalculation uses the same encounter lock and preserves recorded payments plus active financed principal, preventing financed debt from reappearing as cash outstanding. Installment remainder allocation is nonnegative and centavo-exact.
+- Patient simulated settlement/note execution is rejected in production. Online settlement cannot bypass earlier discharge stages; inactive passes cannot be verified. Staff simulation remains a prototype workflow, not real payment evidence.
+
+[FACT] **Independent audit cycle and verification**: The code-reviewer audited, fixes were implemented, and the final changes were re-audited. Final verdict: **ready for a progress commit as a patient prototype; not ready for production release**. Mobile strict TypeScript/unused checks, backend strict TypeScript, 31 mobile regressions, 18 isolated backend groups (including 906 installment schedules), iOS/Android/web Expo bundle exports and `git diff --check` passed. Backend tests used synthetic transactions; they did not connect to or reseed PostgreSQL. Bundle exports do not constitute signed native builds or physical-device validation.
+
+[TODO] **Release gates**: verified identity/OTP and abuse controls; backend-bound expiring magic links (the Clarify selector is still a demonstration); real gateway-confirmed settlement and legal signing; production staff simulation controls; real PostgreSQL concurrency tests and physical-device SecureStore/restart/logout/accessibility checks; compatible resolution of npm audit's 16 high and 7 moderate Expo/tooling advisories; native EAS project setup. No forced dependency downgrade, schema application, reseeding, deployment or commit was performed during this review cycle.
+
+[REFERENCE] Detailed findings and reproducible commands: [mobile audit](../apps/mobile/AUDIT.md), [mobile README](../apps/mobile/README.md). Existing patient-link schema/migration work remains part of this progress snapshot; unrelated `VALUE_PROP/` and Obsidian graph changes are excluded from the proposed commit scope.

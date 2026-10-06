@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "linked_mrn" varchar(64);

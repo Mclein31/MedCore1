@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, or } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import { db } from '../db';
 import {
   encounters,
@@ -34,13 +34,14 @@ clearanceApp.post(
   zValidator('json', doctorSignSchema),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { agreedFee } = c.req.valid('json');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {
@@ -97,12 +98,13 @@ clearanceApp.post(
   requireRole(['BILLING_SPECIALIST', 'HOSPITAL_CFO']),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {
@@ -159,12 +161,13 @@ clearanceApp.post(
   requireRole(['BILLING_SPECIALIST', 'HOSPITAL_CFO']),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {
@@ -226,13 +229,14 @@ clearanceApp.post(
   zValidator('json', finalLoaSchema),
   async (c) => {
     const id = c.req.param('id');
+    if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { approvalCode, approvedAmount, disallowedConsumables } = c.req.valid('json');
     const user = c.get('user');
 
     const encList = await db
       .select()
       .from(encounters)
-      .where(matchEncounterCondition(id))
+      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (encList.length === 0) {

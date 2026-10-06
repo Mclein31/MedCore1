@@ -184,6 +184,7 @@ export const users = pgTable(
     prcLicense: varchar('prc_license', { length: 64 }),
     panNumber: varchar('pan_number', { length: 64 }),
     contactNumber: varchar('contact_number', { length: 32 }),
+    linkedMrn: varchar('linked_mrn', { length: 64 }),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()

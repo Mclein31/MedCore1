@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq, or } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import {
   billingDisputes,
@@ -17,7 +17,8 @@ import { recalculateAndPersistWaterfall } from '../services/waterfallPersistence
 import { apiError } from '../middleware/error';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
-import { matchEncounterCondition, matchChargeItemCondition, matchDisputeCondition } from '../utils/dbQuery';
+import { matchChargeItemCondition, matchDisputeCondition } from '../utils/dbQuery';
+import { encounterAccessCondition } from '../utils/encounterAccess';
 import { getClientIp } from '../utils/clientIp';
 
 const disputesApp = new Hono();
@@ -42,74 +43,74 @@ disputesApp.post(
   zValidator('json', createDisputeSchema),
   async (c) => {
     const encIdOrNumber = c.req.param('id');
+    if (!encIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { chargeId, reason, disputeCategory } = c.req.valid('json');
     const user = c.get('user');
 
-    const encList = await db
-      .select()
-      .from(encounters)
-      .where(matchEncounterCondition(encIdOrNumber))
-      .limit(1);
+    const accessCondition = await encounterAccessCondition(user, encIdOrNumber);
+    const txResult = await db.transaction(async (tx) => {
+      const encList = await tx.select().from(encounters)
+        .where(accessCondition).limit(1).for('update');
+      if (encList.length === 0) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
+      const enc = encList[0];
+      const itemRecord = await tx.select().from(chargemasterItems)
+        .where(and(matchChargeItemCondition(chargeId), eq(chargemasterItems.encounterId, enc.id)))
+        .limit(1).for('update');
+      if (itemRecord.length === 0) return apiError(c, 404, 'NOT_FOUND', 'Charge not found in this stay.');
+      const item = itemRecord[0];
 
-    if (encList.length === 0) {
-      return apiError(c, 404, 'NOT_FOUND', `Encounter ${encIdOrNumber} not found.`);
-    }
+      // Mark item as disputed / contested
+      await tx
+        .update(chargemasterItems)
+        .set({
+          isDisputed: true,
+          disputeReason: reason,
+          status: 'CONTESTED',
+          updatedAt: new Date()
+        })
+        .where(eq(chargemasterItems.id, item.id));
 
-    const enc = encList[0];
+      // Insert dispute
+      const insertedDisputes = await tx
+        .insert(billingDisputes)
+        .values({
+          encounterId: enc.id,
+          chargeId: item.id,
+          itemDescription: item.description,
+          contestedAmount: item.patientOop,
+          reason,
+          disputeCategory,
+          status: 'OPEN',
+          department: item.category
+        })
+        .returning();
 
-    const itemRecord = await db
-      .select()
-      .from(chargemasterItems)
-      .where(matchChargeItemCondition(chargeId))
-      .limit(1);
+      await tx.insert(systemAuditLogs).values({
+        facilityId: enc.facilityId,
+        userId: user.id,
+        actorRole: user.role,
+        action: 'DISPUTE_FILED',
+        resourceType: 'billing_disputes',
+        resourceId: insertedDisputes[0].id,
+        newState: { chargeId: item.id, reason, contestedAmount: item.patientOop },
+        ipAddress: getClientIp(c),
+        userAgent: c.req.header('user-agent')
+      });
 
-    if (itemRecord.length === 0) {
-      return apiError(c, 404, 'NOT_FOUND', `Chargemaster item ${chargeId} not found.`);
-    }
-
-    const item = itemRecord[0];
-
-    // Mark item as disputed / contested
-    await db
-      .update(chargemasterItems)
-      .set({
-        isDisputed: true,
-        disputeReason: reason,
-        status: 'CONTESTED',
-        updatedAt: new Date()
-      })
-      .where(eq(chargemasterItems.id, item.id));
-
-    // Insert dispute
-    const insertedDisputes = await db
-      .insert(billingDisputes)
-      .values({
-        encounterId: enc.id,
-        chargeId: item.id,
-        itemDescription: item.description,
-        contestedAmount: item.patientOop,
-        reason,
-        disputeCategory,
-        status: 'OPEN',
-        department: item.category
-      })
-      .returning();
-
-    await db.insert(systemAuditLogs).values({
-      facilityId: enc.facilityId,
-      userId: user.id,
-      actorRole: user.role,
-      action: 'DISPUTE_FILED',
-      resourceType: 'billing_disputes',
-      resourceId: insertedDisputes[0].id,
-      newState: { chargeId: item.id, reason, contestedAmount: item.patientOop },
-      ipAddress: getClientIp(c),
-      userAgent: c.req.header('user-agent')
+      return { dispute: insertedDisputes[0], encounterId: enc.id };
     });
-
+    if (txResult instanceof Response) return txResult;
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
-    return c.json({ success: true, dispute: insertedDisputes[0], encounter: updated });
+    const d = txResult.dispute;
+    const patientResponse = user.role === 'PATIENT_GUARANTOR';
+    return c.json({
+      success: true,
+      dispute: patientResponse ? {
+        id: d.id, itemDescription: d.itemDescription, contestedAmount: Number(d.contestedAmount),
+        reason: d.reason, status: d.status, createdAt: d.createdAt, resolutionClause: d.resolutionClause
+      } : d,
+      encounter: patientResponse ? undefined : await getHydratedEncounter(txResult.encounterId)
+    });
   }
 );
 
@@ -125,21 +126,23 @@ disputesApp.post(
   zValidator('json', waiveDisputeSchema),
   async (c) => {
     const disputeId = c.req.param('id');
+    if (!disputeId) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { supervisorNotes } = c.req.valid('json');
     const user = c.get('user');
 
     // Find dispute
     const disputeList = await db
-      .select()
+      .select({ dispute: billingDisputes })
       .from(billingDisputes)
-      .where(matchDisputeCondition(disputeId))
+      .innerJoin(encounters, eq(encounters.id, billingDisputes.encounterId))
+      .where(and(matchDisputeCondition(disputeId), eq(encounters.facilityId, user.facilityId)))
       .limit(1);
 
     if (disputeList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Dispute ${disputeId} not found.`);
     }
 
-    const dispute = disputeList[0];
+    const dispute = disputeList[0].dispute;
     const encounterId = dispute.encounterId;
 
     // 1. Update charge item: SUPERVISORY_WAIVED, patient_oop = 0.00, is_disputed = false
