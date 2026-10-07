@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/brand/MedCore_Badge_Logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F5F8F7"
+      "backgroundColor": "#0F2A4A"
     },
     "ios": {
       "supportsTablet": true,

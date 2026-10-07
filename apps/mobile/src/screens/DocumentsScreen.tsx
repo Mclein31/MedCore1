@@ -55,8 +55,7 @@ export default function DocumentsScreen({ navigation }: { navigation: any }) {
     <Screen>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={loadList} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <RefreshNotice error={error} onRetry={loadList} />
-        <Text accessibilityRole="header" style={[T.title, { marginTop: 12 }]}>Your hospital papers</Text>
-        <Text style={[T.meta, { marginTop: 6 }]}>Statements, receipts and clearance documents, organized by type.</Text>
+        <Text style={[T.meta, { marginTop: 8 }]}>Statements, receipts and clearance documents, organized by type.</Text>
         {docs.length === 0 && <EmptyState title="No documents yet" detail="Statements, receipts, and discharge papers will appear here." />}
         <Group title={`Statements · ${groups.statements.length}`} docs={groups.statements} onOpen={openDocument} />
         <Group title={`Receipts · ${groups.receipts.length}`} docs={groups.receipts} onOpen={openDocument} />

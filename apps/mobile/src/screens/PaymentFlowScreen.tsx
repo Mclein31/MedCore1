@@ -15,6 +15,8 @@ import type { PayInput } from '../services/paymentApi';
 import { useAuth } from '../lib/auth';
 import { usePatient } from '../hooks/usePatient';
 import { createPaymentApi } from '../services/paymentApi';
+import { HeaderBack } from '../components/Header';
+import PaymentAmountEntry from '../components/PaymentAmountEntry';
 import PaymentQr from '../components/PaymentQr';
 import ReceiptSheet from '../components/ReceiptSheet';
 import { confirmedPayment, paymentDetailsValid, previousCheckoutStep, WALLET_PRESETS, type CheckoutStep } from '../lib/checkout';
@@ -23,7 +25,7 @@ import { estimatedFirstDueDate, previewInstallments } from '../lib/promissory';
 import { generateIdempotencyKey } from '../lib/idempotency';
 import { describeRail, formatDate, formatPeso, remainingBalance } from '../lib/format';
 import { Icon, ProviderMark } from '../components/icons';
-import { C, Card, EmptyState, ErrorState, Field, LoadingState, RefreshNotice, Hero, LedgerRow, PrimaryButton, Screen, SecondaryButton, SegControl, StatusBadge, T } from '../components/ui';
+import { C, Card, EmptyState, ErrorState, Field, LoadingState, RefreshNotice, LedgerRow, PrimaryButton, Screen, SecondaryButton, StatusBadge, T } from '../components/ui';
 
 type Mode = 'FULL' | 'PARTIAL';
 
@@ -106,16 +108,20 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   useEffect(() => {
     navigation.setOptions({
       gestureEnabled: false,
-      headerLeft: () => <Pressable disabled={busy} accessibilityRole="button" accessibilityLabel="Back" accessibilityState={{ disabled: busy }} style={({ pressed }) => ({ minHeight: 48, minWidth: 64, paddingHorizontal: 12, justifyContent: 'center', opacity: busy || pressed ? 0.5 : 1 })} onPress={() => {
+      title: step === 'amount' ? 'Pay balance' : step === 'method' ? 'Payment methods' : step === 'review' ? 'Review payment' : step === 'verification' ? 'Wallet verification' : step === 'done' ? (receipt ? 'Receipt' : 'Payment plan') : methodForRail(rail).label,
+      headerStyle: { backgroundColor: (step === 'amount' && !pending) || (step === 'done' && receipt) ? C.hero : C.surface },
+      headerTintColor: (step === 'amount' && !pending) || (step === 'done' && receipt) ? C.surface : C.ink,
+      statusBarStyle: (step === 'amount' && !pending) || (step === 'done' && receipt) ? 'light' : 'dark',
+      headerLeft: () => <HeaderBack disabled={busy} dark={(step === 'amount' && !pending) || (step === 'done' && !!receipt)} onPress={() => {
         if (step === 'amount' || step === 'done' || pending || uncertain) navigation.goBack();
         else {
           const previous = previousCheckoutStep(step);
           if (previous === 'amount') setSelectedAmount(null);
           setStep(previous); setError(null);
         }
-      }}><Text style={[T.section, { color: C.brand }]}>‹ Back</Text></Pressable>
+      }} />
     });
-  }, [navigation, busy, step, pending, uncertain]);
+  }, [navigation, busy, step, pending, uncertain, receipt, rail]);
   usePreventRemove(busy, () => { setError('Please wait for the hospital to confirm this request.'); });
   useFocusEffect(useCallback(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -238,8 +244,15 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   if (patientError && !currentEncounter) return <ErrorState message={patientError} onRetry={refresh} />;
   if (!currentEncounter) return <Screen><EmptyState title="No bill to pay" detail="Your hospital statements will appear when a stay is linked to your account." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
 
-  if (step === 'done' && (receipt || note)) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
-    {receipt && <ReceiptSheet number={receipt.officialReceiptNumber} amount={receipt.amount} rail={receipt.methodRail} payer={receipt.payerName} date={receipt.issuedAt || receipt.settledAt || receipt.createdAt} reference={receipt.paymentReference} />}
+  if (step === 'done' && receipt) return <Screen gutter={0} background={C.hero}>
+    <View pointerEvents="none" style={{ position: 'absolute', top: 200, left: 0, right: 0, bottom: 0, backgroundColor: C.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} />
+    <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 4, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
+      <ReceiptSheet number={receipt.officialReceiptNumber} amount={receipt.amount} rail={receipt.methodRail} payer={receipt.payerName} date={receipt.issuedAt || receipt.settledAt || receipt.createdAt} reference={receipt.paymentReference} surroundingColor={C.hero} />
+      {passIssued && <StatusBadge tone="ok" text="Discharge pass released" />}
+    </ScrollView>
+    <View style={{ backgroundColor: C.paper, paddingHorizontal: 24, paddingBottom: 20, flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><SecondaryButton title="Documents" onPress={() => navigation.replace('Documents')} /></View><View style={{ flex: 1 }}><PrimaryButton title={passIssued ? 'Discharge pass' : 'Payments'} onPress={() => passIssued ? navigation.replace('Documents') : navigation.navigate('Main', { screen: 'Payments' })} /></View></View>
+  </Screen>;
+  if (step === 'done' && note) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
     {note && <>
       <View style={{ alignItems: 'center', paddingVertical: 28, gap: 12 }}><Icon name="success" size={48} color={C.success} /><Text accessibilityRole="header" style={[T.title, { textAlign: 'center' }]}>Payment plan recorded</Text><Text style={T.display}>{formatPeso(note.totalRepayment ?? note.principalAmount)}</Text><Text style={T.meta}>{note.noteNumber} · 0% interest · {note.installmentMonths} months</Text></View>
       <Card flush><LedgerRow title="First due date" value={formatDate(note.firstDueDate)} />{(note.scheduleJson || note.schedule || []).map((value, i, all) => <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(value)} last={i === all.length - 1} />)}</Card>
@@ -250,45 +263,42 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   </ScrollView></Screen>;
   if (currentEncounter.stage !== 'PENDING_SETTLEMENT' && !pending) return <Screen><EmptyState title="Your final bill is being reviewed" detail="Hospital clearance checks must finish before online settlement. You can review the running bill now." /><SecondaryButton title="Review bill" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
   if (balance <= 0 && !pending) return <Screen><EmptyState title="No outstanding balance" detail="Review your payment history and discharge documents." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
+  if (step === 'amount' && !pending) return <Screen keyboard keyboardOffset={headerHeight} gutter={0} background={C.hero}>
+    <PaymentAmountEntry balance={balance} mode={mode} partial={partial} onMode={value => { setMode(value); resetKey(); }} onPartial={value => { setPartial(value); resetKey(); }} onContinue={() => { Keyboard.dismiss(); setSelectedAmount(enteredAmount); setStep('method'); }} error={error || patientError || (partial ? amountError : null)} onRetry={patientError ? refresh : undefined} disabled={!amountValid || !!patientError || uncertain || busy} />
+  </Screen>;
   const wallet = WALLET_PRESETS[rail];
   const isNote = method.kind === 'promissory';
   const noteValid = borrowerName.trim().length >= 2 && idNumber.trim().length >= 4 && acknowledged;
-  const stepNumber = step === 'amount' ? 1 : step === 'method' ? 2 : step === 'review' ? 4 : 3;
   return <Screen keyboard keyboardOffset={headerHeight}>
-    <ScrollView ref={checkoutScroll} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+    <ScrollView ref={checkoutScroll} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       <RefreshNotice error={patientError} onRetry={refresh} />
       {error && <View style={{ backgroundColor: uncertain ? C.warningBg : C.dangerBg, borderRadius: 12, padding: 14, marginVertical: 8 }}><Text accessibilityRole="alert" style={[T.body, { color: uncertain ? C.warning : C.danger }]}>{error}</Text></View>}
       {!!pending && <Card><Text style={T.title}>Awaiting confirmation</Text><Text style={[T.body, { marginTop: 8 }]}>{formatPeso(pending.input.amount)} via {describeRail(pending.input.paymentRail)}. Checking again uses your saved request.</Text><PrimaryButton title={busy ? 'Checking…' : 'Check payment status'} onPress={submitPayment} disabled={busy} /><SecondaryButton title="Payment history" disabled={busy} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} /></Card>}
       {!pending && <>
-        <View accessible accessibilityLabel={`Checkout step ${stepNumber} of 4`} style={{ flexDirection: 'row', gap: 6, paddingVertical: 12 }}>{['Amount', 'Method', 'Details', 'Review'].map((label, i) => <View key={label} style={{ flex: 1, gap: 6 }}><View style={{ height: 3, backgroundColor: i < stepNumber ? C.brand : C.border, borderRadius: 4 }} /><Text style={[T.meta, { color: i === stepNumber - 1 ? C.brand : C.secondary, fontSize: 12 }]}>{label}</Text></View>)}</View>
-        {step === 'amount' && <>
-          <Hero eyebrow="Remaining balance" figure={formatPeso(balance)} sub="Choose how much you’d like to pay." />
-          <SegControl options={[{ key: 'FULL', label: 'Full settlement' }, { key: 'PARTIAL', label: 'Partial amount' }]} value={mode} disabled={busy || uncertain} onChange={value => { setMode(value as Mode); resetKey(); }} />
-          <View style={{ paddingVertical: 20, alignItems: 'center', gap: 8 }}><Text style={T.meta}>Amount to pay</Text><Text style={[T.display, { textAlign: 'center' }]}>{formatPeso(enteredAmount)}</Text></View>
-          {mode === 'PARTIAL' && <Field label="Amount in pesos" value={partial} onChangeText={value => { setPartial(value); resetKey(); }} keyboard="decimal-pad" error={partial ? amountError || undefined : undefined} editable={!busy && !uncertain} />}
-          <PrimaryButton title="Choose payment method" onPress={() => { setSelectedAmount(enteredAmount); setStep('method'); }} disabled={!amountValid || !!patientError || uncertain} />
-          <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} />
-        </>}
         {step === 'method' && <>
-          <Text style={[T.eyebrow, { marginTop: 12 }]}>Paying {formatPeso(amount)}</Text>
-          <Text accessibilityRole="header" style={[T.title, { marginVertical: 12 }]}>Choose a payment method</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-            {PAYMENT_METHODS.map(item => <Pressable key={item.rail} disabled={busy || uncertain} onPress={() => { setRail(item.rail); resetKey(); setError(null); }} accessibilityRole="radio" accessibilityState={{ checked: rail === item.rail, selected: rail === item.rail, disabled: busy || uncertain }} accessibilityLabel={`${item.label}, ${item.hint}`} style={({ pressed }) => ({ flexBasis: '46%', flexGrow: 1, minHeight: 108, borderRadius: 18, padding: 14, alignItems: 'center', justifyContent: 'center', gap: 10, opacity: pressed ? 0.6 : 1, borderWidth: 1.5, borderColor: rail === item.rail ? C.brand : C.border, backgroundColor: rail === item.rail ? C.brandSoft : C.surface })}>
-              {item.hasLogo ? <ProviderMark rail={item.rail} size={36} /> : <Icon name={item.icon} size={26} color={C.brand} />}
-              <Text style={[T.section, { textAlign: 'center', fontSize: 14 }]}>{item.label}</Text>
-            </Pressable>)}
-          </View>
-          <Text style={[T.meta, { marginTop: 12 }]}>{method.hint}</Text>
-          <PrimaryButton title="Continue" onPress={() => setStep('detail')} disabled={busy || uncertain || !amountValid} />
-          <SecondaryButton title="Back" onPress={goBack} disabled={busy || uncertain} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 24 }}><Text style={T.meta}>Paying <Text style={{ fontWeight: '600', color: C.ink }}>{formatPeso(amount)}</Text></Text><Text style={T.meta}>Step 2 of 4</Text></View>
+          {[
+            { title: 'Wallets & QR', options: PAYMENT_METHODS.filter(item => item.kind === 'qr' || item.kind === 'wallet') },
+            { title: 'Other payment options', options: PAYMENT_METHODS.filter(item => item.kind !== 'qr' && item.kind !== 'wallet') }
+          ].map(group => <View key={group.title} style={{ marginBottom: 20 }}>
+            <Text accessibilityRole="header" style={[T.section, { marginBottom: 12 }]}>{group.title}</Text>
+            <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 10, overflow: 'hidden' }}>
+              {group.options.map((item, i) => <Pressable key={item.rail} disabled={busy || uncertain} onPress={() => { setRail(item.rail); resetKey(); setError(null); }} accessibilityRole="radio" accessibilityState={{ checked: rail === item.rail, selected: rail === item.rail, disabled: busy || uncertain }} accessibilityLabel={`${item.label}, ${item.hint}`} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 14, paddingVertical: 12, gap: 12, opacity: pressed ? 0.6 : 1, borderBottomWidth: i === group.options.length - 1 ? 0 : 1, borderBottomColor: C.border, backgroundColor: rail === item.rail ? C.brandSoft : C.surface })}>
+                {item.hasLogo ? <ProviderMark rail={item.rail} size={28} /> : <Icon name={item.icon} size={24} color={C.brandDark} />}
+                <Text style={[T.body, { flex: 1, fontSize: 15 }]}>{item.label}</Text>
+                <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: rail === item.rail ? C.brand : C.faint, alignItems: 'center', justifyContent: 'center' }}>{rail === item.rail && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: C.brand }} />}</View>
+              </Pressable>)}
+            </View>
+          </View>)}
+          <Text style={[T.meta, { marginTop: 16 }]}>{method.hint}</Text>
         </>}
         {(step === 'detail' || step === 'verification' || step === 'review') && <>
-          <View style={{ backgroundColor: wallet?.background || (method.kind === 'card' ? C.ink : isNote ? '#93470B' : C.hero), borderRadius: 18, padding: 20, marginVertical: 12, gap: 8 }}>
+          {step !== 'review' && <View style={{ backgroundColor: wallet?.background || (method.kind === 'card' ? C.ink : isNote ? C.note : C.hero), borderRadius: 18, padding: 20, marginVertical: 12, gap: 8 }}>
             <Text style={[T.section, { color: wallet?.accent || '#FFFFFF' }]}>{method.label}{isNote ? ' · 0% interest' : ''}</Text>
             <Text style={[T.heroFigure, { color: wallet?.accent || '#FFFFFF' }]}>{formatPeso(amount)}</Text>
             {method.kind === 'card' && <Text style={[T.heroSub, { letterSpacing: 1 }]}>{cardBrand} · •••• {cardLast4 || '••••'}</Text>}
             <Text style={T.heroSub}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text>
-          </View>
+          </View>}
           {step === 'detail' && !isNote && <>
             {method.kind === 'qr' && <Card><PaymentQr /><Text style={[T.meta, { textAlign: 'center', marginTop: 12 }]}>Scan this code, then review the payment details.</Text></Card>}
             {wallet && <Card><Text style={T.section}>Wallet account</Text><LedgerRow title="Sample account" value={wallet.contact} last /><Text style={T.meta}>Continue with the preset account to preview wallet verification.</Text></Card>}
@@ -316,23 +326,25 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
             <PrimaryButton title="Review payment plan" onPress={() => setStep('review')} disabled={busy || uncertain || !noteValid || !amountValid || !!patientError} /><SecondaryButton title="Back" onPress={goBack} disabled={busy || uncertain} />
           </>}
           {step === 'review' && <>
-            <Text accessibilityRole="header" style={[T.title, { marginVertical: 12 }]}>{isNote ? 'Review your payment plan' : 'Review your payment'}</Text>
-            <Card flush><LedgerRow title="Amount" value={formatPeso(amount)} /><LedgerRow title="Method" value={method.label} /><LedgerRow title={isNote ? 'Borrower / guarantor' : 'Payer'} value={isNote ? borrowerName : payerName} />
-              {wallet && <LedgerRow title="Wallet account" value={wallet.contact} />}
-              {method.kind === 'card' && <LedgerRow title="Card" value={`${cardBrand} · •••• ${cardLast4}`} />}
-              {method.kind === 'bank' && <LedgerRow title="Bank" value={bankName} />}
-              {isNote && <><LedgerRow title="Term" value={`${months} months · 0% interest`} /><LedgerRow title="Total repayment" value={formatPeso(plan.totalRepayment)} />{plan.schedule.map((value, i) => <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(value)} />)}</>}
-              <LedgerRow title="Balance after this request" value={formatPeso(Math.max(0, balance - amount))} last />
-            </Card>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: C.border, marginBottom: 14 }}><View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.brandSoft, justifyContent: 'center', alignItems: 'center' }}><Icon name={method.icon} size={24} color={C.brandDark} /></View><View style={{ flex: 1 }}><Text style={T.section}>{isNote ? 'Repayment plan' : method.label}</Text><Text style={[T.meta, { marginTop: 4 }]}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text></View></View>
+            <LedgerRow title="Method" value={method.label} last /><LedgerRow title={isNote ? 'Borrower / guarantor' : 'Payer'} value={isNote ? borrowerName : payerName} last />
+            {wallet && <LedgerRow title="Wallet account" value={wallet.contact} last />}
+            {method.kind === 'card' && <LedgerRow title="Card" value={`${cardBrand} · •••• ${cardLast4}`} last />}
+            {method.kind === 'bank' && <LedgerRow title="Bank" value={bankName} last />}
+            {isNote && <><LedgerRow title="Term" value={`${months} months · 0% interest`} last />{plan.schedule.map((value, i) => <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(value)} last />)}</>}
+            <LedgerRow title="Balance after this request" value={formatPeso(Math.max(0, balance - amount))} last />
+            <View style={{ borderTopWidth: 1, borderTopColor: C.border, borderStyle: 'dashed', marginTop: 16, paddingVertical: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}><Text style={T.body}>{isNote ? 'Total repayment' : 'Total to pay'}</Text><Text style={{ fontSize: 24, fontWeight: '600', color: C.ink, fontVariant: ['tabular-nums'] }}>{formatPeso(isNote ? plan.totalRepayment : amount)}</Text></View>
+            <Pressable disabled={busy || uncertain} onPress={goBack} accessibilityRole="button" accessibilityLabel="Edit payment details" style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: C.border, marginBottom: 12 }}><Text style={T.meta}>Payment details</Text><Text style={[T.meta, { color: C.brandDark }]}>Change</Text></Pressable>
             <Text style={T.meta}>Your receipt or payment plan appears after the hospital confirms the request.</Text>
-            <PrimaryButton title={busy ? 'Confirming…' : isNote ? 'Confirm payment plan' : `Confirm payment · ${formatPeso(amount)}`} onPress={isNote ? submitNote : submitPayment} disabled={busy || uncertain || !amountValid || !!patientError || (isNote ? !noteValid : !detailsValid)} />
-            <SecondaryButton title="Edit details" disabled={busy || uncertain} onPress={goBack} />
           </>}
         </>}
         {!amountValid && step !== 'amount' && <Text accessibilityRole="alert" style={[T.body, { color: C.danger, marginTop: 12 }]}>Your balance changed. Go back to amount selection and review it before continuing.</Text>}
       </>}
       {uncertain && <SecondaryButton title={isNote ? 'Check payment plans' : 'Check payment history'} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} />}
     </ScrollView>
+    {!pending && (step === 'method' || step === 'review') && <View style={{ backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border, paddingBottom: 12, paddingTop: 4 }}>
+      <PrimaryButton title={step === 'method' ? 'Continue' : busy ? 'Confirming…' : isNote ? 'Confirm payment plan' : `Confirm payment · ${formatPeso(amount)}`} onPress={() => step === 'method' ? setStep('detail') : isNote ? void submitNote() : void submitPayment()} disabled={busy || uncertain || !amountValid || !!patientError || (step === 'review' && (isNote ? !noteValid : !detailsValid))} />
+    </View>}
     <Modal visible={busy} transparent animationType="none" onRequestClose={() => {}}>
       <View style={{ flex: 1, backgroundColor: 'rgba(20,45,42,0.6)', paddingHorizontal: 24, paddingTop: Math.max(24, insets.top), paddingBottom: Math.max(24, insets.bottom), justifyContent: 'center', alignItems: 'center' }}>
         <ScrollView accessibilityViewIsModal style={{ width: '100%', maxWidth: 420, maxHeight: '90%', flexGrow: 0, backgroundColor: C.surface, borderRadius: 24 }} contentContainerStyle={{ padding: 28, alignItems: 'center', gap: 16 }}>

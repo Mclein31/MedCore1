@@ -1,3 +1,5 @@
+import { C } from '../components/theme';
+
 export type CheckoutStep = 'amount' | 'method' | 'detail' | 'verification' | 'review' | 'done';
 export function previousCheckoutStep(step: CheckoutStep): CheckoutStep {
   return step === 'review' || step === 'verification' ? 'detail' : step === 'detail' ? 'method' : 'amount';
@@ -17,6 +19,6 @@ export function paymentDetailsValid(rail: string, payer: string, cardLast4: stri
   return payer.trim().length >= 2 && (rail !== 'CREDIT_DEBIT_CARD' || /^\d{4}$/.test(cardLast4)) && (rail !== 'BANK_TRANSFER' || (bank.trim().length > 0 && bank.trim().length <= 64));
 }
 export const WALLET_PRESETS: Record<string, { contact: string; accent: string; background: string }> = {
-  GCASH: { contact: '0917-***-9102', accent: '#FFFFFF', background: '#175CD3' },
-  MAYA: { contact: '0918-***-1049', accent: '#6DE6AA', background: '#14242A' }
+  GCASH: { contact: '0917-***-9102', accent: C.surface, background: C.gcash },
+  MAYA: { contact: '0918-***-1049', accent: C.mayaAccent, background: C.maya }
 };

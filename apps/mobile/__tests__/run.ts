@@ -3,6 +3,7 @@
 // language, payment input guards, duplicate-submission prevention, and
 // navigation gating. Run with: npx tsx __tests__/run.ts
 import assert from 'node:assert';
+import { applyAmountKey } from '../src/lib/amountEntry';
 import { launchDestination, OnboardingStore, ONBOARDING_KEY } from '../src/lib/onboarding';
 import { confirmedPayment, paymentDetailsValid, paymentStatus, previousCheckoutStep, WALLET_PRESETS } from '../src/lib/checkout';
 import { QR_PATTERNS, qrPath } from '../src/lib/qrPatterns';
@@ -166,6 +167,20 @@ async function asyncCheck(name: string, fn: () => Promise<void>) {
   try { await fn(); passed++; console.log(`[PASS] ${name}`); }
   catch (e: unknown) { console.error(`[FAIL] ${name} - ${e instanceof Error ? e.message : e}`); process.exitCode = 1; }
 }
+check('amount keypad preserves centavos, editing and invalid-input guards', () => {
+  let value = '';
+  for (const key of ['1', '9', '.', '2', '9']) value = applyAmountKey(value, key);
+  assert.equal(value, '19.29'); assert.equal(parsePaymentAmount(value), 19.29);
+  assert.equal(applyAmountKey(value, '1'), value);
+  assert.equal(applyAmountKey(value, '.'), value);
+  assert.equal(applyAmountKey(value, 'backspace'), '19.2');
+  assert.equal(applyAmountKey('', '.'), '0.');
+  assert.equal(applyAmountKey('0', '5'), '5');
+  assert.equal(applyAmountKey('1e3', '4'), '1e3');
+  assert.equal(applyAmountKey('1.005', '4'), '1.005');
+  assert.equal(applyAmountKey('bad', 'clear'), '');
+});
+
 check('startup route waits for initialization and never bypasses session verification', () => {
   const state = { sessionLoading: false, onboardingLoading: false, sessionError: null, user: null, onboardingError: null, completed: false };
   assert.equal(launchDestination(state), 'onboarding');
