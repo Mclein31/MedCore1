@@ -36,7 +36,8 @@
     "test": "node --import ../../node_modules/tsx/dist/loader.mjs __tests__/run.ts",
     "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters",
     "typecheck:server": "tsc --project ../server/tsconfig.json",
-    "test:server": "node --import ../../node_modules/tsx/dist/loader.mjs ../server/__tests__/patientWorkflows.ts"
+    "test:server": "node --import ../../node_modules/tsx/dist/loader.mjs ../server/__tests__/patientWorkflows.ts",
+    "test:qr": "node --import ../../node_modules/tsx/dist/loader.mjs __tests__/qr.ts"
   },
   "private": true
 }

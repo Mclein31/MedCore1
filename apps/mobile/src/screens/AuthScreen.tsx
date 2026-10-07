@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import Brand from '../components/Brand';
 import { useAuth } from '../lib/auth';
 import { C, Field, PrimaryButton, Screen, SegControl, T } from '../components/ui';
 
@@ -7,6 +8,8 @@ type Mode = 'login' | 'register' | 'forgot';
 
 export default function AuthScreen() {
   const { login, register, forgotPassword, notice } = useAuth();
+  const scroll = useRef<ScrollView>(null);
+  const fields = { email: useRef<TextInput>(null), password: useRef<TextInput>(null), fullName: useRef<TextInput>(null), mrn: useRef<TextInput>(null), contactNumber: useRef<TextInput>(null) };
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +25,8 @@ export default function AuthScreen() {
   async function submit() {
     if (locked.current) return;
     setSubmitted(true);
-    if (Object.values(errors).some(Boolean)) return;
+    const invalid = (Object.keys(errors) as Array<keyof typeof errors>).find(key => errors[key]);
+    if (invalid) { fields[invalid].current?.focus(); return; }
     locked.current = true;
     setBusy(true);
     setError(null);
@@ -54,17 +58,14 @@ export default function AuthScreen() {
   function changeMode(next: Mode) {
     if (locked.current) return;
     setMode(next); setError(null); setInfo(null); setSubmitted(false);
+    scroll.current?.scrollTo({ y: 0, animated: false });
   }
   return (
     <Screen safeTop keyboard>
-      <ScrollView contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={{ marginTop: 36, marginBottom: 26 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ width: 42, height: 42, borderRadius: 13, backgroundColor: C.brand, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ color: '#FFFFFF', fontSize: 22, fontWeight: '800' }}>+</Text>
-            </View>
-            <Text style={[T.title, { fontSize: 22 }]}>MedCore</Text>
-          </View>
+      <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={{ marginTop: 24, marginBottom: 28 }}>
+          <Brand size={52} />
+          <Text accessibilityRole="header" style={[T.display, { marginTop: 24 }]}>{mode === 'register' ? 'A clearer hospital journey' : mode === 'forgot' ? 'Let’s get you help' : 'Welcome back'}</Text>
           <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
             {mode === 'register'
               ? 'Create your account with the MRN and contact number on your admission slip.'
@@ -85,15 +86,17 @@ export default function AuthScreen() {
           />
         )}
 
-        <Field label="Email" value={email} onChangeText={setEmail} keyboard="email-address" autoComplete="email" editable={!busy} error={submitted ? errors.email : undefined} />
+        {submitted && Object.values(errors).some(Boolean) && <Text style={[T.meta, { color: C.danger, marginBottom: 12 }]} accessibilityRole="alert">Please check the highlighted fields.</Text>}
+        <Field inputRef={fields.email} label="Email" value={email} onChangeText={setEmail} keyboard="email-address" autoComplete="email" editable={!busy} error={submitted ? errors.email : undefined} />
         {mode !== 'forgot' && (
-          <Field label="Password" value={password} onChangeText={setPassword} secure autoComplete={mode === 'register' ? 'new-password' : 'current-password'} editable={!busy} error={submitted ? errors.password : undefined} />
+          <Field inputRef={fields.password} label="Password" value={password} onChangeText={setPassword} secure autoComplete={mode === 'register' ? 'new-password' : 'current-password'} editable={!busy} error={submitted ? errors.password : undefined} />
         )}
         {mode === 'register' && (
           <View>
-            <Field label="Full name, as on admission" value={fullName} onChangeText={setFullName} autoCapitalize="words" autoComplete="name" editable={!busy} error={submitted ? errors.fullName : undefined} />
-            <Field label="MRN" value={mrn} onChangeText={setMrn} editable={!busy} error={submitted ? errors.mrn : undefined} hint="Printed on your admission slip." />
+            <Field inputRef={fields.fullName} label="Full name, as on admission" value={fullName} onChangeText={setFullName} autoCapitalize="words" autoComplete="name" editable={!busy} error={submitted ? errors.fullName : undefined} />
+            <Field inputRef={fields.mrn} label="MRN" value={mrn} onChangeText={setMrn} editable={!busy} error={submitted ? errors.mrn : undefined} hint="Printed on your admission slip." />
             <Field
+              inputRef={fields.contactNumber}
               label="Contact number, as registered"
               value={contactNumber}
               onChangeText={setContactNumber}

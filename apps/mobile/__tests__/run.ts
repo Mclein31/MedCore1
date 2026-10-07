@@ -3,6 +3,9 @@
 // language, payment input guards, duplicate-submission prevention, and
 // navigation gating. Run with: npx tsx __tests__/run.ts
 import assert from 'node:assert';
+import { launchDestination, OnboardingStore, ONBOARDING_KEY } from '../src/lib/onboarding';
+import { confirmedPayment, paymentDetailsValid, paymentStatus, previousCheckoutStep, WALLET_PRESETS } from '../src/lib/checkout';
+import { QR_PATTERNS, qrPath } from '../src/lib/qrPatterns';
 import { describeClaimStatus, describeHmoStatus, explainBalance, formatPeso } from '../src/lib/format';
 import { beginAttempt, clearAttempts, endAttempt } from '../src/lib/singleFlight';
 import { getInitialRoute, shouldShowPayButton, validatePaymentAmount, parsePaymentAmount } from '../src/lib/guards';
@@ -163,7 +166,93 @@ async function asyncCheck(name: string, fn: () => Promise<void>) {
   try { await fn(); passed++; console.log(`[PASS] ${name}`); }
   catch (e: unknown) { console.error(`[FAIL] ${name} - ${e instanceof Error ? e.message : e}`); process.exitCode = 1; }
 }
+check('startup route waits for initialization and never bypasses session verification', () => {
+  const state = { sessionLoading: false, onboardingLoading: false, sessionError: null, user: null, onboardingError: null, completed: false };
+  assert.equal(launchDestination(state), 'onboarding');
+  assert.equal(launchDestination({ ...state, completed: true }), 'auth');
+  assert.equal(launchDestination({ ...state, verifiedThisLaunch: true }), 'auth');
+  assert.equal(launchDestination({ ...state, verifiedThisLaunch: true, onboardingError: 'Storage unavailable' }), 'auth');
+  assert.equal(launchDestination({ ...state, verifiedThisLaunch: true, sessionError: 'Verification failed' }), 'session-recovery');
+  assert.equal(launchDestination({ ...state, sessionLoading: true }), 'preload');
+  assert.equal(launchDestination({ ...state, onboardingLoading: true }), 'preload');
+  assert.equal(launchDestination({ ...state, verifiedThisLaunch: true, onboardingLoading: true }), 'auth');
+  assert.equal(launchDestination({ ...state, user: { id: 'verified' }, onboardingLoading: true }), 'main');
+  assert.equal(launchDestination({ ...state, user: { id: 'verified' }, onboardingError: 'Storage failed' }), 'main');
+  assert.equal(launchDestination({ ...state, user: { id: 'old' }, sessionError: 'Verification unavailable', completed: true }), 'session-recovery');
+  assert.equal(launchDestination({ ...state, sessionError: 'Verification unavailable' }), 'session-recovery');
+  assert.equal(launchDestination({ ...state, onboardingError: 'Storage failed' }), 'onboarding-recovery');
+});
+check('checkout review does not accept incomplete or unsuccessful confirmation', () => {
+  const result = { success: true, payment: { id: 'p', status: 'SUCCESS' }, receipt: { officialReceiptNumber: 'OR-1' } };
+  assert.equal(confirmedPayment(result), true);
+  for (const response of [{ ...result, success: false }, { ...result, payment: undefined }, { ...result, receipt: undefined }, { ...result, payment: { id: 'p', status: 'PENDING' } }, { ...result, receipt: { officialReceiptNumber: '' } }]) assert.equal(confirmedPayment(response), false);
+  assert.equal(paymentStatus('FAILED', true), 'Failed');
+  assert.equal(paymentStatus('PROCESSING', true), 'Processing');
+  assert.equal(paymentStatus('CANCELLED', true), 'Cancelled');
+  assert.equal(paymentStatus('INITIALIZED', true), 'Awaiting confirmation');
+  assert.equal(paymentStatus('FUTURE_STATUS', true), 'Status unavailable');
+  assert.equal(paymentStatus('SUCCESS', true), 'Recorded');
+  assert.equal(paymentStatus('SUCCESS', false), 'Paid');
+});
+check('method details are validated without provider credential fields', () => {
+  assert.equal(paymentDetailsValid('CREDIT_DEBIT_CARD', 'Test', '1234', ''), true);
+  assert.equal(paymentDetailsValid('CREDIT_DEBIT_CARD', 'Test', 'abcd', ''), false);
+  assert.equal(paymentDetailsValid('BANK_TRANSFER', 'Test', '', 'BPI'), true);
+  assert.equal(paymentDetailsValid('BANK_TRANSFER', 'Test', '', 'x'.repeat(65)), false);
+  assert.equal(paymentDetailsValid('GCASH', 'x', '', ''), false);
+  assert.deepEqual(Object.keys(WALLET_PRESETS.GCASH).sort(), ['accent', 'background', 'contact']);
+  assert.ok(WALLET_PRESETS.GCASH.contact.includes('***'));
+});
+check('checkout back navigation returns to editable steps', () => {
+  assert.equal(previousCheckoutStep('review'), 'detail');
+  assert.equal(previousCheckoutStep('verification'), 'detail');
+  assert.equal(previousCheckoutStep('detail'), 'method');
+  assert.equal(previousCheckoutStep('method'), 'amount');
+});
+check('prototype QR patterns are square with six unobstructed quiet modules', () => {
+  for (const pattern of Object.values(QR_PATTERNS)) {
+    assert.equal(pattern.rows.length, 45);
+    for (const [y, row] of pattern.rows.entries()) {
+      assert.equal(row.length, 45);
+      assert.match(row, /^[01]+$/);
+      for (const [x, cell] of Array.from(row).entries()) if (x < 6 || y < 6 || x >= 39 || y >= 39) assert.equal(cell, '0');
+    }
+    assert.ok(pattern.payload.startsWith('MEDCORE-DEMO-PAY|RAIL='));
+    assert.match(qrPath(pattern.rows), /^M/);
+    assert.equal([...qrPath(pattern.rows).matchAll(/M\d+ \d+h1v1h-1z/g)].length, pattern.rows.join('').split('1').length - 1);
+  }
+});
+
 async function integrationChecks() {
+  await asyncCheck('interrupted onboarding resumes, skipping and finishing persist across launches and logout', async () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: async (key: string) => values.get(key) || null, setItem: async (key: string, value: string) => { values.set(key, value); } };
+    const store = new OnboardingStore(storage);
+    assert.deepEqual(await store.restore(), { completed: false, step: 0 });
+    await store.save({ completed: false, step: 1 });
+    assert.deepEqual(await new OnboardingStore(storage).restore(), { completed: false, step: 1 });
+    for (const step of [0, 2]) {
+      await store.save({ completed: true, step });
+      const restored = await new OnboardingStore(storage).restore();
+      assert.equal(restored.completed, true);
+      assert.equal(launchDestination({ sessionLoading: false, onboardingLoading: false, sessionError: null, user: null, onboardingError: null, completed: restored.completed }), 'auth');
+    }
+    assert.equal(values.size, 1); assert.ok(values.has(ONBOARDING_KEY));
+    // The same completion preference persists a verified returning user's bypass.
+    values.clear();
+    await store.save({ completed: true, step: 0 });
+    const returning = await new OnboardingStore(storage).restore();
+    assert.equal(launchDestination({ sessionLoading: false, onboardingLoading: false, sessionError: null, user: null, onboardingError: null, completed: returning.completed }), 'auth');
+  });
+  await asyncCheck('onboarding storage failure reports recovery and cannot mark completion', async () => {
+    const store = new OnboardingStore({ getItem: async () => { throw new Error('Read failed'); }, setItem: async () => { throw new Error('Write failed'); } });
+    await assert.rejects(store.restore(), /Read failed/);
+    await assert.rejects(store.save({ completed: true, step: 2 }), /Write failed/);
+    for (const corrupt of ['{bad', 'null', '{"completed":true,"step":-1}', '{"completed":"true","step":0}', '{"completed":true,"step":3}']) {
+      assert.deepEqual(await new OnboardingStore({ getItem: async () => corrupt, setItem: async () => {} }).restore(), { completed: false, step: 0 });
+    }
+  });
+
   await asyncCheck('session remains authenticated when secure persistence is unavailable', async () => {
     const session = new SessionToken({ read: async () => null, write: async () => { throw new Error('Unavailable'); }, remove: async () => {} });
     await session.set('test-token'); assert.strictEqual(await session.get(), 'test-token');

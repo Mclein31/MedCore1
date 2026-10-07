@@ -3,6 +3,7 @@ import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
 import { useNetworkStatus } from '../lib/offline';
 import { describeClaimStatus, describeDischargeStage, describeHmoStatus, formatDate, formatDateTime, formatPeso, hasHmo, remainingBalance } from '../lib/format';
+import { Icon } from '../components/icons';
 import { C, Card, EmptyState, ErrorState, Expandable, Hero, HeroBtn, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
 
 function firstName(full: string | undefined): string {
@@ -24,13 +25,19 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     <RefreshNotice error={error} onRetry={refresh} />
     {!net.connected && <Text style={[T.meta, { color: C.warning, marginVertical: 8 }]} accessibilityRole="alert">You're offline. Information last updated {lastSynced ? formatDateTime(lastSynced.toISOString()) : 'before this visit'} may be out of date.</Text>}
     <Text style={[T.meta, { marginTop: 12 }]}>Good day, {firstName(patient?.fullName)}</Text>
-    <Text style={[T.title, { marginTop: 4 }]}>{facility}</Text>
+    <Text accessibilityRole="header" style={[T.title, { marginTop: 4 }]}>{facility}</Text>
     {currentEncounter ? <>
       <Text style={[T.meta, { marginTop: 6 }]}>Room {currentEncounter.roomBed} · Admitted {formatDate(currentEncounter.admissionDate)}</Text>
       <Hero eyebrow={cleared ? 'Your discharge status' : 'Remaining hospital balance'} figure={cleared ? 'Cleared to leave' : formatPeso(owe)} sub={describeDischargeStage(currentEncounter.stage)}>
         {!cleared && owe > 0 && <HeroBtn title="Pay balance" onPress={() => navigation.navigate('PaymentFlow', { encounterId: currentEncounter.uuid })} disabled={!!error || !net.connected || currentEncounter.stage !== 'PENDING_SETTLEMENT'} />}
         <HeroBtn title={cleared ? 'View discharge pass' : 'Review bill'} ghost={!cleared && owe > 0} onPress={() => navigation.navigate(cleared ? 'Documents' : 'Bill')} />
       </Hero>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
+        {[{ label: 'Bills', icon: 'bill', route: 'Bill' }, { label: 'Coverage', icon: 'coverage', route: 'Coverage' }, { label: 'Payments', icon: 'payments', route: 'Payments' }, { label: 'Documents', icon: 'file', route: 'Documents' }].map(action => <Pressable key={action.label} onPress={() => navigation.navigate(action.route)} accessibilityRole="button" accessibilityLabel={`Open ${action.label.toLowerCase()}`} style={({ pressed }) => ({ flex: 1, minWidth: 64, alignItems: 'center', paddingVertical: 12, opacity: pressed ? 0.6 : 1, gap: 8 })}>
+          <View accessible={false} style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.brandSoft, justifyContent: 'center', alignItems: 'center' }}><Icon name={action.icon} color={C.brand} /></View>
+          <Text style={[T.meta, { color: C.ink, textAlign: 'center' }]}>{action.label}</Text>
+        </Pressable>)}
+      </View>
       {(overview?.alerts?.length ?? 0) > 0 && <>
         <SectionHeader title="Latest from your hospital" action={<Pressable onPress={() => navigation.navigate('Notifications')} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: C.brand, fontWeight: '600' }}>All updates</Text></Pressable>} />
         {(overview?.alerts || []).slice(0, 2).map((item, i) => <View key={`${item.timestamp}-${i}`} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}><Text style={T.section}>{item.title}</Text><Text style={[T.meta, { marginTop: 4 }]}>{item.message}</Text>{item.timestamp && <Text style={[T.meta, { marginTop: 4 }]}>{formatDateTime(item.timestamp)}</Text>}</View>)}

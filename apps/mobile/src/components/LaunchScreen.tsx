@@ -1,15 +1,26 @@
-import { ActivityIndicator, Text, View } from 'react-native';
-
-// Bare-primitive launch screen (no design-system imports) so it renders
-// even if another module fails to load.
+import { useEffect, useRef } from 'react';
+import { ActivityIndicator, Animated, Text, View } from 'react-native';
+import Brand from './Brand';
+import { C, T } from './ui';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 export default function LaunchScreen() {
-  return (
-    <View style={{ flex: 1, backgroundColor: '#F3F5F9', alignItems: 'center', justifyContent: 'center', gap: 14 }}>
-      <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#FFFFFF', fontSize: 30, fontWeight: '800' }}>+</Text>
-      </View>
-      <Text style={{ fontSize: 20, fontWeight: '700', color: '#101E33' }}>MedCore</Text>
-      <ActivityIndicator size="small" color="#2563EB" />
+  const reduced = useReducedMotion();
+  const breath = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (reduced) { breath.setValue(1); return; }
+    const animation = Animated.loop(Animated.sequence([
+      Animated.timing(breath, { toValue: 1.05, duration: 1000, useNativeDriver: true }),
+      Animated.timing(breath, { toValue: 1, duration: 1000, useNativeDriver: true })
+    ]), { iterations: 2 });
+    animation.start();
+    return () => { animation.stop(); breath.setValue(1); };
+  }, [breath, reduced]);
+  return <View style={{ flex: 1, backgroundColor: C.paper, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 24 }}>
+    <Animated.View style={{ transform: [{ scale: breath }] }}><Brand size={112} stacked /></Animated.View>
+    <Text style={[T.body, { color: C.secondary, textAlign: 'center' }]}>Clarity for your hospital journey</Text>
+    <View accessible accessibilityRole="progressbar" accessibilityLabel="Restoring your account" style={{ alignItems: 'center', gap: 12 }}>
+      <ActivityIndicator color={C.brand} />
+      <Text style={T.meta}>Getting things ready…</Text>
     </View>
-  );
+  </View>;
 }

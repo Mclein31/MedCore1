@@ -1,7 +1,7 @@
 # PROJECT_CONTEXT.md — AQROMED Operational Brain
 
 > **Epistemic Status**: Verified Project Knowledge & Baseline Parameters  
-> **Last Synchronized**: October 6, 2026
+> **Last Synchronized**: October 7, 2026
 > **Active Project**: AQROMED (formerly MedCore / MedCore1)  
 > **Knowledge Layer**: Project Operational Brain (`.brain/`)
 
@@ -1881,3 +1881,24 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [TODO] **Release gates**: verified identity/OTP and abuse controls; backend-bound expiring magic links (the Clarify selector is still a demonstration); real gateway-confirmed settlement and legal signing; production staff simulation controls; real PostgreSQL concurrency tests and physical-device SecureStore/restart/logout/accessibility checks; compatible resolution of npm audit's 16 high and 7 moderate Expo/tooling advisories; native EAS project setup. No forced dependency downgrade, schema application, reseeding, deployment or commit was performed during this review cycle.
 
 [REFERENCE] Detailed findings and reproducible commands: [mobile audit](../apps/mobile/AUDIT.md), [mobile README](../apps/mobile/README.md). Existing patient-link schema/migration work remains part of this progress snapshot; unrelated `VALUE_PROP/` and Obsidian graph changes are excluded from the proposed commit scope.
+
+
+## MedCore mobile reference-led UI/UX — October 7, 2026
+
+[FACT] The six supplied `apps/mobile/UI_INSPO` references are now implemented as a coherent financial interface: teal from the existing MedCore identity, native sans-serif type, prominent balances, compact Home shortcuts, grouped/divided secondary information, focused checkout and reusable recorded receipts. MedCore branding is retained despite AQROMED naming elsewhere in the ecosystem. No clinical scope, API, authentication or backend architecture was added/changed.
+
+[DECISION] Original badge/wordmark PNGs in `apps/mobile/assets/brand` are byte-identical to `logo/` and registered through `src/lib/assets.ts`. They use contain sizing in preload/onboarding/auth/header/receipt. `scripts/prepare-brand.cjs` uses existing Expo image utilities to make square 1024px launcher assets (opaque RGB general/iOS icon, transparent padded adaptive foreground); the supplied artwork remains unchanged.
+
+[DECISION] First signed-out launch is preload → three-page introduction → authentication; interrupted introduction progress and completion/Skip persist under `medcore_onboarding_v1` in AsyncStorage. Returning signed-out users see authentication; verified restored sessions bypass introduction. Session/preference initialization gates routing; verification failure shows recovery before patient records. Preload has no artificial percentage/delay, respects reduced motion and stops its breathing animation after two cycles or on unmount.
+
+[DECISION] Checkout adapts dashboard rail identity into amount → method → method details/preset wallet verification → review → actual pending confirmation → recorded receipt/plan. It holds the selected amount stable and revalidates the remaining balance. GCash/Maya stages have no provider credential fields. Native saved requests, account locks, immutable retry inputs, idempotency, internal simulation flags, production gates and backend SUCCESS+receipt confirmation remain intact. Mobile demo banners are removed; history reports real enum states, including Cancelled. Receipts preserve selected record identity.
+
+[DECISION] QR rendering uses exact black vector modules from the existing encoded prototype PNG lattice (45×45 including six quiet modules per side). The existing `MEDCORE-DEMO-PAY` payload is unchanged; no merchant/destination/backend QR contract was invented. Provider identity stays outside the code. Independent decoder checks rasterize the exact path at four sizes; decoding is not proof of a real wallet transaction.
+
+[FACT] Independent researcher findings and official sources are in [mobile UI research](../MedCore_Vault/RESEARCH/mobile_ui_patterns.md). The code-reviewer audited and re-audited fixes for native back navigation, modal text overflow, startup branding, offscreen checkout failures and cancelled-payment status. Final verdict: **ready for a patient-prototype progress commit; no remaining actionable findings**.
+
+[FACT] Validation: mobile lint/strict typecheck, server typecheck, 38 mobile regressions, 18 isolated backend groups, 250-record root financial audit, 12 Vision QR decodes, iOS/Android/web Expo exports and diff-check passed. Browser inspection used a loopback synthetic fixture (no hospital-record mutation) at 320/375/430px; onboarding routing/persistence and QR/wallet review, recorded receipt, definitive rejection and same-request retry were exercised. Key text/status/button contrasts exceed 4.5:1. Detailed commands, evidence and limitations are in [mobile audit](../apps/mobile/AUDIT.md).
+
+[TODO] Existing release gates remain: verified identity/OTP/abuse controls, backend-bound expiring magic links, real gateway confirmation/legal signing, production staff simulation controls, real PostgreSQL concurrency tests, physical-device native storage/restart/keyboard/safe-area/reduced-motion/screen-reader checks, compatible resolution of 23 existing Expo/tooling advisories (16 high/7 moderate), and native EAS setup/signed builds. Bundle exports and synthetic browser flows do not certify devices or gateways. No dependency upgrade, commit or deployment was performed; user `UI_INSPO` assets remain untracked/excluded from the proposed code progress commit.
+
+[DECISION] **Restored-user introduction bypass survives logout**: `RootNavigator` latches only a user already verified by `AuthProvider`, passes that marker to preference persistence even after early logout, and remembers completed introduction for later signed-out launches. The marker can skip introduction only: Main still requires the current authenticated user, and session-verification failure retains recovery priority. This closes the slow-preference-load/logout/relaunch race; reviewer re-audit passed.

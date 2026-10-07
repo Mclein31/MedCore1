@@ -74,7 +74,7 @@ export function describeDischargeStage(stage: string): string {
     case 'DOCTOR_PF_PENDING': return 'Waiting for your doctor to confirm professional fees.';
     case 'PHARMACY_RTS_AUDIT': return 'Pharmacy is checking returned medicines.';
     case 'HMO_FINAL_LOA': return 'Waiting for your final HMO approval.';
-    case 'PENDING_SETTLEMENT': return 'Your bill is ready. Payment will release your discharge pass.';
+    case 'PENDING_SETTLEMENT': return 'Your bill is ready for settlement.';
     case 'CLEARED_GATE_PASS': return 'You are cleared to leave. Show your discharge pass at the lobby.';
     default: return 'Your discharge is being processed.';
   }

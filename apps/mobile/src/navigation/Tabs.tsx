@@ -1,10 +1,14 @@
 import React from 'react';
+import { Text, useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../lib/auth';
 import LaunchScreen from '../components/LaunchScreen';
 import AuthScreen from '../screens/AuthScreen';
+import OnboardingScreen from '../screens/OnboardingScreen';
+import { useOnboarding } from '../hooks/useOnboarding';
+import { launchDestination } from '../lib/onboarding';
 import HomeScreen from '../screens/HomeScreen';
 import BillScreen from '../screens/BillScreen';
 import CoverageScreen from '../screens/CoverageScreen';
@@ -29,19 +33,22 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
   return (
     <Tab.Navigator
-      screenOptions={({ navigation }: any) => ({
+      screenOptions={({ navigation, route }) => ({
         header: () => <MedHeader navigation={navigation} />,
         tabBarActiveTintColor: C.brand,
-        tabBarInactiveTintColor: '#94A3B8',
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 1 },
+        tabBarInactiveTintColor: C.secondary,
+        tabBarLabel: ({ color }) => <Text style={{ fontSize: 11, fontWeight: '600', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
+        tabBarAllowFontScaling: true,
+        tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
           backgroundColor: C.surface,
           borderTopWidth: 1,
           borderTopColor: C.border,
           paddingTop: 6,
-          height: 64 + insets.bottom,
+          height: 68 + Math.max(0, (fontScale - 1) * 32) + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8)
         }
       })}
@@ -49,27 +56,27 @@ function MainTabs() {
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ tabBarLabel: 'Home', tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="home" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="home" focused={focused} /> }}
       />
       <Tab.Screen
         name="Bill"
         component={BillScreen}
-        options={{ tabBarLabel: 'Bill', tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="bill" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="bill" focused={focused} /> }}
       />
       <Tab.Screen
         name="Coverage"
         component={CoverageScreen}
-        options={{ tabBarLabel: 'Coverage', tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="coverage" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="coverage" focused={focused} /> }}
       />
       <Tab.Screen
         name="Payments"
         component={PaymentsScreen}
-        options={{ tabBarLabel: 'Payments', tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="payments" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="payments" focused={focused} /> }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarLabel: 'Profile', tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="profile" focused={focused} /> }}
+        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="profile" focused={focused} /> }}
       />
     </Tab.Navigator>
   );
@@ -77,8 +84,14 @@ function MainTabs() {
 
 export default function RootNavigator() {
   const { user, loading, sessionError, retrySession, logout } = useAuth();
-  if (loading) return <LaunchScreen />;
-  if (sessionError) return <Screen safeTop><ErrorState message={sessionError} onRetry={retrySession} /><SecondaryButton title="Back to log in" onPress={() => { void logout(); }} /></Screen>;
+  const verifiedThisLaunch = React.useRef(false);
+  if (user) verifiedThisLaunch.current = true;
+  const onboarding = useOnboarding(verifiedThisLaunch.current);
+  const destination = launchDestination({ sessionLoading: loading, onboardingLoading: onboarding.loading, sessionError, user, onboardingError: onboarding.loadError, completed: onboarding.progress.completed, verifiedThisLaunch: verifiedThisLaunch.current });
+  if (destination === 'preload') return <LaunchScreen />;
+  if (destination === 'session-recovery') return <Screen safeTop><ErrorState message={sessionError!} onRetry={retrySession} /><SecondaryButton title="Back to log in" onPress={() => { void logout(); }} /></Screen>;
+  if (destination === 'onboarding-recovery') return <Screen safeTop><ErrorState message={onboarding.loadError!} onRetry={onboarding.restore} /></Screen>;
+  if (destination === 'onboarding') return <OnboardingScreen progress={onboarding.progress} saving={onboarding.saving} error={onboarding.saveError} onSave={onboarding.save} />;
   return (
     <PatientProvider key={user?.id || 'signed-out'}>
     <NavigationContainer>
@@ -87,7 +100,7 @@ export default function RootNavigator() {
           headerStyle: { backgroundColor: C.surface },
           headerTintColor: C.ink,
           headerTitleStyle: { fontSize: 17, fontWeight: '700' },
-          headerShadowVisible: true
+          headerShadowVisible: false
         }}
       >
         {user ? (

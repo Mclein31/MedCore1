@@ -5,22 +5,22 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TextInputProps } from 'react-native';
 
 // MedCore "Calm Ledger" design language.
-// One hue family (brand blue) carries emphasis; a deep-blue hero panel
+// Teal from the MedCore PNG identity carries emphasis; a deep-teal hero panel
 // answers each screen's core question; everything else is quiet paper and
 // ledger rows separated by hairlines. Status is always words plus a glyph,
 // never color alone.
 
 export const C = {
-  paper: '#F5F6F8',
+  paper: '#F5F8F7',
   surface: '#FFFFFF',
-  border: '#E3E9F1',
-  ink: '#101E33',
-  secondary: '#5C6C84',
-  faint: '#64748B',
-  brand: '#2563EB',
-  hero: '#17324F',
-  heroSub: 'rgba(255,255,255,0.78)',
-  brandSoft: '#E9EFFE',
+  border: '#DEE8E4',
+  ink: '#142D2A',
+  secondary: '#526862',
+  faint: '#526862',
+  brand: '#087F73',
+  hero: '#105D55',
+  heroSub: 'rgba(255,255,255,0.90)',
+  brandSoft: '#E3F2ED',
   success: '#157F3D',
   successBg: '#E9F7EF',
   warning: '#B45309',
@@ -28,11 +28,11 @@ export const C = {
   danger: '#B91C1C',
   dangerBg: '#FDECEC',
   // Backwards-compatible aliases used across screens
-  bg: '#F5F6F8',
+  bg: '#F5F8F7',
   surfaceAlias: '#FFFFFF',
-  primary: '#2563EB',
-  primaryDark: '#1D4ED8',
-  text: '#101E33'
+  primary: '#087F73',
+  primaryDark: '#105D55',
+  text: '#142D2A'
 } as const;
 
 export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, section: 32 } as const;
@@ -43,8 +43,8 @@ export const T = StyleSheet.create({
   heroFigure: { fontSize: 32, fontWeight: '800', color: '#FFFFFF', fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
   heroEyebrow: { fontSize: 14, fontWeight: '600', color: C.heroSub },
   heroSub: { fontSize: 14, color: C.heroSub, marginTop: 4 },
-  title: { fontSize: 19, fontWeight: '700', color: C.ink, letterSpacing: -0.2 },
-  section: { fontSize: 15, fontWeight: '700', color: C.ink },
+  title: { fontSize: 22, fontWeight: '700', color: C.ink, letterSpacing: -0.2 },
+  section: { fontSize: 16, fontWeight: '700', color: C.ink },
   body: { fontSize: 15, color: C.ink, lineHeight: 22 },
   meta: { fontSize: 13, color: C.secondary, lineHeight: 18 },
   eyebrow: { fontSize: 12, fontWeight: '700', color: C.secondary, letterSpacing: 1.1, textTransform: 'uppercase' },
@@ -56,7 +56,7 @@ export function Screen({ children, safeTop = false, keyboard = false, keyboardOf
 }) {
   const insets = useSafeAreaInsets();
   return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.paper }} enabled={keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardOffset}>
-    <View style={[s.screen, { paddingTop: safeTop ? insets.top + 8 : 8, paddingLeft: Math.max(16, insets.left), paddingRight: Math.max(16, insets.right) }]}>{children}</View>
+    <View style={[s.screen, { paddingTop: safeTop ? insets.top + 8 : 8, paddingBottom: insets.bottom, paddingLeft: Math.max(16, insets.left), paddingRight: Math.max(16, insets.right) }]}>{children}</View>
   </KeyboardAvoidingView>;
 }
 
@@ -68,7 +68,7 @@ export function RefreshNotice({ error, onRetry }: { error: string | null; onRetr
   </View>;
 }
 
-// Deep-blue answer panel: one question, one figure, its actions.
+// Deep-teal answer panel: one question, one figure, its actions.
 export function Hero({ eyebrow, figure, sub, children }: {
   eyebrow: string; figure: string; sub?: string; children?: React.ReactNode;
 }) {
@@ -102,7 +102,7 @@ export function HeroBtn({ title, onPress, ghost, disabled, a11y }: {
 export function SectionHeader({ title, action }: { title: string; action?: React.ReactNode }) {
   return (
     <View style={s.sectionHeader}>
-      <Text style={T.section}>{title}</Text>
+      <Text accessibilityRole="header" style={T.section}>{title}</Text>
       {action}
     </View>
   );
@@ -175,7 +175,7 @@ export function SegControl({ options, value, onChange, disabled }: {
             onPress={() => onChange(o.key)}
             disabled={disabled}
             accessibilityRole="tab"
-            accessibilityState={{ selected: active }}
+            accessibilityState={{ selected: active, disabled: !!disabled }}
             accessibilityLabel={o.label}
           >
             <Text style={[s.segText, active && s.segTextActive]}>{o.label}</Text>
@@ -186,17 +186,17 @@ export function SegControl({ options, value, onChange, disabled }: {
   );
 }
 
-export function Field({ label, value, onChangeText, secure, keyboard, a11y, hint, error, editable = true, autoComplete, autoCapitalize = 'none' }: {
+export function Field({ label, value, onChangeText, secure, keyboard, a11y, hint, error, editable = true, inputRef, autoComplete, autoCapitalize = 'none' }: {
   label: string; value: string; onChangeText: (t: string) => void; secure?: boolean;
   keyboard?: TextInputProps['keyboardType']; a11y?: string; hint?: string; error?: string;
-  editable?: boolean; autoComplete?: TextInputProps['autoComplete']; autoCapitalize?: TextInputProps['autoCapitalize'];
+  editable?: boolean; inputRef?: React.Ref<TextInput>; autoComplete?: TextInputProps['autoComplete']; autoCapitalize?: TextInputProps['autoCapitalize'];
 }) {
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
   return <View style={s.field}>
     <Text style={s.fieldLabel}>{label}</Text>
     <View style={[s.inputWrap, focused && s.inputFocused, error && { borderColor: C.danger }]}>
-      <TextInput style={s.input} value={value} onChangeText={onChangeText} secureTextEntry={secure && !visible}
+      <TextInput ref={inputRef} style={s.input} value={value} onChangeText={onChangeText} secureTextEntry={secure && !visible}
         keyboardType={keyboard || 'default'} autoCapitalize={autoCapitalize} autoComplete={autoComplete} autoCorrect={false}
         editable={editable} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         accessibilityLabel={a11y || label} accessibilityHint={error || hint} />
@@ -311,7 +311,7 @@ export function Expandable({ title, subtitle, children }: { title: string; subti
       <Pressable onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${title}, ${open ? 'collapse' : 'expand'}`}>
         <View style={s.expandHead}>
           <View style={s.expandMain}>
-            <Text style={T.section}>{title}</Text>
+            <Text accessibilityRole="header" style={T.section}>{title}</Text>
             <Text style={[T.meta, { marginTop: 2 }]}>{subtitle}</Text>
           </View>
           <Text style={s.expandGlyph}>{open ? '−' : '+'}</Text>
@@ -338,7 +338,7 @@ const s = StyleSheet.create({
   emptyGlyphText: { fontSize: 26, color: C.brand },
   sectionHeader: { marginTop: 24, marginBottom: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: Radius.surface, padding: 18, marginBottom: 12 },
-  cardFlush: { padding: 0, overflow: 'hidden' },
+  cardFlush: { padding: 0, borderWidth: 0, borderRadius: 12 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingVertical: 7, gap: 12 },
   rowLabel: { fontSize: 14, color: C.secondary, flex: 1, minWidth: 0 },
   rowValue: { flexShrink: 1, maxWidth: '55%', textAlign: 'right', fontSize: 15, color: C.ink, fontVariant: ['tabular-nums'] },
@@ -352,13 +352,13 @@ const s = StyleSheet.create({
   badge: { borderRadius: Radius.badge, maxWidth: '100%', paddingHorizontal: 13, paddingVertical: 7, alignSelf: 'flex-start' },
   badgeText: { fontSize: 13, fontWeight: '700' },
   primaryBtn: { backgroundColor: C.brand, borderRadius: Radius.control, paddingVertical: 15, paddingHorizontal: 18, alignItems: 'center', marginTop: 12, minHeight: 54, justifyContent: 'center' },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryBtnText: { textAlign: 'center', color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   secondaryBtn: { borderColor: C.border, borderWidth: 1, backgroundColor: C.surface, borderRadius: Radius.control, paddingVertical: 15, paddingHorizontal: 18, alignItems: 'center', marginTop: 12, minHeight: 54, justifyContent: 'center' },
-  secondaryBtnText: { color: C.ink, fontSize: 15, fontWeight: '600' },
-  seg: { flexDirection: 'row', backgroundColor: '#E6EBF3', borderRadius: Radius.control, padding: 4, marginBottom: 18 },
-  segOpt: { flex: 1, borderRadius: 11, paddingVertical: 11, alignItems: 'center' },
+  secondaryBtnText: { textAlign: 'center', color: C.ink, fontSize: 15, fontWeight: '600' },
+  seg: { flexDirection: 'row', backgroundColor: '#E7EEEB', borderRadius: Radius.control, padding: 4, marginBottom: 18 },
+  segOpt: { minHeight: 48, justifyContent: 'center', flex: 1, borderRadius: 11, paddingVertical: 11, alignItems: 'center' },
   segOptActive: { backgroundColor: C.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
-  segText: { fontSize: 14, fontWeight: '600', color: C.secondary },
+  segText: { textAlign: 'center', fontSize: 14, fontWeight: '600', color: C.secondary },
   segTextActive: { color: C.ink, fontWeight: '700' },
   field: { marginBottom: 14 },
   fieldLabel: { fontSize: 14, fontWeight: '600', color: C.ink, marginBottom: 7 },
@@ -370,15 +370,15 @@ const s = StyleSheet.create({
   modalBtns: { flexDirection: 'column', justifyContent: 'flex-end', gap: 6, marginTop: 10 },
   stepRow: { flexDirection: 'row' },
   rail: { width: 30, alignItems: 'center' },
-  node: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#E6EBF3', alignItems: 'center', justifyContent: 'center' },
+  node: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#E7EEEB', alignItems: 'center', justifyContent: 'center' },
   nodeDone: { backgroundColor: C.success },
   nodeNow: { backgroundColor: C.brand },
   nodeText: { fontSize: 12, fontWeight: '800', color: C.secondary },
   nodeTextLight: { color: '#FFFFFF' },
-  link: { width: 2.5, flex: 1, minHeight: 22, backgroundColor: '#E6EBF3', borderRadius: 2, marginVertical: 3 },
+  link: { width: 2.5, flex: 1, minHeight: 22, backgroundColor: '#E7EEEB', borderRadius: 2, marginVertical: 3 },
   linkDone: { backgroundColor: C.success },
   stepBody: { flex: 1, paddingBottom: 20, paddingLeft: 8 },
-  stepTitle: { fontSize: 15, fontWeight: '700', color: C.ink },
+  stepTitle: { fontSize: 16, fontWeight: '700', color: C.ink },
   stepTodo: { color: C.secondary, fontWeight: '600' },
   expand: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: Radius.surface, padding: 18, marginBottom: 12 },
   expandHead: { flexDirection: 'row', alignItems: 'center' },

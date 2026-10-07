@@ -3,9 +3,9 @@ import { RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { useResource } from '../hooks/useResource';
 import { createPaymentApi } from '../services/paymentApi';
-import { describeRail } from '../lib/format';
 import { createPatientApi } from '../services/patientApi';
 import { describeDischargeStage, formatDate, formatDateTime, formatPeso } from '../lib/format';
+import ReceiptSheet from '../components/ReceiptSheet';
 import BillBreakdown from '../components/BillBreakdown';
 import { C, Card, ConfirmationModal, ErrorState, LoadingState, RefreshNotice, Row, Screen, SecondaryButton, SectionHeader, StatusBadge, T } from '../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -46,7 +46,7 @@ export default function RecordDetailScreen({ route }: NativeStackScreenProps<Roo
     <Text style={[T.title, { marginTop: 12 }]}>{enc.encounterNumber}</Text><Text style={[T.meta, { marginTop: 6 }]}>Admitted {formatDate(enc.admissionDate)} · Room {enc.roomBed}</Text>
     {pass && <><SectionHeader title="Your discharge pass" /><Card><StatusBadge tone={passActive ? 'ok' : pass.status === 'VERIFIED_AT_LOBBY' ? 'info' : 'warn'} text={passActive ? 'Ready for exit' : pass.status === 'VERIFIED_AT_LOBBY' ? 'Exit already verified' : 'Pass no longer active'} /><Row label="Pass number" value={pass.passNumber} />{pass.exitPin && passActive && <View style={{ paddingVertical: 20 }}><Text style={T.meta}>Exit PIN</Text><Text selectable style={[T.display, { marginTop: 6, letterSpacing: 4 }]}>{pass.exitPin}</Text></View>}<Text style={[T.body, { marginTop: 8 }]}>{passActive ? 'Show this pass number and exit PIN to lobby staff. Keep the PIN private.' : 'This pass cannot be used for exit. Contact hospital billing if you need a current pass.'}</Text><Row label="Issued" value={formatDateTime(pass.issuedAt)} /></Card></>}
     {documentKind === 'GATE_PASS' && !pass && <Text style={[T.body, { color: C.warning, marginTop: 12 }]}>No discharge pass is available for this stay. Contact your hospital billing desk.</Text>}
-    {data?.receipt && <><SectionHeader title="Selected receipt" /><Card><Row label="Receipt" value={data.receipt.officialReceiptNumber} /><Row label="Amount" value={formatPeso(data.receipt.amount)} /><Row label="Method" value={describeRail(data.receipt.paymentRail)} /><Row label="Payer" value={data.receipt.payerName} /><Row label="Issued" value={formatDateTime(data.receipt.issuedAt)} /></Card></>}
+    {data?.receipt && <ReceiptSheet number={data.receipt.officialReceiptNumber} amount={data.receipt.amount} rail={data.receipt.paymentRail} payer={data.receipt.payerName} date={data.receipt.issuedAt} />}
     {data?.note && <><SectionHeader title="Selected payment plan" /><Card><Row label="Note number" value={data.note.noteNumber} /><Row label="Principal" value={formatPeso(data.note.principalAmount)} /><Row label="First due date" value={formatDate(data.note.firstDueDate)} />{data.note.schedule.map((amount, i) => <Row key={i} label={`Month ${i + 1}`} value={formatPeso(amount)} />)}</Card></>}
     <SectionHeader title="Hospital stay" /><Row label="Doctor" value={enc.attendingDoctor || 'Not provided'} /><Row label="Diagnosis on file" value={enc.primaryDiagnosis || 'Not provided'} /><Text style={[T.meta, { marginVertical: 12 }]}>{describeDischargeStage(enc.stage)}</Text>
     {enc.promissoryNote && <><SectionHeader title="Payment plan" /><Card><Row label="Principal financed" value={formatPeso(enc.promissoryNote.principalAmount)} /><Row label="Repayment term" value={`${enc.promissoryNote.installmentMonths} months`} /><Row label="Monthly installment" value={formatPeso(enc.promissoryNote.monthlyInstallment)} /><Text style={[T.meta, { marginTop: 8 }]}>View the complete repayment schedule in Payments.</Text></Card></>}
