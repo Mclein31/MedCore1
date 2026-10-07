@@ -1,48 +1,48 @@
-import React from 'react';
+import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { usePatient } from '../hooks/usePatient';
-import Brand from '../components/Brand';
-import { Icon } from '../components/icons';
-import { C, Card, LedgerRow, LoadingState, RefreshNotice, SecondaryButton, Screen, SectionHeader, T } from '../components/ui';
+import { C, Card, ConfirmationModal, LedgerRow, LoadingState, RefreshNotice, Screen, SectionHeader, T } from '../components/ui';
 
 export default function ProfileScreen({ navigation }: { navigation: any }) {
   const { user, logout } = useAuth();
   const { patient, currentEncounter, loading, error, refresh } = usePatient();
-  const [busy, setBusy] = React.useState(false);
+  const [busy, setBusy] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const name = patient?.fullName || user?.fullName || 'Your account';
+  const initials = name.split(/[ ,]+/).filter(Boolean).filter((_, i, all) => i === 0 || i === all.length - 1).map(part => Array.from(part)[0]).join('').slice(0, 2).toUpperCase();
   async function signOut() {
     if (busy) return;
     setBusy(true);
     try { await logout(); } finally { setBusy(false); }
   }
   if (loading && !patient) return <LoadingState message="Loading your profile…" />;
-  return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+  return <Screen gutter={12} background={C.paper}><ScrollView contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
     <RefreshNotice error={error} onRetry={refresh} />
-    <Text accessibilityRole="header" style={[T.title, { marginTop: 12 }]}>Profile</Text>
-    <View style={{ flexDirection: 'row', gap: 16, alignItems: 'center', paddingVertical: 24 }}>
-      <View accessible={false} style={{ width: 64, height: 64, borderRadius: 24, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' }}><Icon name="profile" size={28} color={C.brand} /></View>
-      <View style={{ flex: 1 }}><Text style={T.section}>{patient?.fullName || user?.fullName || 'Your account'}</Text><Text style={[T.meta, { marginTop: 4 }]}>{user?.email || ''}</Text></View>
+    <View style={{ minHeight: 100, backgroundColor: C.surface, padding: 12, marginTop: 8, flexDirection: 'row', gap: 16, alignItems: 'center', borderRadius: 10 }}>
+      <View accessible={false} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.blueSoft, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 24, fontWeight: '500', color: C.blueDark }}>{initials}</Text></View>
+      <View style={{ flex: 1 }}><Text style={[T.body, { fontSize: 16, fontWeight: '500' }]}>{name}</Text><Text style={[T.meta, { marginTop: 4 }]}>{user?.email || ''}</Text></View>
     </View>
-    <SectionHeader title="Account" />
+    <SectionHeader subtle title="Account" />
     <Card flush>
-      <LedgerRow title="Contact number" value={patient?.contactNumber || '—'} />
-      <LedgerRow title="Senior citizen" value={patient?.isSeniorCitizen ? 'Verified' : 'No'} tone={patient?.isSeniorCitizen ? 'ok' : undefined} />
-      <LedgerRow title="PWD" value={patient?.isPwd ? 'Verified' : 'No'} tone={patient?.isPwd ? 'ok' : undefined} last />
+      <LedgerRow icon="contact" textSize={16} title="Contact number" value={patient?.contactNumber || '—'} />
+      <LedgerRow icon="profile" textSize={16} title="Senior citizen" value={patient?.isSeniorCitizen ? 'Verified' : 'No'} tone={patient?.isSeniorCitizen ? 'ok' : undefined} />
+      <LedgerRow icon="coverage" textSize={16} title="PWD" value={patient?.isPwd ? 'Verified' : 'No'} tone={patient?.isPwd ? 'ok' : undefined} last />
     </Card>
-    <SectionHeader title="Coverage" />
+    <SectionHeader subtle title="Coverage" topSpacing={8} />
     <Card flush>
-      <LedgerRow title="PhilHealth" value={patient?.philhealthPinMasked || '—'} />
-      <LedgerRow title="HMO" sub={currentEncounter?.hmo?.cardMasked || ''} value={currentEncounter?.hmo?.providerName === 'None' ? 'No HMO on file' : currentEncounter?.hmo?.providerName || '—'} />
-      <LedgerRow title="Review coverage" onPress={() => navigation.navigate('Coverage')} last />
+      <LedgerRow icon="coverage" textSize={16} title="PhilHealth" value={patient?.philhealthPinMasked || '—'} />
+      <LedgerRow icon="file" textSize={16} title="HMO" sub={currentEncounter?.hmo?.cardMasked || ''} value={currentEncounter?.hmo?.providerName === 'None' ? 'No HMO on file' : currentEncounter?.hmo?.providerName || '—'} />
+      <LedgerRow icon="coverage" textSize={16} title="Review coverage" onPress={() => navigation.navigate('Coverage')} last />
     </Card>
-    <SectionHeader title="Records & updates" />
+    <SectionHeader subtle title="Records & updates" topSpacing={8} />
     <Card flush>
-      <LedgerRow title="Documents & receipts" onPress={() => navigation.navigate('Documents')} />
-      <LedgerRow title="Hospital updates" onPress={() => navigation.navigate('Notifications')} last />
+      <LedgerRow icon="file" textSize={16} title="Documents & receipts" onPress={() => navigation.navigate('Documents')} />
+      <LedgerRow icon="bell" textSize={16} title="Hospital updates" onPress={() => navigation.navigate('Notifications')} last />
     </Card>
-    <SectionHeader title="Support & privacy" />
-    <Text style={[T.body, { color: C.secondary, marginBottom: 12 }]}>Only your own hospital records are visible here. For billing questions or account recovery, contact your hospital billing desk.</Text>
-    <SecondaryButton title={busy ? 'Signing out…' : 'Log out'} onPress={signOut} disabled={busy} />
-    <View style={{ alignItems: 'center', marginTop: 28, gap: 4 }}><Brand size={28} /><Text style={T.meta}>Patient financial companion · v1.0.0</Text></View>
-  </ScrollView></Screen>;
+    <SectionHeader subtle title="Support & privacy" topSpacing={8} />
+    <Text style={[T.meta, { marginHorizontal: 12, marginBottom: 16 }]}>Only your own hospital records are visible here. For billing questions or account recovery, contact your hospital billing desk.</Text>
+    <Card flush><LedgerRow icon="logout" textSize={16} title="Log out" onPress={() => setConfirm(true)} last /></Card>
+    <Text style={[T.meta, { textAlign: 'center', marginTop: 16 }]}>MedCore · Patient financial companion</Text>
+  </ScrollView><ConfirmationModal visible={confirm} title="Log out" detail="Are you sure you want to log out of MedCore?" confirmLabel="Yes, log out" onConfirm={() => { void signOut(); }} onCancel={() => setConfirm(false)} busy={busy} /></Screen>;
 }

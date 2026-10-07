@@ -1,17 +1,18 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import {
-  Bell, Building2, Check, ChevronRight, CircleCheck, Clock, CreditCard,
+  ArrowLeft, Eye, EyeOff, Mail, Phone, LogOut, LockKeyhole, Info, Bell, Building2, Check, ChevronRight, CircleCheck, Clock, CreditCard,
   FileText, Home, QrCode, Receipt, Scale, ShieldCheck, Smartphone, TriangleAlert, User
 } from 'lucide-react-native';
 import { ASSETS } from '../lib/assets';
-import { C } from './ui';
+import { C } from './theme';
 
 // Central icon system. Generic interface icons come from lucide (matching
 // the dashboard's lucide-react usage); only brand/provider artwork lives in
 // PNG files via the asset registry.
 
 const LUCIDE: Record<string, React.ComponentType<{ size?: number | string; color?: string; strokeWidth?: number | string }>> = {
+  back: ArrowLeft, eye: Eye, eyeOff: EyeOff, mail: Mail, contact: Phone, logout: LogOut, lock: LockKeyhole, info: Info,
   home: Home,
   bill: Receipt,
   coverage: ShieldCheck,
@@ -32,13 +33,13 @@ const LUCIDE: Record<string, React.ComponentType<{ size?: number | string; color
 
 export function Icon({ name, size = 22, color = C.secondary }: { name: keyof typeof LUCIDE | string; size?: number; color?: string }) {
   const Cmp = LUCIDE[name] || FileText;
-  return <Cmp size={size} color={color} strokeWidth={2} />;
+  return <Cmp size={size} color={color} strokeWidth={1.7} />;
 }
 
 export function TabGlyph({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={[glyph.pill, focused && glyph.pillActive]}>
-      <Icon name={name} size={21} color={focused ? C.brand : C.secondary} />
+      <Icon name={name} size={24} color={focused ? C.brand : C.secondary} />
       {focused && <View style={glyph.dot} />}
     </View>
   );
@@ -69,7 +70,7 @@ export function AvatarImage({ size = 42 }: { size?: number }) {
 }
 
 const glyph = StyleSheet.create({
-  pill: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 999, gap: 3 },
-  pillActive: { backgroundColor: C.brandSoft },
+  pill: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 4, gap: 3 },
+  pillActive: {},
   dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.brand }
 });

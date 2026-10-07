@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, useWindowDimensions } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { getFocusedRouteNameFromRoute, NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../lib/auth';
@@ -18,7 +18,7 @@ import ClaimsScreen from '../screens/ClaimsScreen';
 import DocumentsScreen from '../screens/DocumentsScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import MedHeader from '../components/Header';
+import MedHeader, { HeaderBack } from '../components/Header';
 import { TabGlyph } from '../components/icons';
 import { C } from '../components/ui';
 import { ErrorState, Screen, SecondaryButton } from '../components/ui';
@@ -37,10 +37,10 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={({ navigation, route }) => ({
-        header: () => <MedHeader navigation={navigation} />,
+        header: () => <MedHeader navigation={navigation} title={route.name} />,
         tabBarActiveTintColor: C.brand,
         tabBarInactiveTintColor: C.secondary,
-        tabBarLabel: ({ color }) => <Text style={{ fontSize: 11, fontWeight: '600', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
+        tabBarLabel: ({ color }) => <Text style={{ fontSize: 11, fontWeight: '400', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
         tabBarAllowFontScaling: true,
         tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
@@ -48,7 +48,7 @@ function MainTabs() {
           borderTopWidth: 1,
           borderTopColor: C.border,
           paddingTop: 6,
-          height: 68 + Math.max(0, (fontScale - 1) * 32) + insets.bottom,
+          height: 62 + Math.max(0, (fontScale - 1) * 32) + insets.bottom,
           paddingBottom: Math.max(insets.bottom, 8)
         }
       })}
@@ -96,16 +96,20 @@ export default function RootNavigator() {
     <PatientProvider key={user?.id || 'signed-out'}>
     <NavigationContainer>
       <Stack.Navigator
-        screenOptions={{
+        screenOptions={({ navigation }) => ({
+          headerTitleAlign: 'center',
+          headerLeft: () => <HeaderBack onPress={() => navigation.goBack()} />,
+          headerBackVisible: false,
+          statusBarStyle: 'dark',
           headerStyle: { backgroundColor: C.surface },
           headerTintColor: C.ink,
-          headerTitleStyle: { fontSize: 17, fontWeight: '700' },
+          headerTitleStyle: { fontSize: 18, fontWeight: '600' },
           headerShadowVisible: false
-        }}
+        })}
       >
         {user ? (
           <React.Fragment>
-            <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
+            <Stack.Screen name="Main" component={MainTabs} options={({ route }) => ({ headerShown: false, statusBarStyle: (getFocusedRouteNameFromRoute(route) || 'Home') === 'Home' ? 'light' : 'dark' })} />
             <Stack.Screen name="RecordDetail" component={RecordDetailScreen} options={{ title: 'Hospital record' }} />
             <Stack.Screen name="PaymentFlow" component={PaymentFlowScreen} options={{ title: 'Pay balance' }} />
             <Stack.Screen name="Claims" component={ClaimsScreen} options={{ title: 'Insurance claims' }} />

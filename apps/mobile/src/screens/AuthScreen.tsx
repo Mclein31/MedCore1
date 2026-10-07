@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import Brand from '../components/Brand';
+import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ASSETS } from '../lib/assets';
 import { useAuth } from '../lib/auth';
-import { C, Field, PrimaryButton, Screen, SegControl, T } from '../components/ui';
+import { C, Field, PrimaryButton, Screen, T } from '../components/ui';
 
 type Mode = 'login' | 'register' | 'forgot';
 
@@ -61,35 +61,19 @@ export default function AuthScreen() {
     scroll.current?.scrollTo({ y: 0, animated: false });
   }
   return (
-    <Screen safeTop keyboard>
-      <ScrollView ref={scroll} contentContainerStyle={{ paddingBottom: 32 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <View style={{ marginTop: 24, marginBottom: 28 }}>
-          <Brand size={52} />
-          <Text accessibilityRole="header" style={[T.display, { marginTop: 24 }]}>{mode === 'register' ? 'A clearer hospital journey' : mode === 'forgot' ? 'Let’s get you help' : 'Welcome back'}</Text>
-          <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
-            {mode === 'register'
-              ? 'Create your account with the MRN and contact number on your admission slip.'
-              : mode === 'forgot'
-                ? 'Contact the hospital billing desk for help recovering your account. Email reset is not available yet.'
-                : 'See your hospital bill, coverage, and discharge status — in plain language.'}
-          </Text>
+    <Screen safeTop keyboard gutter={28} background={C.surface}>
+      <ScrollView ref={scroll} contentContainerStyle={{ flexGrow: 1, paddingBottom: 28 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={{ height: mode === 'register' ? 148 : 222, justifyContent: 'center', alignItems: 'center' }}>
+          <Image source={ASSETS.brand.badge} resizeMode="contain" accessibilityLabel="MedCore" style={{ width: mode === 'register' ? 94 : 128, height: mode === 'register' ? 94 : 128 }} />
         </View>
-
-        {mode !== 'forgot' && (
-          <SegControl
-            options={[
-              { key: 'login', label: 'Log in' },
-              { key: 'register', label: 'Create account' }
-            ]}
-            value={mode}
-            disabled={busy} onChange={(k) => changeMode(k as Mode)}
-          />
-        )}
-
+        <View style={{ marginBottom: 28 }}>
+          <Text accessibilityRole="header" style={{ fontSize: 24, lineHeight: 30, fontWeight: '600', color: C.ink }}>{mode === 'register' ? 'Create your account' : mode === 'forgot' ? 'Recover your account' : 'Sign in to your account'}</Text>
+          <Text style={[T.body, { color: C.secondary, marginTop: 8 }]}>{mode === 'register' ? 'Use the details from your hospital admission slip.' : mode === 'forgot' ? 'Your hospital billing desk can help you recover access.' : 'Welcome back. Sign in to your account.'}</Text>
+        </View>
         {submitted && Object.values(errors).some(Boolean) && <Text style={[T.meta, { color: C.danger, marginBottom: 12 }]} accessibilityRole="alert">Please check the highlighted fields.</Text>}
-        <Field inputRef={fields.email} label="Email" value={email} onChangeText={setEmail} keyboard="email-address" autoComplete="email" editable={!busy} error={submitted ? errors.email : undefined} />
+        <Field hideLabel placeholder="Email" inputRef={fields.email} label="Email" value={email} onChangeText={setEmail} keyboard="email-address" autoComplete="email" editable={!busy} error={submitted ? errors.email : undefined} />
         {mode !== 'forgot' && (
-          <Field inputRef={fields.password} label="Password" value={password} onChangeText={setPassword} secure autoComplete={mode === 'register' ? 'new-password' : 'current-password'} editable={!busy} error={submitted ? errors.password : undefined} />
+          <Field hideLabel placeholder="Password" inputRef={fields.password} label="Password" value={password} onChangeText={setPassword} secure autoComplete={mode === 'register' ? 'new-password' : 'current-password'} editable={!busy} error={submitted ? errors.password : undefined} />
         )}
         {mode === 'register' && (
           <View>
@@ -106,26 +90,14 @@ export default function AuthScreen() {
           </View>
         )}
 
+        {mode === 'login' && <Pressable disabled={busy} onPress={() => changeMode('forgot')} accessibilityRole="button" accessibilityLabel="Forgot password" style={{ minHeight: 48, alignItems: 'flex-end', justifyContent: 'center', marginTop: -12, marginBottom: 18 }}><Text style={[T.meta, { color: C.brand }]}>Forgot password?</Text></Pressable>}
         {notice && <Text style={[T.meta, { marginBottom: 12 }]} accessibilityRole="alert">{notice}</Text>}
-        {error && <Text style={{ color: C.danger, marginTop: 4 }} accessibilityRole="alert">{error}</Text>}
-        {info && <Text style={{ color: C.success, marginTop: 4 }}>{info}</Text>}
-
-        <PrimaryButton
-          title={busy ? 'Working…' : mode === 'login' ? 'Log in' : mode === 'register' ? 'Create account' : 'Get recovery help'}
-          onPress={submit}
-          disabled={busy}
-        />
-
-        {mode === 'login' ? (
-          <Pressable disabled={busy} onPress={() => changeMode('forgot')} accessibilityRole="button" accessibilityLabel="Forgot password" style={{ marginTop: 8, minHeight: 48, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: C.brand }}>Forgot password?</Text>
-          </Pressable>
-        ) : (
-          <Pressable disabled={busy} onPress={() => changeMode('login')} accessibilityRole="button" accessibilityLabel="Back to log in" style={{ marginTop: 8, minHeight: 48, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: C.brand }}>Back to log in</Text>
-          </Pressable>
-        )}
-        <View style={{ height: 32 }} />
+        {error && <Text style={[T.meta, { color: C.danger, marginBottom: 8 }]} accessibilityRole="alert">{error}</Text>}
+        {info && <Text style={[T.meta, { color: C.success, marginBottom: 8 }]} accessibilityRole="alert">{info}</Text>}
+        <PrimaryButton compact title={busy ? 'Working…' : mode === 'login' ? 'Sign in' : mode === 'register' ? 'Create account' : 'Get recovery help'} onPress={submit} disabled={busy} />
+        {mode === 'forgot' && <Text style={[T.meta, { textAlign: 'center', marginTop: 16 }]}>Email password reset is not available yet.</Text>}
+        <View style={{ flex: 1, minHeight: 64 }} />
+        <Pressable disabled={busy} onPress={() => changeMode(mode === 'login' ? 'register' : 'login')} accessibilityRole="button" accessibilityLabel={mode === 'login' ? 'Create account' : 'Back to sign in'} style={{ minHeight: 48, alignItems: 'center', justifyContent: 'center' }}><Text style={[T.meta, { textAlign: 'center' }]}>{mode === 'login' ? 'Don’t have an account? ' : mode === 'register' ? 'Already have an account? ' : ''}<Text style={{ color: C.brand, fontWeight: '600' }}>{mode === 'login' ? 'Sign up' : 'Sign in'}</Text></Text></Pressable>
       </ScrollView>
     </Screen>
   );

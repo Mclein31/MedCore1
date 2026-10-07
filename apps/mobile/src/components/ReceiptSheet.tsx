@@ -1,26 +1,26 @@
-import { Text, View } from 'react-native';
-import { C, LedgerRow, T } from './ui';
+import { Image, Text, View } from 'react-native';
+import { C, T } from './ui';
 import { Icon } from './icons';
-import Brand from './Brand';
+import { ASSETS } from '../lib/assets';
+import { useFacilityName } from '../hooks/useFacility';
 import { describeRail, formatDateTime, formatPeso } from '../lib/format';
 
-export default function ReceiptSheet({ number, amount, rail, payer, date, reference }: {
-  number: string; amount: number; rail: string; payer: string; date: string | null | undefined; reference?: string;
+export default function ReceiptSheet({ number, amount, rail, payer, date, reference, surroundingColor = C.surface }: {
+  number: string; amount: number; rail: string; payer: string; date: string | null | undefined; reference?: string; surroundingColor?: string;
 }) {
-  return <View style={{ backgroundColor: C.surface, borderRadius: 20, padding: 4, marginVertical: 16 }}>
-    <View style={{ alignItems: 'center', padding: 20, gap: 12 }}>
-      <Brand size={28} />
-      <View accessible={false} style={{ width: 64, height: 64, borderRadius: 32, backgroundColor: C.successBg, alignItems: 'center', justifyContent: 'center' }}><Icon name="success" size={30} color={C.success} /></View>
-      <Text accessibilityRole="header" style={T.title}>Payment recorded</Text>
-      <Text style={[T.display, { textAlign: 'center' }]}>{formatPeso(amount)}</Text>
-      <Text selectable style={[T.meta, { textAlign: 'center' }]}>{number}</Text>
+  const facility = useFacilityName();
+  const rows = [
+    ['Date & time', formatDateTime(date)], ['Reference', reference || number],
+    ['Payment method', describeRail(rail)], ['Payer', payer], ['Currency', 'PHP'], ['Status', 'Recorded']
+  ];
+  return <View style={{ backgroundColor: C.surface, marginVertical: 16, paddingHorizontal: 18, paddingTop: 40, paddingBottom: 28 }}>
+    <View accessible={false} style={{ position: 'absolute', top: -4, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around' }}>{Array.from({ length: 20 }, (_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: surroundingColor }} />)}</View>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon name="success" size={20} color={C.success} /><Text accessibilityRole="header" style={[T.body, { fontSize: 16, fontWeight: '600' }]}>Payment recorded</Text></View>
+    <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 40 }}><Image source={ASSETS.brand.badge} resizeMode="contain" accessibilityLabel="MedCore" style={{ width: 28, height: 28 }} /><Text style={{ fontSize: 22, lineHeight: 28, fontWeight: '600', color: C.ink, textAlign: 'center', flexShrink: 1 }}>{facility}</Text></View>
+    <Text selectable style={[T.meta, { textAlign: 'center', marginTop: 10 }]}>Receipt {number}</Text>
+    <View style={{ borderTopWidth: 1, borderTopColor: C.border, borderStyle: 'dashed', marginTop: 28, paddingTop: 18, paddingBottom: 18 }}>
+      {rows.map(([label, value]) => <View key={label} style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, minHeight: 40, paddingVertical: 10 }}><Text style={[T.meta, { fontSize: 13, flex: 1 }]}>{label}</Text><Text selectable style={{ fontSize: 13, lineHeight: 18, fontWeight: '500', color: label === 'Status' ? C.success : C.ink, textAlign: 'right', flexShrink: 1, maxWidth: '65%' }}>{value}</Text></View>)}
     </View>
-    <View style={{ borderTopWidth: 1, borderTopColor: C.border, borderStyle: 'dashed' }}>
-      <LedgerRow title="Payment method" value={describeRail(rail)} />
-      <LedgerRow title="Payer" value={payer} />
-      <LedgerRow title="Date & time" value={formatDateTime(date)} />
-      {reference && <LedgerRow title="Reference" value={reference} />}
-      <LedgerRow title="Status" value="Recorded" tone="ok" last />
-    </View>
+    <View style={{ borderTopWidth: 1, borderTopColor: C.border, borderStyle: 'dashed', paddingTop: 24, flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}><Text style={[T.body, { fontWeight: '500' }]}>Total recorded</Text><Text style={{ fontSize: 28, fontWeight: '700', fontVariant: ['tabular-nums'], color: C.ink }}>{formatPeso(amount)}</Text></View>
   </View>;
 }

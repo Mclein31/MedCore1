@@ -1,22 +1,23 @@
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Brand from '../components/Brand';
+import FinancialIllustration from '../components/FinancialIllustration';
 import { Icon } from '../components/icons';
-import { C, LedgerRow, PrimaryButton, Screen, SecondaryButton, T } from '../components/ui';
+import { C, PrimaryButton, Screen, T } from '../components/ui';
 import type { OnboardingProgress } from '../lib/onboarding';
 
 const PAGES = [
-  { icon: 'bill', eyebrow: 'Your bill, explained', title: 'Know what you owe.\nUnderstand why.', detail: 'See hospital charges, benefits and discounts together, with a clear view of your remaining balance.', rows: ['Itemized hospital charges', 'Coverage and discounts applied', 'Your remaining balance'] },
-  { icon: 'coverage', eyebrow: 'Coverage without the guesswork', title: 'Follow your benefits,\none step at a time.', detail: 'Track PhilHealth and HMO review status, see the benefits applied, and understand what still needs attention.', rows: ['PhilHealth claim updates', 'HMO authorization status', 'Clear coverage explanations'] },
-  { icon: 'file', eyebrow: 'Everything within reach', title: 'Payments and papers.\nAll in one place.', detail: 'Choose a payment option, find your receipts and repayment plans, and access your hospital discharge documents.', rows: ['Flexible payment options', 'Receipts and statements', 'Your discharge pass'] }
+  { kind: 'bill' as const, title: 'Understand your hospital bill', detail: 'See each charge, the benefits applied, and what remains for you to pay.' },
+  { kind: 'coverage' as const, title: 'Keep track of your coverage', detail: 'Follow PhilHealth and HMO updates, with clear explanations at every step.' },
+  { kind: 'documents' as const, title: 'Payments and papers, together', detail: 'Choose a payment option and keep your receipts, statements and discharge pass within reach.' }
 ];
-
 export default function OnboardingScreen({ progress, saving, error, onSave }: {
   progress: OnboardingProgress; saving: boolean; error: string | null; onSave: (value: OnboardingProgress) => Promise<void>;
 }) {
   const page = PAGES[progress.step];
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (saving) return true;
@@ -25,21 +26,21 @@ export default function OnboardingScreen({ progress, saving, error, onSave }: {
     });
     return () => subscription.remove();
   }, [onSave, progress.step, saving]);
-  return <Screen safeTop><ScrollView contentContainerStyle={{ flexGrow: 1, paddingBottom: Math.max(24, insets.bottom) }} showsVerticalScrollIndicator={false}>
-    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-      <Brand size={36} />
-      <Pressable disabled={saving} accessibilityState={{ disabled: saving }} accessibilityRole="button" accessibilityLabel="Skip introduction" style={{ minHeight: 48, minWidth: 48, justifyContent: 'center' }} onPress={() => { void onSave({ ...progress, completed: true }); }}><Text style={[T.section, { color: C.brand }]}>Skip</Text></Pressable>
-    </View>
-    <View style={{ flex: 1, justifyContent: 'center', paddingVertical: 28 }}>
-      <View accessible={false} style={{ width: 88, height: 88, borderRadius: 28, alignItems: 'center', justifyContent: 'center', backgroundColor: C.brandSoft, marginBottom: 28 }}><Icon name={page.icon} size={40} color={C.brand} /></View>
-      <Text style={T.eyebrow}>{page.eyebrow}</Text>
-      <Text accessibilityRole="header" style={[T.display, { marginTop: 12, lineHeight: 38 }]}>{page.title}</Text>
-      <Text style={[T.body, { color: C.secondary, marginTop: 16, marginBottom: 24 }]}>{page.detail}</Text>
-      <View style={{ backgroundColor: C.surface, borderRadius: 20 }}>{page.rows.map((row, i) => <LedgerRow key={row} title={row} last={i === 2} />)}</View>
-    </View>
-    <View accessible accessibilityLabel={`Introduction, step ${progress.step + 1} of 3`} style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>{PAGES.map((_, i) => <View key={i} style={{ height: 5, width: i === progress.step ? 28 : 8, borderRadius: 4, backgroundColor: i === progress.step ? C.brand : C.border }} />)}</View>
-    {error && <Text accessibilityRole="alert" style={[T.meta, { color: C.danger }]}>{error}</Text>}
-    <PrimaryButton title={saving ? 'Saving…' : progress.step === 2 ? 'Get started' : 'Next'} disabled={saving} onPress={() => { void onSave({ completed: progress.step === 2, step: Math.min(2, progress.step + 1) }); }} />
-    {progress.step > 0 && <SecondaryButton title="Back" disabled={saving} onPress={() => { void onSave({ completed: false, step: progress.step - 1 }); }} />}
-  </ScrollView></Screen>;
+  return <Screen safeTop gutter={0} background={C.surface}><StatusBar style="dark" />
+    <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingBottom: Math.max(20, insets.bottom) }} showsVerticalScrollIndicator={false}>
+      <View style={{ height: 48, justifyContent: 'center' }}>{progress.step > 0 && <Pressable onPress={() => { void onSave({ completed: false, step: progress.step - 1 }); }} disabled={saving} accessibilityRole="button" accessibilityLabel="Previous introduction page" style={{ width: 48, height: 48, alignItems: 'center', justifyContent: 'center' }}><Icon name="back" size={20} color={C.ink} /></Pressable>}</View>
+      <View style={{ width: Math.min(720, width - insets.left - insets.right), alignSelf: 'center', minHeight: Math.min(414, height * 0.49), justifyContent: 'center', marginHorizontal: -24 }}><FinancialIllustration kind={page.kind} /></View>
+      <View style={{ paddingHorizontal: 12, alignItems: 'center', marginTop: 24, gap: 12 }}>
+        <Text accessibilityRole="header" style={{ fontSize: 24, lineHeight: 30, fontWeight: '600', color: C.ink, textAlign: 'center' }}>{page.title}</Text>
+        <Text style={[T.body, { color: C.secondary, textAlign: 'center' }]}>{page.detail}</Text>
+      </View>
+      <View style={{ flex: 1, minHeight: 28 }} />
+      <View accessible accessibilityLabel={`Introduction, step ${progress.step + 1} of 3`} style={{ flexDirection: 'row', justifyContent: 'center', gap: 5, marginVertical: 22 }}>{PAGES.map((_, i) => <View key={i} style={{ width: i === progress.step ? 13 : 5, height: 5, borderRadius: 3, backgroundColor: i === progress.step ? C.brand : C.border }} />)}</View>
+      {error && <Text accessibilityRole="alert" style={[T.meta, { color: C.danger, marginBottom: 8 }]}>{error}</Text>}
+      <View style={{ flexDirection: 'row', gap: 12 }}>
+        <Pressable disabled={saving} accessibilityState={{ disabled: saving }} accessibilityRole="button" accessibilityLabel="Skip introduction" onPress={() => { void onSave({ ...progress, completed: true }); }} style={({ pressed }) => ({ flex: 1, minHeight: 50, marginTop: 12, borderWidth: 1, borderColor: C.border, borderRadius: 10, alignItems: 'center', justifyContent: 'center', opacity: saving || pressed ? 0.5 : 1 })}><Text style={[T.body, { color: C.brand }]}>Skip</Text></Pressable>
+        <View style={{ flex: 1 }}><PrimaryButton compact title={saving ? 'Saving…' : progress.step === 2 ? 'Get started' : 'Next'} disabled={saving} onPress={() => { void onSave({ completed: progress.step === 2, step: Math.min(2, progress.step + 1) }); }} /></View>
+      </View>
+    </ScrollView>
+  </Screen>;
 }

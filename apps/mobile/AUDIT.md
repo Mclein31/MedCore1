@@ -1,5 +1,7 @@
 # Mobile progress audit — 2026-10-06
 
+Latest close reference-match implementation and verification: October 8, 2026. See the final section below and [screenshot/comparison report](validation/reference-match/README.md). Earlier sections retain the preceding audit history.
+
 ## Final verdict
 
 The independent code reviewer audited the current implementation, reviewed fixes, then checked the final files again: **ready for a progress commit as a patient prototype; not ready for production release**. No remaining blocker was found for the progress commit.
@@ -74,3 +76,34 @@ The final review also fixed onboarding returning after a restored user logged ou
 - `npm audit --audit-level=high` still reports **23 pre-existing advisories (16 high, 7 moderate)** in Expo/tooling. No dependency versions changed; the suggested forced Expo 44 downgrade was not applied.
 
 Operational implementation decisions and current progress are in the existing `.brain/PROJECT_CONTEXT.md`. No commit, deployment, schema change or reseeding was performed. User-supplied `UI_INSPO` files remain untracked and are excluded from the proposed progress commit.
+
+
+## Close reference-match implementation — 2026-10-08
+
+**Reviewer verdict: ready for a patient-prototype progress commit; no remaining actionable source findings.** The reviewer audited the implementation, identified three P2 state/contrast regressions, verified their fixes and completed a final follow-up audit. 
+### Reference fidelity
+
+All seven actual images were opened; the long Main montage was inspected in eight enlarged bands. A primary reference was selected for each screen before implementation. Actual app captures were compared with cropped, equal-width references; image heights were preserved. [The mapping](../../MedCore_Vault/RESEARCH/mobile_reference_mapping.md) and [full comparison report](validation/reference-match/README.md) record source bounds, measured-versus-estimated geometry, screen links and intentional differences.
+
+This pass closely matches the references' compact headers, typography, financial-panel proportions/overlap, circular shortcuts, amount keypad, grouped payment options/settings, fixed actions, paper receipts and bottom confirmation sheet. Dashboard navy/blue/slate tokens plus accessible teal are centralized in a pure theme; real MedCore PNGs are retained. Original financial onboarding art replaces doctor photos; unsupported clinical/settings/social features were not added. All existing patient/account/payment contracts and safeguards remain.
+
+### Findings fixed
+
+- Missing current encounters no longer imply a displayed zero balance. Home says “No current statement.”
+- Amount-refresh failures have an in-place Retry preserving mode/input.
+- Inactive amount-mode contrast increased from3.52–4.14:1 to6.34–7.37:1.
+- Partial input width/peso-prefix overflow, Profile group spacing, keypad scale, methods grouping and receipt edge reuse were corrected. Final screenshots omit only Expo development chrome via test-harness CSS.
+
+### Final verification
+
+- Required `npm run lint`, `npm run typecheck`, `npm run typecheck:server`, `npm test` (**39 passed**) and `npm run test:server` (**18 isolated groups passed**): all passed. No database connection.
+- Expo exports for **iOS, Android and web** passed on final source; bundles are not signed native builds. Validation configuration did not edit .env.
+- Root financial audit: **250 records, zero reconciliation errors**.
+- **12 independent Vision QR decodes**, plus the final QR crop and full-screen screenshot: passed to the unchanged existing payload. Sandbox model loading failed; approved unsandboxed reruns passed. QR decoding is not gateway settlement.
+- Reproducible browser suites passed with `pageErrors: []`: introduction persistence/Back/completion, login validation/logout,320/390/430px layouts, exact-centavo editing/keyboard alternative, all six rails/confirmed plan, definitive rejection/retry, duplicate clicks/same-key recovery, selected document identity, loading/error/retry, missing-statement state, compact keypad scrolling, long text and CSS150% magnification.
+- Actual dashboard payment modal was visually inspected using existing synthetic presets with every API request intercepted. No dashboard source change was made for this work.
+- Independent re-audit and scoped diff-check: passed. Detailed screenshots, flow/state JSON evidence and reproduction scripts are in `validation/reference-match`.
+
+### Limits and scope
+
+Physical native storage/session restoration/restart, keyboard/safe areas/text scaling/reduced motion/screen-reader checks remain, along with the existing production release gates recorded above. Web intentionally has memory-only auth/payment recovery. Reference photos/branding/settings/clinical content are replaced by supported MedCore content; native system fonts and accessible tap input account for documented visible differences. No mobile dependency was added; Playwright was installed only in temporary tooling. Separate user branding commits/edits are preserved; the current mobile wordmark/root favicon edits and original UI_INSPO uploads are excluded from the suggested progress commit. No commit/deploy/schema change/reseed was performed.

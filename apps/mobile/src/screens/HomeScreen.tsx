@@ -3,8 +3,10 @@ import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
 import { useNetworkStatus } from '../lib/offline';
 import { describeClaimStatus, describeDischargeStage, describeHmoStatus, formatDate, formatDateTime, formatPeso, hasHmo, remainingBalance } from '../lib/format';
+import GradientSurface from '../components/GradientSurface';
+import QuickActions from '../components/QuickActions';
 import { Icon } from '../components/icons';
-import { C, Card, EmptyState, ErrorState, Expandable, Hero, HeroBtn, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
+import { C, Card, EmptyState, ErrorState, Expandable, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
 
 function firstName(full: string | undefined): string {
   if (!full) return 'there';
@@ -21,23 +23,31 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const steps = checklist.map((item, i) => ({ title: item.label, state: (item.done ? 'done' : i === firstOpen ? 'now' : 'todo') as 'done' | 'now' | 'todo' }));
   const owe = currentEncounter ? remainingBalance(currentEncounter) : 0;
   const cleared = currentEncounter?.stage === 'CLEARED_GATE_PASS';
-  return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />} showsVerticalScrollIndicator={false}>
-    <RefreshNotice error={error} onRetry={refresh} />
-    {!net.connected && <Text style={[T.meta, { color: C.warning, marginVertical: 8 }]} accessibilityRole="alert">You're offline. Information last updated {lastSynced ? formatDateTime(lastSynced.toISOString()) : 'before this visit'} may be out of date.</Text>}
-    <Text style={[T.meta, { marginTop: 12 }]}>Good day, {firstName(patient?.fullName)}</Text>
-    <Text accessibilityRole="header" style={[T.title, { marginTop: 4 }]}>{facility}</Text>
-    {currentEncounter ? <>
-      <Text style={[T.meta, { marginTop: 6 }]}>Room {currentEncounter.roomBed} · Admitted {formatDate(currentEncounter.admissionDate)}</Text>
-      <Hero eyebrow={cleared ? 'Your discharge status' : 'Remaining hospital balance'} figure={cleared ? 'Cleared to leave' : formatPeso(owe)} sub={describeDischargeStage(currentEncounter.stage)}>
-        {!cleared && owe > 0 && <HeroBtn title="Pay balance" onPress={() => navigation.navigate('PaymentFlow', { encounterId: currentEncounter.uuid })} disabled={!!error || !net.connected || currentEncounter.stage !== 'PENDING_SETTLEMENT'} />}
-        <HeroBtn title={cleared ? 'View discharge pass' : 'Review bill'} ghost={!cleared && owe > 0} onPress={() => navigation.navigate(cleared ? 'Documents' : 'Bill')} />
-      </Hero>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
-        {[{ label: 'Bills', icon: 'bill', route: 'Bill' }, { label: 'Coverage', icon: 'coverage', route: 'Coverage' }, { label: 'Payments', icon: 'payments', route: 'Payments' }, { label: 'Documents', icon: 'file', route: 'Documents' }].map(action => <Pressable key={action.label} onPress={() => navigation.navigate(action.route)} accessibilityRole="button" accessibilityLabel={`Open ${action.label.toLowerCase()}`} style={({ pressed }) => ({ flex: 1, minWidth: 64, alignItems: 'center', paddingVertical: 12, opacity: pressed ? 0.6 : 1, gap: 8 })}>
-          <View accessible={false} style={{ width: 48, height: 48, borderRadius: 16, backgroundColor: C.brandSoft, justifyContent: 'center', alignItems: 'center' }}><Icon name={action.icon} color={C.brand} /></View>
-          <Text style={[T.meta, { color: C.ink, textAlign: 'center' }]}>{action.label}</Text>
-        </Pressable>)}
-      </View>
+  const actions = [
+    { label: 'Bill', icon: 'bill', onPress: () => navigation.navigate('Bill') },
+    { label: 'Coverage', icon: 'coverage', onPress: () => navigation.navigate('Coverage') },
+    { label: owe > 0 ? 'Pay' : 'Payments', icon: 'payments', disabled: owe > 0 && (!!error || !net.connected || currentEncounter?.stage !== 'PENDING_SETTLEMENT'), onPress: () => owe > 0 ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid }) : navigation.navigate('Payments') },
+    { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
+  ];
+  return <Screen gutter={0} background={C.hero}><ScrollView contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.surface} />} showsVerticalScrollIndicator={false}>
+    <View style={{ backgroundColor: C.hero, minHeight: 237, paddingHorizontal: 25, paddingTop: 28, paddingBottom: 126 }}>
+      <Text style={{ color: C.heroSub, fontSize: 13 }}>Good day,</Text>
+      <Text accessibilityRole="header" style={{ color: C.surface, fontSize: 22, fontWeight: '600', marginTop: 4 }}>{patient?.fullName || firstName(patient?.fullName)}</Text>
+      <Text style={{ color: C.heroSub, fontSize: 12, marginTop: 8 }}>{facility}</Text>
+    </View>
+    <View style={{ backgroundColor: C.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, paddingHorizontal: 22, paddingBottom: 28, minHeight: 560 }}>
+      <GradientSurface style={{ borderRadius: 18, padding: 20, marginTop: -100, minHeight: 214, marginBottom: 20 }}>
+        <Pressable onPress={() => navigation.navigate(cleared ? 'Documents' : 'Bill')} accessibilityRole="button" accessibilityLabel={cleared ? 'View discharge pass' : currentEncounter ? 'Review hospital balance' : 'View hospital bills'} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginBottom: 14 })}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ color: C.surface, fontSize: 12 }}>{cleared ? 'Discharge status' : currentEncounter ? 'Remaining hospital balance' : 'Your hospital account'}</Text><Icon name="chevron" size={19} color={C.surface} /></View>
+          <Text style={{ color: C.surface, fontSize: cleared || !currentEncounter ? 25 : 30, lineHeight: 38, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 4 }}>{cleared ? 'Cleared to leave' : currentEncounter ? formatPeso(owe) : 'No current statement'}</Text>
+        </Pressable>
+        <QuickActions actions={actions} integrated />
+      </GradientSurface>
+      <RefreshNotice error={error} onRetry={refresh} />
+      {!net.connected && <Text style={[T.meta, { color: C.warning }]} accessibilityRole="alert">You’re offline. Information may be out of date.</Text>}
+      {currentEncounter ? <>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}><Icon name="clock" size={17} color={C.brandDark} /><Text style={[T.meta, { flex: 1 }]}>{describeDischargeStage(currentEncounter.stage)}</Text></View>
+        <Text style={[T.meta, { marginTop: 8 }]}>Room {currentEncounter.roomBed} · Admitted {formatDate(currentEncounter.admissionDate)}</Text>
       {(overview?.alerts?.length ?? 0) > 0 && <>
         <SectionHeader title="Latest from your hospital" action={<Pressable onPress={() => navigation.navigate('Notifications')} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: C.brand, fontWeight: '600' }}>All updates</Text></Pressable>} />
         {(overview?.alerts || []).slice(0, 2).map((item, i) => <View key={`${item.timestamp}-${i}`} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}><Text style={T.section}>{item.title}</Text><Text style={[T.meta, { marginTop: 4 }]}>{item.message}</Text>{item.timestamp && <Text style={[T.meta, { marginTop: 4 }]}>{formatDateTime(item.timestamp)}</Text>}</View>)}
@@ -62,5 +72,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     <Card flush><LedgerRow title="Insurance claims" sub="Track benefits and review status" onPress={() => navigation.navigate('Claims')} /><LedgerRow title="Documents & receipts" sub="Statements, payment plans and discharge passes" onPress={() => navigation.navigate('Documents')} last /></Card>
     {encounters.length > 1 && <><SectionHeader title="Recent stays" /><Card flush>{encounters.slice(0, 3).map((enc, i, all) => <LedgerRow key={enc.uuid} title={enc.encounterNumber} sub={`${formatDate(enc.admissionDate)} · ${enc.primaryDiagnosis || 'Hospital stay'}`} onPress={() => navigation.navigate('RecordDetail', { encounterId: enc.uuid })} last={i === all.length - 1} />)}</Card></>}
     {lastSynced && <Text style={[T.meta, { marginTop: 12 }]}>Last updated {formatDateTime(lastSynced.toISOString())}</Text>}
+    </View>
   </ScrollView></Screen>;
 }
