@@ -38,7 +38,7 @@ export function Icon({ name, size = 22, color = C.secondary }: { name: keyof typ
 export function TabGlyph({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={[glyph.pill, focused && glyph.pillActive]}>
-      <Icon name={name} size={21} color={focused ? C.brand : '#94A3B8'} />
+      <Icon name={name} size={21} color={focused ? C.brand : C.secondary} />
       {focused && <View style={glyph.dot} />}
     </View>
   );
@@ -55,7 +55,7 @@ export function ProviderMark({ rail, size = 46 }: { rail: string; size?: number 
       </View>
     );
   }
-  return <Image source={src} style={{ width: size, height: size, borderRadius: size / 4 }} accessibilityLabel={`${rail} logo`} />;
+  return <Image source={src} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${rail} logo`} />;
 }
 
 export function AvatarImage({ size = 42 }: { size?: number }) {
@@ -70,6 +70,6 @@ export function AvatarImage({ size = 42 }: { size?: number }) {
 
 const glyph = StyleSheet.create({
   pill: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingVertical: 5, borderRadius: 999, gap: 3 },
-  pillActive: { backgroundColor: '#E9EFFE' },
+  pillActive: { backgroundColor: C.brandSoft },
   dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.brand }
 });

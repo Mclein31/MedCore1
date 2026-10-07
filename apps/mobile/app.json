@@ -5,10 +5,12 @@
     "scheme": "medcore",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/brand/app-icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#F8FAFC"
+      "image": "./assets/brand/MedCore_Badge_Logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F5F8F7"
     },
     "ios": {
       "supportsTablet": true,
@@ -17,15 +19,13 @@
     "android": {
       "package": "ph.medcore.patient",
       "adaptiveIcon": {
-        "backgroundColor": "#F8FAFC",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#F5F8F7",
+        "foregroundImage": "./assets/brand/adaptive-icon.png"
       },
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/brand/MedCore_Badge_Logo.png"
     }
   }
 }

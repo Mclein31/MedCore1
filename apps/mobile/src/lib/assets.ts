@@ -6,6 +6,12 @@
 // no code changes required. See assets/icons/ICON_MANIFEST.md.
 
 export const ASSETS = {
+  brand: {
+    badge: require('../../assets/brand/MedCore_Badge_Logo.png'),
+    launcher: require('../../assets/brand/app-icon.png'),
+    adaptive: require('../../assets/brand/adaptive-icon.png'),
+    wordmark: require('../../assets/brand/MedCore_Text_logo.png')
+  },
   avatarDefault: require('../../assets/icons/profile/profile-default.png'),
   providerLogo: {
     GCASH: require('../../assets/icons/payments/payment-gcash.png'),

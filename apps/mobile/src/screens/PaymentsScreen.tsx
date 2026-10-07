@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useResource } from '../hooks/useResource';
+import { paymentStatus } from '../lib/checkout';
 import { useAuth } from '../lib/auth';
 import { usePatient } from '../hooks/usePatient';
 import { createPaymentApi } from '../services/paymentApi';
@@ -9,7 +10,7 @@ import { Card, EmptyState, ErrorState, Expandable, Hero, HeroBtn, LedgerRow, Loa
 
 export default function PaymentsScreen({ navigation }: { navigation: any }) {
   const { client } = useAuth();
-  const { currentEncounter, loading: patientLoading, error: patientError, refresh: refreshPatient } = usePatient();
+  const { currentEncounter, encounters, loading: patientLoading, error: patientError, refresh: refreshPatient } = usePatient();
   const load = useCallback(async () => { const api = createPaymentApi(client); const [payments, receipts, plans] = await Promise.all([api.getHistory(), api.getReceipts(), api.listPromissoryNotes()]); return { payments: payments.items, receipts: receipts.items, plans: plans.items }; }, [client]);
   const { data, loading, error, refresh: loadList } = useResource(load);
   const payments = data?.payments || [];
@@ -47,8 +48,8 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
                 key={p.id}
                 title={`${describeRail(p.paymentRail)} · ${formatPeso(p.amount)}`}
                 sub={`${formatDateTime(p.createdAt)} · Receipt ${p.officialReceiptNumber}`}
-                value={p.isSimulatedDemo !== false ? 'Demo · Recorded' : p.status === 'SUCCESS' ? 'Paid' : 'Processing'}
-                tone={p.status === 'SUCCESS' ? 'ok' : 'warn'}
+                value={paymentStatus(p.status, p.isSimulatedDemo)}
+                tone={p.status === 'SUCCESS' ? 'ok' : p.status === 'FAILED' ? 'bad' : p.status === 'CANCELLED' ? 'info' : 'warn'}
                 last={i === payments.length - 1}
               />
             ))}
@@ -85,7 +86,8 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
                 <LedgerRow
                   key={r.id}
                   title={r.officialReceiptNumber}
-                  sub={`Demo receipt · ${formatDateTime(r.issuedAt)} · ${describeRail(r.paymentRail)}`}
+                  sub={`${formatDateTime(r.issuedAt)} · ${describeRail(r.paymentRail)}`}
+                  onPress={() => navigation.navigate('RecordDetail', { encounterId: encounters.find(enc => enc.encounterNumber === r.encounterNumber)?.uuid || r.encounterNumber || '', documentKind: 'RECEIPT', documentId: r.id })}
                   value={formatPeso(r.amount)}
                   last={i === receipts.length - 1}
                 />

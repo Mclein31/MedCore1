@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Image, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePatient } from '../hooks/usePatient';
 import { useUnreadCount } from '../hooks/useUnread';
 import { getFacilityName } from '../lib/facility';
 import { Icon } from './icons';
+import { ASSETS } from '../lib/assets';
 import { C } from './ui';
 
 const ROOM_LABELS: Record<string, string> = {
@@ -39,7 +40,7 @@ export default function MedHeader({ navigation }: { navigation: any }) {
   return (
     <View style={{ backgroundColor: C.surface, borderBottomWidth: 1, borderBottomColor: C.border, paddingTop: insets.top }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10, gap: 12 }}>
-        <View accessible={false} style={{ width: 42, height: 42, borderRadius: 21, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' }}><Icon name="profile" color={C.brand} size={22} /></View>
+        <Image source={ASSETS.brand.badge} resizeMode="contain" accessibilityLabel="MedCore" style={{ width: 42, height: 42 }} />
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text numberOfLines={1} ellipsizeMode="tail" style={{ fontSize: 16, fontWeight: '700', color: C.ink }}>
             {patient?.fullName || 'Your account'}
@@ -53,7 +54,7 @@ export default function MedHeader({ navigation }: { navigation: any }) {
           accessibilityRole="button"
           accessibilityLabel={unread > 0 ? `Open notifications, ${unread} unread` : 'Open notifications'}
           hitSlop={8}
-          style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, width: 48, height: 48, alignItems: 'center', justifyContent: 'center' })}
         >
           <View>
             <Icon name="bell" size={23} color={C.ink} />

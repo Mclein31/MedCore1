@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
-import { usePreventRemove } from '@react-navigation/native';
+import { ActivityIndicator, BackHandler, Keyboard, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
 import { paymentAttempts } from '../lib/paymentAttempts';
 import type { PendingPayment } from '../lib/paymentAttemptStore';
@@ -14,15 +15,16 @@ import type { PayInput } from '../services/paymentApi';
 import { useAuth } from '../lib/auth';
 import { usePatient } from '../hooks/usePatient';
 import { createPaymentApi } from '../services/paymentApi';
-import { ASSETS } from '../lib/assets';
+import PaymentQr from '../components/PaymentQr';
+import ReceiptSheet from '../components/ReceiptSheet';
+import { confirmedPayment, paymentDetailsValid, previousCheckoutStep, WALLET_PRESETS, type CheckoutStep } from '../lib/checkout';
 import { PAYMENT_METHODS, methodForRail } from '../lib/paymentMethods';
 import { estimatedFirstDueDate, previewInstallments } from '../lib/promissory';
 import { generateIdempotencyKey } from '../lib/idempotency';
-import { describeRail, formatDate, formatDateTime, formatPeso, remainingBalance } from '../lib/format';
+import { describeRail, formatDate, formatPeso, remainingBalance } from '../lib/format';
 import { Icon, ProviderMark } from '../components/icons';
 import { C, Card, EmptyState, ErrorState, Field, LoadingState, RefreshNotice, Hero, LedgerRow, PrimaryButton, Screen, SecondaryButton, SegControl, StatusBadge, T } from '../components/ui';
 
-type Step = 'amount' | 'method' | 'detail' | 'done';
 type Mode = 'FULL' | 'PARTIAL';
 
 const RELATIONSHIPS = ['PATIENT', 'SPOUSE', 'CHILD', 'GUARANTOR'] as const;
@@ -41,10 +43,10 @@ function Chip({ label, sub, selected, onPress, a11y, disabled }: {
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="radio"
-      accessibilityState={{ selected }}
+      accessibilityState={{ checked: selected, selected, disabled: !!disabled }}
       accessibilityLabel={a11y || label}
       style={{
-        flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center',
+        flex: 1, minHeight: 48, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 8, alignItems: 'center',
         borderWidth: 1.5, borderColor: selected ? C.brand : C.border,
         backgroundColor: selected ? C.brandSoft : C.surface
       }}
@@ -52,15 +54,6 @@ function Chip({ label, sub, selected, onPress, a11y, disabled }: {
       <Text style={{ fontSize: 14, fontWeight: '700', color: selected ? C.hero : C.ink, textAlign: 'center' }}>{label}</Text>
       {sub ? <Text style={{ fontSize: 12, color: C.secondary, marginTop: 2, fontVariant: ['tabular-nums'] }}>{sub}</Text> : null}
     </Pressable>
-  );
-}
-
-function DemoBanner() {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: C.warningBg, borderWidth: 1, borderColor: '#F3D9A8', borderRadius: 14, padding: 12 }}>
-      <Icon name="warning" size={18} color={C.warning} />
-      <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: C.warning }}>Demo checkout — no real money moves.</Text>
-    </View>
   );
 }
 
@@ -81,12 +74,14 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   useEffect(() => { void restoreAttempt(); }, [restoreAttempt]);
   if (!selectedId.current && latestEncounter) selectedId.current = latestEncounter.uuid;
   const currentEncounter = encounters.find((enc) => enc.uuid === (pending?.encounterId || selectedId.current)) ?? null;
-  const [step, setStep] = useState<Step>('amount');
+  const [step, setStep] = useState<CheckoutStep>('amount');
+  const checkoutScroll = useRef<ScrollView>(null);
   const [mode, setMode] = useState<Mode>('FULL');
   const [partial, setPartial] = useState('');
   const [rail, setRail] = useState('QR_PH');
   const [payerName, setPayerName] = useState(user?.fullName || '');
-  const [mobile, setMobile] = useState('');
+  const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
+  const [processingPhase, setProcessingPhase] = useState('Preparing your request');
   const [cardBrand, setCardBrand] = useState('VISA');
   const [cardLast4, setCardLast4] = useState('');
   const [bankName, setBankName] = useState('');
@@ -99,6 +94,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   const [acknowledged, setAcknowledged] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => { checkoutScroll.current?.scrollTo({ y: 0, animated: false }); }, [step, pending, error]);
   const [receipt, setReceipt] = useState<(PaymentRecord & Partial<ReceiptRecord> & { methodRail: string }) | null>(null);
   const [note, setNote] = useState<(PromissoryNoteRecord & { scheduleJson?: number[] }) | null>(null);
   const [passIssued, setPassIssued] = useState(false);
@@ -106,14 +102,47 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   const submissionLock = useRef(false);
   const [uncertain, setUncertain] = useState(false);
   const headerHeight = useHeaderHeight();
+  const insets = useSafeAreaInsets();
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: false,
+      headerLeft: () => <Pressable disabled={busy} accessibilityRole="button" accessibilityLabel="Back" accessibilityState={{ disabled: busy }} style={({ pressed }) => ({ minHeight: 48, minWidth: 64, paddingHorizontal: 12, justifyContent: 'center', opacity: busy || pressed ? 0.5 : 1 })} onPress={() => {
+        if (step === 'amount' || step === 'done' || pending || uncertain) navigation.goBack();
+        else {
+          const previous = previousCheckoutStep(step);
+          if (previous === 'amount') setSelectedAmount(null);
+          setStep(previous); setError(null);
+        }
+      }}><Text style={[T.section, { color: C.brand }]}>‹ Back</Text></Pressable>
+    });
+  }, [navigation, busy, step, pending, uncertain]);
   usePreventRemove(busy, () => { setError('Please wait for the hospital to confirm this request.'); });
+  useFocusEffect(useCallback(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (busy) return true;
+      if (uncertain || step === 'amount' || step === 'done') return false;
+      const previous = previousCheckoutStep(step);
+      if (previous === 'amount') setSelectedAmount(null);
+      setStep(previous); setError(null); return true;
+    });
+    return () => subscription.remove();
+  }, [busy, uncertain, step]));
 
   const balance = currentEncounter ? remainingBalance(currentEncounter) : 0;
   const amountError = mode === 'PARTIAL' ? validatePaymentAmount(partial, balance) : null;
-  const amount = mode === 'FULL' ? balance : (parsePaymentAmount(partial) ?? 0);
+  const enteredAmount = mode === 'FULL' ? balance : (parsePaymentAmount(partial) ?? 0);
+  const amount = selectedAmount ?? enteredAmount;
   const amountValid = !amountError && Number.isFinite(amount) && amount > 0 && amount <= balance;
   const method = methodForRail(rail);
   const plan = useMemo(() => previewInstallments(amountValid ? amount : 0, months), [amount, amountValid, months]);
+
+  function goBack() {
+    if (busy || uncertain) return;
+    const previous = previousCheckoutStep(step);
+    if (previous === 'amount') setSelectedAmount(null);
+    setStep(previous); setError(null);
+  }
+  const detailsValid = paymentDetailsValid(rail, payerName, cardLast4, bankName);
 
   function resetKey() {
     attemptKey.current = '';
@@ -121,8 +150,9 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
 
   async function submitPayment() {
     if (!currentEncounter || submissionLock.current) return;
-    if (!pending && (!amountValid || payerName.trim().length < 2)) return;
+    if (!pending && (!amountValid || !detailsValid || uncertain || patientError)) return;
     if (!paymentAttempts.begin(account)) return;
+    Keyboard.dismiss();
     submissionLock.current = true; // Lock before UUID generation or any await.
     setBusy(true);
     setError(null);
@@ -139,18 +169,20 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       attemptKey.current = key;
       const input: PayInput = previous?.input ?? {
         amount: Math.round(amount * 100) / 100, paymentRail: rail, payerName: payerName.trim(),
-        ...(mobile.trim() ? { payerContactMasked: `09**-***-${mobile.replace(/[^0-9]/g, '').slice(-4)}` } : {}),
+        ...(WALLET_PRESETS[rail] ? { payerContactMasked: WALLET_PRESETS[rail].contact } : {}),
         ...(rail === 'CREDIT_DEBIT_CARD' ? { cardBrand, cardLast4: cardLast4.trim() } : {}),
         ...(rail === 'BANK_TRANSFER' ? { bankName: bankName.trim() } : {})
       };
       const intent = { key, input, encounterId: currentEncounter.uuid };
       // Refuse to send if native secure storage cannot protect restart recovery.
+      setProcessingPhase('Protecting your payment request');
       await paymentAttempts.save(account, intent);
       savedThisAttempt = true;
       setPending(intent);
       sent = true;
+      setProcessingPhase('Waiting for hospital confirmation');
       const res = await createPaymentApi(client).pay(currentEncounter.uuid, input, key);
-      if (!res.success || !res.payment?.id || res.payment.status !== 'SUCCESS' || !res.receipt?.officialReceiptNumber) {
+      if (!confirmedPayment(res)) {
         throw new ApiError('The hospital has not returned a confirmed receipt. Check your payment history before trying again.', 502, 'INVALID_RESPONSE');
       }
       setReceipt({ ...res.receipt, ...res.payment, methodRail: input.paymentRail });
@@ -169,9 +201,11 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   }
 
   async function submitNote() {
-    if (!currentEncounter || !amountValid || submissionLock.current || uncertain || !acknowledged || borrowerName.trim().length < 2 || idNumber.trim().length < 4) return;
+    if (!currentEncounter || !amountValid || submissionLock.current || uncertain || patientError || !acknowledged || borrowerName.trim().length < 2 || idNumber.trim().length < 4) return;
+    Keyboard.dismiss();
     submissionLock.current = true;
     setBusy(true);
+    setProcessingPhase('Waiting for hospital confirmation');
     setError(null);
     try {
       const api = createPaymentApi(client);
@@ -202,256 +236,112 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   if (recoveryError) return <ErrorState message={recoveryError} onRetry={restoreAttempt} />;
   if (loading && !currentEncounter) return <LoadingState message="Loading your balance…" />;
   if (patientError && !currentEncounter) return <ErrorState message={patientError} onRetry={refresh} />;
-  if (!currentEncounter) return <Screen keyboard keyboardOffset={headerHeight}><EmptyState title="No bill to pay" detail="Your hospital statements will appear when a stay is linked to your account." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
+  if (!currentEncounter) return <Screen><EmptyState title="No bill to pay" detail="Your hospital statements will appear when a stay is linked to your account." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
 
-  // ---- success views (backend-confirmed only)
-  if (step === 'done' && (receipt || note)) {
-    if (note) {
-      const sched: number[] = note.scheduleJson || note.schedule || [];
-      return (
-        <Screen keyboard keyboardOffset={headerHeight}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={{ alignItems: 'center', marginTop: 28, marginBottom: 8 }}>
-              <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: C.successBg, alignItems: 'center', justifyContent: 'center' }}>
-                <Icon name="success" size={40} color={C.success} />
-              </View>
-              <Text style={[T.title, { marginTop: 14 }]}>Demo promissory note recorded</Text>
-              <Text style={[T.display, { marginTop: 6 }]}>{formatPeso(note.totalRepayment ?? note.principalAmount)}</Text>
-              <Text style={[T.meta, { marginTop: 6 }]}>{`Note ${note.noteNumber} · 0% interest · ${note.installmentMonths} months`}</Text>
-            </View>
-            <Card flush>
-              {sched.map((s: number, i: number) => (
-                <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(s)} last={i === sched.length - 1} />
-              ))}
-            </Card>
-            {passIssued && (
-              <Card>
-                <StatusBadge tone="ok" text="Discharge pass released" />
-                <Text style={[T.body, { color: C.secondary, marginTop: 8 }]}>Show it from Documents at the lobby exit.</Text>
-              </Card>
-            )}
-            <PrimaryButton title={passIssued ? 'View discharge pass' : 'View payments'} onPress={() => passIssued ? navigation.replace('Documents') : navigation.navigate('Main', { screen: 'Payments' })} />
-            <View style={{ height: 24 }} />
-          </ScrollView>
-        </Screen>
-      );
-    }
-    if (!receipt) return <ErrorState message="The hospital has not returned a confirmed receipt." onRetry={refresh} />;
-    return (
-      <Screen keyboard keyboardOffset={headerHeight}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={{ alignItems: 'center', marginTop: 28, marginBottom: 8 }}>
-            <View style={{ width: 84, height: 84, borderRadius: 42, backgroundColor: C.successBg, alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name="success" size={40} color={C.success} />
-            </View>
-            <Text style={[T.title, { marginTop: 14 }]}>Demo payment recorded</Text>
-            <Text style={[T.display, { marginTop: 6 }]}>{formatPeso(receipt.amount)}</Text>
-            <Text style={[T.meta, { marginTop: 6 }]}>{`Demo receipt ${receipt.officialReceiptNumber || ''}`}</Text>
-          </View>
-          <Card flush>
-            <LedgerRow title="Method" value={describeRail(receipt.methodRail || receipt.paymentRail || '')} />
-            <LedgerRow title="Date" value={formatDateTime(receipt.issuedAt || receipt.settledAt || receipt.createdAt)} />
-            <LedgerRow title="Reference" value={receipt.paymentReference || ''} />
-            <LedgerRow title="Status" value="Demo · Recorded" tone="ok" last />
-          </Card>
-          {passIssued && (
-            <Card>
-              <StatusBadge tone="ok" text="Discharge pass released" />
-              <Text style={[T.body, { color: C.secondary, marginTop: 8 }]}>Show it from Documents at the lobby exit.</Text>
-            </Card>
-          )}
-          <PrimaryButton title={passIssued ? 'View discharge pass' : 'View payments'} onPress={() => passIssued ? navigation.replace('Documents') : navigation.navigate('Main', { screen: 'Payments' })} />
-          <View style={{ height: 24 }} />
-        </ScrollView>
-      </Screen>
-    );
-  }
-
+  if (step === 'done' && (receipt || note)) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+    {receipt && <ReceiptSheet number={receipt.officialReceiptNumber} amount={receipt.amount} rail={receipt.methodRail} payer={receipt.payerName} date={receipt.issuedAt || receipt.settledAt || receipt.createdAt} reference={receipt.paymentReference} />}
+    {note && <>
+      <View style={{ alignItems: 'center', paddingVertical: 28, gap: 12 }}><Icon name="success" size={48} color={C.success} /><Text accessibilityRole="header" style={[T.title, { textAlign: 'center' }]}>Payment plan recorded</Text><Text style={T.display}>{formatPeso(note.totalRepayment ?? note.principalAmount)}</Text><Text style={T.meta}>{note.noteNumber} · 0% interest · {note.installmentMonths} months</Text></View>
+      <Card flush><LedgerRow title="First due date" value={formatDate(note.firstDueDate)} />{(note.scheduleJson || note.schedule || []).map((value, i, all) => <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(value)} last={i === all.length - 1} />)}</Card>
+    </>}
+    {passIssued && <View style={{ paddingVertical: 16 }}><StatusBadge tone="ok" text="Discharge pass released" /><Text style={[T.body, { marginTop: 8 }]}>Show your pass from Documents at the lobby exit.</Text></View>}
+    <PrimaryButton title={passIssued ? 'View discharge pass' : 'View payments'} onPress={() => passIssued ? navigation.replace('Documents') : navigation.navigate('Main', { screen: 'Payments' })} />
+    <SecondaryButton title="Documents & receipts" onPress={() => navigation.replace('Documents')} />
+  </ScrollView></Screen>;
   if (currentEncounter.stage !== 'PENDING_SETTLEMENT' && !pending) return <Screen><EmptyState title="Your final bill is being reviewed" detail="Hospital clearance checks must finish before online settlement. You can review the running bill now." /><SecondaryButton title="Review bill" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
   if (balance <= 0 && !pending) return <Screen><EmptyState title="No outstanding balance" detail="Review your payment history and discharge documents." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
-
-  return (
-    <Screen keyboard keyboardOffset={headerHeight}>
-      <ScrollView automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        <RefreshNotice error={patientError} onRetry={refresh} />
-        {!!pending && step !== 'done' && <Card><Text style={T.body}>A previous payment of {formatPeso(pending?.input.amount)} via {describeRail(pending?.input.paymentRail || '')} is awaiting confirmation. Retry uses the same request.</Text><PrimaryButton title={busy ? 'Checking…' : 'Retry previous payment'} onPress={submitPayment} disabled={busy} /><SecondaryButton title="Check payment history" disabled={busy} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} /></Card>}
-        {step === 'amount' && (
-          <View>
-            <View style={{ marginTop: 8 }}>
-              <Hero eyebrow="Remaining balance" figure={formatPeso(balance)} sub="Pay in full now, or choose a partial amount." />
-            </View>
-            <SegControl
-              options={[{ key: 'FULL', label: 'Full settlement' }, { key: 'PARTIAL', label: 'Partial amount' }]}
-              value={mode}
-              disabled={busy || uncertain} onChange={(k) => { setMode(k as Mode); resetKey(); }}
-            />
-            {mode === 'PARTIAL' && (
-              <Field editable={!busy && !uncertain} label="Amount to pay (₱)" value={partial} onChangeText={(t) => { setPartial(t); resetKey(); }} keyboard="numeric" error={partial ? amountError || undefined : undefined} a11y="Partial amount in pesos" />
-            )}
-            {!amountValid && mode === 'PARTIAL' && partial.length > 0 && (
-              <Text style={{ color: C.danger }}>Enter an amount up to {formatPeso(balance)}.</Text>
-            )}
-            {error && <Text style={{ color: C.danger, marginTop: 4 }} accessibilityRole="alert">{error}</Text>}
-            <PrimaryButton title={`Continue · ${amountValid ? formatPeso(amount) : formatPeso(0)}`} onPress={() => setStep('method')} disabled={!amountValid || !!patientError || !!pending} />
-            <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} />
+  const wallet = WALLET_PRESETS[rail];
+  const isNote = method.kind === 'promissory';
+  const noteValid = borrowerName.trim().length >= 2 && idNumber.trim().length >= 4 && acknowledged;
+  const stepNumber = step === 'amount' ? 1 : step === 'method' ? 2 : step === 'review' ? 4 : 3;
+  return <Screen keyboard keyboardOffset={headerHeight}>
+    <ScrollView ref={checkoutScroll} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+      <RefreshNotice error={patientError} onRetry={refresh} />
+      {error && <View style={{ backgroundColor: uncertain ? C.warningBg : C.dangerBg, borderRadius: 12, padding: 14, marginVertical: 8 }}><Text accessibilityRole="alert" style={[T.body, { color: uncertain ? C.warning : C.danger }]}>{error}</Text></View>}
+      {!!pending && <Card><Text style={T.title}>Awaiting confirmation</Text><Text style={[T.body, { marginTop: 8 }]}>{formatPeso(pending.input.amount)} via {describeRail(pending.input.paymentRail)}. Checking again uses your saved request.</Text><PrimaryButton title={busy ? 'Checking…' : 'Check payment status'} onPress={submitPayment} disabled={busy} /><SecondaryButton title="Payment history" disabled={busy} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} /></Card>}
+      {!pending && <>
+        <View accessible accessibilityLabel={`Checkout step ${stepNumber} of 4`} style={{ flexDirection: 'row', gap: 6, paddingVertical: 12 }}>{['Amount', 'Method', 'Details', 'Review'].map((label, i) => <View key={label} style={{ flex: 1, gap: 6 }}><View style={{ height: 3, backgroundColor: i < stepNumber ? C.brand : C.border, borderRadius: 4 }} /><Text style={[T.meta, { color: i === stepNumber - 1 ? C.brand : C.secondary, fontSize: 12 }]}>{label}</Text></View>)}</View>
+        {step === 'amount' && <>
+          <Hero eyebrow="Remaining balance" figure={formatPeso(balance)} sub="Choose how much you’d like to pay." />
+          <SegControl options={[{ key: 'FULL', label: 'Full settlement' }, { key: 'PARTIAL', label: 'Partial amount' }]} value={mode} disabled={busy || uncertain} onChange={value => { setMode(value as Mode); resetKey(); }} />
+          <View style={{ paddingVertical: 20, alignItems: 'center', gap: 8 }}><Text style={T.meta}>Amount to pay</Text><Text style={[T.display, { textAlign: 'center' }]}>{formatPeso(enteredAmount)}</Text></View>
+          {mode === 'PARTIAL' && <Field label="Amount in pesos" value={partial} onChangeText={value => { setPartial(value); resetKey(); }} keyboard="decimal-pad" error={partial ? amountError || undefined : undefined} editable={!busy && !uncertain} />}
+          <PrimaryButton title="Choose payment method" onPress={() => { setSelectedAmount(enteredAmount); setStep('method'); }} disabled={!amountValid || !!patientError || uncertain} />
+          <SecondaryButton title="Cancel" onPress={() => navigation.goBack()} />
+        </>}
+        {step === 'method' && <>
+          <Text style={[T.eyebrow, { marginTop: 12 }]}>Paying {formatPeso(amount)}</Text>
+          <Text accessibilityRole="header" style={[T.title, { marginVertical: 12 }]}>Choose a payment method</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+            {PAYMENT_METHODS.map(item => <Pressable key={item.rail} disabled={busy || uncertain} onPress={() => { setRail(item.rail); resetKey(); setError(null); }} accessibilityRole="radio" accessibilityState={{ checked: rail === item.rail, selected: rail === item.rail, disabled: busy || uncertain }} accessibilityLabel={`${item.label}, ${item.hint}`} style={({ pressed }) => ({ flexBasis: '46%', flexGrow: 1, minHeight: 108, borderRadius: 18, padding: 14, alignItems: 'center', justifyContent: 'center', gap: 10, opacity: pressed ? 0.6 : 1, borderWidth: 1.5, borderColor: rail === item.rail ? C.brand : C.border, backgroundColor: rail === item.rail ? C.brandSoft : C.surface })}>
+              {item.hasLogo ? <ProviderMark rail={item.rail} size={36} /> : <Icon name={item.icon} size={26} color={C.brand} />}
+              <Text style={[T.section, { textAlign: 'center', fontSize: 14 }]}>{item.label}</Text>
+            </Pressable>)}
           </View>
-        )}
-
-        {step === 'method' && (
-          <View>
-            <Text style={[T.eyebrow, { marginTop: 12 }]}>Paying {formatPeso(amount)}</Text>
-            <Text style={[T.title, { marginTop: 4, marginBottom: 12 }]}>Choose payment method</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
-              {PAYMENT_METHODS.map((m) => {
-                const selected = rail === m.rail;
-                return (
-                  <Pressable
-                    key={m.rail}
-                    onPress={() => { setRail(m.rail); resetKey(); setError(null); }}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={m.label}
-                    style={{
-                      width: '48%', minHeight: 96, borderRadius: 16, paddingVertical: 14, paddingHorizontal: 6, alignItems: 'center', gap: 8,
-                      borderWidth: 1.5, borderColor: selected ? C.brand : C.border,
-                      backgroundColor: selected ? C.brandSoft : C.surface
-                    }}
-                  >
-                    {m.hasLogo
-                      ? <ProviderMark rail={m.rail} size={40} />
-                      : <Icon name={m.rail === 'CREDIT_DEBIT_CARD' ? 'payments' : m.rail === 'BANK_TRANSFER' ? 'bank' : 'scale'} size={26} color={selected ? C.brand : C.secondary} />}
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: selected ? C.hero : C.ink, textAlign: 'center' }}>{m.label}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-            <Text style={[T.meta, { marginTop: 10 }]}>{methodForRail(rail).hint}</Text>
-            {error && <Text style={{ color: C.danger, marginTop: 4 }} accessibilityRole="alert">{error}</Text>}
-            <PrimaryButton title="Continue" onPress={() => setStep('detail')} />
-            <SecondaryButton disabled={busy || uncertain} title="Back" onPress={() => setStep('amount')} />
+          <Text style={[T.meta, { marginTop: 12 }]}>{method.hint}</Text>
+          <PrimaryButton title="Continue" onPress={() => setStep('detail')} disabled={busy || uncertain || !amountValid} />
+          <SecondaryButton title="Back" onPress={goBack} disabled={busy || uncertain} />
+        </>}
+        {(step === 'detail' || step === 'verification' || step === 'review') && <>
+          <View style={{ backgroundColor: wallet?.background || (method.kind === 'card' ? C.ink : isNote ? '#93470B' : C.hero), borderRadius: 18, padding: 20, marginVertical: 12, gap: 8 }}>
+            <Text style={[T.section, { color: wallet?.accent || '#FFFFFF' }]}>{method.label}{isNote ? ' · 0% interest' : ''}</Text>
+            <Text style={[T.heroFigure, { color: wallet?.accent || '#FFFFFF' }]}>{formatPeso(amount)}</Text>
+            {method.kind === 'card' && <Text style={[T.heroSub, { letterSpacing: 1 }]}>{cardBrand} · •••• {cardLast4 || '••••'}</Text>}
+            <Text style={T.heroSub}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text>
           </View>
-        )}
-
-        {step === 'detail' && method.kind !== 'promissory' && (
-          <View>
-            <DemoBanner />
-            {(method.kind === 'qr' || method.kind === 'wallet') && (
-              <Card>
-                <View style={{ alignItems: 'center' }}>
-                  <Image
-                    source={(ASSETS.demoQr as Record<string, number>)[rail]}
-                    style={{ width: '100%', maxWidth: 240, aspectRatio: 1, borderRadius: 16 }}
-                    accessibilityLabel={`Demo ${method.label} QR code. Demo only, no real payment.`}
-                  />
-                  <Text style={[T.title, { marginTop: 12 }]}>{formatPeso(amount)}</Text>
-                  <Text style={[T.meta, { marginTop: 4, textAlign: 'center' }]}>
-                    {rail === 'QR_PH'
-                      ? 'This is a sample QR for demonstration. It cannot receive a real payment.'
-                      : `Demo ${method.label} QR — scan with any QR scanner to verify it. No real money moves.`}
-                  </Text>
-                  <StatusBadge tone="warn" text="DEMO ONLY — NO REAL PAYMENT" />
-                </View>
-              </Card>
-            )}
-            {method.kind === 'card' && (
-              <Card>
-                <Text style={T.section}>Card details (demo)</Text>
-                <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-                  {['VISA', 'MASTERCARD'].map((b) => (
-                    <Chip disabled={busy || uncertain} key={b} label={b === 'VISA' ? 'Visa' : 'Mastercard'} selected={cardBrand === b} onPress={() => setCardBrand(b)} />
-                  ))}
-                </View>
-                <Field editable={!busy && !uncertain} label="Last 4 digits" value={cardLast4} onChangeText={(t) => setCardLast4(t.replace(/[^0-9]/g, '').slice(0, 4))} keyboard="numeric" />
-              </Card>
-            )}
-            {method.kind === 'bank' && (
-              <Card>
-                <Text style={T.section}>Bank transfer (demo)</Text>
-                <Field editable={!busy && !uncertain} label="Bank name" value={bankName} onChangeText={setBankName} hint="e.g. BPI, BDO, UnionBank via InstaPay." />
-              </Card>
-            )}
-            <Field editable={!busy && !uncertain} label="Payer name" value={payerName} onChangeText={setPayerName} />
-            {(method.kind === 'wallet') && (
-              <Field editable={!busy && !uncertain} label="Mobile number (optional)" value={mobile} onChangeText={setMobile} keyboard="phone-pad" hint="11 digits starting with 09." />
-            )}
-            {error && <Text style={{ color: C.danger, marginTop: 4 }} accessibilityRole="alert">{error}</Text>}
-            <PrimaryButton
-              title={busy ? 'Confirming with hospital…' : `Confirm payment · ${formatPeso(amount)}`}
-              onPress={submitPayment}
-              disabled={busy || !!patientError || payerName.trim().length < 2 || (method.kind === 'card' && cardLast4.length !== 4) || (method.kind === 'bank' && !bankName.trim()) || (method.kind === 'wallet' && mobile.trim().length > 0 && !/^09\d{9}$/.test(mobile.replace(/[\s-]/g, '')))}
-            />
-            <SecondaryButton disabled={busy || uncertain} title="Back" onPress={() => setStep('method')} />
-            <Text style={[T.meta, { marginTop: 10 }]}>Success appears only after the hospital backend confirms. If confirmation is interrupted, retry the same request or check your payment history.</Text>
-          </View>
-        )}
-
-        {step === 'detail' && method.kind === 'promissory' && (
-          <View>
-            <Card>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Icon name="scale" size={20} color={C.warning} />
-                <Text style={T.section}>RA 9439 promissory note</Text>
-              </View>
-              <Text style={[T.body, { color: C.secondary, marginTop: 8 }]}>
-                Medically cleared patients in non-private rooms may leave upon executing a 0% interest note. This authorizes exit clearance.
-              </Text>
+          {step === 'detail' && !isNote && <>
+            {method.kind === 'qr' && <Card><PaymentQr /><Text style={[T.meta, { textAlign: 'center', marginTop: 12 }]}>Scan this code, then review the payment details.</Text></Card>}
+            {wallet && <Card><Text style={T.section}>Wallet account</Text><LedgerRow title="Sample account" value={wallet.contact} last /><Text style={T.meta}>Continue with the preset account to preview wallet verification.</Text></Card>}
+            {method.kind === 'card' && <Card><Text style={T.section}>Card details</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>{['VISA', 'MASTERCARD'].map(brand => <Chip key={brand} label={brand === 'VISA' ? 'Visa' : 'Mastercard'} selected={cardBrand === brand} onPress={() => setCardBrand(brand)} disabled={busy || uncertain} />)}</View><View style={{ marginTop: 16 }}><Field label="Last 4 digits" value={cardLast4} onChangeText={value => setCardLast4(value.replace(/\D/g, '').slice(0, 4))} keyboard="numeric" hint="Only the final four digits are needed." editable={!busy && !uncertain} /></View><SecondaryButton title="Use sample card" disabled={busy || uncertain} onPress={() => setCardLast4(cardBrand === 'VISA' ? '1111' : '0004')} /></Card>}
+            {method.kind === 'bank' && <Card><Text style={T.section}>Transfer details</Text><Text style={[T.meta, { marginVertical: 12 }]}>Record the bank used for your payment. Your hospital confirms the recorded result.</Text><Field label="Bank name" value={bankName} onChangeText={setBankName} hint="For example, BPI, BDO or UnionBank." editable={!busy && !uncertain} error={bankName.length > 64 ? 'Use a bank name up to 64 characters.' : undefined} /></Card>}
+            <Field label={method.kind === 'card' ? 'Cardholder name' : 'Payer name'} value={payerName} onChangeText={setPayerName} editable={!busy && !uncertain} autoCapitalize="words" />
+            <PrimaryButton title={wallet ? 'Continue with sample account' : 'Review payment'} disabled={busy || uncertain || !detailsValid || !amountValid || !!patientError} onPress={() => setStep(wallet ? 'verification' : 'review')} />
+            <SecondaryButton title="Back" disabled={busy || uncertain} onPress={goBack} />
+          </>}
+          {step === 'verification' && wallet && <>
+            <Card><Icon name="coverage" color={C.brand} size={32} /><Text accessibilityRole="header" style={[T.title, { marginTop: 16 }]}>Wallet verification</Text><Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>The preset account is ready for the next step.</Text><LedgerRow title="Account" value={wallet.contact} last /></Card>
+            <PrimaryButton title="Continue to review" disabled={busy || uncertain || !amountValid || !!patientError} onPress={() => setStep('review')} />
+            <SecondaryButton title="Back" disabled={busy || uncertain} onPress={goBack} />
+          </>}
+          {step === 'detail' && isNote && <>
+            <Text style={[T.body, { color: C.secondary, marginBottom: 16 }]}>Spread the selected amount over monthly installments at 0% interest. Hospital billing confirms your agreement and clearance status.</Text>
+            <Text style={T.eyebrow}>Repayment term</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12 }}>{([3, 6, 12] as const).map(value => <Chip key={value} label={`${value} months`} sub={formatPeso(previewInstallments(amount, value).monthlyInstallment)} selected={months === value} onPress={() => setMonths(value)} disabled={busy || uncertain} />)}</View>
+            <Card flush><LedgerRow title="Principal financed" value={formatPeso(plan.financedAmount)} /><LedgerRow title="Interest" value="0%" tone="ok" /><LedgerRow title="Estimated first due" value={formatDate(estimatedFirstDueDate())} /><LedgerRow title="Total repayment" value={formatPeso(plan.totalRepayment)} last /></Card>
+            <Field label="Borrower / guarantor legal name" value={borrowerName} onChangeText={setBorrowerName} autoCapitalize="words" editable={!busy && !uncertain} />
+            <Text style={T.eyebrow}>Relationship to patient</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12 }}>{RELATIONSHIPS.map(value => <View key={value} style={{ flexBasis: '46%', flexGrow: 1 }}><Chip label={value.charAt(0) + value.slice(1).toLowerCase()} selected={relationship === value} onPress={() => setRelationship(value)} disabled={busy || uncertain} /></View>)}</View>
+            <Text style={T.eyebrow}>Government ID</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12 }}>{ID_TYPES.map(value => <View key={value.id} style={{ flexBasis: '46%', flexGrow: 1 }}><Chip label={value.label} selected={idType === value.id} onPress={() => setIdType(value.id)} disabled={busy || uncertain} /></View>)}</View>
+            <Field label="ID number" value={idNumber} onChangeText={setIdNumber} editable={!busy && !uncertain} />
+            <Pressable disabled={busy || uncertain} onPress={() => setAcknowledged(value => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: acknowledged, disabled: busy || uncertain }} accessibilityLabel="Acknowledge repayment terms" style={({ pressed }) => ({ flexDirection: 'row', gap: 12, paddingVertical: 16, opacity: pressed ? 0.6 : 1 })}><View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: C.brand, backgroundColor: acknowledged ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>{acknowledged && <Icon name="check" size={18} color="#FFFFFF" />}</View><Text style={[T.meta, { flex: 1 }]}>I acknowledge this repayment schedule. The hospital billing desk arranges the formal promissory agreement.</Text></Pressable>
+            <PrimaryButton title="Review payment plan" onPress={() => setStep('review')} disabled={busy || uncertain || !noteValid || !amountValid || !!patientError} /><SecondaryButton title="Back" onPress={goBack} disabled={busy || uncertain} />
+          </>}
+          {step === 'review' && <>
+            <Text accessibilityRole="header" style={[T.title, { marginVertical: 12 }]}>{isNote ? 'Review your payment plan' : 'Review your payment'}</Text>
+            <Card flush><LedgerRow title="Amount" value={formatPeso(amount)} /><LedgerRow title="Method" value={method.label} /><LedgerRow title={isNote ? 'Borrower / guarantor' : 'Payer'} value={isNote ? borrowerName : payerName} />
+              {wallet && <LedgerRow title="Wallet account" value={wallet.contact} />}
+              {method.kind === 'card' && <LedgerRow title="Card" value={`${cardBrand} · •••• ${cardLast4}`} />}
+              {method.kind === 'bank' && <LedgerRow title="Bank" value={bankName} />}
+              {isNote && <><LedgerRow title="Term" value={`${months} months · 0% interest`} /><LedgerRow title="Total repayment" value={formatPeso(plan.totalRepayment)} />{plan.schedule.map((value, i) => <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(value)} />)}</>}
+              <LedgerRow title="Balance after this request" value={formatPeso(Math.max(0, balance - amount))} last />
             </Card>
-            <Text style={[T.eyebrow, { marginTop: 6 }]}>Repayment term · 0% interest</Text>
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
-              {([3, 6, 12] as const).map((m) => {
-                const p = previewInstallments(amount, m);
-                return <Chip disabled={busy || uncertain} key={m} label={`${m} mo`} sub={formatPeso(p.monthlyInstallment)} selected={months === m} onPress={() => setMonths(m)} />;
-              })}
-            </View>
-            <Card>
-              <LedgerRow title="Principal financed" value={formatPeso(plan.financedAmount)} />
-              <LedgerRow title="Interest (RA 9439)" value="0%" tone="ok" />
-              <LedgerRow title="Estimated first due" value={formatDate(estimatedFirstDueDate())} />
-              <LedgerRow title="Total payable (estimated)" value={formatPeso(plan.totalRepayment)} last />
-            </Card>
-            <Field editable={!busy && !uncertain} label="Borrower / guarantor legal name" value={borrowerName} onChangeText={setBorrowerName} />
-            <Text style={[T.eyebrow, { marginTop: 4 }]}>Relationship to patient</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-              {RELATIONSHIPS.map((r) => (
-                <View key={r} style={{ width: '48%' }}>
-                  <Chip disabled={busy || uncertain} label={r.charAt(0) + r.slice(1).toLowerCase()} selected={relationship === r} onPress={() => setRelationship(r)} />
-                </View>
-              ))}
-            </View>
-            <Text style={[T.eyebrow, { marginTop: 14 }]}>Government ID</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
-              {ID_TYPES.map((t) => (
-                <View key={t.id} style={{ width: '48%' }}>
-                  <Chip disabled={busy || uncertain} label={t.label} selected={idType === t.id} onPress={() => setIdType(t.id)} />
-                </View>
-              ))}
-            </View>
-            <Field editable={!busy && !uncertain} label="ID number" value={idNumber} onChangeText={setIdNumber} />
-            <Pressable
-              disabled={busy || uncertain} onPress={() => setAcknowledged((a) => !a)}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: acknowledged }}
-              accessibilityLabel="Acknowledge the promissory terms"
-              style={{ flexDirection: 'row', gap: 10, backgroundColor: C.surface, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, marginTop: 4 }}
-            >
-              <View style={{ width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: acknowledged ? C.brand : C.border, backgroundColor: acknowledged ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>
-                {acknowledged && <Icon name="check" size={15} color="#FFFFFF" />}
-              </View>
-              <Text style={{ flex: 1, fontSize: 13, color: C.secondary, lineHeight: 19 }}>
-                I acknowledge the terms of this demo repayment plan. Contact hospital billing to arrange an actual promissory agreement.
-              </Text>
-            </Pressable>
-            {error && <Text style={{ color: C.danger, marginTop: 8 }} accessibilityRole="alert">{error}</Text>}{uncertain && <SecondaryButton title="Check payment plans" onPress={() => navigation.navigate('Main', { screen: 'Payments' })} />}
-            <PrimaryButton
-              title={busy ? 'Executing note…' : `Record demo note · ${formatPeso(amount)}`}
-              onPress={submitNote}
-              disabled={busy || uncertain || !!patientError || borrowerName.trim().length < 2 || idNumber.trim().length < 4 || !acknowledged}
-            />
-            <SecondaryButton disabled={busy || uncertain} title="Back" onPress={() => setStep('method')} />
-          </View>
-        )}
-        <View style={{ height: 24 }} />
-      </ScrollView>
-    </Screen>
-  );
+            <Text style={T.meta}>Your receipt or payment plan appears after the hospital confirms the request.</Text>
+            <PrimaryButton title={busy ? 'Confirming…' : isNote ? 'Confirm payment plan' : `Confirm payment · ${formatPeso(amount)}`} onPress={isNote ? submitNote : submitPayment} disabled={busy || uncertain || !amountValid || !!patientError || (isNote ? !noteValid : !detailsValid)} />
+            <SecondaryButton title="Edit details" disabled={busy || uncertain} onPress={goBack} />
+          </>}
+        </>}
+        {!amountValid && step !== 'amount' && <Text accessibilityRole="alert" style={[T.body, { color: C.danger, marginTop: 12 }]}>Your balance changed. Go back to amount selection and review it before continuing.</Text>}
+      </>}
+      {uncertain && <SecondaryButton title={isNote ? 'Check payment plans' : 'Check payment history'} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} />}
+    </ScrollView>
+    <Modal visible={busy} transparent animationType="none" onRequestClose={() => {}}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(20,45,42,0.6)', paddingHorizontal: 24, paddingTop: Math.max(24, insets.top), paddingBottom: Math.max(24, insets.bottom), justifyContent: 'center', alignItems: 'center' }}>
+        <ScrollView accessibilityViewIsModal style={{ width: '100%', maxWidth: 420, maxHeight: '90%', flexGrow: 0, backgroundColor: C.surface, borderRadius: 24 }} contentContainerStyle={{ padding: 28, alignItems: 'center', gap: 16 }}>
+          <ActivityIndicator color={C.brand} size="large" />
+          <Text accessibilityRole="header" style={[T.title, { textAlign: 'center' }]}>{isNote ? 'Recording your payment plan' : 'Confirming your payment'}</Text>
+          <Text accessibilityLiveRegion="polite" style={[T.body, { color: C.secondary, textAlign: 'center' }]}>{processingPhase}</Text>
+          <Text style={[T.meta, { textAlign: 'center' }]}>Keep this screen open. If confirmation is interrupted, your payment history can help you check the result.</Text>
+        </ScrollView>
+      </View>
+    </Modal>
+  </Screen>;
 }
