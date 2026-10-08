@@ -39,7 +39,7 @@ export const DepartmentExceptionMatrix: React.FC<DepartmentExceptionMatrixProps>
   const isAnySelected = selectedDepartment && selectedDepartment !== 'All Wards';
 
   return (
-    <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

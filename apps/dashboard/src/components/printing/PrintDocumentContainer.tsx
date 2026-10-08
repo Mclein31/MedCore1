@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { printEngine, PrintDocumentConfig } from '@/services/printEngine';
+import { printEngine, PrintDocumentConfig, getPrintOrientation } from '@/services/printEngine';
 import { Encounter } from '@/types/domain';
 import { CommercialCarrierMetric } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
@@ -15,7 +15,11 @@ export const PrintDocumentContainer: React.FC = () => {
     });
   }, []);
 
-  if (!config) return null;
+  return config ? <PrintDocument config={config} /> : null;
+};
+
+// Shared renderer for the live print flow and paginated export validation.
+export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ config }) => {
 
   const facility = {
     name: 'ST. JUDE MEDICAL CENTER MANILA',
@@ -113,7 +117,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const soaNumber = enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber}`;
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader(
           config.type === 'PATIENT_LEDGER'
@@ -247,6 +251,7 @@ export const PrintDocumentContainer: React.FC = () => {
             Complete Itemized Chargemaster ({enc.items.length} Line Items)
           </div>
           <table className="w-full text-left text-xs border border-slate-300 border-collapse">
+            <colgroup>{(getPrintOrientation(config) === 'portrait' ? [10, 20, 6, 13, 13, 13, 13, 12] : [10, 28, 5, 12, 11, 10, 12, 12]).map((width, i) => <col key={i} style={{ width: `${width}%` }} />)}</colgroup>
             <thead className="bg-slate-100 border-b border-slate-300 font-bold uppercase text-[9px]">
               <tr>
                 <th className="py-2 px-2.5 border-r border-slate-300">Code</th>
@@ -302,7 +307,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const pName = enc.patient.fullName || enc.patient.maskedName;
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Official Digital Lobby Exit Clearance Slip & Gate Pass', pass?.passNumber || `PASS-MC-${enc.encounterNumber}`)}
 
@@ -362,7 +367,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const encNum = config.data.encounterNumber || 'ENC';
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Bureau of Internal Revenue (BIR) Electronic Official Receipt', payment.officialReceiptNumber)}
 
@@ -430,7 +435,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const { waterfall, kpis, carriers } = config.data;
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Hospital Financial Intelligence & Statutory RCM Audit Report', `RCM-AUDIT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}`)}
 
@@ -558,12 +563,13 @@ export const PrintDocumentContainer: React.FC = () => {
     const encounters: Encounter[] = config.data.encounters;
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Multi-Payer Inpatient Roster & Commercial HMO Electronic LOA Adjudication Report')}
 
         <div className="mb-4">
           <table className="w-full text-left text-xs border border-slate-300 border-collapse">
+            <colgroup>{(getPrintOrientation(config) === 'portrait' ? [18, 8, 13, 11, 12, 13, 13, 12] : [20, 8, 12, 12, 13, 12, 11, 12]).map((width, i) => <col key={i} style={{ width: `${width}%` }} />)}</colgroup>
             <thead className="bg-slate-100 border-b border-slate-300 font-bold uppercase text-[9px]">
               <tr>
                 <th className="py-2 px-3 border-r border-slate-300">Patient &amp; MRN</th>
@@ -618,7 +624,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const pName = enc.patient.fullName || enc.patient.maskedName;
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('Inpatient Discharge Clearance Dossier & 45-Minute SLA Audit Sheet', enc.encounterNumber)}
 
@@ -693,13 +699,13 @@ export const PrintDocumentContainer: React.FC = () => {
 
         {/* Operational Timeline */}
         {enc.timeline && enc.timeline.length > 0 && (
-          <div className="mb-4 print-avoid-break">
+          <div className="mb-4 print-flow">
             <div className="font-bold text-xs uppercase tracking-wider text-slate-800 mb-1.5">
               Chronological Audit Trail &amp; Milestones
             </div>
             <div className="border border-slate-300 divide-y divide-slate-200">
               {enc.timeline.map((t) => (
-                <div key={t.id} className="p-2 flex items-baseline justify-between text-xs">
+                <div key={t.id} className="p-2 flex items-baseline justify-between text-xs print-avoid-break">
                   <div>
                     <strong className="text-slate-900">{t.title}</strong>
                     <p className="text-slate-600 text-[11px] mt-0.5">{t.description}</p>
@@ -729,7 +735,7 @@ export const PrintDocumentContainer: React.FC = () => {
     const cl = enc.philhealth;
 
     return (
-      <div id="medcore-print-root" className="hidden print:block w-full">
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
           {renderFacilityHeader('PhilHealth eClaims 3.0 Pre-Flight Audit & CF1-CF4 Conformity Report', cl.id)}
 

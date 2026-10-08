@@ -11,7 +11,7 @@ export const ArAgingProfileCard: React.FC<ArAgingProfileCardProps> = ({ agingBuc
   const totalAr = agingBuckets.reduce((acc, b) => acc + b.amount, 0);
 
   return (
-    <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

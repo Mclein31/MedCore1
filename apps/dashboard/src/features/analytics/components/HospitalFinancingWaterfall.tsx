@@ -87,7 +87,7 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
   ];
 
   return (
-    <div className="p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>

@@ -87,7 +87,7 @@ export const GlobalCommandBar: React.FC = () => {
   const breachCount = encounters.filter((e) => e.slaStatus === 'BREACH').length;
 
   return (
-    <header className="h-12 border-b border-slate-200 bg-white px-4 flex items-center justify-between z-30 sticky top-0 shadow-2xs">
+    <header className="no-print h-12 border-b border-slate-200 bg-white px-4 flex items-center justify-between z-30 sticky top-0 shadow-2xs">
       {/* Left: Brand & Facility Context */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2.5">

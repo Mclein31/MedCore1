@@ -61,7 +61,7 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
+    <div className="h-full min-w-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
       {/* Table Header & Search Strip */}
       <div className="p-5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
         <div>

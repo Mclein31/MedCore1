@@ -1060,7 +1060,7 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   - Eliminated constrained fixed card wrappers (`max-w-xl` 576px, `max-w-4xl`) on printed documents. Replaced with responsive `.print-document` configured for `w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white`.
   - `@media print` rules enforce `width: 100% !important; max-width: 100% !important; margin: 0 auto !important;` so that printed documents expand to the full printable page width across A4 and Letter paper dimensions.
 - **Pagination & Table Formatting**:
-  - Enforced `min-width: 100% !important; max-width: 100% !important; table-layout: auto !important;` on printed tables.
+  - Initially enforced `min-width: 100% !important; max-width: 100% !important; table-layout: auto !important;` on printed tables. Superseded by the October 8 reusable A4 printing fix below because intrinsic column widths could exceed paper width.
   - Repeated table headers across multi-page breaks via `thead { display: table-header-group; }`.
   - Prevented orphaned row cuts via `tr { break-inside: avoid; page-break-inside: avoid; }`.
   - Forced localized scrollable containers (`overflow-y-auto`, `max-h-*`) to expand completely (`overflow: visible !important; max-height: none !important; height: auto !important;`) ensuring all records print without truncation.
@@ -1846,7 +1846,7 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - **Architectural Fixes**:
   1. *Global Screen Mode CSS Hiding (`src/index.css`)*: Explicitly defined `#aqromed-print-root, #medcore-print-root, .print-document { display: none !important; }` outside of `@media print`. This ensures print containers have zero dimensions and are completely hidden from screen rendering and layout calculation.
   2. *Tailwind Redundancy (`src/components/printing/PrintDocumentContainer.tsx`)*: Added `className="hidden print:block w-full"` to all 7 root containers (`PATIENT_LEDGER`, `DIGITAL_GATE_PASS`, `OFFICIAL_RECEIPT`, `EXECUTIVE_RCM_REPORT`, `MULTI_PAYER_ROSTER`, `DISCHARGE_DOSSIER`, `CLAIMS_ESOA_AUDIT`).
-  3. *Immediate Post-Print Teardown (`src/services/printEngine.ts`)*: Wrapped `window.print()` in a `try/finally` block that triggers `setTimeout(cleanup, 200)` as soon as the print modal closes, reducing the safety ceiling timeout from 60s down to 2s.
+  3. *Historical Immediate Post-Print Teardown (`src/services/printEngine.ts`)*: The 200ms/2s cleanup was superseded by October 8 event-based teardown below; a nonblocking browser preview must retain its DOM until actual print completion/media exit.
 - **Verification**: `npm run build` PASS (0 errors, 1.75s). Document is strictly visible to browser print dialogs and completely absent from screen viewport.
 
 [DECISION] **11. Public Asset Resolution for MedCore Badge Logo**:
@@ -1987,3 +1987,14 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [FACT] The hosted dashboard URL was observed as med-core1.vercel.app and its served bundle contains the earlier verification patch. Fresh hosted API staff login/session checks returned200. Screenshot's seeded enc-8812 was still AWAITING_CODE/HMO_FINAL_LOA despite old client Carrier Code Issued. Anonymous approval401; authorized billing approval200; fresh API read persistedAPPROVED/PENDING_SETTLEMENT with all four main financial values unchanged. Only that intended demo LOA/stage changed; no payment/reseed/migration/reset. The newly created validation session was revoked and replay approval401; credentials/tokens/raw responses removed from tmp. Direct SQL remainedEPERM; no auth/security bypass.
 
 [REFERENCE] [Dashboard fix, before/after results, commands and verification limits](../apps/dashboard/validation/final-loa/README.md). New UI source changes remain uncommitted on dashboard; no push/deployment/branch change performed. Hosted UI needs normal deployment and reload/re-login. The primary agent implemented and updated this Brain; independent reviewer reviewed without implementation edits.
+
+
+## Reusable A4 printing and analytics card alignment — October 8, 2026
+
+[FACT] Print table cutoff came from content-sized auto table layout, intrinsic unbroken references/statuses, screen nowrap/truncation and missing page geometry. Shared dashboard print CSS now uses fixed 100% table geometry, 9pt wrapping cells/all borders, 12mm A4 margins, repeating headers and row keep-together with paginating sections. Eight-column documents default to landscape; six-column executive report and short documents default to portrait. Plain browser Print preserves the active page and clickable data, requesting landscape for seven-plus-column tables. The command bar stays off paper. No hidden overflow, removed columns, billing/schema/auth/dependency changes.
+
+[DECISION] PrintService retains hidden screen-isolated print DOM through actual afterprint/media exit; arbitrary 200ms/2s cleanup is removed. Font/image readiness, request cancellation and queuing protect preview ownership. Explicit orientation overrides remain available. Adjacent analytics card roots fill existing grid rows; all four screenshot pairs measured equal desktop bottom edges and stack at390px.
+
+[FACT] Actual native Brave Save as PDF verified14 A4 variants covering all8 document types, portrait overrides,64-character LOAs,250 roster rows,100 long charge descriptions and plain analytics printing. Source table text/headings, every-page text/drawing margins, repeated headers and350 complete stress rows pass. Sample pages visually reviewed. Build/strict types,6 print lifecycle cases,7 Final LOA DOM cases,250 financial reconciliations,6 transport and26 isolated backend groups pass. Existing17 dev-tool npm advisories and large-bundle warning remain. Final Safari/Firefox/physical printing not claimed; Safari paper settings require manual A4/orientation and its Save dialog timed out. An oversized row can exceed a physical page; direct Print includes currently rendered pagination.
+
+[REFERENCE] [Files, actual PDF evidence metadata, reproduction and limits](../apps/dashboard/validation/printing/README.md). Changes remain local/uncommitted on main (prior dashboard fixes already merged by the user); no commit/push/deploy/branch change. Primary agent implemented and maintained this existing Brain; independent read-only reviewer found data-button/chart-height issues that were fixed.
