@@ -262,7 +262,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
-            approveHmoFinalLoa(enc.id);
+            return approveHmoFinalLoa(enc.id);
           }
         };
       case 'PENDING_SETTLEMENT':

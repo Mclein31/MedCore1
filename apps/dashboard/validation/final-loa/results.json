@@ -1,0 +1,35 @@
+{
+  "environment": "Real React DOM + application components in jsdom; all API calls intercepted; no database or external network",
+  "passed": 7,
+  "total": 7,
+  "results": [
+    {
+      "name": "Radar waits for approval and blocks double submission",
+      "passed": true
+    },
+    {
+      "name": "Cards waits for approval and blocks double submission",
+      "passed": true
+    },
+    {
+      "name": "rejected keeps the bill unchanged and permits a successful retry",
+      "passed": true
+    },
+    {
+      "name": "offline keeps the bill unchanged and permits a successful retry",
+      "passed": true
+    },
+    {
+      "name": "malformed keeps the bill unchanged and permits a successful retry",
+      "passed": true
+    },
+    {
+      "name": "expired approval clears records/dialog and does not leave a stale toast after re-login",
+      "passed": true
+    },
+    {
+      "name": "a confirmed 200 response must actually contain an approved LOA",
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "environment": "Real React DOM + application components in jsdom; all API calls intercepted; no database or external network",
+  "passed": 0,
+  "total": 7,
+  "results": [
+    {
+      "name": "Radar waits for approval and blocks double submission",
+      "passed": false,
+      "error": "Confirmation closed before the server responded"
+    },
+    {
+      "name": "Cards waits for approval and blocks double submission",
+      "passed": false,
+      "error": "Confirmation closed before the server responded"
+    },
+    {
+      "name": "rejected keeps the bill unchanged and permits a successful retry",
+      "passed": false,
+      "error": "No inline approval error rendered"
+    },
+    {
+      "name": "offline keeps the bill unchanged and permits a successful retry",
+      "passed": false,
+      "error": "No inline approval error rendered"
+    },
+    {
+      "name": "malformed keeps the bill unchanged and permits a successful retry",
+      "passed": false,
+      "error": "No inline approval error rendered"
+    },
+    {
+      "name": "expired approval clears records/dialog and does not leave a stale toast after re-login",
+      "passed": false,
+      "error": "Expired approval recreated the backend toast"
+    },
+    {
+      "name": "a confirmed 200 response must actually contain an approved LOA",
+      "passed": false,
+      "error": "Malformed response was resolved as successful approval"
+    }
+  ]
+}

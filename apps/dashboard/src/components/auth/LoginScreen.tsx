@@ -3,7 +3,7 @@ import { useMedCore } from '@/context/MedCoreContext';
 import { Building2, ShieldCheck, Lock, Mail, ArrowRight, UserCheck } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { login } = useMedCore();
+  const { login, sessionNotice } = useMedCore();
   const [email, setEmail] = useState('elena.santos@stjude.ph');
   const [password, setPassword] = useState('HospitalRCM2026!');
   const [facilityCode, setFacilityCode] = useState('SJMC-MNL');
@@ -69,6 +69,7 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen w-full bg-slate-900 text-slate-100 flex flex-col justify-center items-center p-4 sm:p-6 lg:p-8 font-sans antialiased relative overflow-hidden">
+      {sessionNotice && <div role="alert" className="relative z-10 mb-4 w-full max-w-xl rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm text-amber-950">{sessionNotice}</div>}
       {/* Background Subtle Tech Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
 
