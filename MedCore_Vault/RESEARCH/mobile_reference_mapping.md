@@ -28,3 +28,21 @@ Comparisons use actual app captures, cropped phone interiors and equal-width sid
 The primary agent implemented this mapping and compared actual captures with the corresponding phone crops. The researcher independently identified/followed up keypad size, grouped methods, Profile spacing and onboarding bleed; those discrepancies were corrected. Adaptive keypad circles are78px at390px width (≈86px rows) and62px on320px phones; the accessible fixed tap action is64px. Payment rails use grouped56px rows; subsequent Profile labels reduce the previous excess gap by16px. The original onboarding band reaches the content edges without copying photos.
 
 Final code-reviewer audit/re-audit: ready for a patient-prototype progress commit, no remaining actionable source findings. Required checks, all three exports, isolated financial/ownership tests and independent QR decodes passed. [Actual screenshots and equal-width comparisons](../../apps/mobile/validation/reference-match/README.md) record geometry estimates, differences/reasons and native-device limitations. Native session verification bypass/recovery and financial safeguards remain unchanged; browser fixtures never access a database/gateway.
+
+
+## Annotated refinement overrides — October 8, 2026
+
+The six later `apps/mobile/needs_fix` screenshots request small changes to the implemented design. All were opened. Their explicit annotations take precedence over conflicting earlier color/header details above; the earlier layout references still guide the composition. The existing dashboard palette/system font are retained.
+
+| Existing pattern | Current annotated refinement |
+|---|---|
+| Dark Home/payment headers and varying native-stack headers | Shared white 56px minimum content row, gray hairline, balanced slots, centered 20px titles; safe area added once. Home retains its MedCore PNG lockup. Special auth/onboarding layouts remain. |
+| Gradient financial surfaces | Later annotation explicitly requests solid green. Shared teal panel with 18px corners, 20px padding and 32px amount; Home has lower integrated shortcuts, Bill retains the compact summary plus its separate actions. |
+| Bill greeting and duplicate top Profile icon | Centered Bill title, Profile remains available through the existing tab. |
+| Subtle empty-looking charge search | Visible `Search charges` placeholder, right outline Search icon and thin border with unchanged filtering/accessible label. |
+| Unexplained disabled Pay on pending-HMO account | Existing eligibility restriction retained; state explains waiting and offers active Review bill/Payments history. Eligible accounts retain Pay. |
+| Fabricated payment monograms | Verified original provider/network assets, appropriate proportions and adjacent labels. [Primary sources](../../apps/mobile/assets/icons/payments/SOURCES.md). |
+
+Section/card hierarchy gains approximately 2px where needed (20/18/16/14/12), retaining quiet Profile group labels. Outline icons, shortcut dimensions, labels, shared corners/separators and touch feedback connect navigation with the financial components without making different functions identical. The unspecified “same card design” annotation on Bill was interpreted as shared financial surface properties, preserving its existing action placement.
+
+[Actual native/browser screenshots and all six comparisons](../../apps/mobile/validation/refinement/README.md) record measurements, differing data/scroll positions and device limitations. Header rows measured 56px across standard-size browser captures; native text scaling intentionally may increase their common minimum. The independent reviewer audited/re-audited fixes and found no remaining actionable source findings. Physical-device text scaling/keyboard/accessibility still require checks.

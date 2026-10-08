@@ -11,16 +11,11 @@ import {
   DemoPaymentRecord,
   broadcastBillingSync,
   usePatientBillingSync,
-  generateTransactionReference,
-  generateOfficialReceiptNumber,
-  generateHmacSignature,
-  generateGatePassNumber,
-  generatePaymentId,
   createOrGetReceipt
 } from '@/features/patient-clarify';
 import { printEngine, PrintDocumentConfig } from '@/services/printEngine';
 import type { ConfirmationModalVariant, ConfirmationContextInfo } from '@/components/modals';
-import { apiClient, ApiUser } from '@/api';
+import { apiClient, ApiError, ApiUser } from '@/api';
 
 export interface ConfirmModalRequest {
   title: string;
@@ -121,9 +116,14 @@ interface MedCoreContextType {
     borrowerIdType?: string;
     borrowerIdNumber?: string;
     bankName?: string;
+    cardBrand?: 'VISA' | 'MASTERCARD';
+    cardLast4?: string;
   }) => Promise<{ success: boolean; paymentRecord?: DemoPaymentRecord; error?: string }>;
   // Auth & Session
   isAuthenticated: boolean;
+  isVerifyingSession: boolean;
+  sessionError: string | null;
+  retrySession: () => void;
   currentUser: any | null;
   login: (credentials: { email: string; password: string; facilityCode?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -162,7 +162,7 @@ interface MedCoreContextType {
   isLoadingEncounters: boolean;
   apiError: string | null;
   clearApiError: () => void;
-  refreshEncounters: () => Promise<void>;
+  refreshEncounters: () => Promise<boolean>;
 }
 
 
@@ -246,19 +246,22 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearApiError = () => setApiError(null);
 
-  const refreshEncounters = async (retries = 2): Promise<void> => {
+  const refreshEncounters = async (retries = 2): Promise<boolean> => {
     try {
       setIsLoadingEncounters(true);
       const res = await apiClient.getEncounters();
-      if (res && Array.isArray(res.items) && res.items.length > 0) {
+      if (res && Array.isArray(res.items)) {
         setEncounters(res.items);
         setApiError(null);
         setSelectedEncounterId((prev) => {
           if (res.items.some((e: any) => e.id === prev || e.encounterNumber === prev)) return prev;
-          return res.items[0].id;
+          return res.items[0]?.id || '';
         });
+        return true;
       }
+      throw new Error('The server returned an incomplete encounter list.');
     } catch (err: any) {
+      if (err instanceof ApiError && (err.status === 401 || err.code === 'SESSION_CHANGED')) return false;
       if (retries > 0) {
         await new Promise((resolve) => setTimeout(resolve, 1200));
         return refreshEncounters(retries - 1);
@@ -270,18 +273,19 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         return current;
       });
+      return false;
     } finally {
       setIsLoadingEncounters(false);
     }
   };
 
   const setActiveRole = (role: UserRole) => {
-    setActiveRoleState(role);
     apiClient
       .switchRole(role)
       .then((res: { success: boolean; user: ApiUser }) => {
-        if (res?.user) {
+        if (res?.success && res.user) {
           setCurrentUser(res.user);
+          setActiveRoleState(res.user.role as UserRole);
         }
       })
       .catch((err: Error) => {
@@ -321,36 +325,39 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Auth & Session State
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('medcore_auth') || localStorage.getItem('aqromed_auth');
-      return stored === 'true';
-    }
-    return false;
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isVerifyingSession, setIsVerifyingSession] = useState(true);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionCheck, setSessionCheck] = useState(0);
+  const retrySession = () => setSessionCheck(value => value + 1);
 
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('medcore_user') || localStorage.getItem('aqromed_user');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          // ignore
-        }
-      }
-    }
-    return null;
-  });
+  const sessionGeneration = useRef(0);
+  function clearSessionState() {
+    sessionGeneration.current++;
+    setIsAuthenticated(false); setCurrentUser(null); setEncounters([]);
+    setSelectedEncounterId(''); setActiveRoute('COMMAND_CENTER'); setActiveRoleState('BILLING_SPECIALIST');
+    setSessionError(null); setConfirmationState(null); setDossierEncounter(null);
+    setIsDossierDrawerOpen(false); setIsActionDrawerOpen(false); setIsDoctorQuickSignOpen(false);
+    setIsPromissoryModalOpen(false); setIsGatePassModalOpen(false); setIsWhyDoIOweThisOpen(false);
+    setIsAddChargeModalOpen(false); setIsEditChargeModalOpen(false); setChargeToEdit(null);
+    setIsAdmitPatientModalOpen(false); setIsEditEncounterModalOpen(false); setEncounterToEdit(null);
+    setSearchQuery(''); setSelectedWhyItem(null); setIsSearchModalOpen(false);
+    try { for (const key of ['medcore_auth', 'medcore_user', 'aqromed_auth', 'aqromed_user']) localStorage.removeItem(key); } catch {}
+  }
+  useEffect(() => apiClient.client.onSessionExpired(clearSessionState), []);
 
   // Authoritative Session Verification & Data Hydration on mount
   useEffect(() => {
     let isMounted = true;
+    const generation = sessionGeneration.current;
+    setIsVerifyingSession(true);
+    setSessionError(null);
     apiClient
       .getMe()
       .then(async (res: { authenticated: boolean; user: ApiUser }) => {
-        if (!isMounted) return;
-        if (res?.user) {
+        if (!isMounted || generation !== sessionGeneration.current) return;
+        if (res?.authenticated && res.user) {
           setIsAuthenticated(true);
           setCurrentUser(res.user);
           if (res.user.role) {
@@ -361,28 +368,33 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
             localStorage.setItem('medcore_auth', 'true');
             localStorage.setItem('medcore_user', JSON.stringify(res.user));
           }
-          await refreshEncounters();
+          if (!await refreshEncounters() && isMounted && generation === sessionGeneration.current) setSessionError('We could not load hospital records. Check your connection and try again.');
         } else {
           setIsAuthenticated(false);
           setCurrentUser(null);
           apiClient.setDemoRole(null);
         }
       })
-      .catch((_err: unknown) => {
-        if (!isMounted) return;
-        // Attempt encounter hydration anyway in case public endpoints are accessible
-        refreshEncounters();
-      });
+      .catch((err: unknown) => {
+        if (!isMounted || generation !== sessionGeneration.current) return;
+        if (!(err instanceof ApiError && (err.status === 401 || err.code === 'SESSION_CHANGED'))) {
+          setSessionError('We could not verify your session. Check your connection and try again.');
+        }
+      })
+      .finally(() => { if (isMounted) setIsVerifyingSession(false); });
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [sessionCheck]);
 
   const login = async (credentials: { email: string; password: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await apiClient.login(credentials);
-      if (res?.user) {
+      if (res?.success && res.user) {
+        clearSessionState();
+        const generation = sessionGeneration.current;
+        setIsVerifyingSession(true);
         setIsAuthenticated(true);
         setCurrentUser(res.user);
         if (typeof window !== 'undefined') {
@@ -394,7 +406,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           apiClient.setDemoRole(res.user.role);
         }
         setApiError(null);
-        await refreshEncounters();
+        if (!await refreshEncounters() && generation === sessionGeneration.current) setSessionError('We could not load hospital records. Check your connection and try again.');
+        setIsVerifyingSession(false);
         return { success: true };
       }
       return { success: false, error: 'Login failed: Invalid server response' };
@@ -410,14 +423,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (err) {
       console.warn('API logout notice:', err);
     } finally {
-      setIsAuthenticated(false);
-      setCurrentUser(null);
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('medcore_auth');
-        localStorage.removeItem('medcore_user');
-        localStorage.removeItem('aqromed_auth');
-        localStorage.removeItem('aqromed_user');
-      }
+      clearSessionState();
     }
   };
 
@@ -693,31 +699,18 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         approvedAmount: enc?.hmo?.approvedAmount || enc?.waterfall?.hmoApprovedAmount || 0,
         disallowedConsumables: enc?.hmo?.disallowedConsumables || 0
       });
-      if (res?.encounter) {
+      if (res?.success && res.encounter) {
         setEncounters((prev) =>
           prev.map((e) => (e.id === encounterId || e.encounterNumber === res.encounter.encounterNumber ? res.encounter : e))
         );
         return;
       }
+      throw new Error('The server did not confirm the HMO approval. Please refresh and try again.');
     } catch (err: any) {
       console.error('API approve-hmo-loa failure:', err);
       setApiError(`Failed to approve HMO Final LOA on server: ${err.message || 'Unknown error'}`);
     }
 
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        return {
-          ...enc,
-          hmo: {
-            ...enc.hmo,
-            finalLoaStatus: 'APPROVED',
-            approvalCode: `APV-${Math.floor(100000 + Math.random() * 900000)}`
-          },
-          stage: enc.stage === 'HMO_FINAL_LOA' ? 'PENDING_SETTLEMENT' : enc.stage
-        };
-      })
-    );
   };
 
   const issueDigitalGatePass = (encounterId: string) => {
@@ -1153,6 +1146,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     borrowerIdType?: string;
     borrowerIdNumber?: string;
     bankName?: string;
+    cardBrand?: 'VISA' | 'MASTERCARD';
+    cardLast4?: string;
   }): Promise<{ success: boolean; paymentRecord?: DemoPaymentRecord; error?: string }> => {
     // Concurrent mutex guard
     if (inFlightPaymentsRef.current.has(params.encounterId)) {
@@ -1195,30 +1190,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         };
       }
 
-      const nowIso = new Date().toISOString();
-      const txRef = generateTransactionReference(params.paymentRail);
-      const orNum = generateOfficialReceiptNumber();
-      const authCode = `AUTH-${Math.floor(10000 + Math.random() * 90000)}`;
-      const paymentId = generatePaymentId(enc.id);
-
-      const newRecord: DemoPaymentRecord = {
-        id: `TXN-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        paymentId,
-        billId: enc.billNumber || `SOA-SJMC-26-${enc.id.replace(/\D/g, '')}`,
-        encounterId: enc.id,
-        amount: params.amount,
-        currency: 'PHP',
-        paymentRail: params.paymentRail,
-        channelReference: txRef,
-        gatewayAuthCode: authCode,
-        payerName: params.payerName,
-        payerContactMasked: params.payerContactMasked,
-        timestamp: nowIso,
-        status: 'SUCCESS',
-        officialReceiptNumber: orNum,
-        isSimulatedDemo: true,
-        bankName: params.bankName
-      };
+      const txRef = crypto.randomUUID();
 
       let serverRes: any = null;
       try {
@@ -1229,6 +1201,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
             paymentRail: params.paymentRail,
             payerName: params.payerName || enc.patient.fullName || enc.patient.maskedName || 'Patient Guarantor',
             payerContactMasked: params.payerContactMasked || '0917-***-****',
+            cardBrand: params.cardBrand,
+            cardLast4: params.cardLast4,
+            bankName: params.bankName,
             notes: (params as any).notes || `Settlement via ${params.paymentRail}`
           },
           txRef
@@ -1239,7 +1214,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: false, error: err.message || 'Payment rejected by server' };
       }
 
-      if (serverRes?.success && serverRes.payment) {
+      if (serverRes?.success && serverRes.payment?.id && serverRes.payment.status === 'SUCCESS' && serverRes.receipt?.officialReceiptNumber) {
         const canonicalReceipt: PaymentReceipt = {
           id: serverRes.receipt?.id || `RCPT-${serverRes.payment.id.slice(0, 8)}`,
           paymentId: serverRes.payment.paymentReference,
@@ -1294,92 +1269,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: true, paymentRecord };
       }
 
-      // Offline / fallback calculation if server did not return payment record
-      // Idempotently create exactly one receipt for this payment
-      const receipt = createOrGetReceipt(newRecord, enc.receipts);
-      newRecord.receiptId = receipt.id;
-      newRecord.receipt = receipt;
-
-      const newAmountPaid = Number(((enc.amountPaid || 0) + params.amount).toFixed(2));
-      const newRemaining = Math.max(0, Number((currentRemaining - params.amount).toFixed(2)));
-      const isFullySettled = newRemaining === 0 || params.paymentRail === 'PROMISSORY_NOTE';
-
-      let updatedPass = enc.dischargePass;
-      if (isFullySettled) {
-        const passNum = generateGatePassNumber();
-        const hmac = generateHmacSignature(enc.id, params.amount, nowIso);
-        updatedPass = {
-          passNumber: passNum,
-          encounterId: enc.id,
-          patientName: enc.patient.fullName || enc.patient.maskedName,
-          roomBed: enc.roomBed,
-          settledAmount: newAmountPaid,
-          settlementChannel: params.paymentRail === 'PROMISSORY_NOTE' ? 'PROMISSORY_NOTE' : 'QR_PH',
-          issuedAt: nowIso,
-          status: 'ACTIVE_READY_FOR_EXIT',
-          hmacSignature: hmac
-        };
-      }
-
-      let updatedNote = enc.promissoryNote;
-      if (params.paymentRail === 'PROMISSORY_NOTE') {
-        const months = params.promissoryMonths || 6;
-        const plan = calculateInstallmentPlan(params.amount, months);
-        updatedNote = {
-          id: `PN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-          encounterId: enc.id,
-          borrowerName: params.payerName,
-          borrowerRelationship: 'GUARANTOR',
-          borrowerIdType: (params.borrowerIdType as any) || 'PHILSYS_NATIONAL_ID',
-          borrowerIdNumber: params.borrowerIdNumber || '1924-8812-4019-2041',
-          principalAmount: params.amount,
-          installmentMonths: months,
-          monthlyInstallment: plan.monthlyInstallment,
-          firstDueDate: '2026-10-25',
-          digitalSignatureTimestamp: nowIso,
-          status: 'ACTIVE'
-        };
-      }
-
-      setEncounters((prev) =>
-        prev.map((e) => {
-          if (e.id !== params.encounterId) return e;
-          if (e.paymentHistory?.some((p) => p.paymentId === paymentId || p.id === newRecord.id)) {
-            return e;
-          }
-          const existingReceipts = e.receipts || [];
-          const updatedReceipts = existingReceipts.some((r) => r.paymentId === paymentId)
-            ? existingReceipts
-            : [receipt, ...existingReceipts];
-
-          return {
-            ...e,
-            amountPaid: newAmountPaid,
-            remainingBalance: newRemaining,
-            billState: isFullySettled ? 'PAID' : 'PARTIALLY_PAID',
-            stage: isFullySettled ? 'CLEARED_GATE_PASS' : e.stage,
-            dischargePass: updatedPass,
-            promissoryNote: updatedNote,
-            paymentHistory: [newRecord, ...(e.paymentHistory || [])],
-            receipts: updatedReceipts,
-            waterfall: {
-              ...e.waterfall,
-              netPatientDue: newRemaining,
-              patientPaid: newAmountPaid
-            }
-          };
-        })
-      );
-
-      broadcastBillingSync({
-        type: 'PAYMENT_SETTLED',
-        encounterId: enc.id,
-        payment: newRecord,
-        remainingBalance: newRemaining,
-        isFullySettled
-      });
-
-      return { success: true, paymentRecord: newRecord };
+      return { success: false, error: 'The hospital did not confirm this payment. Check your payment history before trying again.' };
     } finally {
       inFlightPaymentsRef.current.delete(params.encounterId);
     }
@@ -1843,6 +1733,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         dossierEncounter,
         // Auth & Session
         isAuthenticated,
+        isVerifyingSession,
+        sessionError,
+        retrySession,
         currentUser,
         login,
         logout,

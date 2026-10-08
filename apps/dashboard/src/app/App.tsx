@@ -38,6 +38,9 @@ const MainLayout: React.FC = () => {
     activeRoute,
     activeRole,
     isAuthenticated,
+    isVerifyingSession,
+    sessionError,
+    retrySession,
     setActiveRoute,
     setActiveRole,
     selectEncounter,
@@ -52,6 +55,7 @@ const MainLayout: React.FC = () => {
   // Hash-based routing listener for magic links like #/clarify/enc-8812 or #/patient-portal
   useEffect(() => {
     const handleHashChange = () => {
+      if (!isAuthenticated) return;
       const hash = window.location.hash;
       if (hash.startsWith('#/clarify/')) {
         const id = hash.replace('#/clarify/', '').split('?')[0];
@@ -59,16 +63,16 @@ const MainLayout: React.FC = () => {
           selectEncounter(id);
         }
         setActiveRoute('PATIENT_PORTAL');
-        setActiveRole('PATIENT_GUARANTOR');
+        if (activeRole !== 'PATIENT_GUARANTOR') setActiveRole('PATIENT_GUARANTOR');
       } else if (hash === '#/patient-portal') {
         setActiveRoute('PATIENT_PORTAL');
-        setActiveRole('PATIENT_GUARANTOR');
+        if (activeRole !== 'PATIENT_GUARANTOR') setActiveRole('PATIENT_GUARANTOR');
       }
     };
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [encounters, selectEncounter, setActiveRoute, setActiveRole]);
+  }, [encounters, selectEncounter, setActiveRoute, setActiveRole, isAuthenticated, activeRole]);
 
   const renderApiErrorToast = () => {
     if (!apiError) return null;
@@ -91,8 +95,12 @@ const MainLayout: React.FC = () => {
     );
   };
 
-  // If user is not authenticated and not on patient portal, present the enterprise login screen
-  if (!isAuthenticated && activeRoute !== 'PATIENT_PORTAL' && activeRole !== 'PATIENT_GUARANTOR') {
+  if (isVerifyingSession || sessionError) return <div className="min-h-screen flex items-center justify-center bg-white p-6"><div className="text-center space-y-4"><h1 className="text-xl font-semibold">{sessionError ? 'Session verification unavailable' : 'Verifying your session…'}</h1>{sessionError && <><p>{sessionError}</p><button type="button" onClick={retrySession} className="rounded-xl bg-teal-700 text-white px-6 py-3">Try again</button></>}</div></div>;
+
+  if (isAuthenticated && encounters.length === 0) return <div className="min-h-screen flex items-center justify-center bg-white p-6"><div className="text-center space-y-4"><h1 className="text-xl font-semibold">No hospital records available</h1><button type="button" onClick={retrySession} className="rounded-xl bg-teal-700 text-white px-6 py-3">Refresh records</button></div></div>;
+
+  // Cached browser flags are never proof of an authenticated session.
+  if (!isAuthenticated) {
     return (
       <>
         <LoginScreen />

@@ -18,6 +18,14 @@ export const ASSETS = {
     MAYA: require('../../assets/icons/payments/payment-maya.png'),
     QR_PH: require('../../assets/icons/payments/payment-qrph.png')
   } as Record<string, number>,
+  bankLogo: {
+    BPI: require('../../assets/icons/payments/payment-bpi.png'),
+    BDO: require('../../assets/icons/payments/payment-bdo.png')
+  },
+  cardNetworkLogo: {
+    VISA: require('../../assets/icons/payments/payment-visa.png'),
+    MASTERCARD: require('../../assets/icons/payments/payment-mastercard.png')
+  },
   demoQr: {
     GCASH: require('../../assets/payments/qr-gcash-demo.png'),
     MAYA: require('../../assets/payments/qr-maya-demo.png'),

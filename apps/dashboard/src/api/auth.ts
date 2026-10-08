@@ -37,9 +37,12 @@ export class AuthApi {
   }
 
   async logout(): Promise<{ success: boolean; message?: string }> {
-    this.client.setDemoRole(null);
-    this.client.setAuthToken(null);
-    return this.client.request('/auth/logout', { method: 'POST' });
+    try {
+      return await this.client.request('/auth/logout', { method: 'POST' });
+    } finally {
+      this.client.setDemoRole(null);
+      this.client.setAuthToken(null);
+    }
   }
 
   async getMe(): Promise<{ authenticated: boolean; user: ApiUser }> {
@@ -47,11 +50,12 @@ export class AuthApi {
   }
 
   async switchRole(role: string): Promise<{ success: boolean; user: ApiUser }> {
-    this.client.setDemoRole(role);
-    return this.client.request('/auth/switch-role', {
+    const result = await this.client.request<{ success: boolean; user: ApiUser }>('/auth/switch-role', {
       method: 'POST',
       body: JSON.stringify({ role, targetRole: role })
     });
+    if (result.success && result.user) this.client.setDemoRole(result.user.role);
+    return result;
   }
 }
 

@@ -11,12 +11,16 @@ equivalent of the dashboard's `lucide-react`) and need no files.
 | Purpose | Filename | Path | Size / format | Used in |
 |---|---|---|---|---|
 | Legacy avatar asset | `profile-default.png` | `assets/icons/profile/` | 512×512 PNG | Available in registry; current header uses MedCore badge |
-| GCash brand mark (placeholder — replace with official asset) | `payment-gcash.png` | `assets/icons/payments/` | 512×512 PNG | Payment method grid |
-| Maya brand mark (placeholder — replace with official asset) | `payment-maya.png` | `assets/icons/payments/` | 512×512 PNG | Payment method grid |
-| QR Ph brand mark (placeholder — replace with official asset) | `payment-qrph.png` | `assets/icons/payments/` | 512×512 PNG | Payment method grid |
+| Official GCash icon | `payment-gcash.png` | `assets/icons/payments/` | 256×256 PNG | Payment method list |
+| Official Maya publisher icon | `payment-maya.png` | `assets/icons/payments/` | 512×512 PNG | Payment method list |
+| Official QR Ph mark | `payment-qrph.png` | `assets/icons/payments/` | 466×138 PNG | Payment method list |
+| Official Visa mark | `payment-visa.png` | `assets/icons/payments/` | 208×68 PNG | Card network selection |
+| Official Mastercard mark | `payment-mastercard.png` | `assets/icons/payments/` | 80×50 PNG | Card network selection |
 | Prototype GCash QR (dummy payload, scannable) | `qr-gcash-demo.png` | `assets/payments/` | 810×810 PNG | Encoded source retained; wallet uses preset stages |
 | Prototype Maya QR (dummy payload, scannable) | `qr-maya-demo.png` | `assets/payments/` | 810×810 PNG | Encoded source retained; wallet uses preset stages |
 | Prototype QR Ph QR (dummy payload, scannable) | `qr-qrph-demo.png` | `assets/payments/` | 810×810 PNG | Encoded source for vector PaymentQr |
+
+Provider artwork provenance and display rules: [payment sources](payments/SOURCES.md). The earlier monogram placeholders were replaced in the October 8 refinement.
 
 ## MedCore branding
 
@@ -69,6 +73,4 @@ Ordinary brand/provider asset replacement needs no screen code changes. QR patte
 | `FileText` | Documents, generic fallback |
 | `ChevronRight` | Tappable row affordance |
 
-Card, bank, and promissory methods deliberately use lucide glyphs instead of
-image files per the icon-library-first rule; only provider brand marks that
-lucide cannot represent use PNG files.
+Card-method, bank and promissory rows use Lucide glyphs. Wallet/QR provider icons and card-network selection use the verified originals documented above, with proportions and clear space preserved.

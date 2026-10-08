@@ -17,7 +17,7 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
     try { await logout(); } finally { setBusy(false); }
   }
   if (loading && !patient) return <LoadingState message="Loading your profile…" />;
-  return <Screen gutter={12} background={C.paper}><ScrollView contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+  return <Screen gutter={12} safeBottom={false} background={C.paper}><ScrollView contentContainerStyle={{ paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
     <RefreshNotice error={error} onRetry={refresh} />
     <View style={{ minHeight: 100, backgroundColor: C.surface, padding: 12, marginTop: 8, flexDirection: 'row', gap: 16, alignItems: 'center', borderRadius: 10 }}>
       <View accessible={false} style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: C.blueSoft, alignItems: 'center', justifyContent: 'center' }}><Text style={{ fontSize: 24, fontWeight: '500', color: C.blueDark }}>{initials}</Text></View>

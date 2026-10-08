@@ -44,6 +44,8 @@ interface Props {
     borrowerIdType?: string;
     borrowerIdNumber?: string;
     bankName?: string;
+    cardBrand?: 'VISA' | 'MASTERCARD';
+    cardLast4?: string;
   }) => Promise<{ success: boolean; paymentRecord?: DemoPaymentRecord; error?: string }>;
   onPaymentSuccess: (payment: DemoPaymentRecord) => void;
 }
@@ -103,7 +105,9 @@ export const DemoPaymentModal: React.FC<Props> = ({
         promissoryMonths: params.promissoryMonths,
         borrowerIdType: params.borrowerIdType,
         borrowerIdNumber: params.borrowerIdNumber,
-        bankName: params.bankName
+        bankName: params.bankName,
+        cardBrand: params.cardBrand,
+        cardLast4: params.cardLast4
       });
 
       if (res.success && res.paymentRecord) {

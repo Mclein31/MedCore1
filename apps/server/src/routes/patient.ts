@@ -252,6 +252,7 @@ patientApp.get('/me/receipts', requireAuth, async (c) => {
       .where(eq(paymentReceipts.encounterId, row.id))
       .orderBy(desc(paymentReceipts.issuedAt));
     for (const r of rows) {
+      const [payment] = await db.select().from(payments).where(eq(payments.id, r.paymentId)).limit(1);
       items.push({
         id: r.id,
         encounterNumber: row.encounterNumber,
@@ -260,7 +261,12 @@ patientApp.get('/me/receipts', requireAuth, async (c) => {
         amount: Number(r.amount),
         paymentRail: r.paymentRail,
         payerName: r.payerName,
-        issuedAt: r.issuedAt.toISOString()
+        issuedAt: r.issuedAt.toISOString(),
+        paymentReference: payment?.paymentReference,
+        billReference: payment?.statementNumber || row.billNumber || row.encounterNumber,
+        status: payment?.status || 'SUCCESS',
+        patientName: resolved.patient.fullName,
+        patientMrn: resolved.patient.mrn
       });
     }
   }
@@ -281,6 +287,8 @@ patientApp.get('/me/receipts/:id', requireAuth, async (c) => {
     return apiError(c, 404, 'NOT_FOUND', `Receipt ${id} not found.`);
   }
   const r = rows[0];
+  const [payment] = await db.select().from(payments).where(eq(payments.id, r.paymentId)).limit(1);
+  const encounter = encRows.find(e => e.id === r.encounterId)!;
   return c.json({
     id: r.id,
     receiptNumber: r.receiptNumber,
@@ -288,7 +296,13 @@ patientApp.get('/me/receipts/:id', requireAuth, async (c) => {
     amount: Number(r.amount),
     paymentRail: r.paymentRail,
     payerName: r.payerName,
-    issuedAt: r.issuedAt.toISOString()
+    issuedAt: r.issuedAt.toISOString(),
+    encounterNumber: encounter.encounterNumber,
+    paymentReference: payment?.paymentReference,
+    billReference: payment?.statementNumber || encounter.billNumber || encounter.encounterNumber,
+    status: payment?.status || 'SUCCESS',
+    patientName: resolved.patient.fullName,
+    patientMrn: resolved.patient.mrn
   });
 });
 

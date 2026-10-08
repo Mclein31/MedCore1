@@ -53,6 +53,12 @@ export class ApiClient {
   private customBaseUrl: string | null = null;
   private activeDemoRole: string | null = null;
   private authToken: string | null = null;
+  private sessionExpiredListeners = new Set<() => void>();
+
+  public onSessionExpired(listener: () => void): () => void {
+    this.sessionExpiredListeners.add(listener);
+    return () => { this.sessionExpiredListeners.delete(listener); };
+  }
 
   constructor(baseUrl?: string) {
     if (baseUrl) {
@@ -120,6 +126,7 @@ export class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const base = this.getBaseUrl();
+    const requestToken = this.authToken;
     const url = endpoint.startsWith('http') ? endpoint : `${base}${endpoint.startsWith('/') ? '' : '/'}${endpoint}`;
 
     const headers = new Headers(options.headers || {});
@@ -176,13 +183,24 @@ export class ApiClient {
     // Handle XML streaming (e.g. PhilHealth eSOA claims)
     if (res.headers.get('content-type')?.includes('application/xml')) {
       const text = await res.text();
+      if (requestToken !== this.authToken) throw new ApiError('Your session changed. Please try again.', 0, 'SESSION_CHANGED');
       if (!res.ok) throw new ApiError(text || 'XML fetch failed', res.status);
       return text as unknown as T;
     }
 
     const data = await res.json().catch(() => ({}));
 
+    // An old response must never invalidate or overwrite a newer login.
+    if (requestToken !== this.authToken) {
+      throw new ApiError('Your session changed. Please try again.', 0, 'SESSION_CHANGED');
+    }
+
     if (!res.ok) {
+      if (res.status === 401 && data?.error?.code === 'UNAUTHORIZED' && endpoint !== '/auth/login') {
+        this.setAuthToken(null);
+        this.setDemoRole(null);
+        this.sessionExpiredListeners.forEach(listener => listener());
+      }
       console.warn('[MedCore API Response Error]', {
         endpoint: url,
         status: res.status,

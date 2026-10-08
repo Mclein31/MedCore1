@@ -5,7 +5,7 @@ import { paymentStatus } from '../lib/checkout';
 import { useAuth } from '../lib/auth';
 import { usePatient } from '../hooks/usePatient';
 import { createPaymentApi } from '../services/paymentApi';
-import { remainingBalance, describeRail, formatDate, formatDateTime, formatPeso } from '../lib/format';
+import { remainingBalance, describeDischargeStage, describeRail, formatDate, formatDateTime, formatPeso } from '../lib/format';
 import { Card, EmptyState, ErrorState, Expandable, Hero, HeroBtn, LedgerRow, LoadingState, RefreshNotice, Screen, SectionHeader, StatusBadge, T } from '../components/ui';
 
 export default function PaymentsScreen({ navigation }: { navigation: any }) {
@@ -22,9 +22,10 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
 
   const balance = currentEncounter ? remainingBalance(currentEncounter) : null;
   const settled = balance !== null && balance <= 0;
+  const readyToPay = currentEncounter?.stage === 'PENDING_SETTLEMENT';
 
   return (
-    <Screen>
+    <Screen safeBottom={false}>
       <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={loadList} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <RefreshNotice error={error} onRetry={loadList} />
         <RefreshNotice error={patientError} onRetry={refreshPatient} />
@@ -32,9 +33,9 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
           {currentEncounter ? <Hero
             eyebrow={settled ? 'Balance settled' : 'Amount you currently owe'}
             figure={formatPeso(balance)}
-            sub={settled ? 'No outstanding hospital balance. Payment plans remain listed below.' : 'Review your bill and choose a payment option.'}
+            sub={settled ? 'No outstanding hospital balance. Payment plans remain listed below.' : readyToPay ? 'Review your bill and choose a payment option.' : `${describeDischargeStage(currentEncounter.stage)} Online payment opens when hospital clearance is complete.`}
           >
-            {!settled && <HeroBtn disabled={!!patientError || patientLoading || currentEncounter.stage !== 'PENDING_SETTLEMENT'} title="Pay balance" onPress={() => navigation.navigate('PaymentFlow', { encounterId: currentEncounter.uuid })} />}
+            {!settled && <HeroBtn disabled={!!patientError || patientLoading} title={readyToPay ? 'Pay balance' : 'Review bill'} onPress={() => readyToPay ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter.uuid }) : navigation.navigate('Bill')} />}
           </Hero> : patientLoading ? <LoadingState message="Loading your balance…" /> : <Text style={T.meta}>No current hospital bill is available.</Text>}
         </View>
 

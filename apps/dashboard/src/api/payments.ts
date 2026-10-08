@@ -8,6 +8,8 @@ export interface PaymentPayload {
   payerMobile?: string;
   referenceNumber?: string;
   cardLast4?: string;
+  cardBrand?: 'VISA' | 'MASTERCARD';
+  bankName?: string;
   channelFee?: number;
   notes?: string;
 }

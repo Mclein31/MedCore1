@@ -1,12 +1,15 @@
 import { recalculateAndPersistWaterfall } from '../src/services/waterfallPersistence';
 import { apiAccess } from '../src/middleware/access';
-import { toPatientSafeEncounter } from '../src/routes/patient';
+import patientApp, { toPatientSafeEncounter } from '../src/routes/patient';
 import { resolveLinkedPatient } from '../src/utils/encounterAccess';
 import assert from 'node:assert/strict';
 import { Hono } from 'hono';
 import { getTableName, getTableColumns } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { runWithDb } from '../src/db';
+import clearanceApp from '../src/routes/clearance';
+import { authMiddleware } from '../src/middleware/auth';
+import { hashSessionToken } from '../src/services/authService';
 import paymentsApp from '../src/routes/payments';
 import promissoryApp from '../src/routes/promissory';
 import disputesApp from '../src/routes/disputes';
@@ -74,12 +77,12 @@ class Query {
     if (this.op === 'select') {
       if (this.inTransaction && name === 'encounters') { if (this.joined) assert.ok(lockReads > 0, 'Acquire the encounter lock before hydrating'); else { assert.ok(this.lock, 'Encounter must be locked before reading balances'); lockReads++; } }
       const selected = items.filter(row => matches(this.table, this.condition, row)).slice(0, this.cap);
-      if (this.joined && this.projection?.encounter) return selected.map(encounter => ({ encounter: { ...encounter }, patient: rows.patients.find(patient => patient.id === encounter.patientId), waterfall: rows.statutory_waterfalls?.find(w => w.encounterId === encounter.id) || null, philhealth: null, hmo: null }));
+      if (this.joined && this.projection?.encounter) return selected.map(encounter => ({ encounter: { ...encounter }, patient: rows.patients.find(patient => patient.id === encounter.patientId), waterfall: rows.statutory_waterfalls?.find(w => w.encounterId === encounter.id) || null, philhealth: null, hmo: rows.hmo_authorizations?.find(h => h.encounterId === encounter.id) || null }));
       return selected.map(row => ({ ...row }));
     }
     writes++;
     if (this.op === 'insert') {
-      const record = { id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date(), ...this.data };
+      const record = { id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date(), eventTimestamp: new Date(), ...this.data };
       items.push(record); return [record];
     }
     for (const row of items.filter(row => matches(this.table, this.condition, row))) Object.assign(row, this.data);
@@ -104,9 +107,11 @@ function mockDb(inTransaction = false): any {
 const app = new Hono();
 app.use('*', async (c, next) => { c.set('user', user as any); await next(); });
 app.route('/encounters', paymentsApp);
+app.route('/encounters', clearanceApp);
 app.route('/', promissoryApp);
 app.route('/', disputesApp);
 app.route('/auth', authApp);
+app.route('/patient', patientApp);
 async function request(path: string, body: any, key?: string) {
   return runWithDb(mockDb(), () => app.request(path, {
     method: 'POST', headers: { 'Content-Type': 'application/json', ...(key ? { 'Idempotency-Key': key } : {}) }, body: JSON.stringify(body)
@@ -237,17 +242,17 @@ await check('patient projection excludes nested identifiers, signatures, payment
   assert.ok(safe); assert.equal(JSON.stringify(safe).includes('secret'), false);
   assert.equal((safe as any).patient, undefined); assert.equal((safe as any).paymentHistory, undefined);
 });
-await check('patients cannot settle early-stage bills or run simulated production transactions', async () => {
+await check('patients cannot settle early-stage bills; hosted payments use the same simulated processor', async () => {
   rows.encounters[0].stage = 'MGH_DECLARED';
   assert.equal((await request(`/encounters/${ownId}/payments`, payment(10), 'early')).status, 409);
   assert.equal((await request(`/encounters/${ownId}/promissory-notes`, note(10))).status, 409); assert.equal(writes, 0);
   rows.encounters[0].stage = 'PENDING_SETTLEMENT';
   const previous = process.env.NODE_ENV; process.env.NODE_ENV = 'production';
   try {
-    assert.equal((await request(`/encounters/${ownId}/payments`, payment(10), 'production')).status, 403);
+    assert.equal((await request(`/encounters/${ownId}/payments`, payment(10), 'production')).status, 200);
     assert.equal((await request(`/encounters/${ownId}/promissory-notes`, note(10))).status, 403);
   } finally { process.env.NODE_ENV = previous; }
-  assert.equal(writes, 0);
+  assert.equal(rows.payments.length, 1);
 });
 await check('recalculation retains paid and financed principal without restoring cash debt', async () => {
   rows.chargemaster_items[0].grossAmount = '100.00'; rows.chargemaster_items[0].status = 'COVERED';
@@ -263,5 +268,86 @@ await check('payment and recalculation cannot restore an older paid balance', as
   const [paymentResult] = await Promise.all([request(`/encounters/${ownId}/payments`, payment(25), 'with-recalculation'), runWithDb(mockDb(), () => recalculateAndPersistWaterfall(ownId))]);
   assert.equal(paymentResult.status, 200); assert.equal(rows.encounters[0].remainingBalance, '75.00');
   assert.equal(rows.encounters[0].amountPaid, '25.00'); assert.ok(lockReads >= 2);
+});
+await check('all four methods persist successful records and update the correct bill', async () => {
+  const refs = new Set<string>();
+  for (const [index, rail] of ['GCASH', 'MAYA', 'CREDIT_DEBIT_CARD', 'BANK_TRANSFER'].entries()) {
+    const input = { ...payment(10), paymentRail: rail, ...(rail === 'CREDIT_DEBIT_CARD' ? { cardBrand: 'VISA', cardLast4: '1111' } : {}), ...(rail === 'BANK_TRANSFER' ? { bankName: 'BPI' } : {}) };
+    const response = await request(`/encounters/${ownId}/payments`, input, `four-rails-${index}`);
+    assert.equal(response.status, 200); const result: any = await response.json();
+    assert.equal(result.payment.status, 'SUCCESS'); assert.equal(result.receipt.status, 'SUCCESS');
+    assert.equal(result.receipt.paymentReference, result.payment.paymentReference);
+    assert.equal(rows.payments[index].encounterId, ownId); refs.add(result.payment.paymentReference);
+  }
+  assert.equal(refs.size, 4); assert.equal(rows.payment_receipts.length, 4);
+  assert.equal(rows.encounters[0].remainingBalance, '60.00'); assert.equal(rows.encounters[1].remainingBalance, '100.00');
+});
+await check('full settlement is paid and different duplicate keys cannot pay it again', async () => {
+  const responses = await Promise.all([request(`/encounters/${ownId}/payments`, payment(100), 'full-one'), request(`/encounters/${ownId}/payments`, payment(100), 'full-two')]);
+  assert.deepEqual(responses.map(r => r.status).sort(), [200, 409]);
+  assert.equal(rows.payments.length, 1); assert.equal(rows.payment_receipts.length, 1);
+  assert.equal(rows.encounters[0].remainingBalance, '0.00'); assert.equal(rows.encounters[0].billState, 'PAID');
+  assert.equal((await request(`/encounters/${ownId}/payments`, payment(100), 'full-one')).status, 200);
+});
+await check('receipt and payment history remain retrievable by a fresh router', async () => {
+  const result: any = await (await request(`/encounters/${ownId}/payments`, payment(10), 'history')).json();
+  const fresh = new Hono(); fresh.use('*', async (c, next) => { c.set('user', user as any); await next(); }); fresh.route('/patient', patientApp);
+  const get = (path: string) => runWithDb(mockDb(), () => fresh.request(path));
+  const history: any = await (await get('/patient/me/payments')).json();
+  assert.equal(history.items[0].id, result.payment.id);
+  const receipt: any = await (await get(`/patient/me/receipts/${result.receipt.id}`)).json();
+  assert.equal(receipt.paymentReference, result.payment.paymentReference); assert.equal(receipt.patientMrn, 'TEST-001');
+  assert.equal((await get('/patient/me/receipts/unknown-receipt')).status, 404);
+});
+await check('card secrets and missing keys/method metadata are rejected without mutation', async () => {
+  for (const forbidden of ['cardNumber', 'cvv', 'cardExpiry', 'walletPassword', 'bankPassword']) assert.equal((await request(`/encounters/${ownId}/payments`, { ...payment(10), [forbidden]: 'secret' }, `secret-${forbidden}`)).status, 400);
+  assert.equal((await request(`/encounters/${ownId}/payments`, payment(10))).status, 400);
+  assert.equal((await request(`/encounters/${ownId}/payments`, { ...payment(10), paymentRail: 'CREDIT_DEBIT_CARD' }, 'missing-card')).status, 400);
+  assert.equal((await request(`/encounters/${ownId}/payments`, { ...payment(10), paymentRail: 'BANK_TRANSFER', bankName: 'unknown' }, 'missing-bank')).status, 400);
+  assert.equal(writes, 0);
+});
+await check('Final LOA approval confirms persisted status for each authorized staff role', async () => {
+  const role = user.role;
+  rows.encounters[0].admissionTimestamp = new Date('2026-10-08T00:00:00Z');
+  rows.encounters[0].stage = 'HMO_FINAL_LOA';
+  rows.hmo_authorizations = [{ id: 'hmo-test', encounterId: ownId, approvedAmount: '30.00', finalLoaStatus: 'AWAITING_CODE' }];
+  rows.chargemaster_items[0].grossAmount = '100.00'; rows.chargemaster_items[0].status = 'COVERED';
+  rows.statutory_waterfalls = [{ encounterId: ownId, patientPaid: '0.00', roomUpgradeExcess: '0.00', doctorExcessPf: '0.00' }];
+  try {
+    for (const allowed of ['BILLING_SPECIALIST', 'HMO_COORDINATOR', 'HOSPITAL_CFO']) {
+      user.role = allowed;
+      const response = await request(`/encounters/${ownId}/hmo/final-loa`, { approvalCode: 'APV-VALIDATED', approvedAmount: 30 });
+      assert.equal(response.status, 200); const result: any = await response.json();
+      assert.equal(result.encounter.hmo.finalLoaStatus, 'APPROVED'); assert.equal(result.encounter.stage, 'PENDING_SETTLEMENT');
+      assert.equal(rows.hmo_authorizations[0].approvalCode, 'APV-VALIDATED');
+    }
+  } finally { user.role = role; }
+});
+await check('Final LOA rejects anonymous users, patient roles and another facility', async () => {
+  const anon = new Hono(); anon.route('/encounters', clearanceApp);
+  assert.equal((await anon.request(`/encounters/${ownId}/hmo/final-loa`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
+  assert.equal((await request(`/encounters/${ownId}/hmo/final-loa`, {})).status, 403);
+  const role = user.role; user.role = 'BILLING_SPECIALIST';
+  try { assert.equal((await request(`/encounters/${foreignFacilityId}/hmo/final-loa`, {})).status, 404); } finally { user.role = role; }
+  assert.equal(writes, 0);
+});
+await check('real authentication middleware rejects expired sessions and distinguishes DB outages', async () => {
+  const sessionToken = 'synthetic-session'; const tokenHash = await hashSessionToken(sessionToken);
+  let session = { tokenHash, expiresAt: new Date(Date.now() + 10000), user: { ...user, role: 'BILLING_SPECIALIST', isActive: true } };
+  let outage = false;
+  const authDb: any = { select: () => {
+    const query: any = { from: () => query, innerJoin: () => query, where: (condition: any) => {
+      const sql = dialect.sqlToQuery(condition); assert.ok(sql.sql.includes(' > '));
+      assert.ok(sql.params.includes(tokenHash)); return query;
+    }, limit: async () => { if (outage) throw new Error('Synthetic DB outage'); return session.expiresAt > new Date() && session.user.isActive ? [{ sessionId: 'synthetic-id', user: session.user }] : []; } }; return query;
+  } };
+  const secured = new Hono(); secured.use('*', authMiddleware); secured.route('/encounters', clearanceApp);
+  const call = () => runWithDb(authDb, () => secured.request(`/encounters/${ownId}/hmo/final-loa`, { method: 'POST', headers: { Authorization: `Bearer ${sessionToken}`, 'Content-Type': 'application/json' }, body: '{}' }));
+  session.expiresAt = new Date(0); assert.equal((await call()).status, 401);
+  outage = true; assert.equal((await call()).status, 503);
+});
+await check('patients cannot bypass dedicated note/cashier flows through online payments', async () => {
+  for (const paymentRail of ['PROMISSORY_NOTE', 'CASHIER_OVER_THE_COUNTER']) assert.equal((await request(`/encounters/${ownId}/payments`, { ...payment(10), paymentRail }, paymentRail)).status, 400);
+  assert.equal(writes, 0);
 });
 console.log(`SERVER_HARDENING_CHECKS_DONE passed=${passed}; no database connected`);

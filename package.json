@@ -10,8 +10,9 @@
     "build": "tsc -p apps/dashboard/tsconfig.json && vite build --config apps/dashboard/vite.config.ts",
     "preview": "vite preview --config apps/dashboard/vite.config.ts",
     "seed": "npx tsx scripts/seedPostgres.ts",
-    "test": "npx tsx scripts/auditFinancials.ts",
-    "test:api": "npx tsx scripts/seedPostgres.ts && npx tsx scripts/testBackendApi.ts"
+    "test": "node --import ./node_modules/tsx/dist/loader.mjs scripts/testProject.ts",
+    "test:api": "npx tsx scripts/seedPostgres.ts && npx tsx scripts/testBackendApi.ts",
+    "test:financial": "node --import ./node_modules/tsx/dist/loader.mjs scripts/auditFinancials.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",

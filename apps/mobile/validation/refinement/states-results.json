@@ -1,0 +1,11 @@
+{
+  "checks": [
+    "documents loading/error/retry",
+    "balance retry preserves entered amount",
+    "compact keypad last row scrolls into view and edits the amount",
+    "empty account does not show fabricated zero balance",
+    "long patient name/contact wraps; browser 150% text magnification inspected"
+  ],
+  "pageErrors": [],
+  "textScalingScope": "CSS 150% approximation of browser text; native font-scale/keyboard/safe-area/screen-reader certification requires devices."
+}

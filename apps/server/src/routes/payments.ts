@@ -19,6 +19,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { encounterAccessCondition, isCentavoAmount } from '../utils/encounterAccess';
 import { getClientIp } from '../utils/clientIp';
+import { processSimulatedPayment } from '../services/simulatedPaymentService';
 
 const paymentsApp = new Hono();
 
@@ -35,11 +36,11 @@ const paymentSchema = z.object({
   ]),
   payerName: z.string().min(2),
   payerContactMasked: z.string().default('0917-***-****'),
-  cardBrand: z.string().max(16).optional(),
-  cardLast4: z.string().length(4).optional(),
+  cardBrand: z.enum(['VISA', 'MASTERCARD']).optional(),
+  cardLast4: z.string().regex(/^\d{4}$/).optional(),
   bankName: z.string().max(64).optional(),
   notes: z.string().optional()
-});
+}).strict(); // PANs, CVVs, expiry and provider credentials are never accepted.
 
 paymentsApp.post(
   '/:id/payments',
@@ -51,6 +52,9 @@ paymentsApp.post(
     if (!encIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const { amount, paymentRail, payerName, payerContactMasked, cardBrand, cardLast4, bankName, notes } = c.req.valid('json');
     const user = c.get('user');
+    if (user.role === 'PATIENT_GUARANTOR' && !['GCASH', 'MAYA', 'CREDIT_DEBIT_CARD', 'BANK_TRANSFER', 'QR_PH'].includes(paymentRail)) {
+      return apiError(c, 400, 'INVALID_PAYMENT_METHOD', 'Please choose an available online payment method.');
+    }
 
     // Idempotency-Key Check
     const headerKey = c.req.header('idempotency-key');
@@ -63,6 +67,15 @@ paymentsApp.post(
       );
     }
     const rawIdempotencyKey = headerKey || crypto.randomUUID();
+    if (user.role === 'PATIENT_GUARANTOR' && !headerKey?.trim()) {
+      return apiError(c, 400, 'IDEMPOTENCY_KEY_REQUIRED', 'A payment request reference is required. Please try again.');
+    }
+    if (user.role === 'PATIENT_GUARANTOR' && paymentRail === 'CREDIT_DEBIT_CARD' && (!cardBrand || !cardLast4)) {
+      return apiError(c, 400, 'CARD_DETAILS_REQUIRED', 'Please review your card details.');
+    }
+    if (user.role === 'PATIENT_GUARANTOR' && paymentRail === 'BANK_TRANSFER' && !['BPI', 'BDO', 'Bank of the Philippine Islands (BPI)', 'BDO Unibank', 'UnionBank of the Philippines', 'Metrobank'].includes(bankName || '')) {
+      return apiError(c, 400, 'BANK_REQUIRED', 'Please select an available bank.');
+    }
 
     const accessCondition = await encounterAccessCondition(user, encIdOrNumber);
     let txResult;
@@ -96,8 +109,6 @@ paymentsApp.post(
         }
 
         if (user.role === 'PATIENT_GUARANTOR' && enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'BILL_NOT_READY', 'Your hospital is still reviewing your final bill. Please wait for the billing desk.');
-        const nodeEnv = (c.env as { NODE_ENV?: string })?.NODE_ENV || process.env.NODE_ENV || 'production';
-        if (user.role === 'PATIENT_GUARANTOR' && nodeEnv === 'production') return apiError(c, 403, 'PAYMENT_GATEWAY_UNAVAILABLE', 'Online payments are not available yet. Please pay at the hospital cashier.');
         const remainingCents = Math.round(Number(enc.remainingBalance) * 100);
         const amountCents = Math.round(amount * 100);
         const paidCents = Math.round(Number(enc.amountPaid) * 100);
@@ -110,10 +121,13 @@ paymentsApp.post(
         if (amountCents > remainingCents) {
           return apiError(c, 400, 'EXCEEDS_BALANCE', 'The payment amount cannot exceed the remaining balance.');
         }
-        const now = new Date();
-        const paymentRef = `PAY-${enc.id.slice(0, 8).toUpperCase()}-${Date.now().toString().slice(-6)}`;
-        const orNumber = `OR-SJMC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
-        const authCode = `AUTH-${Math.floor(10000 + Math.random() * 90000)}`;
+        // A backend-owned result precedes any ledger mutation. The processor
+        // intentionally remains simulated in both local and hosted builds.
+        const processed = await processSimulatedPayment(paymentRail);
+        const now = processed.settledAt;
+        const paymentRef = processed.paymentReference;
+        const orNumber = processed.officialReceiptNumber;
+        const authCode = processed.gatewayAuthCode;
         const statementNumber = enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber.replace(/\D/g, '') || '8812'}`;
         const newAmountPaid = (paidCents + amountCents) / 100;
         const newRemaining = (remainingCents - amountCents) / 100;
@@ -130,7 +144,7 @@ paymentsApp.post(
             amount: amount.toFixed(2),
             currency: 'PHP',
             paymentRail,
-            channelReference: `TXN-${paymentRail}-${Math.floor(100000 + Math.random() * 900000)}`,
+            channelReference: processed.channelReference,
             gatewayAuthCode: authCode,
             officialReceiptNumber: orNumber,
             payerName,
@@ -138,8 +152,8 @@ paymentsApp.post(
             cardBrand: cardBrand ?? null,
             cardLast4: cardLast4 ?? null,
             bankName: bankName ?? null,
-            status: 'SUCCESS',
-            isSimulatedDemo: true,
+            status: processed.status,
+            isSimulatedDemo: processed.isSimulatedDemo,
             idempotencyKey: rawIdempotencyKey,
             notes,
             settledAt: now
@@ -286,12 +300,14 @@ paymentsApp.post(
         id: payment.id, paymentReference: payment.paymentReference, amount: Number(payment.amount),
         paymentRail: payment.paymentRail, status: payment.status,
         officialReceiptNumber: payment.officialReceiptNumber, payerName: payment.payerName,
+        billReference: payment.statementNumber,
         createdAt: payment.createdAt, settledAt: payment.settledAt, isSimulatedDemo: payment.isSimulatedDemo
       } : payment,
       receipt: patientResponse && receipt ? {
         id: receipt.id, receiptNumber: receipt.receiptNumber,
         officialReceiptNumber: receipt.officialReceiptNumber, amount: Number(receipt.amount),
-        paymentRail: receipt.paymentRail, payerName: receipt.payerName, issuedAt: receipt.issuedAt
+        paymentRail: receipt.paymentRail, payerName: receipt.payerName, issuedAt: receipt.issuedAt,
+        paymentReference: payment.paymentReference, billReference: payment.statementNumber, status: payment.status
       } : receipt,
       dischargePass: patientResponse && pass ? { passNumber: pass.passNumber, status: pass.status } : pass,
       encounter: patientResponse ? undefined : await getHydratedEncounter(txResult.encounterId)
