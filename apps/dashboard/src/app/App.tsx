@@ -33,7 +33,7 @@ import {
 
 import { AlertCircle, X } from 'lucide-react';
 
-const MainLayout: React.FC = () => {
+export const MainLayout: React.FC = () => {
   const {
     activeRoute,
     activeRole,
@@ -75,7 +75,7 @@ const MainLayout: React.FC = () => {
   }, [encounters, selectEncounter, setActiveRoute, setActiveRole, isAuthenticated, activeRole]);
 
   const renderApiErrorToast = () => {
-    if (!apiError) return null;
+    if (!apiError || !isAuthenticated) return null;
     return (
       <div className="fixed bottom-5 right-5 z-70 max-w-md bg-rose-50 border border-rose-300 text-rose-900 px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
         <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />

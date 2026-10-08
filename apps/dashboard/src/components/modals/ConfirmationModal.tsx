@@ -286,7 +286,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
           {/* Error Banner (if execution failed) */}
           {activeError && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-800 text-xs">
+            <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-2 text-rose-800 text-xs">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <span className="font-bold block">Action Interrupted:</span>

@@ -85,7 +85,7 @@ interface MedCoreContextType {
   nudgeDoctor: (encounterId: string) => void;
   applyAccreditedCeiling: (encounterId: string) => void;
   clearPharmacyRts: (encounterId: string) => void;
-  approveHmoFinalLoa: (encounterId: string) => void;
+  approveHmoFinalLoa: (encounterId: string) => Promise<void>;
   settlePatientBalance: (encounterId: string, channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE') => void;
   issueDigitalGatePass: (encounterId: string) => void;
   verifyGatePass: (encounterId: string) => void;
@@ -123,6 +123,7 @@ interface MedCoreContextType {
   isAuthenticated: boolean;
   isVerifyingSession: boolean;
   sessionError: string | null;
+  sessionNotice: string | null;
   retrySession: () => void;
   currentUser: any | null;
   login: (credentials: { email: string; password: string; facilityCode?: string }) => Promise<{ success: boolean; error?: string }>;
@@ -329,12 +330,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isVerifyingSession, setIsVerifyingSession] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [sessionNotice, setSessionNotice] = useState<string | null>(null);
   const [sessionCheck, setSessionCheck] = useState(0);
   const retrySession = () => setSessionCheck(value => value + 1);
 
   const sessionGeneration = useRef(0);
-  function clearSessionState() {
+  const verifiedSession = useRef(false);
+  function clearSessionState(reason?: 'expired') {
+    const hadVerifiedSession = verifiedSession.current;
+    verifiedSession.current = false;
     sessionGeneration.current++;
+    setApiError(null);
+    setSessionNotice(previous => reason === 'expired'
+      ? hadVerifiedSession ? 'Your session expired. Sign in again to continue.' : previous
+      : null);
     setIsAuthenticated(false); setCurrentUser(null); setEncounters([]);
     setSelectedEncounterId(''); setActiveRoute('COMMAND_CENTER'); setActiveRoleState('BILLING_SPECIALIST');
     setSessionError(null); setConfirmationState(null); setDossierEncounter(null);
@@ -345,7 +354,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setSearchQuery(''); setSelectedWhyItem(null); setIsSearchModalOpen(false);
     try { for (const key of ['medcore_auth', 'medcore_user', 'aqromed_auth', 'aqromed_user']) localStorage.removeItem(key); } catch {}
   }
-  useEffect(() => apiClient.client.onSessionExpired(clearSessionState), []);
+  useEffect(() => apiClient.client.onSessionExpired(() => clearSessionState('expired')), []);
 
   // Authoritative Session Verification & Data Hydration on mount
   useEffect(() => {
@@ -358,6 +367,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       .then(async (res: { authenticated: boolean; user: ApiUser }) => {
         if (!isMounted || generation !== sessionGeneration.current) return;
         if (res?.authenticated && res.user) {
+          verifiedSession.current = true;
           setIsAuthenticated(true);
           setCurrentUser(res.user);
           if (res.user.role) {
@@ -393,6 +403,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const res = await apiClient.login(credentials);
       if (res?.success && res.user) {
         clearSessionState();
+        verifiedSession.current = true;
         const generation = sessionGeneration.current;
         setIsVerifyingSession(true);
         setIsAuthenticated(true);
@@ -694,21 +705,31 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const approveHmoFinalLoa = async (encounterId: string) => {
     const enc = encounters.find((e) => e.id === encounterId);
+    const generation = sessionGeneration.current;
+    setApiError(null);
     try {
       const res = await apiClient.approveHmoFinalLoa(encounterId, {
         approvedAmount: enc?.hmo?.approvedAmount || enc?.waterfall?.hmoApprovedAmount || 0,
         disallowedConsumables: enc?.hmo?.disallowedConsumables || 0
       });
-      if (res?.success && res.encounter) {
+      if (generation !== sessionGeneration.current) {
+        throw new ApiError('Your session changed. Sign in again to continue.', 0, 'SESSION_CHANGED');
+      }
+      if (res?.success && res.encounter?.hmo?.finalLoaStatus === 'APPROVED') {
         setEncounters((prev) =>
           prev.map((e) => (e.id === encounterId || e.encounterNumber === res.encounter.encounterNumber ? res.encounter : e))
         );
+        setApiError(null);
         return;
       }
       throw new Error('The server did not confirm the HMO approval. Please refresh and try again.');
-    } catch (err: any) {
-      console.error('API approve-hmo-loa failure:', err);
-      setApiError(`Failed to approve HMO Final LOA on server: ${err.message || 'Unknown error'}`);
+    } catch (err: unknown) {
+      // ConfirmationModal owns retryable errors. Never resolve a rejected
+      // approval or recreate the old global toast after session expiration.
+      if (err instanceof ApiError && err.code === 'NETWORK_CONNECTION_ERROR') {
+        throw new Error('Could not reach the hospital server. Check your connection and try again.');
+      }
+      throw err;
     }
 
   };
@@ -1735,6 +1756,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isAuthenticated,
         isVerifyingSession,
         sessionError,
+        sessionNotice,
         retrySession,
         currentUser,
         login,

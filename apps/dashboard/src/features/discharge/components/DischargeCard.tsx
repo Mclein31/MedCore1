@@ -163,7 +163,7 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
               fullWidth
               onConfirm={() => {
                 selectEncounter(encounter.id);
-                approveHmoFinalLoa(encounter.id);
+                return approveHmoFinalLoa(encounter.id);
               }}
             />
           </div>
