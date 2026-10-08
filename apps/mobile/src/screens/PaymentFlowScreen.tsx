@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Keyboard, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, Keyboard, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -13,19 +13,24 @@ import { ApiError } from '../lib/api';
 import { parsePaymentAmount, validatePaymentAmount } from '../lib/guards';
 import type { PayInput } from '../services/paymentApi';
 import { useAuth } from '../lib/auth';
+import { ASSETS } from '../lib/assets';
 import { usePatient } from '../hooks/usePatient';
 import { createPaymentApi } from '../services/paymentApi';
 import { HeaderBack } from '../components/Header';
+import FocusedStatusBar from '../components/FocusedStatusBar';
 import PaymentAmountEntry from '../components/PaymentAmountEntry';
 import PaymentQr from '../components/PaymentQr';
+import PaymentSuccess from '../components/PaymentSuccess';
+import { useFacilityName } from '../hooks/useFacility';
+import { validateCard } from '../lib/cardValidation';
 import ReceiptSheet from '../components/ReceiptSheet';
 import { confirmedPayment, paymentDetailsValid, previousCheckoutStep, WALLET_PRESETS, type CheckoutStep } from '../lib/checkout';
-import { PAYMENT_METHODS, methodForRail } from '../lib/paymentMethods';
+import { PAYMENT_BANKS, PAYMENT_METHODS, methodForRail } from '../lib/paymentMethods';
 import { estimatedFirstDueDate, previewInstallments } from '../lib/promissory';
 import { generateIdempotencyKey } from '../lib/idempotency';
 import { describeRail, formatDate, formatPeso, remainingBalance } from '../lib/format';
 import { Icon, ProviderMark } from '../components/icons';
-import { C, Card, EmptyState, ErrorState, Field, LoadingState, RefreshNotice, LedgerRow, PrimaryButton, Screen, SecondaryButton, StatusBadge, T } from '../components/ui';
+import { C, Radius, Card, EmptyState, ErrorState, Field, LoadingState, RefreshNotice, LedgerRow, PrimaryButton, Screen, SecondaryButton, StatusBadge, T } from '../components/ui';
 
 type Mode = 'FULL' | 'PARTIAL';
 
@@ -37,8 +42,8 @@ const ID_TYPES = [
   { id: 'PASSPORT', label: 'Passport' }
 ] as const;
 
-function Chip({ label, sub, selected, onPress, a11y, disabled }: {
-  label: string; sub?: string; selected: boolean; onPress: () => void; a11y?: string; disabled?: boolean;
+function Chip({ label, sub, selected, onPress, a11y, disabled, network }: {
+  label: string; sub?: string; selected: boolean; onPress: () => void; a11y?: string; disabled?: boolean; network?: 'VISA' | 'MASTERCARD';
 }) {
   return (
     <Pressable
@@ -53,7 +58,7 @@ function Chip({ label, sub, selected, onPress, a11y, disabled }: {
         backgroundColor: selected ? C.brandSoft : C.surface
       }}
     >
-      <Text style={{ fontSize: 14, fontWeight: '700', color: selected ? C.hero : C.ink, textAlign: 'center' }}>{label}</Text>
+      <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', alignItems: 'center' }}>{network && <Image source={ASSETS.cardNetworkLogo[network]} resizeMode="contain" accessible={false} style={{ width: 64, height: 32 }} />}<Text style={{ fontSize: 14, fontWeight: '600', color: selected ? C.hero : C.ink, textAlign: 'center' }}>{label}</Text></View>
       {sub ? <Text style={{ fontSize: 12, color: C.secondary, marginTop: 2, fontVariant: ['tabular-nums'] }}>{sub}</Text> : null}
     </Pressable>
   );
@@ -61,7 +66,7 @@ function Chip({ label, sub, selected, onPress, a11y, disabled }: {
 
 export default function PaymentFlowScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'PaymentFlow'>) {
   const { client, user } = useAuth();
-  const { currentEncounter: latestEncounter, encounters, loading, error: patientError, refresh } = usePatient();
+  const { patient, currentEncounter: latestEncounter, encounters, loading, error: patientError, refresh } = usePatient();
   const [pending, setPending] = useState<PendingPayment | null>(null);
   const [recovering, setRecovering] = useState(true);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
@@ -76,16 +81,23 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   useEffect(() => { void restoreAttempt(); }, [restoreAttempt]);
   if (!selectedId.current && latestEncounter) selectedId.current = latestEncounter.uuid;
   const currentEncounter = encounters.find((enc) => enc.uuid === (pending?.encounterId || selectedId.current)) ?? null;
-  const [step, setStep] = useState<CheckoutStep>('amount');
+  const [step, setStep] = useState<CheckoutStep>(route.params?.startAtMethod ? 'method' : 'amount');
   const checkoutScroll = useRef<ScrollView>(null);
   const [mode, setMode] = useState<Mode>('FULL');
   const [partial, setPartial] = useState('');
-  const [rail, setRail] = useState('QR_PH');
+  const [rail, setRail] = useState('GCASH');
   const [payerName, setPayerName] = useState(user?.fullName || '');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [processingPhase, setProcessingPhase] = useState('Preparing your request');
-  const [cardBrand, setCardBrand] = useState('VISA');
-  const [cardLast4, setCardLast4] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvv, setCardCvv] = useState('');
+  const [cardTouched, setCardTouched] = useState(false);
+  const card = validateCard(cardNumber, cardExpiry, cardCvv);
+  const cardBrand = card.brand || 'VISA';
+  const cardLast4 = card.last4;
+  const hospital = useFacilityName();
+  useEffect(() => { if (rail !== 'CREDIT_DEBIT_CARD') { setCardNumber(''); setCardExpiry(''); setCardCvv(''); setCardTouched(false); } }, [rail]);
   const [bankName, setBankName] = useState('');
   // promissory state
   const [months, setMonths] = useState<3 | 6 | 12>(6);
@@ -108,12 +120,11 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   useEffect(() => {
     navigation.setOptions({
       gestureEnabled: false,
-      title: step === 'amount' ? 'Pay balance' : step === 'method' ? 'Payment methods' : step === 'review' ? 'Review payment' : step === 'verification' ? 'Wallet verification' : step === 'done' ? (receipt ? 'Receipt' : 'Payment plan') : methodForRail(rail).label,
-      headerStyle: { backgroundColor: (step === 'amount' && !pending) || (step === 'done' && receipt) ? C.hero : C.surface },
-      headerTintColor: (step === 'amount' && !pending) || (step === 'done' && receipt) ? C.surface : C.ink,
-      statusBarStyle: (step === 'amount' && !pending) || (step === 'done' && receipt) ? 'light' : 'dark',
-      headerLeft: () => <HeaderBack disabled={busy} dark={(step === 'amount' && !pending) || (step === 'done' && !!receipt)} onPress={() => {
-        if (step === 'amount' || step === 'done' || pending || uncertain) navigation.goBack();
+      title: step === 'amount' ? 'Pay balance' : step === 'method' ? 'Payment methods' : step === 'review' ? 'Review payment' : step === 'verification' ? 'Wallet verification' : step === 'success' ? 'Payment successful' : step === 'done' ? (receipt ? 'Receipt' : 'Payment plan') : methodForRail(rail).label,
+      headerStyle: { backgroundColor: C.surface },
+      headerTintColor: C.ink,
+      headerLeft: () => <HeaderBack disabled={busy} onPress={() => {
+        if (step === 'amount' || step === 'success' || step === 'done' || pending || uncertain) navigation.goBack();
         else {
           const previous = previousCheckoutStep(step);
           if (previous === 'amount') setSelectedAmount(null);
@@ -126,7 +137,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   useFocusEffect(useCallback(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (busy) return true;
-      if (uncertain || step === 'amount' || step === 'done') return false;
+      if (uncertain || step === 'amount' || step === 'success' || step === 'done') return false;
       const previous = previousCheckoutStep(step);
       if (previous === 'amount') setSelectedAmount(null);
       setStep(previous); setError(null); return true;
@@ -148,7 +159,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
     if (previous === 'amount') setSelectedAmount(null);
     setStep(previous); setError(null);
   }
-  const detailsValid = paymentDetailsValid(rail, payerName, cardLast4, bankName);
+  const detailsValid = paymentDetailsValid(rail, payerName, cardLast4, bankName) && (rail !== 'CREDIT_DEBIT_CARD' || card.valid) && (rail !== 'BANK_TRANSFER' || PAYMENT_BANKS.some(bank => bank.name === bankName));
 
   function resetKey() {
     attemptKey.current = '';
@@ -196,7 +207,8 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       await paymentAttempts.complete(account, key).catch(() => {});
       setPending(null);
       setUncertain(false);
-      setStep('done');
+      setCardNumber(''); setCardExpiry(''); setCardCvv('');
+      setStep('success');
       await refresh();
     } catch (e: unknown) {
       const ambiguous = (!!previous || sent) && (!(e instanceof ApiError) || e.status === 0 || e.status >= 500 || e.status === 401 || e.code === 'INVALID_RESPONSE' || e.code === 'IDEMPOTENCY_CONFLICT');
@@ -238,19 +250,21 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
     }
   }
 
+  const content = (() => {
   if (recovering) return <LoadingState message="Checking previous payment attempts…" />;
   if (recoveryError) return <ErrorState message={recoveryError} onRetry={restoreAttempt} />;
   if (loading && !currentEncounter) return <LoadingState message="Loading your balance…" />;
   if (patientError && !currentEncounter) return <ErrorState message={patientError} onRetry={refresh} />;
   if (!currentEncounter) return <Screen><EmptyState title="No bill to pay" detail="Your hospital statements will appear when a stay is linked to your account." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
 
+  if (step === 'success' && receipt) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}><PaymentSuccess amount={receipt.amount} rail={receipt.methodRail} reference={receipt.paymentReference} hospital={hospital} bill={receipt.billReference || currentEncounter.billNumber || currentEncounter.encounterNumber} date={receipt.settledAt || receipt.createdAt} onReceipt={() => setStep('done')} onBills={() => navigation.navigate('Main', { screen: 'Bill' })} /></ScrollView></Screen>;
   if (step === 'done' && receipt) return <Screen gutter={0} background={C.hero}>
     <View pointerEvents="none" style={{ position: 'absolute', top: 200, left: 0, right: 0, bottom: 0, backgroundColor: C.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} />
     <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 4, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
-      <ReceiptSheet number={receipt.officialReceiptNumber} amount={receipt.amount} rail={receipt.methodRail} payer={receipt.payerName} date={receipt.issuedAt || receipt.settledAt || receipt.createdAt} reference={receipt.paymentReference} surroundingColor={C.hero} />
+      <ReceiptSheet number={receipt.officialReceiptNumber} amount={receipt.amount} rail={receipt.methodRail} payer={receipt.payerName} date={receipt.issuedAt || receipt.settledAt || receipt.createdAt} reference={receipt.paymentReference} bill={receipt.billReference || currentEncounter.billNumber || currentEncounter.encounterNumber} patient={patient?.fullName} mrn={patient?.mrn} status={receipt.status} surroundingColor={C.hero} />
       {passIssued && <StatusBadge tone="ok" text="Discharge pass released" />}
     </ScrollView>
-    <View style={{ backgroundColor: C.paper, paddingHorizontal: 24, paddingBottom: 20, flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><SecondaryButton title="Documents" onPress={() => navigation.replace('Documents')} /></View><View style={{ flex: 1 }}><PrimaryButton title={passIssued ? 'Discharge pass' : 'Payments'} onPress={() => passIssued ? navigation.replace('Documents') : navigation.navigate('Main', { screen: 'Payments' })} /></View></View>
+    <View style={{ backgroundColor: C.paper, paddingHorizontal: 24, paddingBottom: 20, flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><SecondaryButton title="Back to Bills" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /></View><View style={{ flex: 1 }}><PrimaryButton title="Payment history" onPress={() => navigation.navigate('Main', { screen: 'Payments' })} /></View></View>
   </Screen>;
   if (step === 'done' && note) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
     {note && <>
@@ -261,8 +275,8 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
     <PrimaryButton title={passIssued ? 'View discharge pass' : 'View payments'} onPress={() => passIssued ? navigation.replace('Documents') : navigation.navigate('Main', { screen: 'Payments' })} />
     <SecondaryButton title="Documents & receipts" onPress={() => navigation.replace('Documents')} />
   </ScrollView></Screen>;
-  if (currentEncounter.stage !== 'PENDING_SETTLEMENT' && !pending) return <Screen><EmptyState title="Your final bill is being reviewed" detail="Hospital clearance checks must finish before online settlement. You can review the running bill now." /><SecondaryButton title="Review bill" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
   if (balance <= 0 && !pending) return <Screen><EmptyState title="No outstanding balance" detail="Review your payment history and discharge documents." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
+  if (currentEncounter.stage !== 'PENDING_SETTLEMENT' && !pending) return <Screen><EmptyState title="Your final bill is being reviewed" detail="Hospital clearance checks must finish before online settlement. You can review the running bill now." /><SecondaryButton title="Review bill" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
   if (step === 'amount' && !pending) return <Screen keyboard keyboardOffset={headerHeight} gutter={0} background={C.hero}>
     <PaymentAmountEntry balance={balance} mode={mode} partial={partial} onMode={value => { setMode(value); resetKey(); }} onPartial={value => { setPartial(value); resetKey(); }} onContinue={() => { Keyboard.dismiss(); setSelectedAmount(enteredAmount); setStep('method'); }} error={error || patientError || (partial ? amountError : null)} onRetry={patientError ? refresh : undefined} disabled={!amountValid || !!patientError || uncertain || busy} />
   </Screen>;
@@ -276,15 +290,17 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       {!!pending && <Card><Text style={T.title}>Awaiting confirmation</Text><Text style={[T.body, { marginTop: 8 }]}>{formatPeso(pending.input.amount)} via {describeRail(pending.input.paymentRail)}. Checking again uses your saved request.</Text><PrimaryButton title={busy ? 'Checking…' : 'Check payment status'} onPress={submitPayment} disabled={busy} /><SecondaryButton title="Payment history" disabled={busy} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} /></Card>}
       {!pending && <>
         {step === 'method' && <>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 24 }}><Text style={T.meta}>Paying <Text style={{ fontWeight: '600', color: C.ink }}>{formatPeso(amount)}</Text></Text><Text style={T.meta}>Step 2 of 4</Text></View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, marginBottom: 24 }}><Text style={T.meta}>Paying <Text style={{ fontWeight: '600', color: C.ink }}>{formatPeso(amount)}</Text></Text><Text style={T.meta}>Choose a method</Text></View>
+          <Card flush><LedgerRow title="Hospital" value={hospital} /><LedgerRow title="Bill reference" value={currentEncounter.billNumber || currentEncounter.encounterNumber} /><LedgerRow title="Final payable amount" value={formatPeso(amount)} last /></Card>
+          <SecondaryButton title="Change payment amount" onPress={() => { setSelectedAmount(null); setStep('amount'); }} />
           {[
             { title: 'Wallets & QR', options: PAYMENT_METHODS.filter(item => item.kind === 'qr' || item.kind === 'wallet') },
             { title: 'Other payment options', options: PAYMENT_METHODS.filter(item => item.kind !== 'qr' && item.kind !== 'wallet') }
           ].map(group => <View key={group.title} style={{ marginBottom: 20 }}>
             <Text accessibilityRole="header" style={[T.section, { marginBottom: 12 }]}>{group.title}</Text>
-            <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: 10, overflow: 'hidden' }}>
+            <View style={{ borderWidth: 1, borderColor: C.border, borderRadius: Radius.surface, overflow: 'hidden' }}>
               {group.options.map((item, i) => <Pressable key={item.rail} disabled={busy || uncertain} onPress={() => { setRail(item.rail); resetKey(); setError(null); }} accessibilityRole="radio" accessibilityState={{ checked: rail === item.rail, selected: rail === item.rail, disabled: busy || uncertain }} accessibilityLabel={`${item.label}, ${item.hint}`} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingHorizontal: 14, paddingVertical: 12, gap: 12, opacity: pressed ? 0.6 : 1, borderBottomWidth: i === group.options.length - 1 ? 0 : 1, borderBottomColor: C.border, backgroundColor: rail === item.rail ? C.brandSoft : C.surface })}>
-                {item.hasLogo ? <ProviderMark rail={item.rail} size={28} /> : <Icon name={item.icon} size={24} color={C.brandDark} />}
+                <View accessible={false} style={{ width: 56, height: 32, justifyContent: 'center', alignItems: 'center' }}>{item.kind === 'card' ? <View style={{ flexDirection: 'row', gap: 4 }}>{(['VISA', 'MASTERCARD'] as const).map(brand => <Image key={brand} source={ASSETS.cardNetworkLogo[brand]} resizeMode="contain" accessible={false} style={{ width: 26, height: 24 }} />)}</View> : item.hasLogo ? <ProviderMark rail={item.rail} size={28} /> : <Icon name={item.icon} size={24} color={C.brandDark} />}</View>
                 <Text style={[T.body, { flex: 1, fontSize: 15 }]}>{item.label}</Text>
                 <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: rail === item.rail ? C.brand : C.faint, alignItems: 'center', justifyContent: 'center' }}>{rail === item.rail && <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: C.brand }} />}</View>
               </Pressable>)}
@@ -293,24 +309,26 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
           <Text style={[T.meta, { marginTop: 16 }]}>{method.hint}</Text>
         </>}
         {(step === 'detail' || step === 'verification' || step === 'review') && <>
-          {step !== 'review' && <View style={{ backgroundColor: wallet?.background || (method.kind === 'card' ? C.ink : isNote ? C.note : C.hero), borderRadius: 18, padding: 20, marginVertical: 12, gap: 8 }}>
-            <Text style={[T.section, { color: wallet?.accent || '#FFFFFF' }]}>{method.label}{isNote ? ' · 0% interest' : ''}</Text>
+          {step !== 'review' && <View style={{ backgroundColor: wallet?.background || (method.kind === 'card' ? C.ink : isNote ? C.note : C.hero), borderRadius: Radius.summary, padding: 20, marginVertical: 12, gap: 8 }}>
+            {wallet && <View style={{ alignSelf: 'flex-start', backgroundColor: C.surface, padding: 8, borderRadius: 12 }}><ProviderMark rail={rail} size={36} /></View>}<Text style={[T.cardTitle, { color: wallet?.accent || C.surface }]}>{method.label}{isNote ? ' · 0% interest' : ''}</Text>
             <Text style={[T.heroFigure, { color: wallet?.accent || '#FFFFFF' }]}>{formatPeso(amount)}</Text>
             {method.kind === 'card' && <Text style={[T.heroSub, { letterSpacing: 1 }]}>{cardBrand} · •••• {cardLast4 || '••••'}</Text>}
             <Text style={T.heroSub}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text>
           </View>}
           {step === 'detail' && !isNote && <>
             {method.kind === 'qr' && <Card><PaymentQr /><Text style={[T.meta, { textAlign: 'center', marginTop: 12 }]}>Scan this code, then review the payment details.</Text></Card>}
-            {wallet && <Card><Text style={T.section}>Wallet account</Text><LedgerRow title="Sample account" value={wallet.contact} last /><Text style={T.meta}>Continue with the preset account to preview wallet verification.</Text></Card>}
-            {method.kind === 'card' && <Card><Text style={T.section}>Card details</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 12 }}>{['VISA', 'MASTERCARD'].map(brand => <Chip key={brand} label={brand === 'VISA' ? 'Visa' : 'Mastercard'} selected={cardBrand === brand} onPress={() => setCardBrand(brand)} disabled={busy || uncertain} />)}</View><View style={{ marginTop: 16 }}><Field label="Last 4 digits" value={cardLast4} onChangeText={value => setCardLast4(value.replace(/\D/g, '').slice(0, 4))} keyboard="numeric" hint="Only the final four digits are needed." editable={!busy && !uncertain} /></View><SecondaryButton title="Use sample card" disabled={busy || uncertain} onPress={() => setCardLast4(cardBrand === 'VISA' ? '1111' : '0004')} /></Card>}
-            {method.kind === 'bank' && <Card><Text style={T.section}>Transfer details</Text><Text style={[T.meta, { marginVertical: 12 }]}>Record the bank used for your payment. Your hospital confirms the recorded result.</Text><Field label="Bank name" value={bankName} onChangeText={setBankName} hint="For example, BPI, BDO or UnionBank." editable={!busy && !uncertain} error={bankName.length > 64 ? 'Use a bank name up to 64 characters.' : undefined} /></Card>}
+            {wallet && <Card><Text accessibilityRole="header" style={T.section}>Pay with {method.label}</Text><LedgerRow title="Hospital" value={hospital} /><LedgerRow title="Bill reference" value={currentEncounter.billNumber || currentEncounter.encounterNumber} last /><Text style={T.meta}>Review your payment details before confirming.</Text></Card>}
+            {method.kind === 'card' && <Card><Text accessibilityRole="header" style={T.section}>Card details</Text>
+              <View style={{ flexDirection: 'row', gap: 24, marginVertical: 16 }}>{(['VISA', 'MASTERCARD'] as const).map(brand => <Image key={brand} source={ASSETS.cardNetworkLogo[brand]} resizeMode="contain" accessibilityLabel={brand === 'VISA' ? 'Visa' : 'Mastercard'} style={{ width: 64, height: 32 }} />)}</View>
+              <Field label="Card number" value={cardNumber} onChangeText={value => setCardNumber(value.replace(/[^0-9 -]/g, '').slice(0, 23))} keyboard="numeric" placeholder="0000 0000 0000 0000" autoComplete="off" editable={!busy && !uncertain} error={cardTouched ? card.errors.number || undefined : undefined} />
+              <Field label="Expiration date" value={cardExpiry} onChangeText={value => setCardExpiry(value.replace(/[^0-9/ ]/g, '').slice(0, 7))} placeholder="MM/YY" autoComplete="off" editable={!busy && !uncertain} error={cardTouched ? card.errors.expiry || undefined : undefined} />
+              <Field label="CVV" value={cardCvv} onChangeText={value => setCardCvv(value.replace(/\D/g, '').slice(0, 3))} secure secureLabel="security code" keyboard="numeric" autoComplete="off" editable={!busy && !uncertain} error={cardTouched ? card.errors.cvv || undefined : undefined} />
+            </Card>}
+            {method.kind === 'bank' && <Card><Text accessibilityRole="header" style={T.section}>Select your bank</Text><Text style={[T.meta, { marginVertical: 12 }]}>Choose a bank, then review your transfer.</Text>
+              {PAYMENT_BANKS.map(bank => <Pressable key={bank.name} disabled={busy || uncertain} onPress={() => setBankName(bank.name)} accessibilityRole="radio" accessibilityLabel={bank.name} accessibilityState={{ checked: bankName === bank.name }} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 72, borderRadius: 12, borderWidth: 1, borderColor: bankName === bank.name ? C.brand : C.border, backgroundColor: bankName === bank.name ? C.brandSoft : C.surface, padding: 12, marginBottom: 12, opacity: pressed ? 0.6 : 1 })}><Image source={ASSETS.bankLogo[bank.name]} resizeMode="contain" accessible={false} style={{ width: 64, height: 32 }} /><View style={{ flex: 1 }}><Text style={T.cardTitle}>{bank.name}</Text><Text style={T.meta}>{bank.label}</Text></View><Icon name={bankName === bank.name ? 'check' : 'bank'} size={20} color={C.brandDark} /></Pressable>)}
+            </Card>}
             <Field label={method.kind === 'card' ? 'Cardholder name' : 'Payer name'} value={payerName} onChangeText={setPayerName} editable={!busy && !uncertain} autoCapitalize="words" />
-            <PrimaryButton title={wallet ? 'Continue with sample account' : 'Review payment'} disabled={busy || uncertain || !detailsValid || !amountValid || !!patientError} onPress={() => setStep(wallet ? 'verification' : 'review')} />
-            <SecondaryButton title="Back" disabled={busy || uncertain} onPress={goBack} />
-          </>}
-          {step === 'verification' && wallet && <>
-            <Card><Icon name="coverage" color={C.brand} size={32} /><Text accessibilityRole="header" style={[T.title, { marginTop: 16 }]}>Wallet verification</Text><Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>The preset account is ready for the next step.</Text><LedgerRow title="Account" value={wallet.contact} last /></Card>
-            <PrimaryButton title="Continue to review" disabled={busy || uncertain || !amountValid || !!patientError} onPress={() => setStep('review')} />
+            <PrimaryButton title="Review payment" disabled={busy || uncertain || !amountValid || !!patientError} onPress={() => { setCardTouched(true); if (detailsValid) setStep('review'); else setError(method.kind === 'card' ? 'Please check the card fields and cardholder name.' : 'Please complete your payment details.'); }} />
             <SecondaryButton title="Back" disabled={busy || uncertain} onPress={goBack} />
           </>}
           {step === 'detail' && isNote && <>
@@ -326,9 +344,8 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
             <PrimaryButton title="Review payment plan" onPress={() => setStep('review')} disabled={busy || uncertain || !noteValid || !amountValid || !!patientError} /><SecondaryButton title="Back" onPress={goBack} disabled={busy || uncertain} />
           </>}
           {step === 'review' && <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: C.border, marginBottom: 14 }}><View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.brandSoft, justifyContent: 'center', alignItems: 'center' }}><Icon name={method.icon} size={24} color={C.brandDark} /></View><View style={{ flex: 1 }}><Text style={T.section}>{isNote ? 'Repayment plan' : method.label}</Text><Text style={[T.meta, { marginTop: 4 }]}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text></View></View>
-            <LedgerRow title="Method" value={method.label} last /><LedgerRow title={isNote ? 'Borrower / guarantor' : 'Payer'} value={isNote ? borrowerName : payerName} last />
-            {wallet && <LedgerRow title="Wallet account" value={wallet.contact} last />}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 20, borderBottomWidth: 1, borderBottomColor: C.border, marginBottom: 14 }}><View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: C.brandSoft, justifyContent: 'center', alignItems: 'center' }}><Icon name={method.icon} size={24} color={C.brandDark} /></View><View style={{ flex: 1 }}><Text style={T.cardTitle}>{isNote ? 'Repayment plan' : method.label}</Text><Text style={[T.meta, { marginTop: 4 }]}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text></View></View>
+            <LedgerRow title="Hospital" value={hospital} last /><LedgerRow title="Method" value={method.label} last /><LedgerRow title={isNote ? 'Borrower / guarantor' : 'Payer'} value={isNote ? borrowerName : payerName} last />
             {method.kind === 'card' && <LedgerRow title="Card" value={`${cardBrand} · •••• ${cardLast4}`} last />}
             {method.kind === 'bank' && <LedgerRow title="Bank" value={bankName} last />}
             {isNote && <><LedgerRow title="Term" value={`${months} months · 0% interest`} last />{plan.schedule.map((value, i) => <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(value)} last />)}</>}
@@ -343,7 +360,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       {uncertain && <SecondaryButton title={isNote ? 'Check payment plans' : 'Check payment history'} onPress={() => navigation.navigate('Main', { screen: 'Payments' })} />}
     </ScrollView>
     {!pending && (step === 'method' || step === 'review') && <View style={{ backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border, paddingBottom: 12, paddingTop: 4 }}>
-      <PrimaryButton title={step === 'method' ? 'Continue' : busy ? 'Confirming…' : isNote ? 'Confirm payment plan' : `Confirm payment · ${formatPeso(amount)}`} onPress={() => step === 'method' ? setStep('detail') : isNote ? void submitNote() : void submitPayment()} disabled={busy || uncertain || !amountValid || !!patientError || (step === 'review' && (isNote ? !noteValid : !detailsValid))} />
+      <PrimaryButton title={step === 'method' ? 'Continue' : busy ? 'Confirming…' : isNote ? 'Confirm payment plan' : `Confirm payment · ${formatPeso(amount)}`} onPress={() => step === 'method' ? (setSelectedAmount(amount), setStep('detail')) : isNote ? void submitNote() : void submitPayment()} disabled={busy || uncertain || !amountValid || !!patientError || (step === 'review' && (isNote ? !noteValid : !detailsValid))} />
     </View>}
     <Modal visible={busy} transparent animationType="none" onRequestClose={() => {}}>
       <View style={{ flex: 1, backgroundColor: 'rgba(20,45,42,0.6)', paddingHorizontal: 24, paddingTop: Math.max(24, insets.top), paddingBottom: Math.max(24, insets.bottom), justifyContent: 'center', alignItems: 'center' }}>
@@ -356,4 +373,6 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       </View>
     </Modal>
   </Screen>;
+  })();
+  return <View style={{ flex: 1 }}><FocusedStatusBar style="dark" />{content}</View>;
 }

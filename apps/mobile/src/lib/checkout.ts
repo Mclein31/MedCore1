@@ -1,11 +1,11 @@
 import { C } from '../components/theme';
 
-export type CheckoutStep = 'amount' | 'method' | 'detail' | 'verification' | 'review' | 'done';
+export type CheckoutStep = 'amount' | 'method' | 'detail' | 'verification' | 'review' | 'success' | 'done';
 export function previousCheckoutStep(step: CheckoutStep): CheckoutStep {
   return step === 'review' || step === 'verification' ? 'detail' : step === 'detail' ? 'method' : 'amount';
 }
-export function paymentStatus(status: string, simulated?: boolean): string {
-  if (status === 'SUCCESS') return simulated === false ? 'Paid' : 'Recorded';
+export function paymentStatus(status: string, _simulated?: boolean): string {
+  if (status === 'SUCCESS') return 'Paid';
   if (status === 'FAILED') return 'Failed';
   if (status === 'CANCELLED') return 'Cancelled';
   if (status === 'INITIALIZED') return 'Awaiting confirmation';

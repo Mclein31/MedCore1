@@ -1,0 +1,55 @@
+{
+  "pageErrors": [],
+  "consoleErrors": [],
+  "headerHeights": [
+    {
+      "screen": "home",
+      "height": 56
+    },
+    {
+      "screen": "home-scrolled",
+      "height": 56
+    },
+    {
+      "screen": "bill",
+      "height": 56
+    },
+    {
+      "screen": "coverage",
+      "height": 56
+    },
+    {
+      "screen": "payments",
+      "height": 56
+    },
+    {
+      "screen": "profile",
+      "height": 56
+    },
+    {
+      "screen": "bill-search",
+      "height": 56
+    },
+    {
+      "screen": "amount",
+      "height": 56
+    },
+    {
+      "screen": "methods",
+      "height": 56
+    },
+    {
+      "screen": "card-details",
+      "height": 56
+    },
+    {
+      "screen": "qr",
+      "height": 56
+    },
+    {
+      "screen": "review",
+      "height": 56
+    }
+  ],
+  "viewport": "428x926"
+}

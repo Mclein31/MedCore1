@@ -14,20 +14,21 @@ export const T = StyleSheet.create({
   heroFigure: { fontSize: 32, fontWeight: '700', color: '#FFFFFF', fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
   heroEyebrow: { fontSize: 14, fontWeight: '600', color: C.heroSub },
   heroSub: { fontSize: 14, color: C.heroSub, marginTop: 4 },
-  title: { fontSize: 18, fontWeight: '600', color: C.ink, letterSpacing: -0.2 },
-  section: { fontSize: 16, fontWeight: '600', color: C.ink },
+  title: { fontSize: 20, lineHeight: 26, fontWeight: '600', color: C.ink, letterSpacing: -0.2 },
+  section: { fontSize: 18, lineHeight: 24, fontWeight: '600', color: C.ink },
+  cardTitle: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: C.ink },
   body: { fontSize: 14, color: C.ink, lineHeight: 21 },
   meta: { fontSize: 12, color: C.secondary, lineHeight: 18 },
   eyebrow: { fontSize: 12, fontWeight: '500', color: C.secondary },
   numeral: { fontVariant: ['tabular-nums'] }
 });
 
-export function Screen({ children, safeTop = false, keyboard = false, keyboardOffset = 0, gutter = 22, background = C.surface }: {
-  children: React.ReactNode; safeTop?: boolean; keyboard?: boolean; keyboardOffset?: number; gutter?: number; background?: string;
+export function Screen({ children, safeTop = false, safeBottom = true, keyboard = false, keyboardOffset = 0, gutter = 22, background = C.surface }: {
+  children: React.ReactNode; safeTop?: boolean; safeBottom?: boolean; keyboard?: boolean; keyboardOffset?: number; gutter?: number; background?: string;
 }) {
   const insets = useSafeAreaInsets();
   return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: background }} enabled={keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardOffset}>
-    <View style={[s.screen, { paddingTop: safeTop ? insets.top + 8 : 8, paddingBottom: insets.bottom, backgroundColor: background, paddingLeft: Math.max(gutter, insets.left), paddingRight: Math.max(gutter, insets.right) }]}>{children}</View>
+    <View style={[s.screen, { paddingTop: safeTop ? insets.top + 8 : 8, paddingBottom: safeBottom ? insets.bottom : 0, backgroundColor: background, paddingLeft: Math.max(gutter, insets.left), paddingRight: Math.max(gutter, insets.right) }]}>{children}</View>
   </KeyboardAvoidingView>;
 }
 
@@ -39,15 +40,20 @@ export function RefreshNotice({ error, onRetry }: { error: string | null; onRetr
   </View>;
 }
 
-// Deep-teal answer panel: one question, one figure, its actions.
-export function Hero({ eyebrow, figure, sub, children }: {
-  eyebrow: string; figure: string; sub?: string; children?: React.ReactNode;
+// Shared solid-green financial summary. Its actions stay separate from values.
+export function Hero({ eyebrow, figure, sub, children, trailing, amountLabel, onPress, a11y, minHeight = 153 }: {
+  eyebrow: string; figure: string; sub?: string; children?: React.ReactNode; trailing?: React.ReactNode;
+  amountLabel?: string; onPress?: () => void; a11y?: string; minHeight?: number;
 }) {
+  const heading = <>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}><Text style={[T.cardTitle, { color: C.surface, flex: 1 }]}>{eyebrow}</Text>{trailing}</View>
+    {amountLabel && <Text style={[T.meta, { color: C.surface, marginTop: 16 }]}>{amountLabel}</Text>}
+    <Text style={[T.heroFigure, { lineHeight: 40, marginTop: 4 }]} accessibilityRole="header">{figure}</Text>
+    {sub ? <Text style={[T.heroSub, { color: C.surface }]}>{sub}</Text> : null}
+  </>;
   return (
-    <View style={s.hero}>
-      <Text style={T.heroEyebrow}>{eyebrow}</Text>
-      <Text style={T.heroFigure} accessibilityRole="header">{figure}</Text>
-      {sub ? <Text style={T.heroSub}>{sub}</Text> : null}
+    <View testID="financial-summary" style={[s.hero, { minHeight }]}>
+      {onPress ? <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y} style={({ pressed }) => ({ opacity: pressed ? 0.65 : 1 })}>{heading}</Pressable> : heading}
       {children ? <View style={s.heroActions}>{children}</View> : null}
     </View>
   );
@@ -157,21 +163,22 @@ export function SegControl({ options, value, onChange, disabled }: {
   );
 }
 
-export function Field({ label, value, onChangeText, secure, keyboard, a11y, hint, error, editable = true, inputRef, hideLabel = false, placeholder, autoComplete, autoCapitalize = 'none' }: {
-  label: string; value: string; onChangeText: (t: string) => void; secure?: boolean;
+export function Field({ label, value, onChangeText, secure, secureLabel = 'password', keyboard, a11y, hint, error, editable = true, inputRef, hideLabel = false, placeholder, trailingIcon, autoComplete, autoCapitalize = 'none' }: {
+  label: string; value: string; onChangeText: (t: string) => void; secure?: boolean; secureLabel?: string;
   keyboard?: TextInputProps['keyboardType']; a11y?: string; hint?: string; error?: string;
-  editable?: boolean; hideLabel?: boolean; placeholder?: string; inputRef?: React.Ref<TextInput>; autoComplete?: TextInputProps['autoComplete']; autoCapitalize?: TextInputProps['autoCapitalize'];
+  editable?: boolean; hideLabel?: boolean; placeholder?: string; trailingIcon?: string; inputRef?: React.Ref<TextInput>; autoComplete?: TextInputProps['autoComplete']; autoCapitalize?: TextInputProps['autoCapitalize'];
 }) {
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
   return <View style={s.field}>
     {!hideLabel && <Text style={s.fieldLabel}>{label}</Text>}
-    <View style={[s.inputWrap, focused && s.inputFocused, error && { borderColor: C.danger }]}>
+    <View style={[s.inputWrap, trailingIcon && { borderColor: C.border }, focused && s.inputFocused, error && { borderColor: C.danger }]}>
       <TextInput ref={inputRef} style={s.input} value={value} onChangeText={onChangeText} secureTextEntry={secure && !visible}
         keyboardType={keyboard || 'default'} autoCapitalize={autoCapitalize} autoComplete={autoComplete} autoCorrect={false}
         editable={editable} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
         placeholder={placeholder} placeholderTextColor={C.faint} accessibilityLabel={a11y || label} accessibilityHint={error || hint} />
-      {secure && <Pressable onPress={() => setVisible((v) => !v)} disabled={!editable} accessibilityRole="button" accessibilityLabel={visible ? 'Hide password' : 'Show password'} style={{ paddingHorizontal: 12, minHeight: 48, justifyContent: 'center' }}><Icon name={visible ? "eye" : "eyeOff"} size={20} color={C.secondary} /></Pressable>}
+      {secure && <Pressable onPress={() => setVisible((v) => !v)} disabled={!editable} accessibilityRole="button" accessibilityLabel={visible ? `Hide ${secureLabel}` : `Show ${secureLabel}`} style={{ paddingHorizontal: 12, minHeight: 48, justifyContent: 'center' }}><Icon name={visible ? "eye" : "eyeOff"} size={20} color={C.secondary} /></Pressable>}
+      {!secure && trailingIcon && <View accessible={false} style={{ paddingHorizontal: 14 }}><Icon name={trailingIcon} size={20} color={C.secondary} /></View>}
     </View>
     {error ? <Text style={[T.meta, { color: C.danger, marginTop: 6 }]} accessibilityRole="alert">{error}</Text> : hint ? <Text style={[T.meta, { marginTop: 6 }]}>{hint}</Text> : null}
   </View>;
@@ -286,7 +293,7 @@ export function Expandable({ title, subtitle, children }: { title: string; subti
       <Pressable onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${title}, ${open ? 'collapse' : 'expand'}`}>
         <View style={s.expandHead}>
           <View style={s.expandMain}>
-            <Text accessibilityRole="header" style={T.section}>{title}</Text>
+            <Text accessibilityRole="header" style={T.cardTitle}>{title}</Text>
             <Text style={[T.meta, { marginTop: 2 }]}>{subtitle}</Text>
           </View>
           <Text style={s.expandGlyph}>{open ? '−' : '+'}</Text>
@@ -299,9 +306,9 @@ export function Expandable({ title, subtitle, children }: { title: string; subti
 
 const s = StyleSheet.create({
   screen: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
-  hero: { backgroundColor: C.hero, borderRadius: Radius.surface, padding: 20, marginTop: 8, marginBottom: 16 },
-  heroActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 },
-  heroBtn: { flexGrow: 1, flexBasis: 130, borderRadius: Radius.control, paddingVertical: 13, alignItems: 'center', justifyContent: 'center', minHeight: 50 },
+  hero: { backgroundColor: C.brand, borderRadius: Radius.summary, padding: 20 },
+  heroActions: { gap: 10, marginTop: 24, flexGrow: 1, justifyContent: 'flex-end' },
+  heroBtn: { width: '100%', borderRadius: Radius.pill, paddingVertical: 13, alignItems: 'center', justifyContent: 'center', minHeight: 50 },
   heroBtnSolid: { backgroundColor: '#FFFFFF' },
   heroBtnGhost: { borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.65)' },
   heroBtnText: { textAlign: 'center', color: C.hero, fontSize: 15, fontWeight: '700' },
@@ -313,7 +320,7 @@ const s = StyleSheet.create({
   emptyGlyphText: { fontSize: 26, color: C.brand },
   sectionHeader: { marginTop: 24, marginBottom: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: Radius.surface, padding: 16, marginBottom: 12 },
-  cardFlush: { padding: 0, borderWidth: 0, borderRadius: 10 },
+  cardFlush: { padding: 0, borderWidth: 0, borderRadius: Radius.surface },
   row: { minHeight: 44, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, gap: 12 },
   rowLabel: { fontSize: 14, color: C.secondary, flex: 1, minWidth: 0 },
   rowValue: { flexShrink: 1, maxWidth: '55%', textAlign: 'right', fontSize: 15, color: C.ink, fontVariant: ['tabular-nums'] },

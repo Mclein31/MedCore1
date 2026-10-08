@@ -1,0 +1,81 @@
+{
+  "checks": [
+    "pending HMO shows reason, offers active Review bill, and sends no payment",
+    "320px tab/stack headers, selected statement, Back",
+    "430px tab/stack headers, selected statement, Back",
+    "visible search filters, empty feedback, and expanded results",
+    "browser 150% text approximation inspected"
+  ],
+  "pageErrors": [],
+  "headers": [
+    {
+      "screen": "payments-waiting",
+      "height": 56
+    },
+    {
+      "screen": "home-320",
+      "height": 56
+    },
+    {
+      "screen": "bill-320",
+      "height": 56
+    },
+    {
+      "screen": "coverage-320",
+      "height": 56
+    },
+    {
+      "screen": "payments-320",
+      "height": 56
+    },
+    {
+      "screen": "profile-320",
+      "height": 56
+    },
+    {
+      "screen": "documents-320",
+      "height": 56
+    },
+    {
+      "screen": "record-320",
+      "height": 56
+    },
+    {
+      "screen": "home-430",
+      "height": 56
+    },
+    {
+      "screen": "bill-430",
+      "height": 56
+    },
+    {
+      "screen": "coverage-430",
+      "height": 56
+    },
+    {
+      "screen": "payments-430",
+      "height": 56
+    },
+    {
+      "screen": "profile-430",
+      "height": 56
+    },
+    {
+      "screen": "documents-430",
+      "height": 56
+    },
+    {
+      "screen": "record-430",
+      "height": 56
+    },
+    {
+      "screen": "search-empty",
+      "height": 56
+    },
+    {
+      "screen": "profile-text-150",
+      "height": 56
+    }
+  ],
+  "textScaleScope": "Browser CSS approximation; native Dynamic Type still requires a device check."
+}

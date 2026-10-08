@@ -1,6 +1,7 @@
 import React from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { Text, useWindowDimensions } from 'react-native';
-import { getFocusedRouteNameFromRoute, NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../lib/auth';
@@ -21,6 +22,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import MedHeader, { HeaderBack } from '../components/Header';
 import { TabGlyph } from '../components/icons';
 import { C } from '../components/ui';
+import { HeaderLayout, NavigationLayout } from '../components/theme';
 import { ErrorState, Screen, SecondaryButton } from '../components/ui';
 import { PatientProvider } from '../hooks/PatientProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,7 +42,7 @@ function MainTabs() {
         header: () => <MedHeader navigation={navigation} title={route.name} />,
         tabBarActiveTintColor: C.brand,
         tabBarInactiveTintColor: C.secondary,
-        tabBarLabel: ({ color }) => <Text style={{ fontSize: 11, fontWeight: '400', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
+        tabBarLabel: ({ color, focused }) => <Text style={{ fontSize: NavigationLayout.labelSize, fontWeight: focused ? '600' : '400', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
         tabBarAllowFontScaling: true,
         tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
@@ -89,27 +91,28 @@ export default function RootNavigator() {
   const onboarding = useOnboarding(verifiedThisLaunch.current);
   const destination = launchDestination({ sessionLoading: loading, onboardingLoading: onboarding.loading, sessionError, user, onboardingError: onboarding.loadError, completed: onboarding.progress.completed, verifiedThisLaunch: verifiedThisLaunch.current });
   if (destination === 'preload') return <LaunchScreen />;
-  if (destination === 'session-recovery') return <Screen safeTop><ErrorState message={sessionError!} onRetry={retrySession} /><SecondaryButton title="Back to log in" onPress={() => { void logout(); }} /></Screen>;
-  if (destination === 'onboarding-recovery') return <Screen safeTop><ErrorState message={onboarding.loadError!} onRetry={onboarding.restore} /></Screen>;
+  if (destination === 'session-recovery') return <Screen safeTop><StatusBar style="dark" /><ErrorState message={sessionError!} onRetry={retrySession} /><SecondaryButton title="Back to log in" onPress={() => { void logout(); }} /></Screen>;
+  if (destination === 'onboarding-recovery') return <Screen safeTop><StatusBar style="dark" /><ErrorState message={onboarding.loadError!} onRetry={onboarding.restore} /></Screen>;
   if (destination === 'onboarding') return <OnboardingScreen progress={onboarding.progress} saving={onboarding.saving} error={onboarding.saveError} onSave={onboarding.save} />;
   return (
     <PatientProvider key={user?.id || 'signed-out'}>
     <NavigationContainer>
+      <StatusBar style="dark" />
       <Stack.Navigator
         screenOptions={({ navigation }) => ({
+          header: ({ navigation: screenNavigation, route, options }) => <MedHeader title={options.title || route.name} leading={options.headerLeft?.({ tintColor: C.ink, canGoBack: screenNavigation.canGoBack() })} />,
           headerTitleAlign: 'center',
           headerLeft: () => <HeaderBack onPress={() => navigation.goBack()} />,
           headerBackVisible: false,
-          statusBarStyle: 'dark',
           headerStyle: { backgroundColor: C.surface },
           headerTintColor: C.ink,
-          headerTitleStyle: { fontSize: 18, fontWeight: '600' },
+          headerTitleStyle: { fontSize: HeaderLayout.titleSize, fontWeight: '600' },
           headerShadowVisible: false
         })}
       >
         {user ? (
           <React.Fragment>
-            <Stack.Screen name="Main" component={MainTabs} options={({ route }) => ({ headerShown: false, statusBarStyle: (getFocusedRouteNameFromRoute(route) || 'Home') === 'Home' ? 'light' : 'dark' })} />
+            <Stack.Screen name="Main" component={MainTabs} options={{ headerShown: false }} />
             <Stack.Screen name="RecordDetail" component={RecordDetailScreen} options={{ title: 'Hospital record' }} />
             <Stack.Screen name="PaymentFlow" component={PaymentFlowScreen} options={{ title: 'Pay balance' }} />
             <Stack.Screen name="Claims" component={ClaimsScreen} options={{ title: 'Insurance claims' }} />

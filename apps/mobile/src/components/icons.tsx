@@ -1,18 +1,18 @@
 import React from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Phone, LogOut, LockKeyhole, Info, Bell, Building2, Check, ChevronRight, CircleCheck, Clock, CreditCard,
-  FileText, Home, QrCode, Receipt, Scale, ShieldCheck, Smartphone, TriangleAlert, User
+  FileText, Home, QrCode, Receipt, Scale, Search, ShieldCheck, Smartphone, TriangleAlert, User
 } from 'lucide-react-native';
 import { ASSETS } from '../lib/assets';
-import { C } from './theme';
+import { C, NavigationLayout } from './theme';
 
 // Central icon system. Generic interface icons come from lucide (matching
 // the dashboard's lucide-react usage); only brand/provider artwork lives in
 // PNG files via the asset registry.
 
 const LUCIDE: Record<string, React.ComponentType<{ size?: number | string; color?: string; strokeWidth?: number | string }>> = {
-  back: ArrowLeft, eye: Eye, eyeOff: EyeOff, mail: Mail, contact: Phone, logout: LogOut, lock: LockKeyhole, info: Info,
+  back: ArrowLeft, eye: Eye, eyeOff: EyeOff, mail: Mail, contact: Phone, logout: LogOut, lock: LockKeyhole, info: Info, search: Search,
   home: Home,
   bill: Receipt,
   coverage: ShieldCheck,
@@ -39,24 +39,20 @@ export function Icon({ name, size = 22, color = C.secondary }: { name: keyof typ
 export function TabGlyph({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={[glyph.pill, focused && glyph.pillActive]}>
-      <Icon name={name} size={24} color={focused ? C.brand : C.secondary} />
+      <Icon name={name} size={NavigationLayout.iconSize} color={focused ? C.brand : C.secondary} />
       {focused && <View style={glyph.dot} />}
     </View>
   );
 }
 
-// Provider brand mark from the filename-stable registry. Falls back to a
-// monogram tile so the UI never breaks if an asset is swapped out.
+// Original provider artwork, contained without changing proportions/colors.
+// Unsupported brand marks use a semantic interface icon, never fake lettering.
 export function ProviderMark({ rail, size = 46 }: { rail: string; size?: number }) {
   const src = (ASSETS.providerLogo as Record<string, number>)[rail];
   if (!src) {
-    return (
-      <View style={{ width: size, height: size, borderRadius: size / 4, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: size * 0.42, fontWeight: '800', color: C.brand }}>{rail.charAt(0)}</Text>
-      </View>
-    );
+    return <Icon name={rail === 'QR_PH' ? 'qr' : rail === 'GCASH' || rail === 'MAYA' ? 'phone' : 'payments'} size={size} color={C.brand} />;
   }
-  return <Image source={src} resizeMode="contain" style={{ width: size, height: size }} accessibilityLabel={`${rail} logo`} />;
+  return <Image source={src} resizeMode="contain" accessible={false} style={{ width: rail === 'QR_PH' ? size * 2 : size, height: size, borderRadius: rail === 'QR_PH' ? 0 : 6 }} />;
 }
 
 export function AvatarImage({ size = 42 }: { size?: number }) {

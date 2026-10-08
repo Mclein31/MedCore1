@@ -131,6 +131,7 @@ export interface PatientEncounter {
 }
 
 export interface PaymentRecord {
+  billReference?: string;
   id: string;
   paymentReference: string;
   encounterNumber: string;
@@ -145,6 +146,11 @@ export interface PaymentRecord {
 }
 
 export interface ReceiptRecord {
+  paymentReference?: string;
+  billReference?: string;
+  patientName?: string;
+  patientMrn?: string;
+  status?: string;
   id: string;
   encounterNumber?: string;
   receiptNumber: string;

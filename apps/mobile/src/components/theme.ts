@@ -13,4 +13,6 @@ export const C = {
   bg: '#F8FAFC', surfaceAlias: '#FFFFFF', primary: '#11806D', primaryDark: '#0F6D5F', text: '#0F172A'
 } as const;
 export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, section: 28, gutter: 22 } as const;
-export const Radius = { control: 10, surface: 12, badge: 8, pill: 28, sheet: 28 } as const;
+export const Radius = { control: 10, surface: 12, summary: 18, badge: 8, pill: 28, sheet: 28 } as const;
+export const HeaderLayout = { height: 56, gutter: 22, titleSize: 20, titleLineHeight: 26, actionSize: 48, iconSize: 20, backSize: 42 } as const;
+export const NavigationLayout = { iconSize: 24, shortcutSize: 44, shortcutHeight: 84, labelSize: 12 } as const;

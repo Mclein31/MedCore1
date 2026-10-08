@@ -3,6 +3,9 @@
 // language, payment input guards, duplicate-submission prevention, and
 // navigation gating. Run with: npx tsx __tests__/run.ts
 import assert from 'node:assert';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { validateCard } from '../src/lib/cardValidation';
 import { applyAmountKey } from '../src/lib/amountEntry';
 import { launchDestination, OnboardingStore, ONBOARDING_KEY } from '../src/lib/onboarding';
 import { confirmedPayment, paymentDetailsValid, paymentStatus, previousCheckoutStep, WALLET_PRESETS } from '../src/lib/checkout';
@@ -30,6 +33,18 @@ function check(name: string, fn: () => void) {
     process.exitCode = 1;
   }
 }
+
+// Expo Go embeds native implementations; incompatible JS packages can bundle
+// successfully but fail only when a simulator/device calls the native module.
+check('Expo Go native dependencies match the installed SDK', () => {
+  const requireMobile = createRequire(resolve('package.json'));
+  const expected = requireMobile('expo/bundledNativeModules.json') as Record<string, string>;
+  const { satisfies } = requireMobile('semver') as { satisfies: (version: string, range: string) => boolean };
+  for (const name of ['@react-native-async-storage/async-storage', 'react-native-safe-area-context', 'react-native-screens']) {
+    const actual = requireMobile(`${name}/package.json`).version as string;
+    assert.ok(satisfies(actual, expected[name]), `${name}@${actual} does not match Expo Go's ${expected[name]}`);
+  }
+});
 
 // Billing: peso formatting must be exact and identical on every screen.
 check('bill loads: peso formatting is exact', () => {
@@ -116,6 +131,17 @@ check('payment methods cover all backend-supported rails', () => {
   assert.strictEqual(isQrRail('MAYA'), true);
   assert.strictEqual(isQrRail('QR_PH'), true);
   assert.strictEqual(isQrRail('BANK_TRANSFER'), false);
+});
+
+check('card validation covers supported networks, checksum, expiry and CVV', () => {
+  const now = new Date('2026-10-08T00:00:00Z');
+  assert.equal(validateCard('4111 1111 1111 1111', '10/26', '123', now).valid, true);
+  const mc = validateCard('5555 5555 5555 4444', '12/30', '123', now);
+  assert.equal(mc.brand, 'MASTERCARD'); assert.equal(mc.last4, '4444'); assert.equal(mc.valid, true);
+  assert.equal(validateCard('2221000000000009', '12/30', '123', now).valid, true);
+  for (const number of ['4111111111111112', '378282246310005', 'not a card', '', '1234']) assert.equal(validateCard(number, '12/30', '123', now).valid, false);
+  for (const expiry of ['09/26', '00/30', '13/30', '1/30', '12/25']) assert.equal(validateCard('4111111111111111', expiry, '123', now).valid, false);
+  for (const cvv of ['', '12', 'abcd', '1234']) assert.equal(validateCard('4111111111111111', '12/30', cvv, now).valid, false);
 });
 
 // Promissory: preview mirrors backend centavo logic (sums to principal).
@@ -206,7 +232,7 @@ check('checkout review does not accept incomplete or unsuccessful confirmation',
   assert.equal(paymentStatus('CANCELLED', true), 'Cancelled');
   assert.equal(paymentStatus('INITIALIZED', true), 'Awaiting confirmation');
   assert.equal(paymentStatus('FUTURE_STATUS', true), 'Status unavailable');
-  assert.equal(paymentStatus('SUCCESS', true), 'Recorded');
+  assert.equal(paymentStatus('SUCCESS', true), 'Paid');
   assert.equal(paymentStatus('SUCCESS', false), 'Paid');
 });
 check('method details are validated without provider credential fields', () => {

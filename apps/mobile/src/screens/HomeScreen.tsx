@@ -3,10 +3,9 @@ import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
 import { useNetworkStatus } from '../lib/offline';
 import { describeClaimStatus, describeDischargeStage, describeHmoStatus, formatDate, formatDateTime, formatPeso, hasHmo, remainingBalance } from '../lib/format';
-import GradientSurface from '../components/GradientSurface';
 import QuickActions from '../components/QuickActions';
 import { Icon } from '../components/icons';
-import { C, Card, EmptyState, ErrorState, Expandable, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
+import { C, Card, EmptyState, ErrorState, Expandable, Hero, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
 
 function firstName(full: string | undefined): string {
   if (!full) return 'there';
@@ -23,26 +22,23 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const steps = checklist.map((item, i) => ({ title: item.label, state: (item.done ? 'done' : i === firstOpen ? 'now' : 'todo') as 'done' | 'now' | 'todo' }));
   const owe = currentEncounter ? remainingBalance(currentEncounter) : 0;
   const cleared = currentEncounter?.stage === 'CLEARED_GATE_PASS';
+  const readyToPay = owe > 0 && currentEncounter?.stage === 'PENDING_SETTLEMENT';
   const actions = [
     { label: 'Bill', icon: 'bill', onPress: () => navigation.navigate('Bill') },
     { label: 'Coverage', icon: 'coverage', onPress: () => navigation.navigate('Coverage') },
-    { label: owe > 0 ? 'Pay' : 'Payments', icon: 'payments', disabled: owe > 0 && (!!error || !net.connected || currentEncounter?.stage !== 'PENDING_SETTLEMENT'), onPress: () => owe > 0 ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid }) : navigation.navigate('Payments') },
+    { label: readyToPay ? 'Pay' : 'Payments', icon: 'payments', disabled: readyToPay && (!!error || !net.connected || loading), onPress: () => readyToPay ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid }) : navigation.navigate('Payments') },
     { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
   ];
-  return <Screen gutter={0} background={C.hero}><ScrollView contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.surface} />} showsVerticalScrollIndicator={false}>
+  return <Screen gutter={0} safeBottom={false} background={C.paper}><ScrollView contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
     <View style={{ backgroundColor: C.hero, minHeight: 237, paddingHorizontal: 25, paddingTop: 28, paddingBottom: 126 }}>
       <Text style={{ color: C.heroSub, fontSize: 13 }}>Good day,</Text>
       <Text accessibilityRole="header" style={{ color: C.surface, fontSize: 22, fontWeight: '600', marginTop: 4 }}>{patient?.fullName || firstName(patient?.fullName)}</Text>
       <Text style={{ color: C.heroSub, fontSize: 12, marginTop: 8 }}>{facility}</Text>
     </View>
     <View style={{ backgroundColor: C.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, paddingHorizontal: 22, paddingBottom: 28, minHeight: 560 }}>
-      <GradientSurface style={{ borderRadius: 18, padding: 20, marginTop: -100, minHeight: 214, marginBottom: 20 }}>
-        <Pressable onPress={() => navigation.navigate(cleared ? 'Documents' : 'Bill')} accessibilityRole="button" accessibilityLabel={cleared ? 'View discharge pass' : currentEncounter ? 'Review hospital balance' : 'View hospital bills'} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1, marginBottom: 14 })}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text style={{ color: C.surface, fontSize: 12 }}>{cleared ? 'Discharge status' : currentEncounter ? 'Remaining hospital balance' : 'Your hospital account'}</Text><Icon name="chevron" size={19} color={C.surface} /></View>
-          <Text style={{ color: C.surface, fontSize: cleared || !currentEncounter ? 25 : 30, lineHeight: 38, fontWeight: '700', fontVariant: ['tabular-nums'], marginTop: 4 }}>{cleared ? 'Cleared to leave' : currentEncounter ? formatPeso(owe) : 'No current statement'}</Text>
-        </Pressable>
+      <View style={{ marginTop: -100, marginBottom: 20 }}><Hero eyebrow={cleared ? 'Discharge status' : currentEncounter ? 'Remaining hospital balance' : 'Your hospital account'} figure={cleared ? 'Cleared to leave' : currentEncounter ? formatPeso(owe) : 'No current statement'} trailing={<Icon name="chevron" size={20} color={C.surface} />} onPress={() => navigation.navigate(cleared ? 'Documents' : 'Bill')} a11y={cleared ? 'View discharge pass' : currentEncounter ? 'Review hospital balance' : 'View hospital bills'} minHeight={224}>
         <QuickActions actions={actions} integrated />
-      </GradientSurface>
+      </Hero></View>
       <RefreshNotice error={error} onRetry={refresh} />
       {!net.connected && <Text style={[T.meta, { color: C.warning }]} accessibilityRole="alert">You’re offline. Information may be out of date.</Text>}
       {currentEncounter ? <>
@@ -50,7 +46,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <Text style={[T.meta, { marginTop: 8 }]}>Room {currentEncounter.roomBed} · Admitted {formatDate(currentEncounter.admissionDate)}</Text>
       {(overview?.alerts?.length ?? 0) > 0 && <>
         <SectionHeader title="Latest from your hospital" action={<Pressable onPress={() => navigation.navigate('Notifications')} accessibilityRole="button" style={{ minHeight: 44, justifyContent: 'center' }}><Text style={{ color: C.brand, fontWeight: '600' }}>All updates</Text></Pressable>} />
-        {(overview?.alerts || []).slice(0, 2).map((item, i) => <View key={`${item.timestamp}-${i}`} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}><Text style={T.section}>{item.title}</Text><Text style={[T.meta, { marginTop: 4 }]}>{item.message}</Text>{item.timestamp && <Text style={[T.meta, { marginTop: 4 }]}>{formatDateTime(item.timestamp)}</Text>}</View>)}
+        {(overview?.alerts || []).slice(0, 2).map((item, i) => <View key={`${item.timestamp}-${i}`} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}><Text style={T.cardTitle}>{item.title}</Text><Text style={[T.meta, { marginTop: 4 }]}>{item.message}</Text>{item.timestamp && <Text style={[T.meta, { marginTop: 4 }]}>{formatDateTime(item.timestamp)}</Text>}</View>)}
       </>}
       <SectionHeader title="Coverage applied to your bill" />
       <Card flush>
