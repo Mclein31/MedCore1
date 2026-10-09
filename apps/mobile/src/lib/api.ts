@@ -67,7 +67,15 @@ export class ApiClient {
         res = await fetch(`${ENV.apiBase}${path}`, { ...init, headers, signal: controller.signal });
       } catch (e: unknown) {
         if (controller.signal.aborted) throw new ApiError('The request took too long. Please check your connection and try again.', 0, 'TIMEOUT');
-        throw new ApiError('We could not connect. Please check your connection and try again.', 0, 'NETWORK_ERROR');
+        if (ENV.isDev && !ENV.apiRoot.includes('127.0.0.1') && !ENV.apiRoot.includes('localhost')) {
+          try {
+            res = await fetch(`http://127.0.0.1:8787/api/v1${path}`, { ...init, headers, signal: controller.signal });
+          } catch {
+            throw new ApiError('We could not connect. Please check your connection and try again.', 0, 'NETWORK_ERROR');
+          }
+        } else {
+          throw new ApiError('We could not connect. Please check your connection and try again.', 0, 'NETWORK_ERROR');
+        }
       }
 
       // A response from the previous account must never reach the new one.
