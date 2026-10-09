@@ -1,3 +1,4 @@
+import { usePullRefresh } from '../hooks/usePullRefresh';
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useResource } from '../hooks/useResource';
@@ -13,6 +14,7 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
   const { currentEncounter, encounters, loading: patientLoading, error: patientError, refresh: refreshPatient } = usePatient();
   const load = useCallback(async () => { const api = createPaymentApi(client); const [payments, receipts, plans] = await Promise.all([api.getHistory(), api.getReceipts(), api.listPromissoryNotes()]); return { payments: payments.items, receipts: receipts.items, plans: plans.items }; }, [client]);
   const { data, loading, error, refresh: loadList } = useResource(load);
+  const pullRefresh = usePullRefresh(loadList);
   const payments = data?.payments || [];
   const receipts = data?.receipts || [];
   const plans = data?.plans || [];
@@ -26,7 +28,7 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
 
   return (
     <Screen safeBottom={false}>
-      <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={loadList} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <RefreshNotice error={error} onRetry={loadList} />
         <RefreshNotice error={patientError} onRetry={refreshPatient} />
         <View style={{ marginTop: 8 }}>

@@ -66,7 +66,7 @@ app.use(
       return null;
     },
     credentials: true,
-    allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Demo-Role'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Demo-Role', 'X-Medcore-Patient-Id'],
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
   })
 );

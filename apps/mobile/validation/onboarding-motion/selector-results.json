@@ -1,0 +1,10 @@
+{
+  "environment": "Actual React Native Web components in isolated jsdom; motion reduced; synthetic directory/session for selector checks",
+  "passed": 4,
+  "results": [
+    "ordinary patients have no selector or directory request",
+    "administrator dropdown loads the directory only when opened",
+    "selecting a patient changes the subject and closes the dropdown",
+    "current selection is marked and dismissing never changes it"
+  ]
+}

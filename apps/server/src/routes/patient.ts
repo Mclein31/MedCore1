@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, asc } from 'drizzle-orm';
 import { db } from '../db';
 import {
   encounters,
@@ -12,7 +12,7 @@ import {
   encounterTimelineEvents
 } from '../db/schema';
 import { getHydratedEncounter } from './encounters';
-import { matchEncounterCondition } from '../utils/dbQuery';
+import { matchEncounterCondition, isUuid } from '../utils/dbQuery';
 import { apiError } from '../middleware/error';
 import { requireAuth, AuthUser } from '../middleware/auth';
 import { resolveLinkedPatient } from '../utils/encounterAccess';
@@ -41,11 +41,11 @@ function toSafePatient(p: LinkedPatient) {
   };
 }
 
-async function getPatientEncounters(patientId: string) {
+async function getPatientEncounters(patientId: string, facilityId: string) {
   return db
     .select()
     .from(encounters)
-    .where(eq(encounters.patientId, patientId))
+    .where(and(eq(encounters.patientId, patientId), eq(encounters.facilityId, facilityId)))
     .orderBy(desc(encounters.admissionTimestamp));
 }
 
@@ -92,6 +92,17 @@ export async function toPatientSafeEncounter(hydrated: Awaited<ReturnType<typeof
 
 async function requireLinkedPatient(c: any) {
   const user = c.get('user') as AuthUser;
+  const selectedId = c.req.header('x-medcore-patient-id');
+  if (selectedId) {
+    if (!user.mobileDemoAdmin || user.role !== 'HOSPITAL_CFO') {
+      return { error: apiError(c, 403, 'FORBIDDEN', 'Patient selection is not available to this account.') };
+    }
+    if (!isUuid(selectedId)) return { error: apiError(c, 400, 'INVALID_PATIENT_ID', 'Choose a valid hospital patient.') };
+    const selected = await db.select().from(patients)
+      .where(and(eq(patients.id, selectedId), eq(patients.facilityId, user.facilityId))).limit(1);
+    if (!selected[0]) return { error: apiError(c, 404, 'NOT_FOUND', 'Patient not found.') };
+    return { user, patient: selected[0] };
+  }
   const patient = await resolveLinkedPatient(user);
   if (!patient) {
     return {
@@ -105,6 +116,16 @@ async function requireLinkedPatient(c: any) {
   }
   return { user, patient };
 }
+
+// The ordinary patient namespace remains linked-account-only. This separate
+// directory is available solely to the backend-verified presentation principal.
+patientApp.get('/demo/patients', requireAuth, async (c) => {
+  const user = c.get('user');
+  if (!user.mobileDemoAdmin || user.role !== 'HOSPITAL_CFO') return apiError(c, 403, 'FORBIDDEN', 'Hospital patient browsing is not available to this account.');
+  const items = await db.select({ id: patients.id, mrn: patients.mrn, fullName: patients.fullName })
+    .from(patients).where(eq(patients.facilityId, user.facilityId)).orderBy(asc(patients.fullName));
+  return c.json({ items, total: items.length });
+});
 
 // GET /api/v1/patient/me — linked patient profile + account
 patientApp.get('/me', requireAuth, async (c) => {
@@ -126,7 +147,7 @@ patientApp.get('/me', requireAuth, async (c) => {
 patientApp.get('/me/encounters', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
     const hydrated = await getHydratedEncounter(row.id);
@@ -149,7 +170,7 @@ const STAGE_ORDER = [
 patientApp.get('/me/overview', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   if (encRows.length === 0) {
     return c.json({ patient: toSafePatient(resolved.patient), currentEncounter: null });
   }
@@ -200,7 +221,7 @@ patientApp.get('/me/encounters/:id', requireAuth, async (c) => {
   const encList = await db
     .select()
     .from(encounters)
-    .where(matchEncounterCondition(id))
+    .where(and(matchEncounterCondition(id), eq(encounters.facilityId, resolved.user.facilityId)))
     .limit(1);
   if (encList.length === 0 || encList[0].patientId !== resolved.patient.id) {
     return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
@@ -215,7 +236,7 @@ patientApp.get('/me/encounters/:id', requireAuth, async (c) => {
 patientApp.get('/me/payments', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
     const rows = await db.select().from(payments).where(eq(payments.encounterId, row.id)).orderBy(desc(payments.createdAt));
@@ -243,7 +264,7 @@ patientApp.get('/me/payments', requireAuth, async (c) => {
 patientApp.get('/me/receipts', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
     const rows = await db
@@ -280,7 +301,7 @@ patientApp.get('/me/receipts/:id', requireAuth, async (c) => {
   if ('error' in resolved) return resolved.error;
   const id = c.req.param('id');
   if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const encIds = new Set(encRows.map((e) => e.id));
   const rows = await db.select().from(paymentReceipts).where(eq(paymentReceipts.id, id)).limit(1);
   if (rows.length === 0 || !encIds.has(rows[0].encounterId)) {
@@ -310,7 +331,7 @@ patientApp.get('/me/receipts/:id', requireAuth, async (c) => {
 patientApp.get('/me/claims', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
     const claimRows = await db.select().from(philhealthClaims).where(eq(philhealthClaims.encounterId, row.id)).limit(1);
@@ -339,7 +360,7 @@ patientApp.get('/me/claims', requireAuth, async (c) => {
 patientApp.get('/me/documents', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items: any[] = [];
   for (const row of encRows) {
     const statementNumber = row.billNumber || `SOA-SJMC-26-${row.encounterNumber.replace(/\D/g, '')}`;
@@ -393,7 +414,7 @@ patientApp.get('/me/documents', requireAuth, async (c) => {
 patientApp.get('/me/promissory-notes', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
     const noteRows = await db
@@ -430,7 +451,7 @@ patientApp.get('/me/promissory-notes', requireAuth, async (c) => {
 patientApp.get('/me/notifications', requireAuth, async (c) => {
   const resolved = await requireLinkedPatient(c);
   if ('error' in resolved) return resolved.error;
-  const encRows = await getPatientEncounters(resolved.patient.id);
+  const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
     const events = await db

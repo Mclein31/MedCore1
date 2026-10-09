@@ -33,7 +33,8 @@ function patientFriendlyMessage(status: number, code: string | undefined, fallba
 
 export class ApiClient {
   private getToken: TokenProvider;
-  constructor(getToken: TokenProvider, private onExpired?: (token: string) => void) {
+  constructor(getToken: TokenProvider, private onExpired?: (token: string) => void,
+    private subject?: { patientId: string | null; getCurrent: () => string | null }) {
     this.getToken = getToken;
   }
 
@@ -46,14 +47,20 @@ export class ApiClient {
     signal?.addEventListener('abort', abort);
     const timer = setTimeout(() => controller.abort(), timeoutMs ?? DEFAULT_TIMEOUT_MS);
     try {
+      const checkSubject = () => {
+        if (this.subject && this.subject.patientId !== this.subject.getCurrent()) throw new ApiError('The patient record changed. Please try again.', 0, 'PATIENT_SCOPE_CHANGED');
+      };
+      checkSubject();
       const headers = new Headers(init.headers || {});
       const method = (init.method || 'GET').toUpperCase();
       if (method !== 'GET' && method !== 'HEAD' && !headers.has('Content-Type') && !(init.body instanceof FormData)) {
         headers.set('Content-Type', 'application/json');
       }
       const token = await this.getToken();
+      checkSubject();
       if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`);
       if (idempotencyKey && !headers.has('Idempotency-Key')) headers.set('Idempotency-Key', idempotencyKey);
+      if (this.subject?.patientId && (path === '/patient/me' || path.startsWith('/patient/me/'))) headers.set('X-Medcore-Patient-Id', this.subject.patientId);
 
       let res: Response;
       try {
@@ -65,6 +72,7 @@ export class ApiClient {
 
       // A response from the previous account must never reach the new one.
       if (token && token !== await this.getToken()) throw new ApiError('Your session changed. Please try again.', 0, 'SESSION_CHANGED');
+      checkSubject();
       if (res.status === 204) return undefined as T;
       let data: { error?: { message?: string; code?: string } };
       try { data = await res.json(); } catch {
@@ -72,6 +80,7 @@ export class ApiClient {
         throw new ApiError('The server returned an unreadable response. Please try again.', res.status, 'INVALID_RESPONSE');
       }
       if (token && token !== await this.getToken()) throw new ApiError('Your session changed. Please try again.', 0, 'SESSION_CHANGED');
+      checkSubject();
       if (data === null || typeof data !== 'object' || Array.isArray(data)) throw new ApiError('The server returned an invalid response. Please try again.', 502, 'INVALID_RESPONSE');
       if (!res.ok) {
         const error = new ApiError(patientFriendlyMessage(res.status, data?.error?.code, data?.error?.message || ''), res.status, data?.error?.code);

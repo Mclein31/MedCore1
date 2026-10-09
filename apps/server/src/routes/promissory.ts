@@ -18,6 +18,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { encounterAccessCondition, isCentavoAmount } from '../utils/encounterAccess';
 import { getClientIp } from '../utils/clientIp';
+import { validateGovernmentId } from '../../../shared/governmentId';
 
 const promissoryApp = new Hono();
 
@@ -41,16 +42,27 @@ const promissorySchema = z.object({
   borrowerName: z.string().min(2).max(128),
   borrowerRelationship: z.enum(['PATIENT', 'SPOUSE', 'CHILD', 'GUARANTOR']).default('GUARANTOR'),
   borrowerIdType: z.enum(['PHILSYS_NATIONAL_ID', 'UMID', 'DRIVERS_LICENSE', 'PASSPORT']),
-  borrowerIdNumber: z.string().min(4).max(64),
+  borrowerIdNumber: z.string().min(1).max(64),
   installmentMonths: z.union([z.literal(3), z.literal(6), z.literal(12)]),
   principalAmount: z.number().positive().refine(isCentavoAmount, 'Enter a positive amount with at most two decimal places.')
+}).superRefine((value, ctx) => {
+  const id = validateGovernmentId(value.borrowerIdType, value.borrowerIdNumber);
+  if (!id.valid) ctx.addIssue({ code: 'custom', path: ['borrowerIdNumber'], message: id.error });
+}).transform(value => {
+  const id = validateGovernmentId(value.borrowerIdType, value.borrowerIdNumber);
+  return { ...value, borrowerIdNumber: id.valid ? id.normalized : value.borrowerIdNumber };
 });
 
 promissoryApp.post(
   '/encounters/:id/promissory-notes',
   requireAuth,
   requireRole(['BILLING_SPECIALIST', 'PATIENT_GUARANTOR', 'HOSPITAL_CFO']),
-  zValidator('json', promissorySchema),
+  zValidator('json', promissorySchema, (result, c) => {
+    if (!result.success) {
+      const idIssue = result.error.issues.find(issue => issue.path[0] === 'borrowerIdNumber' || issue.path[0] === 'borrowerIdType');
+      return apiError(c, 400, idIssue ? 'INVALID_GOVERNMENT_ID' : 'INVALID_PROMISSORY_DETAILS', idIssue?.message || 'Check your payment plan details and try again.');
+    }
+  }),
   async (c) => {
     const encIdOrNumber = c.req.param('id');
     if (!encIdOrNumber) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
@@ -70,11 +82,13 @@ promissoryApp.post(
         .orderBy(desc(promissoryNotes.createdAt)).limit(1);
       if (activeNotes.length > 0) {
         const note = activeNotes[0];
+        const storedId = validateGovernmentId(note.borrowerIdType, note.borrowerIdNumber);
         if (Number(note.principalAmount) !== params.principalAmount ||
             note.installmentMonths !== params.installmentMonths ||
             note.borrowerName !== params.borrowerName ||
             note.borrowerRelationship !== params.borrowerRelationship ||
-            note.borrowerIdType !== params.borrowerIdType || note.borrowerIdNumber !== params.borrowerIdNumber) {
+            note.borrowerIdType !== params.borrowerIdType ||
+            !storedId.valid || storedId.normalized !== params.borrowerIdNumber) {
           return apiError(c, 409, 'ACTIVE_PROMISSORY_NOTE', 'An active promissory note already exists for this stay. Contact the hospital billing desk to review it.');
         }
         const passes = await tx.select().from(dischargePasses)

@@ -2,7 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Phone, LogOut, LockKeyhole, Info, Bell, Building2, Check, ChevronRight, CircleCheck, Clock, CreditCard,
-  FileText, Home, QrCode, Receipt, Scale, Search, ShieldCheck, Smartphone, TriangleAlert, User
+  ChevronDown, FileText, Home, QrCode, Receipt, Scale, Search, ShieldCheck, Smartphone, TriangleAlert, User
 } from 'lucide-react-native';
 import { ASSETS } from '../lib/assets';
 import { C, NavigationLayout } from './theme';
@@ -28,7 +28,8 @@ const LUCIDE: Record<string, React.ComponentType<{ size?: number | string; color
   bank: Building2,
   scale: Scale,
   file: FileText,
-  chevron: ChevronRight
+  chevron: ChevronRight,
+  chevronDown: ChevronDown
 };
 
 export function Icon({ name, size = 22, color = C.secondary }: { name: keyof typeof LUCIDE | string; size?: number; color?: string }) {

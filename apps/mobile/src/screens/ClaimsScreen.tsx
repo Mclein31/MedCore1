@@ -1,3 +1,4 @@
+import { usePullRefresh } from '../hooks/usePullRefresh';
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useResource } from '../hooks/useResource';
@@ -10,6 +11,7 @@ export default function ClaimsScreen() {
   const { client } = useAuth();
   const load = useCallback(() => createClaimsApi(client).list(), [client]);
   const { data, loading, error, refresh: loadList } = useResource(load);
+  const pullRefresh = usePullRefresh(loadList);
   const claims = data?.items || [];
 
   if (loading && !data) return <LoadingState message="Loading your insurance claims…" />;
@@ -17,7 +19,7 @@ export default function ClaimsScreen() {
 
   return (
     <Screen>
-      <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={loadList} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <RefreshNotice error={error} onRetry={loadList} />
         <Text style={[T.meta, { marginTop: 10 }]}>{claims.length === 0 ? 'No claims filed yet.' : `${claims.length} claim${claims.length > 1 ? 's' : ''} across your stays.`}</Text>
         {claims.length === 0 && <EmptyState title="No claims yet" detail="Insurance claims for your stays will appear here." />}

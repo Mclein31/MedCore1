@@ -3,6 +3,7 @@ import type { PatientEncounter, PatientOverview, SafePatient } from '../types/do
 
 export function createPatientApi(client: ApiClient) {
   return {
+    listHospitalPatients: () => client.get<{ items: Array<Pick<SafePatient, 'id' | 'mrn' | 'fullName'>>; total: number }>('/patient/demo/patients'),
     getMe: () => client.get<{ patient: SafePatient }>('/patient/me'),
     getEncounters: () => client.get<{ items: PatientEncounter[]; total: number }>('/patient/me/encounters'),
     getEncounter: (id: string) => client.get<PatientEncounter>(`/patient/me/encounters/${encodeURIComponent(id)}`),

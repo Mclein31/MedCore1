@@ -23,12 +23,12 @@ export const T = StyleSheet.create({
   numeral: { fontVariant: ['tabular-nums'] }
 });
 
-export function Screen({ children, safeTop = false, safeBottom = true, keyboard = false, keyboardOffset = 0, gutter = 22, background = C.surface }: {
-  children: React.ReactNode; safeTop?: boolean; safeBottom?: boolean; keyboard?: boolean; keyboardOffset?: number; gutter?: number; background?: string;
+export function Screen({ children, safeTop = false, safeBottom = true, keyboard = false, keyboardOffset = 0, gutter = 22, background = C.surface, topSpacing = 8 }: {
+  children: React.ReactNode; safeTop?: boolean; safeBottom?: boolean; keyboard?: boolean; keyboardOffset?: number; gutter?: number; background?: string; topSpacing?: number;
 }) {
   const insets = useSafeAreaInsets();
   return <KeyboardAvoidingView style={{ flex: 1, backgroundColor: background }} enabled={keyboard} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={keyboardOffset}>
-    <View style={[s.screen, { paddingTop: safeTop ? insets.top + 8 : 8, paddingBottom: safeBottom ? insets.bottom : 0, backgroundColor: background, paddingLeft: Math.max(gutter, insets.left), paddingRight: Math.max(gutter, insets.right) }]}>{children}</View>
+    <View style={[s.screen, { paddingTop: (safeTop ? insets.top : 0) + topSpacing, paddingBottom: safeBottom ? insets.bottom : 0, backgroundColor: background, paddingLeft: Math.max(gutter, insets.left), paddingRight: Math.max(gutter, insets.right) }]}>{children}</View>
   </KeyboardAvoidingView>;
 }
 

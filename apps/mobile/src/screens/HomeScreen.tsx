@@ -1,3 +1,4 @@
+import { usePullRefresh } from '../hooks/usePullRefresh';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
@@ -13,6 +14,7 @@ function firstName(full: string | undefined): string {
 }
 export default function HomeScreen({ navigation }: { navigation: any }) {
   const { patient, encounters, overview, currentEncounter, loading, error, lastSynced, refresh } = usePatient();
+  const pullRefresh = usePullRefresh(refresh);
   const facility = useFacilityName();
   const net = useNetworkStatus();
   if (loading && !overview) return <LoadingState message="Loading your hospital account…" />;
@@ -29,7 +31,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     { label: readyToPay ? 'Pay' : 'Payments', icon: 'payments', disabled: readyToPay && (!!error || !net.connected || loading), onPress: () => readyToPay ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid }) : navigation.navigate('Payments') },
     { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
   ];
-  return <Screen gutter={0} safeBottom={false} background={C.paper}><ScrollView contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
+  return <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
     <View style={{ backgroundColor: C.hero, minHeight: 237, paddingHorizontal: 25, paddingTop: 28, paddingBottom: 126 }}>
       <Text style={{ color: C.heroSub, fontSize: 13 }}>Good day,</Text>
       <Text accessibilityRole="header" style={{ color: C.surface, fontSize: 22, fontWeight: '600', marginTop: 4 }}>{patient?.fullName || firstName(patient?.fullName)}</Text>

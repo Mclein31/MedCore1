@@ -28,6 +28,7 @@
   },
   "scripts": {
     "dev": "npm run dev:server --prefix ../..",
+    "dev:server": "npm run dev:server --prefix ../..",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",

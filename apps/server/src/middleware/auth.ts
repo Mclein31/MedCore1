@@ -4,6 +4,7 @@ import { eq, and, gt } from 'drizzle-orm';
 import { db } from '../db';
 import { users, userSessions } from '../db/schema';
 import { hashSessionToken } from '../services/authService';
+import { mobileDemoCapability } from '../services/mobileDemoAccess';
 import { apiError } from './error';
 
 export interface AuthUser {
@@ -19,6 +20,7 @@ export interface AuthUser {
   panNumber?: string | null;
   contactNumber?: string | null;
   linkedMrn?: string | null;
+  mobileDemoAdmin?: boolean;
 }
 
 declare module 'hono' {
@@ -99,7 +101,8 @@ export async function authMiddleware(c: Context, next: Next) {
           prcLicense: user.prcLicense,
           panNumber: user.panNumber,
           contactNumber: user.contactNumber,
-          linkedMrn: (user as any).linkedMrn ?? null
+          linkedMrn: (user as any).linkedMrn ?? null,
+          mobileDemoAdmin: mobileDemoCapability(user)
         });
       }
     } catch (e) {
