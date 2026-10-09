@@ -60,7 +60,16 @@
    - **Republic Act No. 10932**: *An Act Strengthening the Anti-Hospital Deposit Law (2017)*.
    - **Republic Act No. 11765**: *Financial Products and Services Consumer Protection Act of 2022*.
    - **Republic Act No. 10173**: *Data Privacy Act of 2012* (National Privacy Commission).
+   - **Republic Act No. 7192**: *Women in Development and Nation-Building Act of 1992*.
+   - **Republic Act No. 9710**: *The Magna Carta of Women of 2009*.
    - **Executive Order No. 192 (s. 2015)**: *Transferring the Regulation and Supervision of Health Maintenance Organizations to the Insurance Commission*.
+
+3. [FACT] **NEDA, PCW & ODA-GAD Network Guidelines**  
+   - **Harmonized Gender and Development Guidelines (HGDG) for Project Development, Implementation, Management, Monitoring and Evaluation** (Third Edition, Second Printing, June 2019).  
+   - *Issuing Bodies*: National Economic and Development Authority (NEDA), Philippine Commission on Women (PCW), and Official Development Assistance – Gender and Development Network (ODA-GAD Network).  
+   - *Technical Authors*: Jeanne Frances I. Illo & MaryAnne E.R. Darauay.  
+   - *Official Reference URL*: `https://unifast.gov.ph/assets/pdf/gad/HGDG_guidelines.pdf`  
+   - *Vault Compendium*: [gad_hgdg_guidelines.md](gad_hgdg_guidelines.md)
 
 ---
 

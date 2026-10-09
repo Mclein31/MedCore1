@@ -4,6 +4,19 @@
 > **Knowledge Layer**: Product Intelligence Vault (`MedCore_Vault/`)  
 > **Standards Compliance**: Keep a Changelog & Semantic Versioning
 
+## [1.22.0] — 2026-10-09
+
+### Harmonized Gender & Development Guidelines (HGDG 3rd Edition) Regulatory Architecture Integration
+
+#### Added
+- [KNOWLEDGE COMPENDIUM] **Harmonized Gender & Development Guidelines (HGDG) Compendium (`MedCore_Vault/RESEARCH/gad_hgdg_guidelines.md`)**: Synthesized the official NEDA, PCW, and ODA-GAD Network HGDG (3rd Edition, 2019) guidelines into the research vault. Documented the Sara Longwe 5-level empowerment framework, 10 Core GAD Elements, 20-point Box 7 assessment scoring scale, Health Sector (Box 13) and ICT Sector (Box 19) checklists, and statutory anchors under RA 7192, RA 9710 (Magna Carta of Women), and NEDA ICC Policy (2016).
+- [STATUTORY REGISTRATION] **GAD & Magna Carta of Women Codification (`MedCore_Vault/RESEARCH/regulations.md`, `MedCore_Vault/RESEARCH/sources.md`)**: Codified Republic Act No. 7192, Republic Act No. 9710, and NEDA ICC HGDG submission rules into the legal compendium and bibliographic citations.
+- [ONTOLOGY EXPANSION] **GAD & Sex-Disaggregated Data Lexicon (`MedCore_Vault/ONTOLOGY.md`)**: Formally defined canonical domain entries for Harmonized Gender and Development Guidelines (HGDG), Gender Mainstreaming, and Sex-Disaggregated Data (SDD).
+
+#### Changed
+- [PRODUCT ROADMAP & BRAIN ALIGNMENT] **Provincial Governance & Public Hospital GAD Qualification (`.brain/PROJECT_CONTEXT.md`)**: Mapped MedCore's architecture to qualify as "Gender-Responsive" ($\ge 15.0/20.0$ on HGDG Box 7), unlocking provincial LGU GAD budget attribution under RA 9710 (5% statutory allocation) for public hospital rollouts and the PGC Digital Innovation Challenge.
+- [RESEARCH PROPOSAL SYNCHRONIZATION] **Detailed Research Proposal Sync (`docs/3-Detailed_Proposal_Format (1).docx`)**: Synchronized the detailed capstone proposal with the project Brain and Vault. Comprehensively expanded the Review of Related Literature (RRL) to thoroughly cover the private HMO landscape (Insurance Commission regulation under EO 192, ₱61.05B claims paid in 2024, the "PhilHealth-First" coordination rule, the 2–4 hr final LOA adjudication bottleneck, and consumable exclusions). Updated AI architecture to Google AI Studio Gemini 2.5 Flash backend proxy (ADR-008), integrated the 5-Pillar Value Engine, and embedded the Harmonized Gender & Development Guidelines (HGDG) standards.
+
 ## [1.21.0] — 2026-10-02
 
 ### Brand Restoration, Design Token Primitives, UX Overhaul & PostgreSQL 17 Backend Hardening

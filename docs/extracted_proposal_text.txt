@@ -1,0 +1,464 @@
+--- P0 [Normal] ---
+DETAILED RESEARCH PROPOSAL
+
+--- P1 [Normal] ---
+
+
+--- P2 [Normal] ---
+I.  GENERAL INFORMATION
+
+--- P3 [Normal] ---
+Research Title:  
+
+--- P4 [Normal] ---
+MedCore: An AI-powered platform for transparent Hospital Billing and Insurance Reconciliation
+
+--- P5 [Normal] ---
+Proponent(s): 
+
+--- P6 [Normal] ---
+CALLUENG, MARC ANDRE NICOLAS M. 	
+
+--- P7 [Normal] ---
+MONTENEGRO, MICOH JEREMY C.
+
+--- P8 [Normal] ---
+FERNANDO M. JAMINOLA JR.
+
+--- P9 [Normal] ---
+ONZA, MCLEIN JEI G.
+
+--- P10 [Normal] ---
+
+
+--- P11 [Normal] ---
+Project Study Leader:  
+
+--- P12 [Normal] ---
+FERNANDO M. JAMINOLA JR.
+
+--- P13 [Normal] ---
+Co-Researcher(s):  	    
+
+--- P14 [Normal] ---
+CALLUENG, MARC ANDRE NICOLAS M.
+
+--- P15 [Normal] ---
+MONTENEGRO, MICOH JEREMY C.
+
+--- P16 [Normal] ---
+ONZA, MCLEIN JEI G.
+
+--- P17 [Normal] ---
+
+
+--- P18 [Normal] ---
+Implementing Institution(s):  
+
+--- P19 [Normal] ---
+Cagayan State University – Carig Campus, College of Information and Computing Sciences
+
+--- P20 [Normal] ---
+
+
+--- P21 [Normal] ---
+Cooperating Agency(ies):	
+
+--- P22 [Normal] ---
+Regional/Local partner hospitals and healthcare facilities within Cagayan Valley (Region II) for pilot testing and validation.
+
+--- P23 [Normal] ---
+
+
+--- P24 [Normal] ---
+Duration:  
+
+--- P25 [Normal] ---
+12 Months (Start Date: November 3, 2026 – Completion Date: November 3, 2027)
+
+--- P26 [Normal] ---
+
+
+--- P27 [Normal] ---
+
+
+--- P28 [Normal] ---
+
+
+--- P29 [Normal] ---
+
+
+--- P30 [Normal] ---
+
+
+--- P31 [Normal] ---
+
+
+--- P32 [Normal] ---
+
+
+--- P33 [Normal] ---
+II. INTRODUCTION
+
+--- P34 [Normal] ---
+
+
+--- P35 [Normal] ---
+A.  Background/Rationale:
+
+--- P36 [Normal] ---
+	Hospital financial administration in the Philippines is heavily constrained by legacy database architectures and fragmented manual calculations. When patients prepare for discharge, nursing stations and billing departments struggle to aggregate real-time charges from pharmacy requisitions and bedside orders without disrupting core Electronic Medical Record (EMR) operations. Furthermore, applying statutory deductions such as the 12% VAT exemption, the 20% Senior Citizen (SC) and Person with Disability (PWD) discounts, Philippine Health Insurance Corporation (PhilHealth) All Case Rates (ACR), and secondary Health Maintenance Organization (HMO) coverage caps is prone to human error and prolonged backlogs.
+
+--- P37 [Normal] ---
+	These delays create severe bottlenecks: patients experience financial opacity and prolonged confinement, while hospitals suffer from constrained bed capacity. MedCore addresses this challenge by non-invasively capturing real-time hospital charges, automating the multi-tier statutory deduction cascade, and streamlining digital checkout and discharge processes to comply with legal mandates like Republic Act No. 9439 or the Anti-Hospital Detention Law.
+
+--- P38 [Normal] ---
+
+
+--- P39 [Normal] ---
+B.  Statement of the Problem/Objectives: 
+
+--- P40 [Normal] ---
+General Objective: 
+
+--- P41 [Normal] ---
+	Generally, this study aims to design, develop, and evaluate MedCore, an intelligent platform engineered to streamline hospital billing transparency, statutory reconciliation, and digital patient discharge workflows. Specifically, this research seeks to answer the following questions:
+
+--- P42 [Normal] ---
+What is the current average hospital bed turnover time, and what are the primary administrative bottlenecks encountered during the manual patient discharge and billing process?
+
+--- P43 [Normal] ---
+How can a middleware platform (MedCore) be designed and developed to successfully integrate legacy EMR data, automate multi-tier statutory deductions (VAT, SC/PWD, PhilHealth, HMO), and execute AI-translated SMS notifications?
+
+--- P44 [Normal] ---
+What is the level of software quality and user acceptability of the developed MedCore platform as evaluated by: a. IT Experts and Hospital Administrators based on the ISO/IEC 25010 Software Quality Standard (specifically in terms of Functional Suitability, Performance Efficiency, and Security/Data Privacy)? b. End-user patients and hospital staff based on the Technology Acceptance Model (TAM) (specifically in terms of Perceived Usefulness and Perceived Ease of Use)?
+
+--- P45 [Normal] ---
+Is there a significant reduction in hospital bed turnover time after the implementation of the MedCore platform compared to the pre-implementation baseline?
+
+--- P46 [Normal] ---
+Objectives of the Study:
+
+--- P47 [Normal] ---
+To answer the aforementioned questions, the researchers will pursue the following specific objectives:
+
+--- P48 [Normal] ---
+To conduct a baseline time-motion study and needs assessment to map the current hospital discharge bottlenecks and existing bed turnover times.
+
+--- P49 [Normal] ---
+To design and develop the MedCore middleware, encompassing the non-invasive EMR database connector, the automated statutory calculation engine, and the omnichannel AI-powered SMS digital checkout system.
+
+--- P50 [Normal] ---
+To evaluate the technical software quality using the ISO/IEC 25010 standard with technical experts, and to assess user acceptability using the Technology Acceptance Model (TAM) with hospital staff and patients.
+
+--- P51 [Normal] ---
+To measure and evaluate the platform’s real-world impact by statistically comparing the post-implementation hospital bed turnover times against the established baseline.
+
+--- P52 [Normal] ---
+
+
+--- P53 [Normal] ---
+
+
+--- P54 [Normal] ---
+III. REVIEW OF LITERATURE:
+
+--- P55 [Normal] ---
+	Healthcare institutional efficiency relies heavily on frictionless data integration and swift financial clearing. Banogon et al. (2025) found that systemic inefficiencies at both PhilHealth and facility levels contribute to delays and claim denials. They emphasize that reforming facility claims processing workflows and information system integration are crucial to enhancing reimbursement efficiency.
+
+--- P56 [Normal] ---
+Hagag et al. (2025) reinforce that hospital financial administration in the Philippines faces severe bottlenecks driven by fragmented data processes. This mirrors the systemic data fragmentation and weak clinical-financial integration highlighted by Co et al. (2026), where the lack of synchronized digital infrastructure obstructs efficient provider payment reforms. Furthermore, Pantig and Ulep (2025) conclude that current hospital billing is severely strained because PhilHealth reimbursements provide a low support value (20% to 40%), leaving patients to cover massive out-of-pocket balances.
+
+--- P57 [Normal] ---
+Concurrently, legal frameworks such as Republic Act No. 9439 mandate efficient release mechanisms for patients incapable of paying immediate balances. By fusing non-invasive legacy data capture with automated deduction algorithms and instant digital channels, MedCore bridges the gap between administrative compliance and patient-centric design, providing a technological solution to the systemic bottlenecks identified in recent public health literature.
+
+--- P58 [Normal] ---
+
+
+--- P59 [Normal] ---
+IV. CONCEPTUAL/THEORETICAL FRAMEWORK:  
+
+--- P60 [Normal] ---
+	This study is anchored on the integration of the Technology Acceptance Model (TAM) by Fred Davis and the Information Systems Success Model (ISSM) by DeLone and McLean.
+
+--- P61 [Normal] ---
+	The TAM will be used to evaluate the system’s adoption through two primary variables: Perceived Usefulness (how the automated statutory calculation engine accelerates workflows) and Perceived Ease of Use (how easily patients navigate SMS magic links). Concurrently, the ISSM provides the theoretical basis for evaluating the system’s technical rigor. System Quality will be measured by the reliability of the database connector to legacy EMRs. Information Quality will evaluate the centavo-exact accuracy of the multi-tier deductions (12% VAT, SC/PWD). Finally, Net Benefits serves as the framework for measuring the overall reduction in hospital bed turnover times.
+
+--- P62 [Normal] ---
+	
+
+--- P63 [Normal] ---
+	Figure 1. Theoretical Framework of the Study.
+
+--- P64 [Normal] ---
+	Figure 2. Conceptual Framework of the Study.
+
+--- P65 [Normal] ---
+
+
+--- P66 [Normal] ---
+
+
+--- P67 [Normal] ---
+V.  SIGNIFICANCE OF THE STUDY:  
+
+--- P68 [Normal] ---
+a) National Goals/Plans: Supports the Department of Health’s (DOH) eHealth Strategic Framework and the Universal Health Care (UHC) Act (RA 11223) by optimizing healthcare financing, claims processing, and provider payment mechanisms.
+
+--- P69 [Normal] ---
+b) National Policies: Ensures strict institutional compliance with Republic Act No. 9439 (Anti-Hospital Detention Law) via digital promissory notes, automates mandated statutory discounts (SC/PWD, VAT), and adheres to the Data Privacy Act (RA 10173).
+
+--- P70 [Normal] ---
+c) Emerging Realities: Mitigates hospital administrative staffing shortages and data fragmentation by replacing manual multi-tier calculations with automated workflows and modern digital payment integrations (QR Ph, GCash, Maya).
+
+--- P71 [Normal] ---
+d) Regional/Local Goals/Plans: Advances healthcare modernization across Cagayan Valley (Region II) by eliminating administrative discharge bottlenecks, directly improving hospital bed turnover rates and expanding local patient capacity.
+
+--- P72 [Normal] ---
+e) Community Goals/Plans: Protects financially vulnerable patients from hidden out-of-pocket costs and delayed discharges by providing real-time, transparent, plain-language billing summaries directly via SMS.
+
+--- P73 [Normal] ---
+
+
+--- P74 [Normal] ---
+VI. PROCEDURE/METHODOLOGY:  
+
+--- P75 [Normal] ---
+	The project will employ a participatory developmental approach involving the research project team and designated hospital personnel. The implementation will begin with consultation, needs assessment, and process mapping to identify requirements for the proposed systems. These requirements will guide the design and development of the systems, followed by testing, user validation, refinement, and deployment. 
+
+--- P76 [Normal] ---
+	After deployment, designated personnel will undergo system orientation and hands-on training. The developed systems will subsequently be evaluated by selected users in terms of functionality, usability, and effectiveness. User feedback and evaluation results will be used to identify necessary improvements and recommendations for the continued use and sustainability of the systems. 
+
+--- P77 [Normal] ---
+	Research Design & Software Development Life Cycle (SDLC) The technical construction of MedCore will utilize the Evolutionary Prototyping SDLC model. Given the complexity of hospital billing workflows, a prototyping approach ensures system requirements are accurately captured before deep technical integration begins. Initial UI/UX prototypes will be presented to users for feedback, continually refined, and sequentially integrated with legacy EMR systems.
+
+--- P78 [Normal] ---
+
+--- P79 [Normal] ---
+
+
+--- P80 [Normal] ---
+Implementation Process
+
+--- P81 [Normal] ---
+The study operationalizes the Design Science Research (DSR) framework through a rigorous 9-stage workflow:
+
+--- P82 [Normal] ---
+Consultation: Engage with stakeholders (hospital administrators, users, experts) to understand needs, expectations, and project scope. 
+
+--- P83 [Normal] ---
+Needs Assessment: Analyze current processes, identify problems and requirements, and conduct a baseline time-motion study to measure current hospital bed turnover times.
+
+--- P84 [Normal] ---
+System Design: Create the system architecture, database design, user interface, and technical specifications. 
+
+--- P85 [Normal] ---
+Development: Build the system based on the design using appropriate technologies and coding standards. 
+
+--- P86 [Normal] ---
+Testing: Verify functionality, performance, security, and usability, and fix issues to ensure the system meets requirements. 
+
+--- P87 [Normal] ---
+Deployment: Install the system in the production environment and make it available to end users. 
+
+--- P88 [Normal] ---
+Training: Equip users with the necessary knowledge and skills to effectively use the system. 
+
+--- P89 [Normal] ---
+Evaluation: Measure system performance, user satisfaction, and achievement of objectives. 
+
+--- P90 [Normal] ---
+Enhancement: Implement improvements based on feedback, new requirements, and evolving needs. 
+
+--- P91 [Normal] ---
+
+
+--- P92 [Normal] ---
+Criteria in the Selection and Screening of Participants
+
+--- P93 [Normal] ---
+Participants will be selected through purposive sampling. To satisfy the study's dual-evaluation framework, participants will be categorized into two distinct user groups:
+
+--- P94 [Normal] ---
+Group A: IT Experts and Hospital Personnel (For ISO/IEC 25010 and TAM Evaluation)
+
+--- P95 [Normal] ---
+Be current personnel or administrators of the partner regional/local healthcare facilities.
+
+--- P96 [Normal] ---
+Be directly involved in IT administration, billing, insurance reconciliation, or records management workflows.
+
+--- P97 [Normal] ---
+Be identified as potential users or administrators of the MedCore staff dashboard.
+
+--- P98 [Normal] ---
+Be willing to participate in system orientation, hands-on training, and the technical evaluation phases.
+
+--- P99 [Normal] ---
+Group B: End-User Patients (For TAM Evaluation)
+
+--- P100 [Normal] ---
+Be a purposive subset of recently discharged patients (or their authorized proxies/relatives) who have experienced the hospital’s discharge and billing process.
+
+--- P101 [Normal] ---
+Have access to a standard mobile device to properly test, navigate, and evaluate the clarity of the patient-facing SMS magic links and digital checkout interfaces.
+
+--- P102 [Normal] ---
+General Criteria for All Participants:
+
+--- P103 [Normal] ---
+Must provide documented informed consent to participate in the project activities.
+
+--- P104 [Normal] ---
+Personnel or patients who are not involved in the covered billing/discharge processes, or who are unavailable or unwilling to participate, will be strictly excluded from the system evaluation activities.
+
+--- P105 [Normal] ---
+
+
+--- P106 [Normal] ---
+Capability Building / Training
+
+--- P107 [Normal] ---
+	The capability-building component will ensure that designated personnel can effectively use and manage the developed systems. Training will use a hands-on approach based on actual hospital workflows and will cover: 
+
+--- P108 [Normal] ---
+
+
+--- P109 [Normal] ---
+VII. EXPECTED OUTPUTS:
+
+--- P110 [Normal] ---
+Upon completion of the 12-month project duration, the research will produce:
+
+--- P111 [Normal] ---
+A fully functional MedCore Middleware Prototype deployed in a partner hospital setting, featuring a working EMR database connector, statutory calculation engine, and SMS checkout gateway.
+
+--- P112 [Normal] ---
+A Comprehensive Impact Evaluation Report detailing the ISO 25010 and TAM evaluation scores, and the quantitative reduction in hospital bed turnover times compared to baselines.
+
+--- P113 [Normal] ---
+User Manuals and Technical Documentation (including AI privacy guidelines) turned over to the partner hospital IT departments for sustainability.
+
+--- P114 [Normal] ---
+An Academic Capstone Manuscript ready for publication or presentation in local/national IT and Health Informatics research colloquiums.
+
+--- P115 [Normal] ---
+
+
+--- P116 [Normal] ---
+VIII. SCHEDULE OF ACTIVITIES:  
+
+--- P117 [Normal] ---
+The implementation schedule spans a 12-month period, utilizing the developmental workplan structure to track distinct project milestones. 
+
+--- P118 [Normal] ---
+
+
+
+--- P119 [Normal] ---
+Major Activities Workplan
+
+--- P120 [Normal] ---
+
+
+--- P121 [Normal] ---
+Implementation Targets & Indicators
+
+--- P122 [Normal] ---
+IX. BUDGETARY REQUIREMENTS:  
+
+--- P123 [Normal] ---
+(This includes a detailed/itemized breakdown of the total project cost and the source/s of funds per quarter, the first quarter should be broken down into month. ( Please see attached form)
+
+--- P124 [Normal] ---
+
+
+--- P125 [Normal] ---
+X.  LITERATURE CITED: 
+
+--- P126 [Normal] ---
+Banogon, M. R., Llanes, G. E. D. C., Nañagas, J. M. P. R., & Galvez Tan, J. Z. (2025). Bridging policy and practice: A qualitative study on PhilHealth claims and financial processes in public hospitals. Philippine Journal of Health Research and Development, 29(3), 79–90. https://doi.org/10.4103/PJHRD.PJHRD_6_25
+
+--- P127 [Normal] ---
+Casas, L., Hagag, S. R. H. M., Ho, F. D. V., Medina, R., Rodriguez, H. M., & Ulep, V. G. (2025). Measuring hospital performance in the Philippines: Evidence on quality, efficiency, and equity from social health insurance claims (PIDS Discussion Paper Series No. 2025-30). Philippine Institute for Development Studies. https://hdl.handle.net/10419/331530
+
+--- P128 [Normal] ---
+Co, P. A., Vîlcu, I., Boxshall, M., Tambio, J., Hart, T., Serebro, D., Lacroix, A., Alvior, H. M., Hameed, N., Mariano, M. A., Mirangi, E., Murira, F., Mulyadita, U., Nakyanzi, A., Offosse, M.-J., Putra, R., Khan, M. S. U., Samson, M. C., Setiawan, E., & Ravishankar, N. (2026, July). Financing the frontlines: How health facilities receive, manage, and utilize resources in six low- and middle-income countries. Health Systems Insight; ODI Global. https://healthsystemsinsight.org/wp-content/uploads/2026/07/Facility-Financing-Report_July-2026.pdf	
+
+--- P129 [Normal] ---
+Hagag, S. R. H. M., Rodriguez, H. M., Ho, F. D. V., Uy, J., & Ulep, V. G. (2025). Utilization of inpatient care in the Philippines: Evidence from social health insurance claims data (PIDS Discussion Paper Series No. 2025-63). Philippine Institute for Development Studies. https://doi.org/10.62986/dp2025.63
+
+--- P130 [Normal] ---
+Pantig, I. M., & Ulep, V. G. (2025). Piecing the puzzle: Addressing the multi-payer and fragmented health financing system in the Philippines (PIDS Discussion Paper Series No. 2025-28). Philippine Institute for Development Studies. https://doi.org/10.62986/dp2025.28
+
+--- P131 [Normal] ---
+Republic Act No. 9439 (2007). Senate of the Philippines Legislative Issuances Library.
+
+--- P132 [Normal] ---
+
+
+--- P133 [Normal] ---
+
+
+--- P134 [Normal] ---
+
+
+--- P135 [Normal] ---
+
+
+--- P136 [Normal] ---
+Submitted:						Endorsed by:
+
+--- P137 [Normal] ---
+FERNANDO M. JAMINOLA JR.
+
+--- P138 [Normal] ---
+___________________________________		_____________________________
+
+--- P139 [Normal] ---
+(Printed Name and Signature of Proponent)		(Signature above printed Name)
+
+--- P140 [Normal] ---
+
+
+--- P141 [Normal] ---
+
+
+--- P142 [Normal] ---
+
+
+--- P143 [Normal] ---
+
+
+--- P144 [Normal] ---
+
+
+--- P145 [Normal] ---
+
+
+
+=== TABLE 0 (rows: 4, cols: 3) ===
+Row 0: Training Activity | Coverage | Expected Output
+Row 1: System Orientation | Purpose, features, functions, and user roles of the systems | Participants understand the systems and their functions
+Row 2: Hands-on Training | Encoding, recording, searching, updating, tracking, and report generation | Participants demonstrate basic system operation
+Row 3: System Management Training | Data management, basic troubleshooting, backup, and responsible information handling | Designated personnel capable of basic system management
+
+=== TABLE 1 (rows: 11, cols: 5) ===
+Row 0: Major Activities | Q1 (Nov - Jan) | Q2 (Feb - Apr) | Q3 (May - Jul) | Q4 (Aug - Oct)
+Row 1: Project coordination and hospital consultation | / |  |  | 
+Row 2: Needs assessment and process mapping | / |  |  | 
+Row 3: Needs assessment, process mapping, and baseline data gathering | / |  |  | 
+Row 4: System development |  | / | / | 
+Row 5: System testing and debugging |  | / | / | 
+Row 6: User acceptance testing and refinement |  | / | / | 
+Row 7: System deployment |  | / | / | 
+Row 8: System orientation and training |  |  | / | /
+Row 9: System evaluation |  |  | / | /
+Row 10: Documentation and final reporting |  |  | / | /
+
+=== TABLE 2 (rows: 5, cols: 3) ===
+Row 0: Program / Project Phase | Expected Output / Indicator | Schedule
+Row 1: Consultation & Design | 1 partnership/MOA established    System requirements specification document | Q1
+Row 2: Development & Testing | UAT completion report    Bug-fix documentation | Q2 – Q3
+Row 3: Deployment & Training | Deployed systems | Q3
+Row 4: Evaluation & Reporting | Post-implementation monitoring report    User feedback report | Q4

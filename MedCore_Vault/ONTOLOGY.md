@@ -117,3 +117,12 @@
 #### Anti-Hospital Deposit Law (RA 10932)
 - [FACT] **Definition**: Legislation making it illegal to solicit, demand, or accept any deposit or advance payment as a prerequisite for administering basic emergency medical treatment or obstetric care.
 - **MedCore Context**: Ensures pre-admission financial estimation (Stage 1: GUIDE) is framed as transparent orientation, never as an unlawful gatekeeping deposit.
+
+#### Harmonized Gender and Development Guidelines (HGDG)
+- [FACT] **Definition**: The unified national analytical framework and assessment instrument formulated by the National Economic and Development Authority (NEDA), Philippine Commission on Women (PCW), and the ODA-GAD Network pursuant to Republic Act No. 7192 and Republic Act No. 9710 (Magna Carta of Women). It scores programs on a 20-point scale across 10 core elements to evaluate their gender responsiveness (Box 7) and sector-specific impact (Box 13 Health, Box 19 ICT).
+- **MedCore Context**: Governs MedCore's eligibility for local government unit (LGU) and public hospital statutory GAD funding (5% mandated annual budget). MedCore incorporates sex-disaggregated telemetry, safeguards female family caregivers from billing opacity, and alleviates administrative strain on predominantly female hospital billing and nursing staff.
+
+#### Sex-Disaggregated Data (SDD)
+- [FACT] **Definition**: Quantitative and qualitative data collected, classified, and analyzed separately by sex (female/male) to identify gender disparities, differential access to resources, and distinct health and financial outcomes.
+- **MedCore Context**: Captured in MedCore's data tier (`gender VARCHAR(16)`) and telemetry engines to generate gender-responsive hospital analytics, out-of-pocket tracking, and health insurance utilization metrics.
+
