@@ -1,3 +1,4 @@
+import { validateGovernmentId, type GovernmentIdType } from '../../../shared/governmentId';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Encounter, ChargemasterItem, DischargeStage, PromissoryNote, DischargePass, PaymentReceipt } from '@/types/domain';
 import { NavRoute, UserRole } from '@/types/navigation';
@@ -92,11 +93,11 @@ interface MedCoreContextType {
   executePromissoryNote: (
     encounterId: string,
     borrowerName: string,
-    idType: 'PHILSYS_NATIONAL_ID' | 'UMID' | 'DRIVERS_LICENSE',
+    idType: GovernmentIdType,
     idNumber: string,
     months: 3 | 6 | 12,
     customPrincipal?: number
-  ) => void;
+  ) => Promise<void>;
   freezeDisputeItem: (encounterId: string, itemId: string, reason: string) => void;
   supervisoryWaiveItem: (encounterId: string, itemId: string, notes: string) => void;
 
@@ -824,7 +825,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const executePromissoryNote = async (
     encounterId: string,
     borrowerName: string,
-    idType: 'PHILSYS_NATIONAL_ID' | 'UMID' | 'DRIVERS_LICENSE',
+    idType: GovernmentIdType,
     idNumber: string,
     months: 3 | 6 | 12,
     customPrincipal?: number
@@ -834,70 +835,33 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       ? customPrincipal
       : (promissoryCustomAmount !== null ? promissoryCustomAmount : (encTarget?.waterfall.netPatientDue || 0));
 
+    const identity = validateGovernmentId(idType, idNumber);
+    if (!identity.valid) {
+      setApiError(identity.error);
+      throw new Error(identity.error);
+    }
+    setApiError(null);
     try {
       const res = await apiClient.executePromissoryNote(encounterId, {
         borrowerName,
         borrowerRelationship: 'GUARANTOR',
         borrowerIdType: idType,
-        borrowerIdNumber: idNumber,
+        borrowerIdNumber: identity.normalized,
         installmentMonths: months,
         principalAmount: targetPrincipal
       });
-      if (res?.encounter) {
-        setEncounters((prev) =>
-          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-        );
-        setIsPromissoryModalOpen(false);
-        setIsGatePassModalOpen(true);
-        return;
+      if (!res?.success || !res.promissoryNote?.id || !res.encounter) {
+        throw new Error('The hospital did not confirm this payment plan. Please try again.');
       }
+      setEncounters((prev) =>
+        prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
+      );
+      setIsPromissoryModalOpen(false);
+      if (res.dischargePass || res.encounter.dischargePass) setIsGatePassModalOpen(true);
     } catch (err: any) {
-      console.error('API promissory note failure:', err);
       setApiError(`Failed to execute promissory note on server: ${err.message || 'Unknown error'}`);
+      throw err;
     }
-
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const principal = targetPrincipal;
-        const plan = calculateInstallmentPlan(principal, months);
-        const note: PromissoryNote = {
-          id: `PN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-          encounterId: enc.id,
-          borrowerName,
-          borrowerRelationship: 'GUARANTOR',
-          borrowerIdType: idType,
-          borrowerIdNumber: idNumber,
-          principalAmount: principal,
-          installmentMonths: months,
-          monthlyInstallment: plan.monthlyInstallment,
-          firstDueDate: '2026-10-25',
-          digitalSignatureTimestamp: new Date().toISOString(),
-          status: 'ACTIVE'
-        };
-
-        const clearedPass: DischargePass = {
-          passNumber: `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`,
-          encounterId: enc.id,
-          patientName: enc.patient.maskedName,
-          roomBed: enc.roomBed,
-          settledAmount: principal,
-          settlementChannel: 'PROMISSORY_NOTE',
-          issuedAt: new Date().toISOString(),
-          status: 'ACTIVE_READY_FOR_EXIT',
-          hmacSignature: `sig_ra9439_${Math.random().toString(36).substring(2, 12)}`
-        };
-
-        return {
-          ...enc,
-          stage: 'CLEARED_GATE_PASS',
-          promissoryNote: note,
-          dischargePass: clearedPass
-        };
-      })
-    );
-    setIsPromissoryModalOpen(false);
-    setIsGatePassModalOpen(true);
   };
 
   const freezeDisputeItem = async (encounterId: string, itemId: string, reason: string) => {
