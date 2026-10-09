@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { GOVERNMENT_ID_RULES, validateGovernmentId, type GovernmentIdType } from '../../../../shared/governmentId';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPeso } from '@/utils/formatters';
 import { calculateInstallmentPlan } from '@/utils/financing';
@@ -33,10 +34,15 @@ export const DigitalPromissoryModal: React.FC = () => {
 
   const [principalAmount, setPrincipalAmount] = useState<number>(initialPrincipal);
   const [borrowerName, setBorrowerName] = useState(enc ? enc.patient.fullName || enc.patient.maskedName : '');
-  const [idType, setIdType] = useState<'PHILSYS_NATIONAL_ID' | 'UMID' | 'DRIVERS_LICENSE'>('PHILSYS_NATIONAL_ID');
-  const [idNumber, setIdNumber] = useState('1284-9921-4820-9182');
+  const [idType, setIdType] = useState<GovernmentIdType>('PHILSYS_NATIONAL_ID');
+  const [idNumber, setIdNumber] = useState('');
   const [months, setMonths] = useState<3 | 6 | 12>(6);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const lock = useRef(false);
+  const identity = validateGovernmentId(idType, idNumber);
+  const idRule = GOVERNMENT_ID_RULES[idType];
 
   // Sync state whenever selected encounter changes or modal opens
   useEffect(() => {
@@ -44,6 +50,7 @@ export const DigitalPromissoryModal: React.FC = () => {
       setBorrowerName(enc.patient.fullName || enc.patient.maskedName);
       const amt = promissoryCustomAmount !== null ? promissoryCustomAmount : enc.waterfall.netPatientDue;
       setPrincipalAmount(amt);
+      setIdNumber(''); setIsSuccess(false); setError(null);
     }
   }, [enc?.id, isPromissoryModalOpen, promissoryCustomAmount]);
 
@@ -57,15 +64,14 @@ export const DigitalPromissoryModal: React.FC = () => {
   const plan12 = calculateInstallmentPlan(balance, 12);
   const currentPlan = months === 3 ? plan3 : months === 6 ? plan6 : plan12;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (balance <= 0) return;
-    executePromissoryNote(enc.id, borrowerName, idType, idNumber, months, balance);
-    setIsSuccess(true);
-    setTimeout(() => {
-      setIsSuccess(false);
-      closePromissoryModal();
-    }, 1400);
+    if (balance <= 0 || lock.current) return;
+    if (!identity.valid) { setError(identity.error); return; }
+    lock.current = true; setBusy(true); setError(null);
+    try { await executePromissoryNote(enc.id, borrowerName, idType, identity.normalized, months, balance); setIsSuccess(true); }
+    catch (err) { setError(err instanceof Error ? err.message : 'The hospital could not confirm this payment plan.'); }
+    finally { lock.current = false; setBusy(false); }
   };
 
   return (
@@ -239,13 +245,14 @@ export const DigitalPromissoryModal: React.FC = () => {
                 <Select
                   size="md"
                   value={idType}
-                  onChange={(e) => setIdType(e.target.value as any)}
+                  onChange={(e) => { setIdType(e.target.value as GovernmentIdType); setIdNumber(''); }}
                   wrapperClassName="w-full"
                   className="w-full text-sm text-slate-900"
                 >
                   <option value="PHILSYS_NATIONAL_ID">PhilSys National ID</option>
                   <option value="UMID">Unified Multi-Purpose ID (UMID)</option>
                   <option value="DRIVERS_LICENSE">LTO Driver's License</option>
+                  <option value="PASSPORT">Philippine Passport</option>
                 </Select>
               </div>
             </div>
@@ -261,7 +268,12 @@ export const DigitalPromissoryModal: React.FC = () => {
                   onChange={(e) => setIdNumber(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-600"
                   required
+                  placeholder={idRule.placeholder}
+                  autoComplete="off"
+                  aria-invalid={idNumber.length > 0 && !identity.valid}
                 />
+                <p className="mt-2 text-xs text-slate-600">{idRule.hint}</p>
+                {idNumber && !identity.valid && <p role="alert" className="mt-2 text-xs text-rose-700">{identity.error}</p>}
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
@@ -336,6 +348,7 @@ export const DigitalPromissoryModal: React.FC = () => {
             </div>
 
             {/* Submit */}
+            {error && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
             <div className="pt-2 flex items-center justify-end gap-3">
               <Button
                 type="button"
@@ -347,12 +360,13 @@ export const DigitalPromissoryModal: React.FC = () => {
               </Button>
               <Button
                 type="submit"
+                disabled={busy || !identity.valid}
                 size="md"
                 variant="primary"
                 icon={FileText}
                 className="bg-purple-700 hover:bg-purple-800 focus-visible:ring-purple-500"
               >
-                Execute Note & Issue Gate Pass
+                {busy ? 'Confirming with hospital…' : 'Execute Note & Issue Gate Pass'}
               </Button>
             </div>
           </form>

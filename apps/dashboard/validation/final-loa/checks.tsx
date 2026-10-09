@@ -15,6 +15,7 @@ let outcome: Outcome = 'success';
 let release: (() => void) | null = null;
 let hold = false;
 let posts = 0;
+let notePosts = 0;
 let record = structuredClone(INITIAL_ENCOUNTERS[0]);
 const originalFetch = window.fetch;
 const results: Array<{ name: string; passed: boolean; error?: string }> = [];
@@ -32,7 +33,7 @@ function button(label: string, within: ParentNode = document) {
 }
 function click(label: string, within?: ParentNode) { button(label, within).click(); }
 async function mount() {
-  posts = 0; release = null; hold = false; outcome = 'success'; current = null;
+  posts = 0; notePosts = 0; release = null; hold = false; outcome = 'success'; current = null;
   record = structuredClone(INITIAL_ENCOUNTERS[0]);
   record.id = 'enc-8812'; record.stage = 'HMO_FINAL_LOA'; record.hmo.finalLoaStatus = 'AWAITING_CODE'; record.hmo.approvalCode = undefined;
   record.billState = 'FINALIZED'; record.amountPaid = 0; record.remainingBalance = record.waterfall.netPatientDue;
@@ -42,6 +43,7 @@ async function mount() {
     if (path.endsWith('/auth/me')) return response({ authenticated: true, user });
     if (path.endsWith('/auth/login')) return response({ success: true, token: 'new-validation-session', user });
     if (path.endsWith('/encounters')) return response({ items: [record] });
+    if (path.endsWith('/promissory-notes')) notePosts++;
     if (path.endsWith('/hmo/final-loa')) {
       posts++;
       assert(new Headers(config?.headers).get('Authorization')?.includes('validation-session'), 'Approval has no bearer session');
@@ -107,6 +109,27 @@ await check('a confirmed 200 response must actually contain an approved LOA', as
   let rejected = false; try { await current!.approveHmoFinalLoa('enc-8812'); } catch { rejected = true; }
   assert(rejected, 'Malformed response was resolved as successful approval');
   assert(current!.encounters[0].hmo.finalLoaStatus === 'AWAITING_CODE', 'Unconfirmed response approved locally');
+});
+await check('invalid IDs cannot create a local note or make a promissory API request', async () => {
+  const before = structuredClone(current!.encounters[0]);
+  let rejected = false;
+  try { await current!.executePromissoryNote(before.id, 'Validation Borrower', 'PHILSYS_NATIONAL_ID', '1234', 3, 5); }
+  catch { rejected = true; }
+  assert(rejected, 'Four-character ID was accepted');
+  assert(notePosts === 0, 'Invalid ID was sent to the server');
+  assert(JSON.stringify(current!.encounters[0]) === JSON.stringify(before), 'Invalid ID changed the local bill or pass');
+});
+await check('server rejection cannot produce local promissory-note success or a gate pass', async () => {
+  const before = structuredClone(current!.encounters[0]);
+  window.fetch = async (url) => String(url).includes('/promissory-notes')
+    ? response({ error: { code: 'INVALID_GOVERNMENT_ID', message: 'ID rejected by hospital.' } }, 400)
+    : response({ items: [], success: true });
+  let rejected = false;
+  try { await current!.executePromissoryNote(before.id, 'Validation Borrower', 'PHILSYS_NATIONAL_ID', '0123-4567-8901-2345', 3, 5); }
+  catch { rejected = true; }
+  assert(rejected, 'Backend rejection was swallowed');
+  assert(JSON.stringify(current!.encounters[0]) === JSON.stringify(before), 'Backend rejection created a note or cleared the bill locally');
+  assert(!current!.isGatePassModalOpen, 'Backend rejection opened a success pass');
 });
 const passed = results.filter(r => r.passed).length;
 document.title = `Dashboard LOA checks: ${passed}/${results.length}`;

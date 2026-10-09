@@ -1,7 +1,7 @@
 {
   "environment": "Real React DOM + application components in jsdom; all API calls intercepted; no database or external network",
-  "passed": 7,
-  "total": 7,
+  "passed": 9,
+  "total": 9,
   "results": [
     {
       "name": "Radar waits for approval and blocks double submission",
@@ -29,6 +29,14 @@
     },
     {
       "name": "a confirmed 200 response must actually contain an approved LOA",
+      "passed": true
+    },
+    {
+      "name": "invalid IDs cannot create a local note or make a promissory API request",
+      "passed": true
+    },
+    {
+      "name": "server rejection cannot produce local promissory-note success or a gate pass",
       "passed": true
     }
   ]

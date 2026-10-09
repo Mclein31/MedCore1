@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { GOVERNMENT_ID_RULES, validateGovernmentId, type GovernmentIdType } from '../../../../../../shared/governmentId';
 import { formatPeso } from '../../utils/billFormatters';
 import { calculateInstallmentPlan } from '@/utils/financing';
 import { ShieldCheck, Scale, Check, FileText } from 'lucide-react';
@@ -25,12 +26,14 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
   const [months, setMonths] = useState<3 | 6 | 12>(6);
   const [borrowerName, setBorrowerName] = useState(patientName || 'Maria Santos Dela Cruz');
   const [relationship, setRelationship] = useState('PATIENT');
-  const [idType, setIdType] = useState('PHILSYS_NATIONAL_ID');
-  const [idNumber, setIdNumber] = useState('1924-8812-4019-2041');
-  const [signed, setSigned] = useState(true);
+  const [idType, setIdType] = useState<GovernmentIdType>('PHILSYS_NATIONAL_ID');
+  const [idNumber, setIdNumber] = useState('');
+  const [signed, setSigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const plan = calculateInstallmentPlan(amount, months);
+  const identity = validateGovernmentId(idType, idNumber);
+  const idRule = GOVERNMENT_ID_RULES[idType];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,8 +42,8 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
       setError('Please provide the legal borrower or guarantor full name.');
       return;
     }
-    if (!idNumber.trim()) {
-      setError('Please enter the government-issued identification number.');
+    if (!identity.valid) {
+      setError(identity.error);
       return;
     }
     if (!signed) {
@@ -50,10 +53,10 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
 
     onPay({
       payerName: borrowerName,
-      payerContact: `${idType}: ${idNumber}`,
+      payerContact: '',
       promissoryMonths: months,
       borrowerIdType: idType,
-      borrowerIdNumber: idNumber
+      borrowerIdNumber: identity.normalized
     });
   };
 
@@ -137,7 +140,7 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
             <label className="font-bold text-slate-800 block mb-1">Government ID Type</label>
             <select
               value={idType}
-              onChange={(e) => setIdType(e.target.value)}
+              onChange={(e) => { setIdType(e.target.value as GovernmentIdType); setIdNumber(''); }}
               className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
             >
               <option value="PHILSYS_NATIONAL_ID">PhilSys National ID</option>
@@ -152,8 +155,13 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
               type="text"
               value={idNumber}
               onChange={(e) => setIdNumber(e.target.value)}
+              autoComplete="off"
+              placeholder={idRule.placeholder}
+              aria-invalid={idNumber.length > 0 && !identity.valid}
               className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="mt-2 text-xs text-slate-600">{idRule.hint}</p>
+            {idNumber && !identity.valid && <p role="alert" className="mt-2 text-xs text-rose-700">{identity.error}</p>}
           </div>
         </div>
       </div>
@@ -179,9 +187,9 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
 
       <button
         type="submit"
-        disabled={isProcessing}
+        disabled={isProcessing || !identity.valid || !signed}
         className={`w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 ${
-          isProcessing ? 'opacity-50 cursor-not-allowed' : ''
+          isProcessing || !identity.valid || !signed ? 'opacity-50 cursor-not-allowed' : ''
         }`}
       >
         <FileText className="w-4 h-4" />
