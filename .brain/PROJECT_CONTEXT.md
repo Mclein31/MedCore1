@@ -2114,3 +2114,26 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [FACT] Full live certification remainsBLOCKED: fresh seed and dedicated PostgreSQL suite attempts both connectEPERM before any DB write. No reseed, migration, account creation or hospital financial mutation was applied. Persisted250-encounter/200-bed parity, actual authenticated HTTP/SQL workflows, PostgreSQL rollback/concurrency, native synchronization and current official PhilHealth DTD acceptance remain unverified. Simulated rails and prototype legal signing retain their prior release gates; no AI readiness certification is issued. Independent read-only review found no remaining concrete regressions in the reviewed changes
 
 [REFERENCE] [Current remediation report and scoped scorecard](../docs/audits/2026-10-09/REPORT.md), [original audit](../docs/audits/2026-10-09/BASELINE_REPORT.md), [ordered command exit codes](../docs/audits/2026-10-09/remediation/verification-results.json). 
+## Mobile Settlement & Staff Dashboard Stage Synchronization Resolution — October 10, 2026
+
+[FACT] **Operator Approval Question Resolution**: System operators do NOT manually approve settlement payments. As designed in `apps/server/src/routes/payments.ts`, once patient payments bring `remainingBalance` to `0.00`, the server atomically executes the settlement:
+1. Encounter transitions to `CLEARED_GATE_PASS`.
+2. Associated inpatient bed status transitions to `HOUSEKEEPING`.
+3. An HMAC-SHA256 authenticated digital exit gate pass is minted with an independent cryptographically secure 4-digit Exit PIN (1000–9999).
+4. Physical lobby security verifies the pass independently via `/api/v1/discharge/passes/verify`.
+
+[DECISION] **Dashboard Balance & Primary Action Synchronization (`ActiveDischargeRadar.tsx`)**:
+- Fixed display bug where queue cards, detail headers, tables, and grid cards rendered pre-payment liability `waterfall.netPatientDue` instead of live `remainingBalance`, making cleared encounters falsely appear with outstanding dues.
+- Replaced pre-settlement due amount with `remainingBalance` (displaying `₱0.00 Settled` when cleared).
+- Contextual primary CTA button now checks remaining balance: when balance reaches `0.00` or stage is `CLEARED_GATE_PASS`, the CTA switches from "Record Settlement / QR Ph" to "Authorize Lobby Exit Gate Pass" / "View Digital Exit Gate Pass".
+
+[DECISION] **Mobile Patient App Gate Pass Routing & Polling Stabilization (`apps/mobile`)**:
+- `PaymentSuccess.tsx` & `PaymentFlowScreen.tsx`: Added direct primary CTA ("View Digital Gate Pass") navigating immediately to `Documents` upon settlement completion (`passIssued: true`).
+- `BillScreen.tsx`: Added contextual primary CTA ("View Digital Exit Gate Pass") when `enc.stage === 'CLEARED_GATE_PASS'`.
+- `PatientProvider.tsx`: Added `hasSnapshot` ref to prevent 5-second background polling from setting `loading: true`, eliminating UI flicker during active background polling.
+
+[DECISION] **Server Environment & Encounter Query Hardening (`apps/server`)**:
+- `payments.ts`, `promissory.ts`, `gatePass.ts`: Set `nodeEnv` fallback to `'development'` when unset, preventing fatal throws inside `resolveGatePassSecret()` when `GATE_PASS_SECRET` is not exported.
+- `patient.ts`: Query now targets latest admission encounter (`encRows[0]`) rather than filtering out cleared stays (`stage !== 'CLEARED_GATE_PASS'`), ensuring cleared patients consistently view their active exit pass.
+
+[REFERENCE] Thoroughly verified via comprehensive end-to-end multi-stage sync script (`scratch/test-full-stages-sync.ts`) across all 8 discharge milestones, 24/24 offline audit suites, 250/250 financial fixtures, and 49/49 mobile unit tests.

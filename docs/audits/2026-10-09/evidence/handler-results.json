@@ -44,7 +44,7 @@
         "error": {
           "code": "INVALID_IDEMPOTENCY_KEY",
           "message": "Idempotency-Key header cannot exceed 128 characters.",
-          "timestamp": "2026-10-09T15:29:32.072Z"
+          "timestamp": "2026-10-09T17:09:10.384Z"
         }
       },
       "balance": "100.00",

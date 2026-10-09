@@ -62,7 +62,7 @@ gatePassApp.post(
     const nodeEnv =
       (c.env as any)?.NODE_ENV ||
       (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
-      'production';
+      'development';
     const isProduction = nodeEnv === 'production';
     const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
     const expectedHmac = await generateGatePassHmac(

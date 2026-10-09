@@ -5,9 +5,9 @@ import { describeRail, formatDateTime, formatPeso } from '../lib/format';
 import { Icon } from './icons';
 import { C, LedgerRow, PrimaryButton, SecondaryButton, T } from './ui';
 
-export default function PaymentSuccess({ amount, rail, reference, hospital, bill, date, onReceipt, onBills }: {
+export default function PaymentSuccess({ amount, rail, reference, hospital, bill, date, onReceipt, onBills, passIssued, onPass }: {
   amount: number; rail: string; reference: string; hospital: string; bill: string; date: string | null;
-  onReceipt: () => void; onBills: () => void;
+  onReceipt: () => void; onBills: () => void; passIssued?: boolean; onPass?: () => void;
 }) {
   const reduced = useReducedMotion();
   const scale = useRef(new Animated.Value(1)).current;
@@ -30,7 +30,17 @@ export default function PaymentSuccess({ amount, rail, reference, hospital, bill
     <LedgerRow title="Payment method" value={describeRail(rail)} />
     <LedgerRow title="Transaction reference" value={reference} />
     <LedgerRow title="Date & time" value={formatDateTime(date)} last />
-    <PrimaryButton title="View Receipt" onPress={onReceipt} />
-    <SecondaryButton title="Back to Bills" onPress={onBills} />
+    {passIssued && onPass ? (
+      <>
+        <PrimaryButton title="View Digital Gate Pass" onPress={onPass} />
+        <SecondaryButton title="View Receipt" onPress={onReceipt} />
+        <SecondaryButton title="Back to Bills" onPress={onBills} />
+      </>
+    ) : (
+      <>
+        <PrimaryButton title="View Receipt" onPress={onReceipt} />
+        <SecondaryButton title="Back to Bills" onPress={onBills} />
+      </>
+    )}
   </View>;
 }

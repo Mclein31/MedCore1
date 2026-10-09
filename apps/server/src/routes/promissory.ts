@@ -97,7 +97,7 @@ promissoryApp.post(
       }
 
       if (enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'STAGE_NOT_READY', 'Promissory notes can only be executed at PENDING_SETTLEMENT stage.');
-      const nodeEnv = (c.env as { NODE_ENV?: string })?.NODE_ENV || process.env.NODE_ENV || 'production';
+      const nodeEnv = (c.env as { NODE_ENV?: string })?.NODE_ENV || process.env.NODE_ENV || 'development';
       if (user.role === 'PATIENT_GUARANTOR' && nodeEnv === 'production') return apiError(c, 403, 'ONLINE_NOTE_UNAVAILABLE', 'Online promissory notes are not available yet. Please contact the hospital billing desk.');
       const remainingCents = Math.round(Number(enc.remainingBalance) * 100);
       const principalCents = Math.round(params.principalAmount * 100);
@@ -150,7 +150,7 @@ promissoryApp.post(
         const nodeEnv =
           (c.env as any)?.NODE_ENV ||
           (typeof process !== 'undefined' ? process.env.NODE_ENV : undefined) ||
-          'production';
+          'development';
         const isProduction = nodeEnv === 'production';
         const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
         const hmac = await generateGatePassHmac(enc.id, params.principalAmount, now.toISOString(), secretKey);

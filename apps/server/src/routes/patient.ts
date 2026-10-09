@@ -174,7 +174,7 @@ patientApp.get('/me/overview', requireAuth, async (c) => {
   if (encRows.length === 0) {
     return c.json({ patient: toSafePatient(resolved.patient), currentEncounter: null });
   }
-  const current = encRows.find((e) => e.stage !== 'CLEARED_GATE_PASS') || encRows[0];
+  const current = encRows[0];
   const hydrated = await getHydratedEncounter(current.id);
   const safe = await toPatientSafeEncounter(hydrated);
   if (!safe) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
