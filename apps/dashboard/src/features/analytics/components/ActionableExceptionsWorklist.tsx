@@ -219,7 +219,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
                   </td>
 
                   {/* 5. Trapped Balance */}
-                  <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900 text-xs">
+                  <td className="py-3.5 px-4 text-left font-mono font-bold text-slate-900 text-base">
                     {formatPhp(item.trappedAmount)}
                   </td>
 

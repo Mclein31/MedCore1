@@ -2036,3 +2036,14 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 
 [REFERENCE] [Product Decision Record ADR-008](../MedCore_Vault/DECISIONS/product_decisions.md#8-adr-008-ai-driven-platform-architecture-via-google-ai-studio-free-tier--backend-proxy); [Server Routes](../apps/server/src/routes/); [Mobile Components](../apps/mobile/src/components/); [Dashboard Pages](../apps/dashboard/src/pages/).
 
+
+
+## RCM Analytics interior distribution and larger figures — October 9, 2026
+
+[FACT] The prior h-full card fix aligned outer borders but left waterfall/claims/department/OOP content top-packed, with measured unused tails67.5/30.3/23.7/150px. Eight paired analytics cards now allocate extra height to metric grids, legends, driver/bucket rows and plot regions, with summaries/footers at bottom padding. Below xl, stacked cards retain natural height. Department plot height responds to a layout-owned frame with uniform SVG scaling; print synchronously restores600×240 and afterward restores desktop geometry.
+
+[DECISION] User additionally requested larger main data, especially monetary values. Executive KPI values now use text-3xl, other main figures use the existing base/lg/xl scale, including daily run rate and table balances. Wider waterfall tiles and a later four-column KPI breakpoint fit the larger values; no amount/formula/data/auth/backend/schema/dependency change.
+
+[FACT] Native live React fixture checks pass at375/390/1024/1279/1280/1366/1920px: all8 card tails0px, paired desktop bottoms aligned, no extra section gaps or amount overflow, uniform chart scale. Primary currency text measures14.4–27px at standard density and15–28.1px at phone/1920 density. Final actual Brave PDF12 A4 landscape pages passes text/drawing margins and rightmost headers; sampled typography/chart pages reviewed, post-print geometry restored. Build/strict types,250 financial records,6 auth transport,26 isolated backend and6 print lifecycle checks pass. Independent interior source review found no actionable regression.
+
+[REFERENCE] [Reproduction, files, local evidence and limits](../apps/dashboard/validation/analytics-layout/README.md). Changes local/uncommitted on main; no commit/push/deploy or real database/device/printer validation. Existing bundle warning remains. 

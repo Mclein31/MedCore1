@@ -87,7 +87,7 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
   ];
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-5 print:block print:space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -113,13 +113,13 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
 
         <div className="text-left font-mono">
           <div className="text-xs text-slate-400 font-sans">Total Chargemaster Gross</div>
-          <div className="text-lg font-bold text-slate-900">{formatPhp(grossTotal)}</div>
+          <div className="text-xl font-bold text-slate-900">{formatPhp(grossTotal)}</div>
         </div>
       </div>
 
       {/* Horizontal Proportional Stacked Cascade Bar */}
-      <div className="space-y-2">
-        <div className="h-6 w-full rounded-md bg-slate-100 flex overflow-hidden p-0.5 border border-slate-200/80">
+      <div className="flex flex-col gap-4 xl:flex-1 print:block print:space-y-2">
+        <div className="h-6 shrink-0 w-full rounded-md bg-slate-100 flex overflow-hidden p-0.5 border border-slate-200/80">
           {segments.map((s) => {
             if (s.share <= 0) return null;
             return (
@@ -140,17 +140,17 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
         </div>
 
         {/* Legend / Metrics Chips below the bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-2">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5 xl:flex-1 xl:auto-rows-fr">
           {segments.map((s) => (
             <div
               key={s.id}
-              className={`p-2.5 rounded-lg border ${s.borderColor} ${s.bgColor} space-y-1`}
+              className={`p-2.5 rounded-lg border ${s.borderColor} ${s.bgColor} flex flex-col justify-between gap-2 ${s.id === 'oop' ? 'col-span-2' : ''} ${s.id === 'hmo' || s.id === 'oop' ? 'sm:col-span-3' : 'sm:col-span-2'} print:space-y-1`}
             >
               <div className="flex items-center gap-1.5">
-                <span className={`w-2.5 h-2.5 rounded-xs ${s.color}`} />
-                <span className="text-[11px] font-bold text-slate-700 truncate">{s.label}</span>
+                <span className={`w-2.5 h-2.5 shrink-0 rounded-xs ${s.color}`} />
+                <span className="text-[11px] font-bold text-slate-700">{s.label}</span>
               </div>
-              <div className="font-mono font-bold text-xs text-slate-900">
+              <div className="font-mono font-bold text-base sm:text-lg text-slate-900">
                 {formatPhp(s.amount)}
               </div>
               <div className="flex items-center justify-between text-[10px] text-slate-500">
@@ -163,10 +163,10 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
       </div>
 
       {/* Analytical Payer Absorption & Household OOP Summary */}
-      <div className="pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+      <div className="shrink-0 pt-3 border-t border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
           <div className="text-slate-500 font-medium">Third-Party Absorbed Coverage</div>
-          <div className="text-base font-bold font-mono text-slate-900 mt-0.5">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-0.5">
             {formatPhp(philhealthTotal + hmoApprovedAmount)}
           </div>
           <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">
@@ -176,7 +176,7 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
 
         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
           <div className="text-slate-500 font-medium">Statutory Social Exemptions</div>
-          <div className="text-base font-bold font-mono text-slate-900 mt-0.5">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-0.5">
             {formatPhp(vatExemption + seniorPwdDiscount)}
           </div>
           <div className="text-[11px] text-indigo-700 font-semibold mt-0.5">
@@ -186,7 +186,7 @@ export const HospitalFinancingWaterfall: React.FC<HospitalFinancingWaterfallProp
 
         <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
           <div className="text-slate-500 font-medium">Household OOP Burden</div>
-          <div className="text-base font-bold font-mono text-slate-900 mt-0.5">
+          <div className="text-xl font-bold font-mono text-slate-900 mt-0.5">
             {formatPhp(netPatientDue)}
           </div>
           <div className="text-[11px] text-amber-700 font-semibold mt-0.5">

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { DepartmentMetric } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp } from '@/utils/formatters';
 import { Building2, Filter, X } from 'lucide-react';
@@ -15,12 +16,44 @@ export const DepartmentExceptionMatrix: React.FC<DepartmentExceptionMatrixProps>
   onSelectDepartment
 }) => {
   const [hoveredDept, setHoveredDept] = useState<DepartmentMetric | null>(null);
+  const chartFrame = useRef<HTMLDivElement>(null);
+  const [svgHeight, setSvgHeight] = useState(240);
+
+  useEffect(() => {
+    const frame = chartFrame.current;
+    if (!frame) return;
+    const printMedia = window.matchMedia('print');
+    let restoreFrame = 0;
+    const measure = () => {
+      if (printMedia.matches) return;
+      const { width, height } = frame.getBoundingClientRect();
+      if (width <= 0 || height <= 0) return;
+      // The frame owns its height; the absolute SVG cannot resize it. Uniform
+      // coordinate scaling grows the plot without stretching labels or bars.
+      const next = window.matchMedia('(min-width: 1280px)').matches
+        ? Math.max(100, Math.round(height * 600 / width))
+        : 240;
+      setSvgHeight(current => current === next ? current : next);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(frame);
+    measure();
+    const beforePrint = () => flushSync(() => setSvgHeight(240));
+    const afterPrint = () => { restoreFrame = requestAnimationFrame(measure); };
+    window.addEventListener('beforeprint', beforePrint);
+    window.addEventListener('afterprint', afterPrint);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(restoreFrame);
+      window.removeEventListener('beforeprint', beforePrint);
+      window.removeEventListener('afterprint', afterPrint);
+    };
+  }, []);
 
   const maxVal = Math.max(...departments.map((d) => d.totalCensus), 80);
 
   // SVG chart dimensions
   const svgWidth = 600;
-  const svgHeight = 240;
   const padLeft = 40;
   const padRight = 20;
   const padTop = 25;
@@ -39,7 +72,7 @@ export const DepartmentExceptionMatrix: React.FC<DepartmentExceptionMatrixProps>
   const isAnySelected = selectedDepartment && selectedDepartment !== 'All Wards';
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-4 print:block print:space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -80,10 +113,10 @@ export const DepartmentExceptionMatrix: React.FC<DepartmentExceptionMatrixProps>
       </div>
 
       {/* Grouped Clustered Bar Chart SVG */}
-      <div className="relative w-full overflow-hidden">
+      <div ref={chartFrame} className="relative w-full xl:flex-1 xl:min-h-[15rem] print:min-h-0">
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-          className="w-full h-auto overflow-visible select-none"
+          className="w-full h-auto xl:absolute xl:inset-0 xl:h-full print:static print:h-auto overflow-visible select-none"
         >
           {/* Horizontal Grid lines */}
           {[80, 60, 40, 20, 0].map((v) => {
@@ -188,7 +221,7 @@ export const DepartmentExceptionMatrix: React.FC<DepartmentExceptionMatrixProps>
                   x={bar2X + barWidth / 2}
                   y={yExc - 4}
                   textAnchor="middle"
-                  className="text-[9px] fill-amber-800 font-mono font-bold"
+                  className="text-[18px] sm:text-[12px] fill-amber-800 font-mono font-bold"
                 >
                   {dept.exceptionsCount}
                 </text>
@@ -214,7 +247,7 @@ export const DepartmentExceptionMatrix: React.FC<DepartmentExceptionMatrixProps>
       </div>
 
       {/* Action Footer Callout */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+      <div className="shrink-0 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
           <Building2 className="w-3.5 h-3.5 text-blue-600" />
           Clicking any ward bar filters the entire dashboard to that clinical department.

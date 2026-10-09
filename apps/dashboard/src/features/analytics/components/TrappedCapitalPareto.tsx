@@ -17,7 +17,7 @@ export const TrappedCapitalPareto: React.FC<TrappedCapitalParetoProps> = ({
   const totalTrapped = drivers.reduce((acc, d) => acc + d.amount, 0);
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-4 print:block print:space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -46,12 +46,12 @@ export const TrappedCapitalPareto: React.FC<TrappedCapitalParetoProps> = ({
 
         <div className="text-left font-mono">
           <div className="text-xs text-slate-400 font-sans">Total Trapped Capital</div>
-          <div className="text-lg font-bold text-amber-700">{formatPhp(totalTrapped)}</div>
+          <div className="text-xl font-bold text-amber-700">{formatPhp(totalTrapped)}</div>
         </div>
       </div>
 
       {/* Ranked Horizontal Bars */}
-      <div className="space-y-3 pt-1">
+      <div className="grid gap-3 pt-1 xl:flex-1 xl:auto-rows-fr print:block print:space-y-3">
         {drivers.map((d, idx) => {
           const isSelected = selectedCategory === d.category;
           const isDimmed = selectedCategory && !isSelected;
@@ -60,7 +60,7 @@ export const TrappedCapitalPareto: React.FC<TrappedCapitalParetoProps> = ({
             <div
               key={d.category}
               onClick={() => onSelectCategory?.(isSelected ? null : d.category)}
-              className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
+              className={`p-2.5 rounded-lg border transition-all cursor-pointer flex flex-col justify-center ${
                 isSelected
                   ? 'bg-amber-50/80 border-amber-300 ring-1 ring-amber-300'
                   : 'bg-white border-transparent hover:bg-slate-50 hover:border-slate-200'
@@ -82,7 +82,7 @@ export const TrappedCapitalPareto: React.FC<TrappedCapitalParetoProps> = ({
                     <Clock className="w-2.5 h-2.5" />
                     {d.avgDelayFormatted}
                   </span>
-                  <span className="font-mono font-bold text-slate-900 text-xs">
+                  <span className="font-mono font-bold text-slate-900 text-base">
                     {formatPhp(d.amount)}
                   </span>
                   <span className="font-mono text-[11px] text-slate-400 w-10 text-left">
@@ -110,7 +110,7 @@ export const TrappedCapitalPareto: React.FC<TrappedCapitalParetoProps> = ({
       </div>
 
       {/* Action Footer Callout */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+      <div className="shrink-0 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span className="flex items-center gap-1.5">
           <Lock className="w-3.5 h-3.5 text-amber-600" />
           Clicking any friction category filters the actionable worklist below.

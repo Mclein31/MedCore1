@@ -26,7 +26,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
   return (
     <div className="space-y-4">
       {/* Tier 1: 4 Executive Macro KPI Bento Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* 1. Total Gross Billings */}
         <div
           onClick={() => onSelectMetric?.('GROSS_BILLINGS')}
@@ -45,12 +45,12 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </div>
           </div>
           <div className="mt-2">
-            <div className="text-2xl font-bold font-mono tracking-tight text-slate-900">
+            <div className="text-3xl font-bold font-mono tracking-tight text-slate-900">
               {formatPhp(metrics.totalGrossBillings)}
             </div>
-            <div className="flex items-center justify-between text-xs text-slate-500 mt-1.5 pt-1.5 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 mt-1.5 pt-1.5 border-t border-slate-100">
               <span>Daily Run-Rate:</span>
-              <span className="font-mono font-semibold text-slate-700">
+              <span className="font-mono font-semibold text-base text-slate-700">
                 {formatPhp(metrics.grossDailyRunRate)}/d
               </span>
             </div>
@@ -78,7 +78,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </div>
           </div>
           <div className="mt-2">
-            <div className="text-2xl font-bold font-mono tracking-tight text-slate-900">
+            <div className="text-3xl font-bold font-mono tracking-tight text-slate-900">
               {metrics.daysInAr.toFixed(1)} <span className="text-sm font-sans font-semibold text-slate-500">Days</span>
             </div>
             <div className="flex items-center gap-1 text-xs text-emerald-700 font-semibold mt-1.5 pt-1.5 border-t border-slate-100">
@@ -109,7 +109,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </div>
           </div>
           <div className="mt-2">
-            <div className="text-2xl font-bold font-mono tracking-tight text-emerald-700">
+            <div className="text-3xl font-bold font-mono tracking-tight text-emerald-700">
               {metrics.cleanClaimRate.toFixed(1)}%
             </div>
             <div className="flex items-center justify-between text-xs text-slate-500 mt-1.5 pt-1.5 border-t border-slate-100">
@@ -140,7 +140,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </div>
           </div>
           <div className="mt-2">
-            <div className="text-2xl font-bold font-mono tracking-tight text-emerald-700">
+            <div className="text-3xl font-bold font-mono tracking-tight text-emerald-700">
               +{formatPhp(metrics.annualEconomicYield)}
             </div>
             <div className="flex items-center justify-between text-xs text-slate-500 mt-1.5 pt-1.5 border-t border-slate-100">
@@ -155,7 +155,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
       </div>
 
       {/* Tier 2: 4 Secondary Operational & Liquidity Bento Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* 5. Trapped Working Capital */}
         <div
           onClick={() => onSelectMetric?.('TRAPPED_CAPITAL')}
@@ -175,7 +175,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </span>
           </div>
           <div className="mt-1.5">
-            <div className="text-xl font-bold font-mono text-slate-900">
+            <div className="text-2xl font-bold font-mono text-slate-900">
               {formatPhp(metrics.trappedWorkingCapital)}
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
@@ -203,7 +203,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </span>
           </div>
           <div className="mt-1.5">
-            <div className="text-xl font-bold font-mono text-rose-700">
+            <div className="text-2xl font-bold font-mono text-rose-700">
               {formatPhp(metrics.revenueAtRiskAmount)}
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
@@ -231,7 +231,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </span>
           </div>
           <div className="mt-1.5">
-            <div className="text-xl font-bold font-mono text-slate-900">
+            <div className="text-2xl font-bold font-mono text-slate-900">
               {metrics.problemCensusCount} <span className="text-sm font-sans font-normal text-slate-500">Cases</span>
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
@@ -259,7 +259,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
             </span>
           </div>
           <div className="mt-1.5">
-            <div className="text-xl font-bold font-mono text-emerald-700">
+            <div className="text-2xl font-bold font-mono text-emerald-700">
               {formatPhp(metrics.revenueRecoveredAmount)}
             </div>
             <p className="text-[11px] text-slate-500 mt-1">

@@ -11,7 +11,7 @@ export const ArAgingProfileCard: React.FC<ArAgingProfileCardProps> = ({ agingBuc
   const totalAr = agingBuckets.reduce((acc, b) => acc + b.amount, 0);
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-4 print:block print:space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -31,7 +31,7 @@ export const ArAgingProfileCard: React.FC<ArAgingProfileCardProps> = ({ agingBuc
 
         <div className="text-left font-mono">
           <div className="text-xs text-slate-400 font-sans">Total Net Active AR</div>
-          <div className="text-lg font-bold text-slate-900">{formatPhp(totalAr)}</div>
+          <div className="text-xl font-bold text-slate-900">{formatPhp(totalAr)}</div>
         </div>
       </div>
 
@@ -59,7 +59,7 @@ export const ArAgingProfileCard: React.FC<ArAgingProfileCardProps> = ({ agingBuc
       </div>
 
       {/* Itemized Bucket List */}
-      <div className="space-y-2 pt-1">
+      <div className="grid gap-2 pt-1 xl:flex-1 xl:auto-rows-fr print:block print:space-y-2">
         {agingBuckets.map((b) => (
           <div
             key={b.bucket}
@@ -82,7 +82,7 @@ export const ArAgingProfileCard: React.FC<ArAgingProfileCardProps> = ({ agingBuc
             </div>
 
             <div className="text-left shrink-0 pl-3">
-              <div className="font-mono font-bold text-slate-900 text-xs">
+              <div className="font-mono font-bold text-slate-900 text-base sm:text-lg">
                 {formatPhp(b.amount)}
               </div>
               <div className="text-[11px] font-mono text-slate-500">
