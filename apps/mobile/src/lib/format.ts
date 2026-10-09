@@ -52,7 +52,7 @@ export function describeClaimStatus(status: string): { title: string; detail: st
 export function describeHmoStatus(status: string): { title: string; detail: string } {
   switch ((status || '').toUpperCase()) {
     case 'APPROVED':
-      return { title: 'Approved', detail: 'Your HMO approved the covered amount.' };
+      return { title: 'HMO Approved', detail: 'Your HMO approved the covered amount.' };
     case 'AWAITING_CODE':
       return { title: 'Being reviewed', detail: 'Your HMO authorization is being reviewed. This usually clears before discharge.' };
     case 'DISALLOWED_ITEMS':

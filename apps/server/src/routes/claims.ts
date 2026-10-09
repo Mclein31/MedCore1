@@ -98,7 +98,7 @@ claimsApp.get(
         pfAmount: Number(claim.pfAmount),
         isNbb: claim.isNbb
       },
-      charges: items.map((it) => ({
+      charges: items.filter(it => it.status !== 'SUPERVISORY_WAIVED' && it.status !== 'WAIVED').map((it) => ({
         code: it.code,
         description: it.description,
         category: it.category,

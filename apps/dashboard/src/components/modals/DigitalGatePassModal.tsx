@@ -17,36 +17,20 @@ export const DigitalGatePassModal: React.FC = () => {
     isGatePassModalOpen,
     closeGatePassModal,
     selectedEncounter,
-    issueDigitalGatePass,
     verifyGatePass,
     printDocument
   } = useMedCore();
 
-  const [verifiedAtLobby, setVerifiedAtLobby] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
   if (!isGatePassModalOpen) return null;
 
   const enc = selectedEncounter;
-  const pass = enc.dischargePass || {
-    passNumber: `PASS-MC-${enc.encounterNumber.replace('ENC-2026-', '')}`,
-    encounterId: enc.id,
-    patientName: enc.patient.fullName || enc.patient.maskedName,
-    roomBed: enc.roomBed,
-    settledAmount: enc.waterfall.netPatientDue,
-    settlementChannel: 'QR_PH' as const,
-    issuedAt: new Date().toISOString(),
-    status: 'ACTIVE_READY_FOR_EXIT' as const,
-    hmacSignature: 'a8f102c918e38d721bf64098ad23ef10'
-  };
-
-  const isVerified = pass.status === 'VERIFIED_AT_LOBBY' || verifiedAtLobby;
-  const deterministicPin = (pass.passNumber || enc.encounterNumber).replace(/\D/g, '').slice(-4).padStart(4, '0');
-
-  const handleVerify = () => {
-    setVerifiedAtLobby(true);
-    verifyGatePass(enc.id);
-  };
+  const pass = enc.dischargePass;
+  if (!pass) return <div className="fixed inset-0 z-50 bg-white p-6" role="dialog" aria-modal="true"><p>Discharge clearance is still being processed.</p><Button onClick={closeGatePassModal}>Close</Button></div>;
+  const isVerified = pass.status === 'VERIFIED_AT_LOBBY';
+  const deterministicPin = pass.exitPin || 'Unavailable';
+  const handleVerify = async () => { await verifyGatePass(enc.id); };
 
   const copyToken = () => {
     navigator.clipboard.writeText(pass.hmacSignature);
@@ -99,7 +83,7 @@ export const DigitalGatePassModal: React.FC = () => {
             </div>
             <div className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-bold text-emerald-700">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>{verifiedAtLobby ? '✓ Verified at Lobby Desk' : '✓ Authorized Discharge'}</span>
+              <span>{isVerified ? '✓ Verified at Lobby Desk' : '✓ Authorized Discharge'}</span>
             </div>
           </div>
 

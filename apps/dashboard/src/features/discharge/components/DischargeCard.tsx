@@ -73,7 +73,7 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
               fullWidth
               onConfirm={() => {
                 selectEncounter(encounter.id);
-                advanceStage(encounter.id);
+                return advanceStage(encounter.id);
               }}
             />
           </div>
@@ -132,7 +132,7 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
               fullWidth
               onConfirm={() => {
                 selectEncounter(encounter.id);
-                clearPharmacyRts(encounter.id);
+                return clearPharmacyRts(encounter.id);
               }}
             />
           </div>
@@ -194,7 +194,7 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
                 fullWidth
                 onConfirm={() => {
                   selectEncounter(encounter.id);
-                  settlePatientBalance(encounter.id, 'QR_PH');
+                  return settlePatientBalance(encounter.id, 'QR_PH');
                 }}
               />
             </div>

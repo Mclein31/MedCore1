@@ -6,6 +6,7 @@ import * as schema from './schema';
 const { Pool } = pg;
 
 export type DrizzleDb = ReturnType<typeof drizzle<typeof schema>>;
+export type DbTransaction = Parameters<Parameters<DrizzleDb['transaction']>[0]>[0];
 
 const dbStorage = new AsyncLocalStorage<DrizzleDb>();
 const poolCache = new Map<string, { pool: pg.Pool; db: DrizzleDb }>();

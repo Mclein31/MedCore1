@@ -1,4 +1,5 @@
 import { Encounter, ChargemasterItem, StatutoryWaterfall, PromissoryNote } from '@/types/domain';
+import { moneyCents } from '../../../shared/statutoryWaterfall';
 
 export interface InstallmentPlan {
   termMonths: 3 | 6 | 12;
@@ -79,48 +80,15 @@ export function calculateInstallmentPlan(
   months: 3 | 6 | 12,
   interestRate: number = 0
 ): InstallmentPlan {
-  const financedAmount = Number(Math.max(0, principalAmount).toFixed(2));
-  const financingFee = Number((financedAmount * interestRate).toFixed(2));
-  const totalRepayment = Number((financedAmount + financingFee).toFixed(2));
+  if (![3, 6, 12].includes(months) || interestRate !== 0) throw new Error('Hospital repayment plans require a supported term and zero interest.');
+  const principalCents = moneyCents(principalAmount);
+  const monthlyCents = Math.floor(principalCents / months);
+  const schedule = Array.from({ length: months }, (_, index) =>
+    (index === months - 1 ? principalCents - monthlyCents * (months - 1) : monthlyCents) / 100);
+  return { termMonths: months, financedAmount: principalCents / 100, interestRate: 0, financingFee: 0,
+    totalRepayment: principalCents / 100, monthlyInstallment: monthlyCents / 100, schedule,
+    isReconciled: schedule.reduce((sum, amount) => sum + moneyCents(amount), 0) === principalCents };
 
-  if (totalRepayment <= 0) {
-    return {
-      termMonths: months,
-      financedAmount: 0,
-      interestRate,
-      financingFee: 0,
-      totalRepayment: 0,
-      monthlyInstallment: 0,
-      schedule: Array(months).fill(0),
-      isReconciled: true
-    };
-  }
-
-  const monthlyInstallment = Number((totalRepayment / months).toFixed(2));
-  const schedule: number[] = [];
-
-  for (let i = 0; i < months - 1; i++) {
-    schedule.push(monthlyInstallment);
-  }
-
-  // Final payment adjusted to reconcile centavo rounding diff
-  const sumPrior = Number((monthlyInstallment * (months - 1)).toFixed(2));
-  const lastPayment = Number((totalRepayment - sumPrior).toFixed(2));
-  schedule.push(lastPayment);
-
-  const totalSum = Number(schedule.reduce((acc, curr) => acc + curr, 0).toFixed(2));
-  const isReconciled = Math.abs(totalSum - totalRepayment) < 0.005;
-
-  return {
-    termMonths: months,
-    financedAmount,
-    interestRate,
-    financingFee,
-    totalRepayment,
-    monthlyInstallment,
-    schedule,
-    isReconciled
-  };
 }
 
 /**
@@ -149,7 +117,7 @@ export function calculatePatientFinancialRecord(encounter: Encounter): PatientFi
     (totalAdjustments + philhealthCoverage + hmoApprovedAmount + patientResponsibility).toFixed(2)
   );
   const reconciliationDiff = Number(Math.abs(hospitalBill - totalDeductionsAndDue).toFixed(2));
-  const isWaterfallBalanced = reconciliationDiff <= 0.05;
+  const isWaterfallBalanced = reconciliationDiff === 0;
 
   // Shortfall on covered base (e.g. if HMO allowance is less than covered base)
   const nonCoveredTotal = Number(
@@ -280,9 +248,9 @@ export function auditEntireDataset(encounters: Encounter[]) {
     if (enc.promissoryNote) {
       promissoryNoteCount++;
       const pn = enc.promissoryNote;
-      const expectedMonthly = Number((pn.principalAmount / pn.installmentMonths).toFixed(2));
-      const monthlyMatches = Math.abs(pn.monthlyInstallment - expectedMonthly) <= 0.05;
-      const principalMatchesDue = Math.abs(pn.principalAmount - enc.waterfall.netPatientDue) <= 0.05;
+      const expectedMonthly = Math.floor(moneyCents(pn.principalAmount) / pn.installmentMonths) / 100;
+      const monthlyMatches = moneyCents(pn.monthlyInstallment) === moneyCents(expectedMonthly);
+      const principalMatchesDue = moneyCents(pn.principalAmount) === moneyCents(enc.waterfall.netPatientDue);
 
       if (monthlyMatches && principalMatchesDue) {
         promissoryNoteValidCount++;

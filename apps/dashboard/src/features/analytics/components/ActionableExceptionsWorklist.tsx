@@ -100,7 +100,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
         openDoctorQuickSign();
         break;
       case 'RTS_CLEAR':
-        clearPharmacyRts(item.encounter.id);
+        void clearPharmacyRts(item.encounter.id).catch(() => { /* The provider reports the rejected mutation. */ });
         break;
       case 'PROMISSORY':
         openPromissoryModal(item.encounter.id);
@@ -258,7 +258,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
                         size="sm"
                         onConfirm={() => {
                           selectEncounter(item.encounter.id);
-                          clearPharmacyRts(item.encounter.id);
+                          return clearPharmacyRts(item.encounter.id);
                         }}
                       />
                     ) : (

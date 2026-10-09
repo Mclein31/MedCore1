@@ -70,6 +70,8 @@ disputesApp.post(
         })
         .where(eq(chargemasterItems.id, item.id));
 
+      await tx.update(encounters).set({ billState: 'DISPUTED', updatedAt: new Date() }).where(eq(encounters.id, enc.id));
+
       // Insert dispute
       const insertedDisputes = await tx
         .insert(billingDisputes)
@@ -130,82 +132,55 @@ disputesApp.post(
     const { supervisorNotes } = c.req.valid('json');
     const user = c.get('user');
 
-    // Find dispute
-    const disputeList = await db
-      .select({ dispute: billingDisputes })
-      .from(billingDisputes)
-      .innerJoin(encounters, eq(encounters.id, billingDisputes.encounterId))
-      .where(and(matchDisputeCondition(disputeId), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
-
-    if (disputeList.length === 0) {
-      return apiError(c, 404, 'NOT_FOUND', `Dispute ${disputeId} not found.`);
-    }
-
-    const dispute = disputeList[0].dispute;
-    const encounterId = dispute.encounterId;
-
-    // 1. Update charge item: SUPERVISORY_WAIVED, patient_oop = 0.00, is_disputed = false
-    await db
-      .update(chargemasterItems)
-      .set({
-        status: 'SUPERVISORY_WAIVED',
-        patientOop: '0.00',
-        isDisputed: false,
-        exclusionReasonClause: `Supervisory Balance Waiver applied: ${supervisorNotes}`,
-        updatedAt: new Date()
-      })
-      .where(eq(chargemasterItems.id, dispute.chargeId));
-
-    // 2. Update dispute: SUPERVISOR_WAIVED
-    await db
-      .update(billingDisputes)
-      .set({
-        status: 'SUPERVISOR_WAIVED',
-        supervisorNotes,
-        resolvedByUserId: user.id,
-        resolutionClause: `Waived under supervisory authority by ${user.fullName} (${user.role})`,
-        resolvedAt: new Date()
-      })
-      .where(eq(billingDisputes.id, dispute.id));
-
-    // 3. Recompute waterfall authoritatively
-    await recalculateAndPersistWaterfall(encounterId);
-
-    // 4. Update encounter pharmacy RTS status if no more contested pharmacy items
-    const allItems = await db.select().from(chargemasterItems).where(eq(chargemasterItems.encounterId, encounterId));
-    const encList = await db.select().from(encounters).where(eq(encounters.id, encounterId)).limit(1);
-    if (encList.length > 0) {
+    const result = await db.transaction(async (tx) => {
+      // Find the stay, then lock the encounter before any charge/dispute locks,
+      // using the same ordering as payment and recalculation transactions.
+      const candidates = await tx.select().from(billingDisputes)
+        .where(matchDisputeCondition(disputeId)).limit(1);
+      if (!candidates.length) return apiError(c, 404, 'NOT_FOUND', 'Dispute not found.');
+      const encList = await tx.select().from(encounters)
+        .where(and(eq(encounters.id, candidates[0].encounterId), eq(encounters.facilityId, user.facilityId)))
+        .limit(1).for('update');
+      if (!encList.length) return apiError(c, 404, 'NOT_FOUND', 'Dispute not found.');
       const encounter = encList[0];
-      const hasContestedPharmacy = allItems.some(
-        (it) => it.id !== dispute.chargeId && it.category === 'PHARMACY' && (it.isDisputed || it.status === 'CONTESTED')
-      );
-
-      await db
-        .update(encounters)
-        .set({
-          pharmacyRtsCleared: encounter.pharmacyRtsCleared || !hasContestedPharmacy,
-          unreturnedMedsCount: hasContestedPharmacy ? encounter.unreturnedMedsCount : 0,
-          updatedAt: new Date()
-        })
-        .where(eq(encounters.id, encounterId));
-    }
-
-    // 4. Audit log
-    await db.insert(systemAuditLogs).values({
-      facilityId: user.facilityId || '00000000-0000-0000-0000-000000000001',
-      userId: user.id,
-      actorRole: user.role,
-      action: 'SUPERVISORY_WAIVER_EXECUTED',
-      resourceType: 'billing_disputes',
-      resourceId: dispute.id,
-      newState: { supervisorNotes, status: 'SUPERVISOR_WAIVED' },
-      ipAddress: getClientIp(c),
-      userAgent: c.req.header('user-agent')
+      const [dispute] = await tx.select().from(billingDisputes)
+        .where(and(eq(billingDisputes.id, candidates[0].id), eq(billingDisputes.encounterId, encounter.id)))
+        .limit(1).for('update');
+      if (!dispute) return apiError(c, 404, 'NOT_FOUND', 'Dispute not found.');
+      if (dispute.status === 'SUPERVISOR_WAIVED') return { encounterId: encounter.id };
+      if (dispute.resolvedAt) return apiError(c, 409, 'DISPUTE_RESOLVED', 'This dispute has already been resolved.');
+      const [item] = await tx.select().from(chargemasterItems)
+        .where(and(eq(chargemasterItems.id, dispute.chargeId), eq(chargemasterItems.encounterId, encounter.id)))
+        .limit(1).for('update');
+      if (!item) return apiError(c, 404, 'NOT_FOUND', 'Disputed charge not found.');
+      await tx.update(chargemasterItems).set({
+        status: 'SUPERVISORY_WAIVED', patientOop: '0.00', isDisputed: false,
+        exclusionReasonClause: `Supervisory Balance Waiver applied: ${supervisorNotes}`, updatedAt: new Date()
+      }).where(eq(chargemasterItems.id, item.id));
+      await tx.update(billingDisputes).set({
+        status: 'SUPERVISOR_WAIVED', supervisorNotes, resolvedByUserId: user.id,
+        resolutionClause: `Waived under supervisory authority by ${user.fullName} (${user.role})`, resolvedAt: new Date()
+      }).where(eq(billingDisputes.id, dispute.id));
+      await recalculateAndPersistWaterfall(encounter.id, undefined, tx);
+      if (item.category === 'PHARMACY') {
+        const items = await tx.select().from(chargemasterItems).where(eq(chargemasterItems.encounterId, encounter.id));
+        const contested = items.some(it => it.category === 'PHARMACY' && (it.isDisputed || it.status === 'CONTESTED'));
+        await tx.update(encounters).set({
+          unreturnedMedsCount: contested ? encounter.unreturnedMedsCount : 0, updatedAt: new Date()
+        }).where(eq(encounters.id, encounter.id));
+      }
+      await tx.insert(systemAuditLogs).values({
+        facilityId: user.facilityId, userId: user.id, actorRole: user.role,
+        action: 'SUPERVISORY_WAIVER_EXECUTED', resourceType: 'billing_disputes', resourceId: dispute.id,
+        newState: { supervisorNotes, status: 'SUPERVISOR_WAIVED' },
+        ipAddress: getClientIp(c), userAgent: c.req.header('user-agent')
+      });
+      return { encounterId: encounter.id };
     });
+    if (result instanceof Response) return result;
 
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(encounterId);
+    const updated = await getHydratedEncounter(result.encounterId);
     return c.json({ success: true, encounter: updated });
   }
 );

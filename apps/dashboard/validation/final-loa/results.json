@@ -1,7 +1,7 @@
 {
   "environment": "Real React DOM + application components in jsdom; all API calls intercepted; no database or external network",
-  "passed": 9,
-  "total": 9,
+  "passed": 17,
+  "total": 17,
   "results": [
     {
       "name": "Radar waits for approval and blocks double submission",
@@ -37,6 +37,38 @@
     },
     {
       "name": "server rejection cannot produce local promissory-note success or a gate pass",
+      "passed": true
+    },
+    {
+      "name": "waiver rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "add rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "edit rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "delete rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "doctor rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "pharmacy rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "advance rejection retains authoritative encounter state",
+      "passed": true
+    },
+    {
+      "name": "settlement and pass actions cannot manufacture local discharge clearance",
       "passed": true
     }
   ]

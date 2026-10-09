@@ -213,7 +213,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
-            applyAccreditedCeiling(enc.id);
+            return applyAccreditedCeiling(enc.id);
           }
         };
       case 'PHARMACY_RTS_AUDIT':
@@ -237,7 +237,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
-            clearPharmacyRts(enc.id);
+            return clearPharmacyRts(enc.id);
           }
         };
       case 'HMO_FINAL_LOA':
@@ -286,7 +286,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
-            settlePatientBalance(enc.id, 'QR_PH');
+            return settlePatientBalance(enc.id, 'QR_PH');
           }
         };
       case 'CLEARED_GATE_PASS':
@@ -424,7 +424,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           className="w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
           onConfirm={() => {
             selectEncounter(enc.id);
-            settlePatientBalance(enc.id, 'QR_PH');
+            return settlePatientBalance(enc.id, 'QR_PH');
           }}
           title="Record settlement of remaining patient out-of-pocket balance"
         />

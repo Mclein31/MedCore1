@@ -19,12 +19,14 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { matchEncounterCondition } from '../utils/dbQuery';
 import { getClientIp } from '../utils/clientIp';
+import { isCentavoAmount } from '../utils/encounterAccess';
+import { moneyCents } from '../services/statutoryWaterfall';
 
 const clearanceApp = new Hono();
 
 // 1. POST /api/v1/encounters/:id/doctor/sign
 const doctorSignSchema = z.object({
-  agreedFee: z.number().positive()
+  agreedFee: z.number().positive().refine(isCentavoAmount, 'Professional fees must be exact centavo amounts.')
 });
 
 clearanceApp.post(
@@ -38,55 +40,63 @@ clearanceApp.post(
     const { agreedFee } = c.req.valid('json');
     const user = c.get('user');
 
-    const encList = await db
-      .select()
-      .from(encounters)
-      .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
-
-    if (encList.length === 0) {
-      return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
-    }
-
-    const enc = encList[0];
-    const now = new Date();
-
-    await db
-      .update(encounters)
-      .set({
-        doctorAgreedFee: agreedFee.toFixed(2),
-        doctorSignedAt: now,
-        stage: enc.stage === 'DOCTOR_PF_PENDING' ? 'PHARMACY_RTS_AUDIT' : enc.stage,
-        updatedAt: now
-      })
-      .where(eq(encounters.id, enc.id));
-
-    await recalculateAndPersistWaterfall(enc.id);
-
-    await db.insert(encounterTimelineEvents).values({
-      encounterId: enc.id,
-      eventType: 'CLINICAL',
-      title: 'Doctor PF Declared & QuickSign Executed',
-      description: `Agreed Professional Fee ₱${agreedFee.toLocaleString()} signed by ${user.fullName}`,
-      actorId: user.id,
-      actorName: user.fullName,
-      status: 'COMPLETED'
+    const result = await db.transaction(async (tx) => {
+      const [enc] = await tx.select().from(encounters)
+        .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
+        .limit(1).for('update');
+      if (!enc) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
+      if (enc.stage !== 'DOCTOR_PF_PENDING') {
+        if (enc.doctorSignedAt && Number(enc.doctorAgreedFee) === agreedFee) return { encounterId: enc.id };
+        return apiError(c, 409, 'STAGE_NOT_READY', 'Professional fees can only be signed at DOCTOR_PF_PENDING.');
+      }
+      const fees = (await tx.select().from(chargemasterItems)
+        .where(and(eq(chargemasterItems.encounterId, enc.id), eq(chargemasterItems.category, 'PROFESSIONAL_FEE')))
+        .for('update')).filter(item => item.status !== 'WAIVED' && item.status !== 'SUPERVISORY_WAIVED');
+      if (fees.length > 1) return apiError(c, 409, 'MULTIPLE_PROFESSIONAL_FEES', 'Review the physician fee lines before signing a combined amount.');
+      if (fees.some(item => item.isDisputed || item.status === 'CONTESTED')) return apiError(c, 409, 'PF_HAS_DISPUTE', 'Resolve the contested professional fee before signing.');
+      const ceilingCents = Math.max(0, moneyCents(Number(enc.doctorAgreedFee)) - moneyCents(Number(enc.doctorExcessPf)));
+      const excessPf = Math.max(0, moneyCents(agreedFee) - ceilingCents) / 100;
+      const now = new Date();
+      await tx.update(encounters).set({
+        doctorAgreedFee: agreedFee.toFixed(2), doctorExcessPf: excessPf.toFixed(2), doctorSignedAt: now,
+        stage: 'PHARMACY_RTS_AUDIT', updatedAt: now
+      }).where(eq(encounters.id, enc.id));
+      if (fees.length) {
+        const coveredCents = moneyCents(agreedFee) - moneyCents(excessPf);
+        const phCents = Math.min(moneyCents(Number(fees[0].philhealthCovered)), coveredCents);
+        const hmoCents = Math.min(moneyCents(Number(fees[0].hmoCovered)), coveredCents - phCents);
+        await tx.update(chargemasterItems).set({
+          grossAmount: agreedFee.toFixed(2), unitPrice: agreedFee.toFixed(2), quantity: '1.00',
+          patientOop: ((moneyCents(agreedFee) - phCents - hmoCents) / 100).toFixed(2),
+          philhealthCovered: (phCents / 100).toFixed(2), hmoCovered: (hmoCents / 100).toFixed(2),
+          status: excessPf > 0 ? 'EXCESS_PF' : 'COVERED',
+          plainLanguageExplainer: `Professional fee of ₱${agreedFee.toFixed(2)} confirmed by the attending physician.`, updatedAt: now
+        }).where(eq(chargemasterItems.id, fees[0].id));
+      } else {
+        await tx.insert(chargemasterItems).values({
+          encounterId: enc.id, code: `PF-QUICKSIGN-${enc.id}`, description: 'Attending physician professional fee',
+          category: 'PROFESSIONAL_FEE', quantity: '1.00', unitPrice: agreedFee.toFixed(2),
+          grossAmount: agreedFee.toFixed(2), patientOop: agreedFee.toFixed(2), status: excessPf > 0 ? 'EXCESS_PF' : 'COVERED',
+          plainLanguageExplainer: 'Professional fee confirmed by the attending physician.'
+        });
+      }
+      await recalculateAndPersistWaterfall(enc.id, excessPf, tx);
+      await tx.insert(encounterTimelineEvents).values({
+        encounterId: enc.id, eventType: 'CLINICAL', title: 'Doctor PF Declared & QuickSign Executed',
+        description: `Agreed Professional Fee ₱${agreedFee.toLocaleString()} signed by ${user.fullName}`,
+        actorId: user.id, actorName: user.fullName, status: 'COMPLETED'
+      });
+      await tx.insert(systemAuditLogs).values({
+        facilityId: enc.facilityId, userId: user.id, actorRole: user.role,
+        action: 'DOCTOR_QUICKSIGN_EXECUTED', resourceType: 'encounters', resourceId: enc.id,
+        newState: { agreedFee, doctorExcessPf: excessPf, stage: 'PHARMACY_RTS_AUDIT' },
+        ipAddress: getClientIp(c), userAgent: c.req.header('user-agent')
+      });
+      return { encounterId: enc.id };
     });
-
-    await db.insert(systemAuditLogs).values({
-      facilityId: enc.facilityId,
-      userId: user.id,
-      actorRole: user.role,
-      action: 'DOCTOR_QUICKSIGN_EXECUTED',
-      resourceType: 'encounters',
-      resourceId: enc.id,
-      newState: { agreedFee, stage: 'PHARMACY_RTS_AUDIT' },
-      ipAddress: getClientIp(c),
-      userAgent: c.req.header('user-agent')
-    });
-
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
+    const updated = await getHydratedEncounter(result.encounterId);
     return c.json({ success: true, encounter: updated });
   }
 );
@@ -101,11 +111,12 @@ clearanceApp.post(
     if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
-    const encList = await db
+    const result = await db.transaction(async (tx) => {
+    const encList = await tx
       .select()
       .from(encounters)
       .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (encList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
@@ -114,7 +125,7 @@ clearanceApp.post(
     const enc = encList[0];
     const now = new Date();
 
-    await db
+    await tx
       .update(encounters)
       .set({
         doctorExcessPf: '0.00',
@@ -124,9 +135,9 @@ clearanceApp.post(
       })
       .where(eq(encounters.id, enc.id));
 
-    await recalculateAndPersistWaterfall(enc.id, 0);
+    await recalculateAndPersistWaterfall(enc.id, 0, tx);
 
-    await db.insert(encounterTimelineEvents).values({
+    await tx.insert(encounterTimelineEvents).values({
       encounterId: enc.id,
       eventType: 'BILLING',
       title: 'Accredited Schedule Ceiling Applied',
@@ -136,7 +147,7 @@ clearanceApp.post(
       status: 'COMPLETED'
     });
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: enc.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -148,8 +159,11 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+      return { encounterId: enc.id };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
+    const updated = await getHydratedEncounter(result.encounterId);
     return c.json({ success: true, encounter: updated });
   }
 );
@@ -164,11 +178,12 @@ clearanceApp.post(
     if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
-    const encList = await db
+    const result = await db.transaction(async (tx) => {
+    const encList = await tx
       .select()
       .from(encounters)
       .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (encList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
@@ -177,7 +192,7 @@ clearanceApp.post(
     const enc = encList[0];
     const now = new Date();
 
-    await db
+    await tx
       .update(encounters)
       .set({
         pharmacyRtsCleared: true,
@@ -187,7 +202,7 @@ clearanceApp.post(
       })
       .where(eq(encounters.id, enc.id));
 
-    await db.insert(encounterTimelineEvents).values({
+    await tx.insert(encounterTimelineEvents).values({
       encounterId: enc.id,
       eventType: 'PHARMACY',
       title: 'Pharmacy Return-to-Stock (RTS) Audit Cleared',
@@ -197,7 +212,7 @@ clearanceApp.post(
       status: 'COMPLETED'
     });
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: enc.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -209,8 +224,11 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+      return { encounterId: enc.id };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
+    const updated = await getHydratedEncounter(result.encounterId);
     return c.json({ success: true, encounter: updated });
   }
 );
@@ -218,8 +236,8 @@ clearanceApp.post(
 // 4. POST /api/v1/encounters/:id/hmo/final-loa
 const finalLoaSchema = z.object({
   approvalCode: z.string().optional(),
-  approvedAmount: z.number().nonnegative().optional(),
-  disallowedConsumables: z.number().nonnegative().optional()
+  approvedAmount: z.number().nonnegative().refine(value => value === 0 || isCentavoAmount(value), 'Enter an exact centavo amount.').optional(),
+  disallowedConsumables: z.number().nonnegative().refine(value => value === 0 || isCentavoAmount(value), 'Enter an exact centavo amount.').optional()
 });
 
 clearanceApp.post(
@@ -233,11 +251,12 @@ clearanceApp.post(
     const { approvalCode, approvedAmount, disallowedConsumables } = c.req.valid('json');
     const user = c.get('user');
 
-    const encList = await db
+    const result = await db.transaction(async (tx) => {
+    const encList = await tx
       .select()
       .from(encounters)
       .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (encList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
@@ -247,16 +266,17 @@ clearanceApp.post(
     const now = new Date();
     const code = approvalCode || `APV-${Math.floor(100000 + Math.random() * 900000)}`;
 
-    const hmoRecord = await db
+    const hmoRecord = await tx
       .select()
       .from(hmoAuthorizations)
       .where(eq(hmoAuthorizations.encounterId, enc.id))
       .limit(1);
 
+    if (!hmoRecord.length) return apiError(c, 404, 'HMO_NOT_FOUND', 'No HMO authorization exists for this encounter.');
     const existingAmount = hmoRecord.length > 0 ? Number(hmoRecord[0].approvedAmount) : 0;
     const finalAmount = approvedAmount !== undefined ? approvedAmount : existingAmount;
 
-    await db
+    await tx
       .update(hmoAuthorizations)
       .set({
         finalLoaStatus: 'APPROVED',
@@ -267,7 +287,7 @@ clearanceApp.post(
       })
       .where(eq(hmoAuthorizations.encounterId, enc.id));
 
-    await db
+    await tx
       .update(encounters)
       .set({
         stage: enc.stage === 'HMO_FINAL_LOA' ? 'PENDING_SETTLEMENT' : enc.stage,
@@ -275,9 +295,9 @@ clearanceApp.post(
       })
       .where(eq(encounters.id, enc.id));
 
-    await recalculateAndPersistWaterfall(enc.id);
+    await recalculateAndPersistWaterfall(enc.id, undefined, tx);
 
-    await db.insert(encounterTimelineEvents).values({
+    await tx.insert(encounterTimelineEvents).values({
       encounterId: enc.id,
       eventType: 'PAYER',
       title: 'Commercial HMO Final LOA Approved',
@@ -287,7 +307,7 @@ clearanceApp.post(
       status: 'COMPLETED'
     });
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: enc.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -299,8 +319,11 @@ clearanceApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+      return { encounterId: enc.id };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
+    const updated = await getHydratedEncounter(result.encounterId);
     return c.json({ success: true, encounter: updated });
   }
 );

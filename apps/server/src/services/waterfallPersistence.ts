@@ -1,5 +1,5 @@
 import { eq, and } from 'drizzle-orm';
-import { db } from '../db';
+import { db, type DbTransaction } from '../db';
 import {
   encounters,
   patients,
@@ -18,9 +18,10 @@ import { computeStatutoryWaterfall, StatutoryWaterfallResult } from './statutory
  */
 export async function recalculateAndPersistWaterfall(
   encounterId: string,
-  updatedDoctorExcessPf?: number
+  updatedDoctorExcessPf?: number,
+  transaction?: DbTransaction
 ): Promise<StatutoryWaterfallResult | null> {
-  return db.transaction(async (tx) => {
+  const recalculate = async (tx: DbTransaction) => {
     // Use the same encounter lock as payments and notes before reading paid state.
     const locked = await tx.select({ id: encounters.id }).from(encounters)
       .where(eq(encounters.id, encounterId)).limit(1).for('update');
@@ -113,5 +114,6 @@ export async function recalculateAndPersistWaterfall(
       .where(eq(encounters.id, encounterId));
 
     return computed;
-  });
+  };
+  return transaction ? recalculate(transaction) : db.transaction(recalculate);
 }

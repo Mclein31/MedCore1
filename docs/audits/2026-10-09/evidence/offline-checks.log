@@ -1,0 +1,40 @@
+[PASS] 1.2: 250 server-engine fixtures reconcile with zero-centavo error
+[FAIL] 1.2: Seeded waterfall values match subsequent server recalculation inputs for all 250 fixtures — 3 encounters have seed/recalculation differences; see seed-recalculation-parity.json
+
+6 !== 0
+
+[FAIL] 1.2: Waterfall rejects nonfinite inputs rather than returning NaN — Missing expected exception.
+[FAIL] 1.2: Waterfall rejects a one-cent reconciliation discrepancy — Missing expected exception.
+[FAIL] 2.3: Plan registration MRN and telephone match the seeded primary patient — Expected values to be strictly equal:
++ actual - expected
+
++ 'MRN-882190'
+- 'MRN-2026-8812'
+       ^
+
+[PASS] 3.2: Legacy supply category has a CENTRAL_SUPPLIES normalization branch
+[PASS] 4.3: Waived gross is excluded from taxable base and liability drops in the seed-derived scenario
+[FAIL] 5.1: Audit physician and HMO coordinator are seeded — Carlos Mendoza is absent from seeder
+[FAIL] 5.1: Primary encounter begins at the stage required by QuickSign — Expected values to be strictly equal:
++ actual - expected
+
++ 'HMO_FINAL_LOA'
+- 'DOCTOR_PF_PENDING'
+
+[PASS] 4.4: Actual waived dashboard row displays Supervisory Waived
+[FAIL] 4.4: Actual zero-OOP waived dashboard row renders the required strikethrough — Waived row instead renders ₱0.00 (Covered), without strikethrough
+"shadow*" style props are deprecated. Use "boxShadow".
+[PASS] 6.2: Actual mobile Coverage renders the approved benefit amount
+[FAIL] 6.2: Actual mobile Coverage renders the literal required HMO Approved badge — Actual badge label is Approved
+[PASS] 7.2: Actual Bill button is present only at pending settlement with positive balance
+[FAIL] 8.4: Existing rollback test checks all three required tables — Existing rollback test checks only payments, not payment_receipts or system_audit_logs
+[FAIL] 8.2: Current payment processor issues the required OR-SJMC receipt prefix — Current processor returns OR-MC, not OR-SJMC; it is a simulation
+[PASS] 9.1: All government ID types reject invalid formats with an error
+[PASS] 9.2: Fixture schedules and tiny residuals are nonnegative, zero-interest and centavo-exact
+[PASS] 10.1: Gate-pass HMAC detects a changed settlement payload
+[FAIL] 10.1: Exit PIN is an independent factor rather than the public pass-number suffix — PIN is recoverable directly from the pass number
+[FAIL] 10.3: The audit wrong-PIN value 0000 cannot be a generated valid PIN — A valid pass number can produce the supposed wrong PIN 0000
+[PASS] 11: Generated XML is well-formed and preserves the synthetic HCI/PF split
+[FAIL] 11: XML contains the namespace/schema reference required by the audit — XML has a circular text attribute, but no namespace/schema/DTD reference
+[FAIL] 12.1: Analytics API includes the required positive DAR metric — summary.darDays is absent from the API response
+MASTER_OFFLINE_CHECKS_DONE passed=10 failed=14

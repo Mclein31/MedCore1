@@ -19,7 +19,7 @@ export default function NotificationsScreen() {
     await AsyncStorage.setItem(key, JSON.stringify(res.items.map((item) => item.id))).catch(() => {});
     return { items: res.items, read };
   }, [client, user]);
-  const { data, loading, error, refresh } = useResource(load);
+  const { data, loading, error, refresh } = useResource(load, 5000);
   const pullRefresh = usePullRefresh(refresh);
   if (loading && !data) return <LoadingState message="Loading your updates…" />;
   if (!data) return <ErrorState message={error || 'We could not load your updates.'} onRetry={refresh} />;

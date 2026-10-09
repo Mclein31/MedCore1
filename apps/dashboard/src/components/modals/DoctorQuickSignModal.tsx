@@ -18,7 +18,7 @@ export const DoctorQuickSignModal: React.FC = () => {
     selectedEncounter,
     nudgeDoctor,
     applyAccreditedCeiling,
-    advanceStage
+    signDoctorFee
   } = useMedCore();
 
   const [signedSuccess, setSignedSuccess] = useState(false);
@@ -33,8 +33,8 @@ export const DoctorQuickSignModal: React.FC = () => {
   const hmoName = selectedEncounter.hmo.hmoName || selectedEncounter.hmo.providerName;
   const isSigned = Boolean(selectedEncounter.doctorSignedAt);
 
-  const handleApplyCeiling = () => {
-    applyAccreditedCeiling(selectedEncounter.id);
+  const handleApplyCeiling = async () => {
+    await applyAccreditedCeiling(selectedEncounter.id);
     setSignedSuccess(true);
     setTimeout(() => {
       setSignedSuccess(false);
@@ -42,8 +42,8 @@ export const DoctorQuickSignModal: React.FC = () => {
     }, 1200);
   };
 
-  const handleSignDeclared = () => {
-    advanceStage(selectedEncounter.id);
+  const handleSignDeclared = async () => {
+    await signDoctorFee(selectedEncounter.id, declared);
     setSignedSuccess(true);
     setTimeout(() => {
       setSignedSuccess(false);

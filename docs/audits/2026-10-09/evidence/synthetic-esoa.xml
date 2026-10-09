@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<eSOA_Claim version="3.0" xmlns="urn:philhealth:esoa:circular:2023-0026" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" circular="PhilHealth-Circular-2023-0026">
+  <Facility>
+    <AccreditationNumber>SYNTHETIC</AccreditationNumber>
+    <Name>Audit hospital</Name>
+    <TaxIdentificationNumber>SYNTHETIC</TaxIdentificationNumber>
+    <Address>Audit</Address>
+  </Facility>
+  <Patient>
+    <PhilHealthIdentificationNumber>SYNTHETIC</PhilHealthIdentificationNumber>
+    <FullName>Synthetic Patient</FullName>
+    <DateOfBirth>2000-01-01</DateOfBirth>
+    <Gender>M</Gender>
+    <IsSeniorCitizenOrPWD>N</IsSeniorCitizenOrPWD>
+    <SeniorPWD_ID></SeniorPWD_ID>
+  </Patient>
+  <Encounter>
+    <EncounterNumber>AUDIT</EncounterNumber>
+    <AdmissionTimestamp>2026-10-09</AdmissionTimestamp>
+    <DischargeTimestamp>2026-10-09</DischargeTimestamp>
+    <PrimaryICD10>J18.9</PrimaryICD10>
+    <DiagnosisDescription>Synthetic</DiagnosisDescription>
+  </Encounter>
+  <AttendingPhysician>
+    <PAN>SYNTHETIC</PAN>
+    <FullName>Synthetic Doctor</FullName>
+    <AgreedProfessionalFee>15.00</AgreedProfessionalFee>
+    <ExcessProfessionalFee>0.00</ExcessProfessionalFee>
+  </AttendingPhysician>
+  <BenefitSummary>
+    <ClaimNumber>AUDIT</ClaimNumber>
+    <CaseRateCode>J18.9</CaseRateCode>
+    <TotalCaseRate>10.00</TotalCaseRate>
+    <HospitalCareFacilityShare>7.00</HospitalCareFacilityShare>
+    <PhysicianShare>3.00</PhysicianShare>
+    <NoBalanceBilling>N</NoBalanceBilling>
+  </BenefitSummary>
+  <StatutoryWaterfallSummary>
+    <GrossTotal>100.00</GrossTotal>
+    <VATExemption>0.00</VATExemption>
+    <SeniorCitizenPWDDiscount>0.00</SeniorCitizenPWDDiscount>
+    <PhilHealthBenefitTotal>10.00</PhilHealthBenefitTotal>
+    <HMOApprovedAmount>0.00</HMOApprovedAmount>
+    <NetPatientOutOfPocket>90.00</NetPatientOutOfPocket>
+  </StatutoryWaterfallSummary>
+  <ItemizedCharges>
+    <Item>
+      <Code>AUDIT</Code>
+      <Description>Synthetic charge</Description>
+      <Category>LABORATORY</Category>
+      <Quantity>1.00</Quantity>
+      <UnitPrice>100.00</UnitPrice>
+      <GrossAmount>100.00</GrossAmount>
+      <PhilHealthShare>10.00</PhilHealthShare>
+      <HMOShare>0.00</HMOShare>
+      <PatientOutOfPocket>90.00</PatientOutOfPocket>
+    </Item>
+  </ItemizedCharges>
+</eSOA_Claim>

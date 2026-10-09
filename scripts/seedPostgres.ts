@@ -86,7 +86,11 @@ async function seed() {
     // 2. Insert Users (Administrative Specialists & Attending Physicians)
     console.log('[3/7] Seeding System Users with Web Crypto PBKDF2 hashes...');
     const defaultPassword = 'HospitalRCM2026!';
-    const userRoleConfigs = [
+    const userRoleConfigs: Array<{
+      username: string; email: string; fullName: string; role: string; title: string;
+      avatar: string; prc: string | null; pan: string | null; phone: string;
+      password?: string; linkedMrn?: string;
+    }> = [
       {
         username: 'elena.santos',
         email: 'elena.santos@stjude.ph',
@@ -164,6 +168,24 @@ async function seed() {
         pan: null,
         phone: '0922-441-8902'
       },
+      {
+        username: 'carlos.mendoza', email: 'carlos.mendoza@stjude.ph',
+        fullName: 'Dr. Carlos Mendoza, FPCP', role: 'ATTENDING_PHYSICIAN',
+        title: 'Attending Specialist (FPCP)', avatar: 'CM',
+        prc: 'PRC-0041289', pan: 'PAN-1092-4418', phone: '0917-440-1928'
+      },
+      {
+        username: 'kristine.ramos', email: 'kristine.ramos@stjude.ph',
+        fullName: 'Kristine Ramos', role: 'HMO_COORDINATOR',
+        title: 'Commercial HMO Adjudication Officer', avatar: 'KR',
+        prc: null, pan: 'PAN-9921-002', phone: '0918-992-3401'
+      },
+      {
+        username: 'juan.delacruz', email: 'juan.delacruz@gmail.com',
+        fullName: 'Juan S. Dela Cruz', role: 'PATIENT_GUARANTOR',
+        title: 'Patient Guarantor', avatar: 'JD', prc: null, pan: null,
+        phone: '0917-881-8812', password: 'PatientPass2026!', linkedMrn: 'MRN-2026-8812'
+      },
       // Additional Clinical Specialists
       {
         username: 'cristina.abad',
@@ -237,13 +259,13 @@ async function seed() {
     const userIdByPan = new Map<string, string>();
 
     for (const u of userRoleConfigs) {
-      const { hash, salt } = await hashPassword(defaultPassword);
+      const { hash, salt } = await hashPassword(u.password ?? defaultPassword);
       const userRes = await client.query(
         `
         INSERT INTO users (
           facility_id, username, email, password_hash, salt, full_name,
-          role, title, avatar_initials, prc_license, pan_number, contact_number
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          role, title, avatar_initials, prc_license, pan_number, contact_number, linked_mrn
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         RETURNING id;
       `,
         [
@@ -258,12 +280,13 @@ async function seed() {
           u.avatar,
           u.prc,
           u.pan,
-          u.phone
+          u.phone,
+          u.linkedMrn ?? null
         ]
       );
       const insertedId = userRes.rows[0].id;
       userIdByUsername.set(u.username, insertedId);
-      if (u.pan) {
+      if (u.pan && !userIdByPan.has(u.pan)) {
         userIdByPan.set(u.pan, insertedId);
       }
     }
@@ -461,7 +484,7 @@ async function seed() {
       );
 
       // 4.3 Resolve Attending Physician ID
-      const doctorId = userIdByPan.get(enc.doctorPan) || defaultDoctorId;
+      const doctorId = (enc.id === 'enc-8812' ? userIdByUsername.get('carlos.mendoza') : userIdByPan.get(enc.doctorPan)) || defaultDoctorId;
 
       // 4.4 Insert Encounter
       const admissionTs = new Date(enc.admissionDate || Date.now() - 3 * 24 * 3600 * 1000);
@@ -712,7 +735,7 @@ async function seed() {
         const verifiedTs = dp?.verifiedAt ? new Date(dp.verifiedAt) : null;
         const seedSecret = resolveGatePassSecret(process.env.GATE_PASS_SECRET, false);
         const hmac = dp?.hmacSignature || (await generateGatePassHmac(insertedEncounterId, settledAmount, issuedTs.toISOString(), seedSecret));
-        const exitPin = generateDeterministicExitPin(passNum);
+        const exitPin = await generateDeterministicExitPin(passNum, seedSecret);
 
         await client.query(
           `

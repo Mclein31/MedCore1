@@ -1,3 +1,4 @@
+import { moneyCents } from '../apps/shared/statutoryWaterfall';
 import { INITIAL_ENCOUNTERS } from '../apps/dashboard/src/data/mockData';
 import { auditEntireDataset, calculatePatientFinancialRecord } from '../apps/dashboard/src/utils/financing';
 
@@ -29,14 +30,14 @@ for (const enc of INITIAL_ENCOUNTERS) {
     .filter((i) => i.status !== 'SUPERVISORY_WAIVED' && i.status !== 'WAIVED')
     .reduce((acc, curr) => acc + curr.grossAmount, 0);
   const expectedGross = Number(sumItems.toFixed(2));
-  if (Math.abs(w.grossTotal - expectedGross) > 0.05 || Math.abs(rec.hospitalBill - (w.grossHospitalCharges + w.grossDoctorFee)) > 0.05) {
+  if (moneyCents(w.grossTotal) !== moneyCents(expectedGross) || moneyCents(rec.hospitalBill) !== moneyCents((w.grossHospitalCharges + w.grossDoctorFee))) {
     grossTotalErrors++;
   }
 
   // 2. VAT calculation check
   if (rec.isSeniorOrPwd) {
     const expectedVat = Number((w.grossTotal - w.grossTotal / 1.12).toFixed(2));
-    if (Math.abs(w.vatExemption - expectedVat) > 0.05) {
+    if (moneyCents(w.vatExemption) !== moneyCents(expectedVat)) {
       vatCalculationErrors++;
     }
   } else {
@@ -47,7 +48,7 @@ for (const enc of INITIAL_ENCOUNTERS) {
   if (rec.isSeniorOrPwd) {
     const vatBase = Number((w.grossTotal - w.vatExemption).toFixed(2));
     const expectedSc = Number((vatBase * 0.20).toFixed(2));
-    if (Math.abs(w.seniorPwdDiscount - expectedSc) > 0.05) {
+    if (moneyCents(w.seniorPwdDiscount) !== moneyCents(expectedSc)) {
       seniorPwdCalculationErrors++;
     }
   } else {
@@ -67,7 +68,7 @@ for (const enc of INITIAL_ENCOUNTERS) {
   // 6. Total deduction check
   const totalDeductions = Number((rec.totalAdjustments + rec.philhealthCoverage + rec.hmoApprovedAmount).toFixed(2));
   const expectedDeductions = Number((w.vatExemption + w.seniorPwdDiscount + w.philhealthTotal + w.hmoApprovedAmount).toFixed(2));
-  if (Math.abs(totalDeductions - expectedDeductions) > 0.05) {
+  if (moneyCents(totalDeductions) !== moneyCents(expectedDeductions)) {
     totalDeductionErrors++;
   }
 
@@ -79,28 +80,28 @@ for (const enc of INITIAL_ENCOUNTERS) {
   // 8. Outstanding balance check
   const isPaid = enc.stage === 'CLEARED_GATE_PASS' && enc.dischargePass?.settlementChannel !== 'PROMISSORY_NOTE';
   const expectedBalance = isPaid ? 0 : rec.patientResponsibility;
-  if (Math.abs(rec.outstandingBalance - expectedBalance) > 0.05) {
+  if (moneyCents(rec.outstandingBalance) !== moneyCents(expectedBalance)) {
     outstandingBalanceErrors++;
   }
 
   // 9. Promissory note check
   if (enc.promissoryNote) {
     const pn = enc.promissoryNote;
-    const expectedMonthly = Number((pn.principalAmount / pn.installmentMonths).toFixed(2));
-    if (Math.abs(pn.monthlyInstallment - expectedMonthly) > 0.05 || Math.abs(pn.principalAmount - enc.waterfall.netPatientDue) > 0.05) {
+    const expectedMonthly = Math.floor(moneyCents(pn.principalAmount) / pn.installmentMonths) / 100;
+    if (moneyCents(pn.monthlyInstallment) !== moneyCents(expectedMonthly) || moneyCents(pn.principalAmount) !== moneyCents(enc.waterfall.netPatientDue)) {
       promissoryNoteErrors++;
     }
   }
 
   // 10. Installment plans 3, 6, 12 months checks
   const p3 = rec.installmentPlans[3];
-  if (!p3.isReconciled || Math.abs(p3.totalRepayment - p3.financedAmount) > 0.01) plan3Errors++;
+  if (!p3.isReconciled || moneyCents(p3.totalRepayment) !== moneyCents(p3.financedAmount)) plan3Errors++;
 
   const p6 = rec.installmentPlans[6];
-  if (!p6.isReconciled || Math.abs(p6.totalRepayment - p6.financedAmount) > 0.01) plan6Errors++;
+  if (!p6.isReconciled || moneyCents(p6.totalRepayment) !== moneyCents(p6.financedAmount)) plan6Errors++;
 
   const p12 = rec.installmentPlans[12];
-  if (!p12.isReconciled || Math.abs(p12.totalRepayment - p12.financedAmount) > 0.01) plan12Errors++;
+  if (!p12.isReconciled || moneyCents(p12.totalRepayment) !== moneyCents(p12.financedAmount)) plan12Errors++;
 }
 
 console.log(`\nPatients audited: ${INITIAL_ENCOUNTERS.length}`);
@@ -130,7 +131,7 @@ console.log(`- Promissory Notes Valid & Reconciled: ${report.promissoryNoteValid
 console.log(`- Installment Schedules Centavo Exact: ${report.installmentReconciledCount} / ${report.totalEncounters}`);
 console.log(`- Overall Dataset Status: ${report.isDatasetClean ? 'PASSED (0 Errors)' : 'FAILED'}`);
 
-if (report.failures.length > 0) {
+if (report.failures.length > 0 || [grossTotalErrors, vatCalculationErrors, seniorPwdCalculationErrors, philhealthCalculationErrors, hmoCalculationErrors, totalDeductionErrors, patientResponsibilityErrors, outstandingBalanceErrors, promissoryNoteErrors, plan3Errors, plan6Errors, plan12Errors].some(count => count > 0)) {
   console.error('\nFAILURES DETECTED:');
   console.error(JSON.stringify(report.failures, null, 2));
   process.exit(1);

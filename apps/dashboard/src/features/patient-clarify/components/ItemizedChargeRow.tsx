@@ -91,8 +91,10 @@ export const ItemizedChargeRow: React.FC<Props> = ({ item, onDisputeClick, isRea
           <div className="text-right">
             <div className="text-[11px] text-slate-400 font-medium">Billed: {formatPeso(item.grossAmount)}</div>
             <div className="font-mono font-bold text-slate-900 text-sm">
-              {item.patientOop > 0 ? (
-                <span className={isDisputed ? 'text-amber-700' : isWaived ? 'text-slate-400 line-through' : 'text-slate-900'}>
+              {isWaived ? (
+                <span className="text-slate-400 line-through">{formatPeso(item.grossAmount)}</span>
+              ) : item.patientOop > 0 ? (
+                <span className={isDisputed ? 'text-amber-700' : 'text-slate-900'}>
                   {formatPeso(item.patientOop)}
                 </span>
               ) : (
