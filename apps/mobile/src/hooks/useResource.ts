@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { AppState } from 'react-native';
 
 // Associate every result with its loader, so route changes cannot show old records.
-export function useResource<T>(load: () => Promise<T>) {
+export function useResource<T>(load: () => Promise<T>, pollIntervalMs = 0) {
   const [snapshot, setSnapshot] = useState<{ loader: typeof load; data: T } | null>(null);
   const [status, setStatus] = useState<{ loader: typeof load; loading: boolean; error: string | null }>({ loader: load, loading: true, error: null });
   const source = useRef(load);
@@ -25,7 +26,12 @@ export function useResource<T>(load: () => Promise<T>) {
     void request.finally(() => { if (pending.current === request) pending.current = null; });
     return request;
   }, [load]);
-  useFocusEffect(useCallback(() => { void refresh(); }, [refresh]));
+  useFocusEffect(useCallback(() => {
+    void refresh();
+    if (pollIntervalMs <= 0) return;
+    const interval = setInterval(() => { if (AppState.currentState === 'active') void refresh(); }, pollIntervalMs);
+    return () => clearInterval(interval);
+  }, [refresh, pollIntervalMs]));
   const current = snapshot?.loader === load;
   return { data: current ? snapshot.data : null, loading: status.loader !== load || status.loading, error: status.loader === load ? status.error : null, refresh };
 }

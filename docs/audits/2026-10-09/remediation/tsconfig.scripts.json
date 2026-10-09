@@ -1,0 +1,5 @@
+{
+  "extends": "../../../../apps/server/tsconfig.json",
+  "compilerOptions": { "baseUrl": "../../../..", "paths": { "@/*": ["apps/dashboard/src/*"] } },
+  "include": ["../../../../scripts/seedPostgres.ts", "../../../../scripts/testBackendApi.ts"]
+}

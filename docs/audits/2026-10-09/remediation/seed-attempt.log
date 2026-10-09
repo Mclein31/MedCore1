@@ -1,0 +1,36 @@
+================================================================================
+AQROMED ENTERPRISE HOSPITAL RCM: POSTGRESQL 16+ SEEDER & PARITY AUDIT
+Database Target: postgresql://mclein@localhost:5432/aqromed
+================================================================================
+
+AggregateError [EPERM]: 
+    at /Users/mclein/Documents/Developer/Personal_Projects/MedCore1/node_modules/pg-pool/index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async seed (/Users/mclein/Documents/Developer/Personal_Projects/MedCore1/scripts/seedPostgres.ts:29:18) {
+  code: 'EPERM',
+  [errors]: [
+    Error: connect EPERM ::1:5432 - Local (:::0)
+        at internalConnectMultiple (node:net:1502:16)
+        at defaultTriggerAsyncIdScope (node:internal/async_hooks:474:12)
+        at GetAddrInfoReqWrap.emitLookup [as callback] (node:net:1925:7)
+        at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:134:8) {
+      errno: -1,
+      code: 'EPERM',
+      syscall: 'connect',
+      address: '::1',
+      port: 5432
+    },
+    Error: connect EPERM 127.0.0.1:5432 - Local (0.0.0.0:0)
+        at internalConnectMultiple (node:net:1502:16)
+        at internalConnectMultiple (node:net:1506:5)
+        at defaultTriggerAsyncIdScope (node:internal/async_hooks:474:12)
+        at GetAddrInfoReqWrap.emitLookup [as callback] (node:net:1925:7)
+        at GetAddrInfoReqWrap.onlookupall [as oncomplete] (node:dns:134:8) {
+      errno: -1,
+      code: 'EPERM',
+      syscall: 'connect',
+      address: '127.0.0.1',
+      port: 5432
+    }
+  ]
+}

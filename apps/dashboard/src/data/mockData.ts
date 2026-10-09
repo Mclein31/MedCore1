@@ -1,5 +1,6 @@
 import { Encounter, ChargemasterItem, EncounterTimelineEvent } from '@/types/domain';
 import { recalculateWaterfall } from '@/utils/waterfall';
+import { calculateInstallmentPlan } from '@/utils/financing';
 import { generateAdditionalEncounters } from './patientDatasetGenerator';
 
 // ============================================================================
@@ -1077,14 +1078,14 @@ export const RAW_INITIAL_ENCOUNTERS: Encounter[] = [
     encounterNumber: 'ENC-2026-8812',
     patient: {
       id: 'pat-101',
-      mrn: 'MRN-882190',
+      mrn: 'MRN-2026-8812',
       maskedName: 'DELA CRUZ, Juan S.',
       philhealthPin: '12-0254-9128-1',
       isSeniorCitizen: true,
-      isPwd: false,
+      isPwd: true,
       age: 68,
       gender: 'M',
-      contactNumber: '+63 917 554 9281'
+      contactNumber: '0917-881-8812'
     },
     roomBed: 'Bed 412',
     roomCategory: 'REGULAR_PRIVATE',
@@ -1092,14 +1093,14 @@ export const RAW_INITIAL_ENCOUNTERS: Encounter[] = [
     dailyRoomAllowance: 1500.0,
     admissionDate: '2026-09-21',
     mghOrderTimestamp: '2026-09-25T10:14:00+08:00',
-    attendingDoctor: 'Dr. Manuel Reyes, FPCP',
+    attendingDoctor: 'Dr. Carlos Mendoza, FPCP',
     doctorPan: 'PAN-1092-4418',
     doctorAgreedFee: 21000.0,
     doctorExcessPf: 10000.0,
-    doctorSignedAt: '2026-09-25T10:21:00+08:00',
-    pharmacyRtsCleared: true,
+    doctorSignedAt: null,
+    pharmacyRtsCleared: false,
     unreturnedMedsCount: 0,
-    stage: 'HMO_FINAL_LOA',
+    stage: 'DOCTOR_PF_PENDING',
     elapsedMinutes: 32,
     slaStatus: 'WARNING',
     primaryDiagnosis: 'Moderate Risk Pneumonia',
@@ -1456,7 +1457,7 @@ export const RAW_INITIAL_ENCOUNTERS: Encounter[] = [
       assignedAuditor: 'Grace Tan'
     },
     items: tanItems,
-    waterfall: recalculateWaterfall(tanItems, true, 7700.0, 3300.0, 8900.0, 3600.0, 4000.0),
+    waterfall: recalculateWaterfall(tanItems, true, 7700.0, 3300.0, 0, 3600.0, 4000.0),
     disputes: [],
     timeline: createTimeline([
       {
@@ -1546,7 +1547,7 @@ export const RAW_INITIAL_ENCOUNTERS: Encounter[] = [
       assignedAuditor: 'Grace Tan'
     },
     items: garciaItems,
-    waterfall: recalculateWaterfall(garciaItems, false, 8400.0, 3600.0, 21800.0, 1500.0, 5000.0),
+    waterfall: recalculateWaterfall(garciaItems, false, 8400.0, 3600.0, 0, 1500.0, 5000.0),
     disputes: [
       {
         id: 'disp-05',
@@ -2203,7 +2204,7 @@ export const RAW_INITIAL_ENCOUNTERS: Encounter[] = [
       assignedAuditor: 'Grace Tan'
     },
     items: sorianoItems,
-    waterfall: recalculateWaterfall(sorianoItems, false, 11200.0, 4800.0, 16000.0, 0, 0),
+    waterfall: recalculateWaterfall(sorianoItems, false, 11200.0, 4800.0, 0, 0, 0),
     disputes: [],
     timeline: createTimeline([
       {
@@ -2644,6 +2645,9 @@ const ALL_RAW_ENCOUNTERS: Encounter[] = [
 
 export const INITIAL_ENCOUNTERS: Encounter[] = ALL_RAW_ENCOUNTERS.map((enc) => ({
   ...enc,
+  promissoryNote: enc.promissoryNote ? { ...enc.promissoryNote,
+    monthlyInstallment: calculateInstallmentPlan(enc.promissoryNote.principalAmount, enc.promissoryNote.installmentMonths).monthlyInstallment
+  } : undefined,
   bedNumber: enc.roomBed,
   roomType: enc.roomCategory.replace(/_/g, ' '),
   elapsedMinutesInStage: enc.elapsedMinutes,

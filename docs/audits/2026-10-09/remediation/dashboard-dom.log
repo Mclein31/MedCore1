@@ -1,0 +1,95 @@
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/hmo/final-loa',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Approval is unavailable. Try again.'
+}
+[MedCore API Transport Failure] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/hmo/final-loa',
+  method: 'POST',
+  errorType: 'TypeError',
+  errorMessage: 'Network offline',
+  diagnostic: 'Network offline'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/hmo/final-loa',
+  status: 401,
+  statusText: '',
+  errorCode: 'UNAUTHORIZED',
+  errorMessage: 'Authentication required. Please log in with a valid session.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/promissory-notes',
+  status: 400,
+  statusText: '',
+  errorCode: 'INVALID_GOVERNMENT_ID',
+  errorMessage: 'ID rejected by hospital.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/disputes/disp-01/supervisory-waive',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/charges',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/charges/RM-PRIV-01',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/charges/RM-PRIV-01',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/doctor/sign',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/pharmacy/clear-rts',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[MedCore API Response Error] {
+  endpoint: 'http://127.0.0.1:5191/api/v1/encounters/enc-8812/advance-stage',
+  status: 503,
+  statusText: '',
+  errorCode: 'SERVER_UNAVAILABLE',
+  errorMessage: 'Synthetic mutation rejected.'
+}
+[PASS] Radar waits for approval and blocks double submission
+[PASS] Cards waits for approval and blocks double submission
+[PASS] rejected keeps the bill unchanged and permits a successful retry
+[PASS] offline keeps the bill unchanged and permits a successful retry
+[PASS] malformed keeps the bill unchanged and permits a successful retry
+[PASS] expired approval clears records/dialog and does not leave a stale toast after re-login
+[PASS] a confirmed 200 response must actually contain an approved LOA
+[PASS] invalid IDs cannot create a local note or make a promissory API request
+[PASS] server rejection cannot produce local promissory-note success or a gate pass
+[PASS] waiver rejection retains authoritative encounter state
+[PASS] add rejection retains authoritative encounter state
+[PASS] edit rejection retains authoritative encounter state
+[PASS] delete rejection retains authoritative encounter state
+[PASS] doctor rejection retains authoritative encounter state
+[PASS] pharmacy rejection retains authoritative encounter state
+[PASS] advance rejection retains authoritative encounter state
+[PASS] settlement and pass actions cannot manufacture local discharge clearance
+DASHBOARD_LOA_DOM_CHECKS_DONE passed=17/17

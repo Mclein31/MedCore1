@@ -35,7 +35,7 @@ function click(label: string, within?: ParentNode) { button(label, within).click
 async function mount() {
   posts = 0; notePosts = 0; release = null; hold = false; outcome = 'success'; current = null;
   record = structuredClone(INITIAL_ENCOUNTERS[0]);
-  record.id = 'enc-8812'; record.stage = 'HMO_FINAL_LOA'; record.hmo.finalLoaStatus = 'AWAITING_CODE'; record.hmo.approvalCode = undefined;
+  record.id = 'enc-8812'; record.stage = 'HMO_FINAL_LOA'; record.doctorSignedAt = '2026-10-09T00:00:00Z'; record.pharmacyRtsCleared = true; record.hmo.finalLoaStatus = 'AWAITING_CODE'; record.hmo.approvalCode = undefined;
   record.billState = 'FINALIZED'; record.amountPaid = 0; record.remainingBalance = record.waterfall.netPatientDue;
   apiClient.setBaseUrl(location.origin); apiClient.setAuthToken('validation-session');
   window.fetch = async (url, config) => {
@@ -60,7 +60,7 @@ async function mount() {
   root = createRoot(document.getElementById('app')!); root.render(<MedCoreProvider><Probe /></MedCoreProvider>);
   await waitFor(() => !!current?.isAuthenticated && !current.isVerifyingSession, 'Session verification did not complete');
   current!.setActiveRoute('DISCHARGE_CLEARANCE');
-  await waitFor(() => document.body.textContent?.includes('Review & Confirm eLOA') === true, 'Radar did not load the HMO action');
+  await waitFor(() => current?.activeRoute === 'DISCHARGE_CLEARANCE' && [...document.querySelectorAll('button')].some(button => button.textContent?.trim() === 'Review & Confirm eLOA'), 'Radar did not load the HMO action button');
 }
 async function openApproval(card = false) {
   if (card) { click('6-Stage Pipeline'); await waitFor(() => document.body.textContent?.includes('Confirm eLOA Coverage') === true, 'Card action not rendered'); click('Confirm eLOA Coverage'); }
@@ -130,6 +130,36 @@ await check('server rejection cannot produce local promissory-note success or a 
   assert(rejected, 'Backend rejection was swallowed');
   assert(JSON.stringify(current!.encounters[0]) === JSON.stringify(before), 'Backend rejection created a note or cleared the bill locally');
   assert(!current!.isGatePassModalOpen, 'Backend rejection opened a success pass');
+});
+
+for (const action of ['waiver', 'add', 'edit', 'delete', 'doctor', 'pharmacy', 'advance'] as const) {
+  await check(`${action} rejection retains authoritative encounter state`, async () => {
+    const before = structuredClone(current!.encounters[0]);
+    window.fetch = async () => response({ error: { code: 'SERVER_UNAVAILABLE', message: 'Synthetic mutation rejected.' } }, 503);
+    try {
+      if (action === 'waiver') await current!.supervisoryWaiveItem(before.id, before.disputes[0].itemId, 'Validation waiver');
+      if (action === 'add') await current!.addChargeItem(before.id, {description:'Synthetic charge',category:'LABORATORY',grossAmount:10});
+      if (action === 'edit') await current!.editChargeItem(before.id, before.items[0].id, {grossAmount:10});
+      if (action === 'delete') {
+        current!.deleteChargeItem(before.id, before.items[0].id);
+        await waitFor(() => !!current!.confirmationState, 'Delete confirmation did not open');
+        await current!.confirmationState!.onConfirm();
+      }
+      if (action === 'doctor') await current!.signDoctorFee(before.id, 15000);
+      if (action === 'pharmacy') await current!.clearPharmacyRts(before.id);
+      if (action === 'advance') await current!.advanceStage(before.id);
+    } catch { /* The UI receives the confirmed failure. */ }
+    await waitFor(() => !!current!.apiError, 'The failed mutation did not report an error');
+    assert(JSON.stringify(current!.encounters[0]) === JSON.stringify(before), 'Failed mutation altered balance, ledger or discharge state');
+  });
+}
+await check('settlement and pass actions cannot manufacture local discharge clearance', async () => {
+  const before = structuredClone(current!.encounters[0]);
+  await current!.settlePatientBalance(before.id, 'QR_PH');
+  current!.issueDigitalGatePass(before.id);
+  try { await current!.verifyGatePass(before.id); } catch { /* No authoritative pass exists. */ }
+  assert(JSON.stringify(current!.encounters[0]) === JSON.stringify(before), 'A local action fabricated settlement or pass state');
+  assert(!current!.isGatePassModalOpen, 'An unauthorized pass was opened');
 });
 const passed = results.filter(r => r.passed).length;
 document.title = `Dashboard LOA checks: ${passed}/${results.length}`;

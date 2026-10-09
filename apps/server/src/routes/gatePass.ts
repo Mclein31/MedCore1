@@ -31,7 +31,8 @@ gatePassApp.post(
       ? or(eq(dischargePasses.id, passNumber), eq(dischargePasses.encounterId, passNumber), eq(dischargePasses.passNumber, passNumber))
       : eq(dischargePasses.passNumber, passNumber);
 
-    const passList = await db
+    return db.transaction(async (tx) => {
+    const passList = await tx
       .select({ pass: dischargePasses })
       .from(dischargePasses)
       .innerJoin(encounters, eq(encounters.id, dischargePasses.encounterId))
@@ -42,7 +43,14 @@ gatePassApp.post(
       return apiError(c, 404, 'PASS_NOT_FOUND', `Discharge pass ${passNumber} not found.`);
     }
 
-    const pass = passList[0].pass;
+    const candidate = passList[0].pass;
+    const lockedEncounter = await tx.select({ id: encounters.id }).from(encounters)
+      .where(and(eq(encounters.id, candidate.encounterId), eq(encounters.facilityId, user.facilityId)))
+      .limit(1).for('update');
+    if (!lockedEncounter.length) return apiError(c, 404, 'PASS_NOT_FOUND', 'Discharge pass not found.');
+    const [pass] = await tx.select().from(dischargePasses)
+      .where(eq(dischargePasses.id, candidate.id)).limit(1).for('update');
+    if (!pass) return apiError(c, 404, 'PASS_NOT_FOUND', 'Discharge pass not found.');
     if (pass.status !== 'ACTIVE_READY_FOR_EXIT' && pass.status !== 'VERIFIED_AT_LOBBY') return apiError(c, 403, 'PASS_NOT_ACTIVE', 'This discharge pass is no longer valid. Please contact hospital billing.');
 
     // Assert PIN matches
@@ -89,7 +97,7 @@ gatePassApp.post(
 
     const now = new Date();
 
-    await db
+    await tx
       .update(dischargePasses)
       .set({
         status: 'VERIFIED_AT_LOBBY',
@@ -99,7 +107,7 @@ gatePassApp.post(
       .where(eq(dischargePasses.id, pass.id));
 
     // Audit log
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: user.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -118,6 +126,7 @@ gatePassApp.post(
       roomBed: pass.roomBed,
       status: 'VERIFIED_AT_LOBBY',
       verifiedAt: now.toISOString()
+    });
     });
   }
 );

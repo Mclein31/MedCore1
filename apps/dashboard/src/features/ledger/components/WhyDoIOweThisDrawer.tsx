@@ -222,8 +222,8 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
                 { label: 'Description', value: item.description },
                 { label: 'Contested Out-of-Pocket', value: formatPhp(item.patientOop) }
               ]}
-              onConfirm={() => {
-                freezeDisputeItem(
+              onConfirm={async () => {
+                await freezeDisputeItem(
                   selectedEncounter.id,
                   item.id,
                   'Patient questioned coverage disparity during pre-discharge triage'

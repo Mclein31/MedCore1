@@ -238,7 +238,8 @@ export function formatHydratedEncounter(ctx: HydrationContext) {
           issuedAt: dischargePass.issuedAt.toISOString(),
           verifiedAt: dischargePass.verifiedAt?.toISOString(),
           status: dischargePass.status as any,
-          hmacSignature: dischargePass.hmacSignature
+          hmacSignature: dischargePass.hmacSignature,
+          exitPin: dischargePass.exitPin
         }
       : undefined,
     promissoryNote: promissoryNote
@@ -729,31 +730,24 @@ encountersApp.post(
     if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
-    const encRecord = await db
+    const result = await db.transaction(async (tx) => {
+    const encRecord = await tx
       .select()
       .from(encounters)
       .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (encRecord.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
     }
 
     const enc = encRecord[0];
-    const currentIndex = stageOrder.indexOf(enc.stage as any);
-
-    if (currentIndex >= stageOrder.length - 1) {
-      return apiError(
-        c,
-        400,
-        'STAGE_FINALIZED',
-        'Encounter is already at CLEARED_GATE_PASS stage.'
-      );
+    if (enc.stage !== 'MGH_DECLARED') {
+      return apiError(c, 409, 'STAGE_ACTION_REQUIRED', 'Complete the current discharge check using its authorized workflow.');
     }
+    const nextStage = 'DOCTOR_PF_PENDING' as const;
 
-    const nextStage = stageOrder[currentIndex + 1];
-
-    await db
+    await tx
       .update(encounters)
       .set({
         stage: nextStage,
@@ -764,7 +758,7 @@ encountersApp.post(
       .where(eq(encounters.id, enc.id));
 
     // Add timeline event
-    await db.insert(encounterTimelineEvents).values({
+    await tx.insert(encounterTimelineEvents).values({
       encounterId: enc.id,
       eventType: 'DISCHARGE',
       title: `Advanced to ${nextStage.replace(/_/g, ' ')}`,
@@ -775,7 +769,7 @@ encountersApp.post(
     });
 
     // Log audit
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: enc.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -788,8 +782,11 @@ encountersApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+      return { encounterId: enc.id };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updated = await getHydratedEncounter(enc.id);
+    const updated = await getHydratedEncounter(result.encounterId);
     return c.json({ success: true, encounter: updated });
   }
 );

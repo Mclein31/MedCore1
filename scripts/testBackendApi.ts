@@ -1,6 +1,6 @@
 import app from '../apps/server/src/index';
 import { db } from '../apps/server/src/db';
-import { payments } from '../apps/server/src/db/schema';
+import { payments, paymentReceipts, systemAuditLogs } from '../apps/server/src/db/schema';
 import { eq } from 'drizzle-orm';
 
 async function runApiTests() {
@@ -46,6 +46,7 @@ async function runApiTests() {
   assert(!!setCookieHeader && setCookieHeader.includes('aqromed_session='), 'Login sets secure HTTP-Only aqromed_session cookie');
 
   const cookieHeader = setCookieHeader?.split(';')[0] || '';
+  const staffGet = (path: string) => app.request(path, { headers: { Cookie: cookieHeader } });
 
   // 3. Auth: Invalid Login
   const invalidLoginRes = await app.request('/api/v1/auth/login', {
@@ -68,13 +69,13 @@ async function runApiTests() {
   assert(meData.user.email === 'elena.santos@stjude.ph', 'Session cookie correctly resolves authenticated user');
 
   // 5. Encounters: GET /api/v1/encounters
-  const encsRes = await app.request('/api/v1/encounters');
+  const encsRes = await staffGet('/api/v1/encounters');
   assert(encsRes.status === 200, 'GET /api/v1/encounters returns 200 OK');
   const encsData = await encsRes.json();
   assert(encsData.items && encsData.items.length === 250, 'GET /api/v1/encounters returns all 250 hospital records');
 
   // 6. Encounters: GET /api/v1/encounters/:id
-  const singleEncRes = await app.request('/api/v1/encounters/enc-8812');
+  const singleEncRes = await staffGet('/api/v1/encounters/enc-8812');
   assert(singleEncRes.status === 200, 'GET /api/v1/encounters/enc-8812 resolves hydrated encounter');
   const singleEncData = await singleEncRes.json();
   assert(singleEncData.patient.fullName.includes('DELA CRUZ'), 'Encounter correctly links patient demographics');
@@ -82,7 +83,7 @@ async function runApiTests() {
   assert(singleEncData.waterfall.grossTotal === 120000, 'Encounter waterfall gross total is exactly ₱120,000.00');
 
   // 7. Ledger: GET /api/v1/encounters/:id/ledger
-  const ledgerRes = await app.request('/api/v1/encounters/enc-8812/ledger');
+  const ledgerRes = await staffGet('/api/v1/encounters/enc-8812/ledger');
   assert(ledgerRes.status === 200, 'GET /api/v1/encounters/:id/ledger returns 200 OK');
   const ledgerData = await ledgerRes.json();
   assert(ledgerData.items.length === singleEncData.items.length, 'Ledger item count matches encounter items');
@@ -265,10 +266,13 @@ async function runApiTests() {
 
   // 12d. Atomic Transaction Rollback Guarantee
   const rollbackKey = `TXN-DEMO-ROLLBACK-${Date.now()}`;
+  const rollbackPaymentId = crypto.randomUUID();
+  const rollbackReceiptNumber = `OR-SJMC-ROLLBACK-${crypto.randomUUID()}`;
   let txErrorCaught = false;
   try {
     await db.transaction(async (tx) => {
       await tx.insert(payments).values({
+        id: rollbackPaymentId,
         paymentReference: `PAY-ROLLBACK-${Date.now().toString().slice(-6)}`,
         encounterId: payData1.payment.encounterId,
         statementNumber: 'SOA-ROLLBACK-TEST',
@@ -277,7 +281,7 @@ async function runApiTests() {
         paymentRail: 'GCASH',
         channelReference: 'TXN-ROLLBACK',
         gatewayAuthCode: 'AUTH-TEST',
-        officialReceiptNumber: 'OR-ROLLBACK-TEST',
+        officialReceiptNumber: rollbackReceiptNumber,
         payerName: 'Rollback Tester',
         payerContactMasked: '0917-***-0000',
         status: 'SUCCESS',
@@ -285,7 +289,18 @@ async function runApiTests() {
         idempotencyKey: rollbackKey,
         settledAt: new Date()
       });
-      // Force an intentional error to verify PostgreSQL atomic rollback
+      await tx.insert(paymentReceipts).values({
+        paymentId: rollbackPaymentId, encounterId: payData1.payment.encounterId,
+        receiptNumber: `REC-${rollbackPaymentId}`, officialReceiptNumber: rollbackReceiptNumber,
+        amount: '1000.00', paymentRail: 'GCASH', payerName: 'Rollback Tester',
+        payerContactMasked: '0917-***-0000', gatewayAuthCode: 'AUTH-TEST'
+      });
+      await tx.insert(systemAuditLogs).values({
+        facilityId: loginData.user.facilityId, userId: loginData.user.id,
+        actorRole: loginData.user.role, action: 'PAYMENT_ROLLBACK_TEST',
+        resourceType: 'payments', resourceId: rollbackPaymentId
+      });
+      // Force an intentional error after all three writes.
       throw new Error('SIMULATED_TRANSACTION_FAILURE_ROLLBACK');
     });
   } catch (err: any) {
@@ -294,11 +309,14 @@ async function runApiTests() {
     }
   }
   assert(txErrorCaught, 'Simulated transaction exception caught as expected');
-  const rollbackCheck = await db
-    .select()
-    .from(payments)
-    .where(eq(payments.idempotencyKey, rollbackKey));
-  assert(rollbackCheck.length === 0, 'Atomic transaction rollback verified: 0 rows committed to payments table');
+  const rollbackCheck = await Promise.all([
+    db.select().from(payments).where(eq(payments.idempotencyKey, rollbackKey)),
+    db.select().from(paymentReceipts).where(eq(paymentReceipts.officialReceiptNumber, rollbackReceiptNumber)),
+    db.select().from(systemAuditLogs).where(eq(systemAuditLogs.resourceId, rollbackPaymentId))
+  ]);
+  assert(rollbackCheck[0].length === 0, 'Atomic rollback: zero payments committed');
+  assert(rollbackCheck[1].length === 0, 'Atomic rollback: zero payment_receipts committed');
+  assert(rollbackCheck[2].length === 0, 'Atomic rollback: zero system_audit_logs committed');
 
   // 13. Promissory Note: RA 9439 0% Interest Execution
   const promissoryRes = await app.request('/api/v1/encounters/enc-8812/promissory-notes', {
@@ -374,13 +392,13 @@ async function runApiTests() {
     headers: { Cookie: cookieHeader }
   });
   assert(esoaXmlRes.status === 200, 'GET /api/v1/claims/:id/esoa-xml returns 200 OK');
-  assert(esoaXmlRes.headers.get('content-type')?.includes('application/xml'), 'eSOA response has application/xml content-type');
+  assert(esoaXmlRes.headers.get('content-type')?.includes('application/xml') === true, 'eSOA response has application/xml content-type');
   const xmlContent = await esoaXmlRes.text();
   assert(xmlContent.includes('PhilHealth-Circular-2023-0026'), 'XML payload complies with PhilHealth Circular 2023-0026');
   assert(xmlContent.includes('<ItemizedCharges>'), 'XML payload includes itemized charge ledger');
 
   // 16. Beds & Capacity Management
-  const bedsRes = await app.request('/api/v1/beds');
+  const bedsRes = await staffGet('/api/v1/beds');
   assert(bedsRes.status === 200, 'GET /api/v1/beds returns 200 OK');
   const bedsData = await bedsRes.json();
   assert(bedsData.summary.total === 200, 'Beds endpoint audits exactly 200 operational hospital beds');

@@ -72,10 +72,14 @@ export async function generateGatePassHmac(
   return bytesToHex(new Uint8Array(signature));
 }
 
-export function generateDeterministicExitPin(passNumberOrEncounterNumber: string): string {
-  const digits = passNumberOrEncounterNumber.replace(/\D/g, '');
-  if (digits.length >= 4) {
-    return digits.slice(-4);
-  }
-  return '8812';
+// Domain-separated keyed HMAC. The public identifier cannot reveal the PIN.
+export async function generateDeterministicExitPin(identifier: string, secretKey?: string): Promise<string> {
+  if (!identifier) throw new Error('[GatePass Security Error] A pass identifier is required.');
+  const production = typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
+  const secret = resolveGatePassSecret(secretKey, production);
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const hash = await crypto.subtle.sign('HMAC', key, encoder.encode(`medcore-exit-pin:v1:${identifier}`));
+  const value = new DataView(hash).getUint32(0, false);
+  return String((value % 9000) + 1000);
 }

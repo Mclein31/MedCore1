@@ -10,6 +10,7 @@ import { getHydratedEncounter, invalidateEncountersCache } from './encounters';
 import { matchEncounterCondition, matchChargeItemCondition } from '../utils/dbQuery';
 import { recalculateAndPersistWaterfall } from '../services/waterfallPersistence';
 import { getClientIp } from '../utils/clientIp';
+import { isCentavoAmount } from '../utils/encounterAccess';
 
 const chargesApp = new Hono();
 
@@ -24,10 +25,10 @@ const addChargeSchema = z.object({
     'ROOM_BOARD',
     'PROFESSIONAL_FEE'
   ]),
-  grossAmount: z.number().positive(),
+  grossAmount: z.number().positive().refine(isCentavoAmount, 'Enter an exact centavo amount.'),
   qty: z.number().positive().optional(),
   quantity: z.number().positive().optional(),
-  unitPrice: z.number().nonnegative().optional(),
+  unitPrice: z.number().nonnegative().refine(value => value === 0 || isCentavoAmount(value), 'Enter an exact centavo amount.').optional(),
   code: z.string().optional(),
   coverageType: z.enum(['PHILHEALTH_FIRST', 'HMO_COVERED', 'PATIENT_DIRECT']).default('PHILHEALTH_FIRST')
 });
@@ -44,11 +45,12 @@ chargesApp.post(
     const { description, category, grossAmount, qty, quantity, unitPrice, code, coverageType } = c.req.valid('json');
     const user = c.get('user');
 
-    const encList = await db
+    const result = await db.transaction(async (tx) => {
+    const encList = await tx
       .select()
       .from(encounters)
       .where(and(matchEncounterCondition(encIdOrNumber), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (encList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Encounter ${encIdOrNumber} not found.`);
@@ -67,7 +69,7 @@ chargesApp.post(
     const resolvedQty = quantity ?? qty ?? 1;
     const resolvedUnitPrice = unitPrice !== undefined ? unitPrice : Number((grossAmount / resolvedQty).toFixed(2));
 
-    const inserted = await db
+    const inserted = await tx
       .insert(chargemasterItems)
       .values({
         encounterId: enc.id,
@@ -90,10 +92,10 @@ chargesApp.post(
     const newItem = inserted[0];
 
     // Authoritative statutory recalculation
-    await recalculateAndPersistWaterfall(enc.id);
+    await recalculateAndPersistWaterfall(enc.id, undefined, tx);
 
     // Compliance audit trail
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: enc.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -105,11 +107,14 @@ chargesApp.post(
       userAgent: c.req.header('user-agent')
     });
 
+      return { item: newItem, encounterId: enc.id };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updatedEncounter = await getHydratedEncounter(enc.id);
+    const updatedEncounter = await getHydratedEncounter(result.encounterId);
     return c.json({
       success: true,
-      item: newItem,
+      item: result.item,
       encounter: updatedEncounter
     });
   }
@@ -118,10 +123,10 @@ chargesApp.post(
 // 2. PATCH /api/v1/charges/:id - Edit charge line item
 const editChargeSchema = z.object({
   description: z.string().min(2).max(256).optional(),
-  grossAmount: z.number().positive().optional(),
+  grossAmount: z.number().positive().refine(isCentavoAmount, 'Enter an exact centavo amount.').optional(),
   qty: z.number().positive().optional(),
   quantity: z.number().positive().optional(),
-  unitPrice: z.number().nonnegative().optional(),
+  unitPrice: z.number().nonnegative().refine(value => value === 0 || isCentavoAmount(value), 'Enter an exact centavo amount.').optional(),
   category: z.enum([
     'PHARMACY',
     'LABORATORY',
@@ -144,17 +149,29 @@ chargesApp.patch(
     const updates = c.req.valid('json');
     const user = c.get('user');
 
-    const itemList = await db
+    const result = await db.transaction(async (tx) => {
+    const itemList = await tx
       .select()
       .from(chargemasterItems)
-      .where(and(matchChargeItemCondition(chargeId), inArray(chargemasterItems.encounterId, db.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, user.facilityId)))))
+      .where(and(matchChargeItemCondition(chargeId), inArray(chargemasterItems.encounterId, tx.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, user.facilityId)))))
       .limit(1);
 
     if (itemList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Charge item ${chargeId} not found.`);
     }
 
-    const item = itemList[0];
+    let item = itemList[0];
+    const locked = await tx.select({ id: encounters.id }).from(encounters)
+      .where(and(eq(encounters.id, item.encounterId), eq(encounters.facilityId, user.facilityId)))
+      .limit(1).for('update');
+    if (!locked.length) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
+    const fresh = await tx.select().from(chargemasterItems)
+      .where(and(eq(chargemasterItems.id, item.id), eq(chargemasterItems.encounterId, item.encounterId)))
+      .limit(1).for('update');
+    if (!fresh.length) return apiError(c, 404, 'NOT_FOUND', 'Charge not found.');
+    item = fresh[0];
+
+
 
     const patchPayload: Record<string, any> = { updatedAt: new Date() };
     if (updates.description) patchPayload.description = updates.description;
@@ -181,16 +198,16 @@ chargesApp.patch(
       patchPayload.unitPrice = (updates.grossAmount / resolvedQty).toFixed(2);
     }
 
-    const updated = await db
+    const updated = await tx
       .update(chargemasterItems)
       .set(patchPayload)
       .where(eq(chargemasterItems.id, item.id))
       .returning();
 
     // Authoritative statutory recalculation
-    await recalculateAndPersistWaterfall(item.encounterId);
+    await recalculateAndPersistWaterfall(item.encounterId, undefined, tx);
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: user.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -203,11 +220,14 @@ chargesApp.patch(
       userAgent: c.req.header('user-agent')
     });
 
+      return { item: updated[0], encounterId: item.encounterId };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updatedEncounter = await getHydratedEncounter(item.encounterId);
+    const updatedEncounter = await getHydratedEncounter(result.encounterId);
     return c.json({
       success: true,
-      item: updated[0],
+      item: result.item,
       encounter: updatedEncounter
     });
   }
@@ -223,21 +243,33 @@ chargesApp.delete(
     if (!chargeId) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
     const user = c.get('user');
 
-    const itemList = await db
+    const result = await db.transaction(async (tx) => {
+    const itemList = await tx
       .select()
       .from(chargemasterItems)
-      .where(and(matchChargeItemCondition(chargeId), inArray(chargemasterItems.encounterId, db.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, user.facilityId)))))
+      .where(and(matchChargeItemCondition(chargeId), inArray(chargemasterItems.encounterId, tx.select({ id: encounters.id }).from(encounters).where(eq(encounters.facilityId, user.facilityId)))))
       .limit(1);
 
     if (itemList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Charge item ${chargeId} not found.`);
     }
 
-    const item = itemList[0];
+    let item = itemList[0];
+    const locked = await tx.select({ id: encounters.id }).from(encounters)
+      .where(and(eq(encounters.id, item.encounterId), eq(encounters.facilityId, user.facilityId)))
+      .limit(1).for('update');
+    if (!locked.length) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
+    const fresh = await tx.select().from(chargemasterItems)
+      .where(and(eq(chargemasterItems.id, item.id), eq(chargemasterItems.encounterId, item.encounterId)))
+      .limit(1).for('update');
+    if (!fresh.length) return apiError(c, 404, 'NOT_FOUND', 'Charge not found.');
+    item = fresh[0];
+
+
     const encounterId = item.encounterId;
 
     // Guard against foreign key constraint violation (onDelete: 'restrict') on disputed charges
-    const linkedDisputes = await db
+    const linkedDisputes = await tx
       .select({ id: billingDisputes.id })
       .from(billingDisputes)
       .where(eq(billingDisputes.chargeId, item.id))
@@ -252,12 +284,12 @@ chargesApp.delete(
       );
     }
 
-    await db.delete(chargemasterItems).where(eq(chargemasterItems.id, item.id));
+    await tx.delete(chargemasterItems).where(eq(chargemasterItems.id, item.id));
 
     // Authoritatively re-balance waterfall after item removal
-    await recalculateAndPersistWaterfall(encounterId);
+    await recalculateAndPersistWaterfall(encounterId, undefined, tx);
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: user.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -269,11 +301,14 @@ chargesApp.delete(
       userAgent: c.req.header('user-agent')
     });
 
+      return { deletedId: item.id, encounterId: item.encounterId };
+    });
+    if (result instanceof Response) return result;
     invalidateEncountersCache();
-    const updatedEncounter = await getHydratedEncounter(encounterId);
+    const updatedEncounter = await getHydratedEncounter(result.encounterId);
     return c.json({
       success: true,
-      deletedId: item.id,
+      deletedId: result.deletedId,
       encounter: updatedEncounter
     });
   }

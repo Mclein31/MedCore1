@@ -1,3 +1,4 @@
+import { moneyCents } from '../services/statutoryWaterfall';
 import { and, eq, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { encounters, patients } from '../db/schema';
@@ -29,6 +30,6 @@ export async function encounterAccessCondition(user: AuthUser, idOrNumber: strin
 }
 
 export function isCentavoAmount(amount: number): boolean {
-  const cents = Math.round(amount * 100);
-  return Number.isSafeInteger(cents) && cents > 0 && Math.abs(amount * 100 - cents) < 0.000001;
+  try { return moneyCents(amount) > 0; }
+  catch { return false; }
 }

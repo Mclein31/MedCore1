@@ -11,7 +11,7 @@ export async function processSimulatedPayment(paymentRail: string) {
     status: 'SUCCESS' as const,
     paymentReference: `PAY-${reference}`,
     channelReference: `TXN-${paymentRail}-${reference}`,
-    officialReceiptNumber: `OR-MC-${reference}`,
+    officialReceiptNumber: `OR-SJMC-${reference}`,
     gatewayAuthCode: `AUTH-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
     settledAt: new Date(),
     isSimulatedDemo: true

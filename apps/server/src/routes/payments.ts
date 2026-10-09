@@ -108,7 +108,7 @@ paymentsApp.post(
             gatePassRecord: pass[0] || null, encounterId: enc.id, cached: true };
         }
 
-        if (user.role === 'PATIENT_GUARANTOR' && enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'BILL_NOT_READY', 'Your hospital is still reviewing your final bill. Please wait for the billing desk.');
+        if (enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'STAGE_NOT_READY', 'Bill settlement is locked until encounter reaches PENDING_SETTLEMENT.');
         const remainingCents = Math.round(Number(enc.remainingBalance) * 100);
         const amountCents = Math.round(amount * 100);
         const paidCents = Math.round(Number(enc.amountPaid) * 100);
@@ -190,7 +190,7 @@ paymentsApp.post(
           const isProduction = nodeEnv === 'production';
           const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
           const hmac = await generateGatePassHmac(enc.id, newAmountPaid, now.toISOString(), secretKey);
-          const exitPin = generateDeterministicExitPin(passNumber);
+          const exitPin = await generateDeterministicExitPin(passNumber, secretKey);
 
           const insertedPasses = await tx
             .insert(dischargePasses)

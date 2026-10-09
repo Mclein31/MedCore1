@@ -1,4 +1,5 @@
 import { XMLBuilder } from 'fast-xml-parser';
+import { moneyCents } from './statutoryWaterfall';
 
 export interface EsoaXmlData {
   facility: {
@@ -58,6 +59,13 @@ export interface EsoaXmlData {
 }
 
 export function generatePhilHealthEsoaXml(data: EsoaXmlData): string {
+  for (const value of [data.doctor.agreedFee, data.doctor.excessFee, data.claim.totalCaseRate,
+    data.claim.hciAmount, data.claim.pfAmount, ...Object.values(data.waterfall)]) moneyCents(value);
+  for (const charge of data.charges) {
+    for (const value of [charge.quantity, charge.unitPrice, charge.grossAmount, charge.philhealthAmount, charge.hmoAmount, charge.patientOop]) moneyCents(value);
+  }
+  const itemGross = data.charges.reduce((total, item) => total + BigInt(moneyCents(item.grossAmount)), 0n);
+  if (itemGross !== BigInt(moneyCents(data.waterfall.grossTotal))) throw new Error('eSOA itemized gross does not reconcile with the waterfall.');
   const builder = new XMLBuilder({
     ignoreAttributes: false,
     format: true,
@@ -71,6 +79,8 @@ export function generatePhilHealthEsoaXml(data: EsoaXmlData): string {
     },
     eSOA_Claim: {
       '@_version': '3.0',
+      '@_xmlns': 'urn:philhealth:esoa:circular:2023-0026',
+      '@_xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
       '@_circular': 'PhilHealth-Circular-2023-0026',
       Facility: {
         AccreditationNumber: data.facility.pan,

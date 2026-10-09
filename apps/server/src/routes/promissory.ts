@@ -96,7 +96,7 @@ promissoryApp.post(
         return { promissoryNote: note, dischargePass: passes[0] || null, encounterId: enc.id, cached: true };
       }
 
-      if (user.role === 'PATIENT_GUARANTOR' && enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'BILL_NOT_READY', 'Your hospital is still completing discharge checks. Contact the billing desk before executing a note.');
+      if (enc.stage !== 'PENDING_SETTLEMENT') return apiError(c, 409, 'STAGE_NOT_READY', 'Promissory notes can only be executed at PENDING_SETTLEMENT stage.');
       const nodeEnv = (c.env as { NODE_ENV?: string })?.NODE_ENV || process.env.NODE_ENV || 'production';
       if (user.role === 'PATIENT_GUARANTOR' && nodeEnv === 'production') return apiError(c, 403, 'ONLINE_NOTE_UNAVAILABLE', 'Online promissory notes are not available yet. Please contact the hospital billing desk.');
       const remainingCents = Math.round(Number(enc.remainingBalance) * 100);
@@ -154,7 +154,7 @@ promissoryApp.post(
         const isProduction = nodeEnv === 'production';
         const secretKey = resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET, isProduction);
         const hmac = await generateGatePassHmac(enc.id, params.principalAmount, now.toISOString(), secretKey);
-        const exitPin = generateDeterministicExitPin(passNumber);
+        const exitPin = await generateDeterministicExitPin(passNumber, secretKey);
 
         const insertedPasses = await tx
           .insert(dischargePasses)

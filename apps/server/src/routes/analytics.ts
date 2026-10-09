@@ -3,6 +3,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { statutoryWaterfalls, encounters, philhealthClaims, hmoAuthorizations, beds } from '../db/schema';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { moneyCents } from '../services/statutoryWaterfall';
 
 const analyticsApp = new Hono();
 
@@ -21,23 +22,35 @@ analyticsApp.get(
       db.select().from(beds).where(eq(beds.facilityId, facilityId))
     ]);
 
-    let totalGrossRevenue = 0;
-    let totalVatExemption = 0;
-    let totalSeniorPwdDiscount = 0;
-    let totalPhilhealthCovered = 0;
-    let totalHmoCovered = 0;
-    let totalNetPatientDue = 0;
-    let totalPatientPaid = 0;
+    let totalGrossRevenueCents = 0;
+    let totalVatExemptionCents = 0;
+    let totalSeniorPwdDiscountCents = 0;
+    let totalPhilhealthCoveredCents = 0;
+    let totalHmoCoveredCents = 0;
+    let totalNetPatientDueCents = 0;
+    let totalPatientPaidCents = 0;
 
     for (const w of allWaterfalls) {
-      totalGrossRevenue += Number(w.grossTotal);
-      totalVatExemption += Number(w.vatExemption);
-      totalSeniorPwdDiscount += Number(w.seniorPwdDiscount);
-      totalPhilhealthCovered += Number(w.philhealthTotal);
-      totalHmoCovered += Number(w.hmoApprovedAmount);
-      totalNetPatientDue += Number(w.netPatientDue);
-      totalPatientPaid += Number(w.patientPaid || 0);
+      totalGrossRevenueCents += moneyCents(Number(w.grossTotal));
+      totalVatExemptionCents += moneyCents(Number(w.vatExemption));
+      totalSeniorPwdDiscountCents += moneyCents(Number(w.seniorPwdDiscount));
+      totalPhilhealthCoveredCents += moneyCents(Number(w.philhealthTotal));
+      totalHmoCoveredCents += moneyCents(Number(w.hmoApprovedAmount));
+      totalNetPatientDueCents += moneyCents(Number(w.netPatientDue));
+      totalPatientPaidCents += moneyCents(Number(w.patientPaid ?? 0));
     }
+
+    if (![totalGrossRevenueCents, totalVatExemptionCents, totalSeniorPwdDiscountCents, totalPhilhealthCoveredCents, totalHmoCoveredCents, totalNetPatientDueCents, totalPatientPaidCents].every(Number.isSafeInteger)) throw new Error('RCM totals exceed the safe centavo range.');
+    const totalGrossRevenue = totalGrossRevenueCents / 100;
+    const totalVatExemption = totalVatExemptionCents / 100;
+    const totalSeniorPwdDiscount = totalSeniorPwdDiscountCents / 100;
+    const totalPhilhealthCovered = totalPhilhealthCoveredCents / 100;
+    const totalHmoCovered = totalHmoCoveredCents / 100;
+    const totalNetPatientDue = totalNetPatientDueCents / 100;
+    const totalPatientPaid = totalPatientPaidCents / 100;
+    const outstandingAr = Math.max(0, totalNetPatientDueCents - totalPatientPaidCents) / 100;
+    const averageDailyRevenue = totalGrossRevenue > 0 ? totalGrossRevenue / 365 : 1;
+    const darDays = Math.max(1, Number((outstandingAr / averageDailyRevenue).toFixed(1)));
 
     const totalEncounters = allEncounters.length;
     const clearedEncounters = allEncounters.filter((e) => e.stage === 'CLEARED_GATE_PASS').length;
@@ -61,7 +74,8 @@ analyticsApp.get(
         breachEncounters,
         occupancyRate,
         cleanFirstPassRate,
-        cleanClaimRate: cleanFirstPassRate
+        cleanClaimRate: cleanFirstPassRate,
+        darDays: darDays
       },
       waterfall: {
         totalGrossRevenue: Number(totalGrossRevenue.toFixed(2)),
@@ -71,7 +85,7 @@ analyticsApp.get(
         totalHmoCovered: Number(totalHmoCovered.toFixed(2)),
         totalNetPatientDue: Number(totalNetPatientDue.toFixed(2)),
         totalPatientPaid: Number(totalPatientPaid.toFixed(2)),
-        outstandingAr: Number((totalNetPatientDue - totalPatientPaid).toFixed(2))
+        outstandingAr
       }
     });
   }

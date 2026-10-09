@@ -17,6 +17,8 @@ import disputesApp from '../src/routes/disputes';
 import authApp from '../src/routes/auth';
 import { encounterAccessCondition, isCentavoAmount } from '../src/utils/encounterAccess';
 import { computePromissorySchedule } from '../src/services/promissoryEngine';
+import chargesApp from '../src/routes/charges';
+import { computeStatutoryWaterfall } from '../src/services/statutoryWaterfall';
 
 // Isolated handler checks: synthetic rows only. No PostgreSQL connection or PHI.
 const ownId = '10000000-0000-4000-8000-000000000001';
@@ -33,7 +35,10 @@ let rows: Record<string, any[]>;
 let queue = Promise.resolve();
 let lockReads = 0;
 let writes = 0;
+let failWriteTable: string | null = null;
+let transactionCalls = 0;
 function reset() {
+  user.role = 'PATIENT_GUARANTOR'; failWriteTable = null; transactionCalls = 0;
   rows = {
     patients: [{ id: patientId, facilityId, mrn: 'TEST-001', contactNumber: '', fullName: 'Test Patient' }],
     facilities: [{ id: facilityId, code: 'TEST-FACILITY' }],
@@ -85,6 +90,7 @@ class Query {
       }
       return selected.map(row => ({ ...row }));
     }
+    if (name === failWriteTable) throw new Error('INJECTED_WRITE_FAILURE');
     writes++;
     if (this.op === 'insert') {
       const record = { id: crypto.randomUUID(), createdAt: new Date(), updatedAt: new Date(), eventTimestamp: new Date(), ...this.data };
@@ -105,7 +111,11 @@ function mockDb(inTransaction = false): any {
       let release!: () => void;
       queue = new Promise<void>(resolve => release = resolve);
       await prior;
-      try { return await fn(mockDb(true)); } finally { release(); }
+      transactionCalls++;
+      const before = structuredClone(rows); const previousWrites = writes;
+      try { return await fn(mockDb(true)); }
+      catch (error) { rows = before; writes = previousWrites; throw error; }
+      finally { release(); }
     }
   };
 }
@@ -116,6 +126,8 @@ app.route('/encounters', clearanceApp);
 app.route('/', promissoryApp);
 app.route('/', disputesApp);
 app.route('/auth', authApp);
+app.route('/', chargesApp);
+app.onError((_error, c) => c.json({ error: { code: 'INJECTED_TRANSACTION_FAILURE' } }, 500));
 app.route('/patient', patientApp);
 async function request(path: string, body: any, key?: string) {
   return runWithDb(mockDb(), () => app.request(path, {
@@ -431,5 +443,106 @@ await check('role override headers cannot grant the presentation capability', as
   const response = await runWithDb(authDb, () => secured.request('/probe', { headers: { Authorization: 'Bearer synthetic-token', 'X-Demo-Role': 'HOSPITAL_CFO' } }, { NODE_ENV: 'development' }));
   const body = await response.json() as any;
   assert.equal(body.role, 'HOSPITAL_CFO'); assert.equal(body.capability, false);
+});
+
+await check('money validation rejects amounts beyond numeric(15,2) before a settlement write', async () => {
+  const unsupported = (Number.MAX_SAFE_INTEGER - 1000) / 100;
+  assert.equal(isCentavoAmount(unsupported), false);
+  assert.throws(() => computeStatutoryWaterfall([{ grossAmount: unsupported, category:'LABORATORY', status:'COVERED' }], false, 0.01, 0, 0, 0, 0));
+  assert.equal((await request(`/encounters/${ownId}/payments`, payment(unsupported), 'outside-monetary-range')).status,400);
+  assert.equal(writes,0);
+  for (const senior of [false,true]) for (let offset=0;offset<100;offset++) {
+    const gross = (999999999990000-offset)/100;
+    let w;
+    try { w=computeStatutoryWaterfall([{grossAmount:gross,category:'LABORATORY',status:'COVERED'}],senior,0.01,0,0,0,0); }
+    catch { continue; } // Subcent binary representations fail closed at the input boundary.
+    assert.equal(Math.round(w.grossTotal*100), [w.vatExemption,w.seniorPwdDiscount,w.philhealthTotal,w.hmoApprovedAmount,w.netPatientDue].reduce((sum,value)=>sum+Math.round(value*100),0));
+  }
+});
+await check('all roles reject new early-stage payments and notes without mutation', async () => {
+  for (const role of ['PATIENT_GUARANTOR', 'BILLING_SPECIALIST', 'HOSPITAL_CFO']) {
+    for (const stage of ['MGH_DECLARED', 'DOCTOR_PF_PENDING', 'PHARMACY_RTS_AUDIT', 'HMO_FINAL_LOA', 'CLEARED_GATE_PASS']) {
+      user.role = role; rows.encounters[0].stage = stage;
+      for (const [path, body] of [[`/encounters/${ownId}/payments`, payment(10)], [`/encounters/${ownId}/promissory-notes`, note(10)]]) {
+        const response = await request(path as string, body, `early-${role}-${stage}`);
+        assert.equal(response.status, 409); assert.equal((await response.json()).error.code, 'STAGE_NOT_READY');
+        assert.equal(writes, 0); assert.equal(rows.encounters[0].remainingBalance, '100.00');
+      }
+    }
+  }
+});
+function financialFixture(stage = 'DOCTOR_PF_PENDING') {
+  user.role = 'HOSPITAL_CFO';
+  Object.assign(rows.encounters[0], { stage, admissionTimestamp: new Date(), doctorAgreedFee:'40.00', doctorExcessPf:'20.00', pharmacyRtsCleared:false, unreturnedMedsCount:0 });
+  Object.assign(rows.chargemaster_items[0], { grossAmount:'60.00', quantity:'1.00', unitPrice:'60.00', philhealthCovered:'0.00', hmoCovered:'0.00', status:'COVERED' });
+  rows.chargemaster_items.push({ id: 'fee', encounterId:ownId, category:'PROFESSIONAL_FEE', grossAmount:'40.00', quantity:'1.00', unitPrice:'40.00', patientOop:'20.00', philhealthCovered:'10.00', hmoCovered:'10.00', status:'EXCESS_PF' });
+  rows.statutory_waterfalls = [{ encounterId:ownId, grossTotal:'100.00', roomUpgradeExcess:'0.00', doctorExcessPf:'20.00', netPatientDue:'100.00', patientPaid:'0.00' }];
+}
+await check('QuickSign synchronizes PF gross, allocations, waterfall, stage and audit in one transaction', async () => {
+  financialFixture();
+  const response = await request(`/encounters/${ownId}/doctor/sign`, {agreedFee:35});
+  assert.equal(response.status,200); assert.equal(transactionCalls,1);
+  const fee = rows.chargemaster_items.find(item => item.id==='fee');
+  assert.equal(fee.grossAmount,'35.00'); assert.equal(fee.unitPrice,'35.00'); assert.equal(fee.patientOop,'15.00');
+  assert.equal(Number(fee.philhealthCovered)+Number(fee.hmoCovered)+Number(fee.patientOop),35);
+  assert.equal(rows.statutory_waterfalls[0].grossTotal,'95.00'); assert.equal(rows.encounters[0].remainingBalance,'95.00');
+  assert.equal(rows.encounters[0].stage,'PHARMACY_RTS_AUDIT'); assert.equal(rows.encounter_timeline_events.length,1); assert.equal(rows.system_audit_logs.length,1);
+});
+await check('QuickSign insertion and tiny fee keep coverage within the confirmed gross', async () => {
+  financialFixture();
+  const response = await request(`/encounters/${ownId}/doctor/sign`, {agreedFee:1}); assert.equal(response.status,200);
+  const fee = rows.chargemaster_items.find(item => item.id==='fee');
+  assert.equal(fee.philhealthCovered,'1.00'); assert.equal(fee.hmoCovered,'0.00'); assert.equal(fee.patientOop,'0.00');
+  reset(); financialFixture(); rows.chargemaster_items = rows.chargemaster_items.filter(item => item.id!=='fee');
+  assert.equal((await request(`/encounters/${ownId}/doctor/sign`, {agreedFee:35})).status,200);
+  const inserted = rows.chargemaster_items.filter(item => item.category==='PROFESSIONAL_FEE');
+  assert.equal(inserted.length,1); assert.equal(inserted[0].patientOop,'35.00'); assert.equal(inserted[0].status,'EXCESS_PF');
+});
+await check('QuickSign audit failure rolls back the fee, balance, stage and timeline', async () => {
+  financialFixture(); const original = structuredClone(rows); failWriteTable = 'system_audit_logs';
+  assert.equal((await request(`/encounters/${ownId}/doctor/sign`,{agreedFee:35})).status,500);
+  for (const table of ['encounters','chargemaster_items','statutory_waterfalls']) assert.deepEqual(rows[table],original[table]);
+  assert.equal(rows.encounter_timeline_events?.length || 0,0); assert.equal(writes,0);
+});
+function disputedFixture() {
+  financialFixture(); rows.chargemaster_items = rows.chargemaster_items.filter(item=>item.id!=='fee');
+  Object.assign(rows.chargemaster_items[0],{grossAmount:'100.00', patientOop:'100.00', isDisputed:true, status:'CONTESTED', category:'LABORATORY'});
+  rows.statutory_waterfalls[0].doctorExcessPf='0.00';
+  rows.billing_disputes=[{id:'60000000-0000-4000-8000-000000000001',encounterId:ownId,chargeId,status:'OPEN',createdAt:new Date(),contestedAmount:'100.00'}];
+}
+await check('supervisory waiver shares transaction context and confirms exact zero OOP and balance', async () => {
+  disputedFixture(); const path='/disputes/'+rows.billing_disputes[0].id+'/supervisory-waive';
+  assert.equal((await request(path,{supervisorNotes:'Synthetic authorized waiver'})).status,200); assert.equal(transactionCalls,1);
+  assert.equal(rows.chargemaster_items[0].status,'SUPERVISORY_WAIVED'); assert.equal(rows.chargemaster_items[0].patientOop,'0.00'); assert.equal(rows.chargemaster_items[0].isDisputed,false);
+  assert.equal(rows.billing_disputes[0].status,'SUPERVISOR_WAIVED'); assert.equal(rows.billing_disputes[0].resolvedByUserId,user.id);
+  assert.equal(rows.encounters[0].remainingBalance,'0.00'); assert.equal(rows.encounters[0].pharmacyRtsCleared,false);
+  assert.equal(rows.system_audit_logs.length,1);
+  assert.equal((await request(path,{supervisorNotes:'Synthetic authorized waiver'})).status,200); assert.equal(rows.system_audit_logs.length,1);
+});
+await check('supervisory waiver audit failure rolls back charge, dispute, waterfall and balance', async () => {
+  disputedFixture(); const original=structuredClone(rows); failWriteTable='system_audit_logs';
+  assert.equal((await request('/disputes/'+rows.billing_disputes[0].id+'/supervisory-waive',{supervisorNotes:'Synthetic authorized waiver'})).status,500);
+  for (const table of ['encounters','chargemaster_items','statutory_waterfalls','billing_disputes']) assert.deepEqual(rows[table],original[table]);
+  assert.equal(rows.system_audit_logs?.length || 0,0); assert.equal(writes,0);
+});
+await check('payment receipt and audit failure leave no orphaned rows or changed balance', async () => {
+  for (const table of ['payment_receipts','system_audit_logs']) {
+    reset(); failWriteTable=table;
+    assert.equal((await request(`/encounters/${ownId}/payments`,payment(10),`rollback-${table}`)).status,500);
+    for (const name of ['payments','payment_receipts','system_audit_logs']) assert.equal(rows[name]?.length || 0,0);
+    assert.equal(rows.encounters[0].remainingBalance,'100.00'); assert.equal(rows.encounters[0].amountPaid,'0.00'); assert.equal(writes,0);
+  }
+});
+await check('HMO audit failure cannot expose a settlement stage or persist changed coverage', async () => {
+  financialFixture('HMO_FINAL_LOA'); rows.hmo_authorizations=[{encounterId:ownId, approvedAmount:'0.00', finalLoaStatus:'AWAITING_CODE'}];
+  const original=structuredClone(rows); failWriteTable='system_audit_logs';
+  assert.equal((await request(`/encounters/${ownId}/hmo/final-loa`,{approvedAmount:30,approvalCode:'AUDIT'})).status,500);
+  for (const table of ['encounters','hmo_authorizations','statutory_waterfalls']) assert.deepEqual(rows[table],original[table]);
+  assert.equal(rows.encounter_timeline_events?.length || 0,0); assert.equal(writes,0);
+});
+await check('charge and HMO money schemas reject fractional centavos before any write', async () => {
+  user.role='BILLING_SPECIALIST';
+  assert.equal((await request(`/encounters/${ownId}/charges`,{description:'Tiny charge',category:'LABORATORY',grossAmount:0.001})).status,400);
+  assert.equal((await request(`/encounters/${ownId}/hmo/final-loa`,{approvedAmount:0.001})).status,400); assert.equal(writes,0);
 });
 console.log(`SERVER_HARDENING_CHECKS_DONE passed=${passed}; no database connected`);

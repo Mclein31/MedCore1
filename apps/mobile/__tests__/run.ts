@@ -111,7 +111,7 @@ check('philhealth information maps to patient language', () => {
 
 check('hmo information maps to patient language', () => {
   assert.strictEqual(describeHmoStatus('AWAITING_CODE').title, 'Being reviewed');
-  assert.strictEqual(describeHmoStatus('APPROVED').title, 'Approved');
+  assert.strictEqual(describeHmoStatus('APPROVED').title, 'HMO Approved');
 });
 
 check('reconciliation discrepancy: difference is explainable', () => {

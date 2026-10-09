@@ -118,6 +118,7 @@ export interface HmoAuthorization {
 }
 
 export interface DischargePass {
+  exitPin?: string;
   passNumber: string;
   encounterId: string;
   patientName: string;
@@ -198,7 +199,7 @@ export interface Encounter {
   doctorPan: string;
   doctorAgreedFee: number;
   doctorExcessPf: number;
-  doctorSignedAt?: string;
+  doctorSignedAt?: string | null;
   pharmacyRtsCleared: boolean;
   unreturnedMedsCount: number;
   stage: DischargeStage;

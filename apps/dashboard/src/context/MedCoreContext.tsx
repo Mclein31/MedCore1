@@ -82,14 +82,15 @@ interface MedCoreContextType {
   closeDossierDrawer: () => void;
 
   // Operational Transitions
-  advanceStage: (encounterId: string) => void;
+  advanceStage: (encounterId: string) => Promise<void>;
   nudgeDoctor: (encounterId: string) => void;
-  applyAccreditedCeiling: (encounterId: string) => void;
-  clearPharmacyRts: (encounterId: string) => void;
+  applyAccreditedCeiling: (encounterId: string) => Promise<void>;
+  clearPharmacyRts: (encounterId: string) => Promise<void>;
   approveHmoFinalLoa: (encounterId: string) => Promise<void>;
-  settlePatientBalance: (encounterId: string, channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE') => void;
+  settlePatientBalance: (encounterId: string, channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE') => Promise<void>;
   issueDigitalGatePass: (encounterId: string) => void;
-  verifyGatePass: (encounterId: string) => void;
+  verifyGatePass: (encounterId: string) => Promise<void>;
+  signDoctorFee: (encounterId: string, agreedFee: number) => Promise<void>;
   executePromissoryNote: (
     encounterId: string,
     borrowerName: string,
@@ -98,7 +99,7 @@ interface MedCoreContextType {
     months: 3 | 6 | 12,
     customPrincipal?: number
   ) => Promise<void>;
-  freezeDisputeItem: (encounterId: string, itemId: string, reason: string) => void;
+  freezeDisputeItem: (encounterId: string, itemId: string, reason: string) => Promise<void>;
   supervisoryWaiveItem: (encounterId: string, itemId: string, notes: string) => void;
 
   // Patient Billing & Demo Settlement
@@ -586,46 +587,27 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsDossierDrawerOpen(false);
   };
 
-  // Operational Transitions
-  const stageOrder: DischargeStage[] = [
-    'MGH_DECLARED',
-    'DOCTOR_PF_PENDING',
-    'PHARMACY_RTS_AUDIT',
-    'HMO_FINAL_LOA',
-    'PENDING_SETTLEMENT',
-    'CLEARED_GATE_PASS'
-  ];
-
-  const advanceStage = async (encounterId: string) => {
-    try {
-      const res = await apiClient.advanceStage(encounterId);
-      if (res?.encounter) {
-        setEncounters((prev) =>
-          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-        );
-        return;
-      }
-    } catch (err: any) {
-      console.error('API advance-stage failure:', err);
-      setApiError(`Failed to advance stage on server: ${err.message || 'Unknown error'}`);
-    }
-
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const currentIndex = stageOrder.indexOf(enc.stage);
-        if (currentIndex < stageOrder.length - 1) {
-          const nextStage = stageOrder[currentIndex + 1];
-          return {
-            ...enc,
-            stage: nextStage,
-            elapsedMinutes: Math.min(45, enc.elapsedMinutes + 4)
-          };
-        }
-        return enc;
-      })
-    );
+  // Financial state is accepted only from a confirmed server response.
+  const acceptServerEncounter = (encounterId: string, response: any, generation: number) => {
+    if (generation !== sessionGeneration.current) throw new ApiError('Your session changed. Sign in again.', 0, 'SESSION_CHANGED');
+    if (!response?.success || !response.encounter?.encounterNumber) throw new Error('The hospital did not confirm this update. Refresh and try again.');
+    setEncounters(prev => prev.map(enc => enc.id === encounterId || enc.encounterNumber === response.encounter.encounterNumber ? response.encounter : enc));
   };
+  const confirmEncounterMutation = async (encounterId: string, label: string, mutation: () => Promise<any>) => {
+    const generation = sessionGeneration.current;
+    try { acceptServerEncounter(encounterId, await mutation(), generation); setApiError(null); }
+    catch (error: unknown) {
+      if (generation === sessionGeneration.current) setApiError(`${label}: ${error instanceof Error ? error.message : 'Please try again.'}`);
+      throw error;
+    }
+  };
+  const refreshServerEncounter = async (encounterId: string) => {
+    const generation = sessionGeneration.current;
+    const encounter = await apiClient.getEncounter(encounterId);
+    acceptServerEncounter(encounterId, { success: true, encounter }, generation);
+  };
+  const advanceStage = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not advance discharge', () => apiClient.advanceStage(encounterId));
+  const signDoctorFee = (encounterId: string, agreedFee: number) => confirmEncounterMutation(encounterId, 'Could not sign professional fee', () => apiClient.doctorQuickSign(encounterId, agreedFee));
 
   const nudgeDoctor = (encounterId: string) => {
     setEncounters((prev) =>
@@ -639,70 +621,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     );
   };
 
-  const applyAccreditedCeiling = async (encounterId: string) => {
-    try {
-      const res = await apiClient.applyAccreditedCeiling(encounterId);
-      if (res?.encounter) {
-        setEncounters((prev) =>
-          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-        );
-        return;
-      }
-    } catch (err: any) {
-      console.error('API accredited-ceiling failure:', err);
-      setApiError(`Failed to apply accredited ceiling on server: ${err.message || 'Unknown error'}`);
-    }
-
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const updatedExcess = 0;
-        const newWaterfall = recalculateWaterfall(
-          enc.items,
-          enc.patient.isSeniorCitizen || enc.patient.isPwd,
-          enc.philhealth.hciAmount,
-          enc.philhealth.pfAmount,
-          enc.hmo.approvedAmount,
-          enc.waterfall.roomUpgradeExcess,
-          updatedExcess
-        );
-        return {
-          ...enc,
-          doctorExcessPf: 0,
-          doctorSignedAt: new Date().toISOString(),
-          waterfall: newWaterfall,
-          stage: enc.stage === 'DOCTOR_PF_PENDING' ? 'PHARMACY_RTS_AUDIT' : enc.stage
-        };
-      })
-    );
-  };
-
-  const clearPharmacyRts = async (encounterId: string) => {
-    try {
-      const res = await apiClient.clearPharmacyRts(encounterId);
-      if (res?.encounter) {
-        setEncounters((prev) =>
-          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-        );
-        return;
-      }
-    } catch (err: any) {
-      console.error('API clear-pharmacy-rts failure:', err);
-      setApiError(`Failed to clear pharmacy RTS on server: ${err.message || 'Unknown error'}`);
-    }
-
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        return {
-          ...enc,
-          pharmacyRtsCleared: true,
-          unreturnedMedsCount: 0,
-          stage: enc.stage === 'PHARMACY_RTS_AUDIT' ? 'HMO_FINAL_LOA' : enc.stage
-        };
-      })
-    );
-  };
+  const applyAccreditedCeiling = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not apply accredited ceiling', () => apiClient.applyAccreditedCeiling(encounterId));
+  const clearPharmacyRts = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not clear pharmacy audit', () => apiClient.clearPharmacyRts(encounterId));
 
   const approveHmoFinalLoa = async (encounterId: string) => {
     const enc = encounters.find((e) => e.id === encounterId);
@@ -736,89 +656,36 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const issueDigitalGatePass = (encounterId: string) => {
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const newPass: DischargePass = {
-          passNumber: `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`,
-          encounterId: enc.id,
-          patientName: enc.patient.maskedName,
-          roomBed: enc.roomBed,
-          settledAmount: enc.waterfall.netPatientDue,
-          settlementChannel: 'QR_PH',
-          issuedAt: new Date().toISOString(),
-          status: 'ACTIVE_READY_FOR_EXIT',
-          hmacSignature: `hmac_${Math.random().toString(36).substring(2, 15)}`
-        };
-        return {
-          ...enc,
-          stage: 'CLEARED_GATE_PASS',
-          dischargePass: newPass
-        };
-      })
-    );
+    const encounter = encounters.find(enc => enc.id === encounterId);
+    if (!encounter?.dischargePass || encounter.stage !== 'CLEARED_GATE_PASS') {
+      setApiError('Complete hospital settlement before opening the discharge pass.');
+      return;
+    }
+    setSelectedEncounterId(encounterId);
     setIsGatePassModalOpen(true);
   };
-
-  const verifyGatePass = (encounterId: string) => {
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const currentPass: DischargePass = enc.dischargePass || {
-          passNumber: `PASS-MC-${enc.encounterNumber.replace('ENC-2026-', '')}`,
-          encounterId: enc.id,
-          patientName: enc.patient.fullName || enc.patient.maskedName,
-          roomBed: enc.roomBed,
-          settledAmount: enc.waterfall.netPatientDue,
-          settlementChannel: 'QR_PH' as const,
-          issuedAt: new Date().toISOString(),
-          status: 'ACTIVE_READY_FOR_EXIT' as const,
-          hmacSignature: 'a8f102c918e38d721bf64098ad23ef10'
-        };
-        return {
-          ...enc,
-          dischargePass: {
-            ...currentPass,
-            status: 'VERIFIED_AT_LOBBY',
-            verifiedAt: new Date().toISOString()
-          }
-        };
-      })
-    );
+  const verifyGatePass = async (encounterId: string) => {
+    const generation = sessionGeneration.current;
+    const pass = encounters.find(enc => enc.id === encounterId)?.dischargePass;
+    try {
+      if (!pass?.exitPin) throw new Error('Refresh the hospital discharge pass before verification.');
+      const result = await apiClient.verifyExitPass(pass.passNumber, pass.exitPin);
+      if (generation !== sessionGeneration.current) throw new Error('Your session changed.');
+      if (!result?.verified || result.status !== 'VERIFIED_AT_LOBBY') throw new Error('The hospital did not confirm lobby verification.');
+      await refreshServerEncounter(encounterId);
+    } catch (error: unknown) {
+      if (generation === sessionGeneration.current) setApiError(error instanceof Error ? error.message : 'Could not verify the discharge pass.');
+      throw error;
+    }
   };
-
-  const settlePatientBalance = (
-    encounterId: string,
-    channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE'
-  ) => {
+  const settlePatientBalance = async (encounterId: string, channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE') => {
+    const enc = encounters.find(enc => enc.id === encounterId);
+    if (!enc || enc.stage !== 'PENDING_SETTLEMENT') { setApiError('Wait for the hospital to finalize discharge checks before settlement.'); return; }
     setSelectedEncounterId(encounterId);
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const currentDue = enc.waterfall.netPatientDue;
-        const newPass: DischargePass = {
-          passNumber: `PASS-MC-${Math.floor(10000 + Math.random() * 90000)}`,
-          encounterId: enc.id,
-          patientName: enc.patient.maskedName,
-          roomBed: enc.roomBed,
-          settledAmount: currentDue,
-          settlementChannel: channel,
-          issuedAt: new Date().toISOString(),
-          status: 'ACTIVE_READY_FOR_EXIT',
-          hmacSignature: `hmac_${Math.random().toString(36).substring(2, 15)}`
-        };
-        return {
-          ...enc,
-          stage: 'CLEARED_GATE_PASS',
-          dischargePass: newPass,
-          waterfall: {
-            ...enc.waterfall,
-            netPatientDue: 0,
-            patientPaid: (enc.waterfall.patientPaid || 0) + currentDue
-          }
-        };
-      })
-    );
+    if (channel === 'PROMISSORY_NOTE') { openPromissoryModal(encounterId); return; }
+    const result = await processDemoPayment({ encounterId, amount: enc.remainingBalance ?? Math.max(0, enc.waterfall.netPatientDue - (enc.amountPaid ?? 0)),
+      paymentRail: channel, payerName: enc.patient.fullName || enc.patient.maskedName, payerContactMasked: '0917-***-****' });
+    if (!result.success) { setApiError(result.error || 'The hospital did not confirm payment.'); return; }
     setIsGatePassModalOpen(true);
   };
 
@@ -833,13 +700,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const encTarget = encounters.find((e) => e.id === encounterId);
     const targetPrincipal = customPrincipal !== undefined && customPrincipal !== null
       ? customPrincipal
-      : (promissoryCustomAmount !== null ? promissoryCustomAmount : (encTarget?.waterfall.netPatientDue || 0));
+      : (promissoryCustomAmount !== null ? promissoryCustomAmount : (encTarget?.remainingBalance ?? Math.max(0, (encTarget?.waterfall.netPatientDue ?? 0) - (encTarget?.amountPaid ?? 0))));
 
     const identity = validateGovernmentId(idType, idNumber);
     if (!identity.valid) {
       setApiError(identity.error);
       throw new Error(identity.error);
     }
+    const generation = sessionGeneration.current;
     setApiError(null);
     try {
       const res = await apiClient.executePromissoryNote(encounterId, {
@@ -853,9 +721,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (!res?.success || !res.promissoryNote?.id || !res.encounter) {
         throw new Error('The hospital did not confirm this payment plan. Please try again.');
       }
-      setEncounters((prev) =>
-        prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-      );
+      acceptServerEncounter(encounterId, res, generation);
       setIsPromissoryModalOpen(false);
       if (res.dischargePass || res.encounter.dischargePass) setIsGatePassModalOpen(true);
     } catch (err: any) {
@@ -864,177 +730,24 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const freezeDisputeItem = async (encounterId: string, itemId: string, reason: string) => {
-    try {
-      const res = await apiClient.fileDispute(encounterId, {
-        chargeId: itemId,
-        reason,
-        disputeCategory: 'OTHER'
-      });
-      if (res?.encounter) {
-        setEncounters((prev) =>
-          prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-        );
-        return;
-      }
-    } catch (err: any) {
-      console.error('API file dispute failure:', err);
-      setApiError(`Failed to file dispute on server: ${err.message || 'Unknown error'}`);
-    }
-
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const updatedItems = enc.items.map((it) =>
-          it.id === itemId ? { ...it, status: 'CONTESTED' as const } : it
-        );
-        const contestedItem = enc.items.find((it) => it.id === itemId);
-        const newDispute = {
-          id: `disp-${Date.now()}`,
-          encounterId,
-          itemId,
-          itemDescription: contestedItem?.description || 'Contested line item',
-          contestedAmount: contestedItem?.patientOop || 0,
-          reason,
-          status: 'FROZEN' as const,
-          createdAt: new Date().toISOString()
-        };
-        return {
-          ...enc,
-          items: updatedItems,
-          disputes: [...enc.disputes, newDispute]
-        };
-      })
-    );
-  };
+  const freezeDisputeItem = (encounterId: string, itemId: string, reason: string) => confirmEncounterMutation(encounterId, 'Could not file billing dispute', () => apiClient.fileDispute(encounterId, { chargeId: itemId, reason, disputeCategory: 'OTHER' }));
 
   const supervisoryWaiveItem = async (encounterId: string, itemId: string, notes: string) => {
     const encTarget = encounters.find((e) => e.id === encounterId);
     const targetDispute = encTarget?.disputes?.find((d) => d.itemId === itemId);
-    if (targetDispute?.id) {
-      try {
-        const res = await apiClient.waiveDispute(targetDispute.id, notes);
-        if (res?.encounter) {
-          setEncounters((prev) =>
-            prev.map((enc) => (enc.id === encounterId || enc.encounterNumber === res.encounter.encounterNumber ? res.encounter : enc))
-          );
-          return;
-        }
-      } catch (err: any) {
-        console.error('API supervisory waive failure:', err);
-        setApiError(`Failed to execute supervisory waiver on server: ${err.message || 'Unknown error'}`);
-      }
+    if (!targetDispute?.id) {
+      setApiError('This charge has no persisted dispute to waive. Refresh the encounter and try again.');
+      return;
     }
+    try {
+      await confirmEncounterMutation(encounterId, 'Failed to execute supervisory waiver', () => apiClient.waiveDispute(targetDispute.id, notes));
+    } catch { return; }
 
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        const updatedItems = enc.items.map((it) =>
-          it.id === itemId
-            ? {
-                ...it,
-                status: 'SUPERVISORY_WAIVED' as const,
-                isDisputed: false,
-                patientOop: 0,
-                disputeReason: undefined
-              }
-            : it
-        );
-        const updatedWaterfall = recalculateWaterfall(
-          updatedItems,
-          enc.patient.isSeniorCitizen || enc.patient.isPwd,
-          enc.philhealth.hciAmount,
-          enc.philhealth.pfAmount,
-          enc.hmo.approvedAmount,
-          enc.waterfall.roomUpgradeExcess,
-          enc.doctorExcessPf
-        );
-        const updatedDisputes = enc.disputes.map((d) =>
-          d.itemId === itemId
-            ? { ...d, status: 'SUPERVISOR_WAIVED' as const, supervisorNotes: notes }
-            : d
-        );
-        const hasRemainingDisputedMeds = updatedItems.some(
-          (it) =>
-            (it.isDisputed || it.status === 'CONTESTED') &&
-            it.status !== 'SUPERVISORY_WAIVED' &&
-            it.status !== 'WAIVED' &&
-            it.category === 'PHARMACY'
-        );
-        return {
-          ...enc,
-          items: updatedItems,
-          waterfall: updatedWaterfall,
-          disputes: updatedDisputes,
-          pharmacyRtsCleared: enc.pharmacyRtsCleared || !hasRemainingDisputedMeds,
-          unreturnedMedsCount: hasRemainingDisputedMeds ? enc.unreturnedMedsCount : 0
-        };
-      })
-    );
   };
 
-  // Listen for Cross-Tab / Cross-Window Sync Events
-  usePatientBillingSync((msg) => {
-    if (msg.type === 'BILL_FINALIZED') {
-      setEncounters((prev) =>
-        prev.map((e) => (e.id === msg.encounterId ? { ...e, billState: 'FINALIZED', billFinalizedAt: msg.timestamp } : e))
-      );
-    } else if (msg.type === 'BILL_SENT') {
-      setEncounters((prev) =>
-        prev.map((e) => (e.id === msg.encounterId ? { ...e, billState: 'SENT_TO_PATIENT', billSentAt: msg.timestamp } : e))
-      );
-    } else if (msg.type === 'BILL_VIEWED') {
-      setEncounters((prev) =>
-        prev.map((e) =>
-          e.id === msg.encounterId && (e.billState === 'SENT_TO_PATIENT' || e.billState === 'DRAFT')
-            ? { ...e, billState: 'VIEWED', billFirstViewedAt: msg.timestamp }
-            : e
-        )
-      );
-    } else if (msg.type === 'DISPUTE_FILED') {
-      setEncounters((prev) =>
-        prev.map((e) => {
-          if (e.id !== msg.encounterId) return e;
-          const updatedItems = e.items.map((it) => (it.id === msg.itemId ? { ...it, status: 'CONTESTED' as const } : it));
-          return { ...e, billState: 'DISPUTED', items: updatedItems };
-        })
-      );
-    } else if (msg.type === 'PAYMENT_SETTLED') {
-      setEncounters((prev) =>
-        prev.map((e) => {
-          if (e.id !== msg.encounterId) return e;
-          // IDEMPOTENCY GUARD: Check if this payment record is already recorded
-          const existingPayments = e.paymentHistory || [];
-          const isAlreadyRecorded = existingPayments.some(
-            (p) => (msg.payment.paymentId && p.paymentId === msg.payment.paymentId) || p.id === msg.payment.id
-          );
-          if (isAlreadyRecorded) {
-            return e;
-          }
-
-          const newPaid = Number(((e.amountPaid || 0) + msg.payment.amount).toFixed(2));
-          const existingReceipts = e.receipts || [];
-          const updatedReceipts = msg.payment.receipt
-            ? (existingReceipts.some((r) => r.paymentId === msg.payment.paymentId) ? existingReceipts : [msg.payment.receipt, ...existingReceipts])
-            : existingReceipts;
-
-          return {
-            ...e,
-            amountPaid: newPaid,
-            remainingBalance: msg.remainingBalance,
-            billState: msg.isFullySettled ? 'PAID' : 'PARTIALLY_PAID',
-            stage: msg.isFullySettled ? 'CLEARED_GATE_PASS' : e.stage,
-            paymentHistory: [msg.payment, ...existingPayments],
-            receipts: updatedReceipts,
-            waterfall: {
-              ...e.waterfall,
-              netPatientDue: msg.remainingBalance,
-              patientPaid: newPaid
-            }
-          };
-        })
-      );
-    }
+  // Cross-tab messages are refresh hints, never an authoritative balance ledger.
+  usePatientBillingSync(msg => {
+    void refreshServerEncounter(msg.encounterId).catch(() => { /* Retain confirmed state on read failure. */ });
   });
 
   const finalizeBill = (encounterId: string) => {
@@ -1101,23 +814,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   };
 
-  const fileBillingDispute = (encounterId: string, itemId: string, reason: string) => {
-    freezeDisputeItem(encounterId, itemId, reason);
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        return {
-          ...enc,
-          billState: 'DISPUTED'
-        };
-      })
-    );
-    broadcastBillingSync({
-      type: 'DISPUTE_FILED',
-      encounterId,
-      itemId,
-      reason
-    });
+  const fileBillingDispute = async (encounterId: string, itemId: string, reason: string) => {
+    await freezeDisputeItem(encounterId, itemId, reason);
+    broadcastBillingSync({ type: 'DISPUTE_FILED', encounterId, itemId, reason });
   };
 
   const processDemoPayment = async (params: {
@@ -1139,6 +838,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return { success: false, error: 'A payment is currently being processed for this statement. Please wait.' };
     }
     inFlightPaymentsRef.current.add(params.encounterId);
+    const generation = sessionGeneration.current;
 
     try {
       const enc = encounters.find((e) => e.id === params.encounterId);
@@ -1146,12 +846,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: false, error: 'Encounter record not found.' };
       }
 
-      const currentRemaining =
-        enc.remainingBalance !== undefined
-          ? enc.remainingBalance
-          : enc.stage === 'CLEARED_GATE_PASS'
-          ? 0
-          : enc.waterfall.netPatientDue;
+      if (enc.stage !== 'PENDING_SETTLEMENT') return { success: false, error: 'Wait for the hospital to complete discharge checks.' };
+      const currentRemaining = enc.remainingBalance ?? Math.max(0, enc.waterfall.netPatientDue - (enc.amountPaid ?? 0));
 
       if (currentRemaining <= 0 && params.paymentRail !== 'PROMISSORY_NOTE') {
         return { success: false, error: 'This statement is already fully settled (Remaining Balance: ₱0.00).' };
@@ -1161,7 +857,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: false, error: 'Payment amount must be greater than ₱0.00.' };
       }
 
-      if (params.amount > currentRemaining + 0.05) {
+      if (Math.round(params.amount * 100) > Math.round(currentRemaining * 100)) {
         return { success: false, error: `Payment cannot exceed remaining balance (${formatPhp(currentRemaining)}).` };
       }
 
@@ -1199,7 +895,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return { success: false, error: err.message || 'Payment rejected by server' };
       }
 
-      if (serverRes?.success && serverRes.payment?.id && serverRes.payment.status === 'SUCCESS' && serverRes.receipt?.officialReceiptNumber) {
+      if (generation !== sessionGeneration.current) return { success: false, error: 'Your session changed. Sign in again.' };
+      if (serverRes?.success && serverRes.payment?.id && serverRes.payment.status === 'SUCCESS' && serverRes.receipt?.officialReceiptNumber && serverRes.encounter) {
         const canonicalReceipt: PaymentReceipt = {
           id: serverRes.receipt?.id || `RCPT-${serverRes.payment.id.slice(0, 8)}`,
           paymentId: serverRes.payment.paymentReference,
@@ -1261,343 +958,22 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // --- CHARGEMASTER CRUD IMPLEMENTATION ---
-  const addChargeItem = async (encounterId: string, itemData: any) => {
-    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
-    if (!enc) return;
-
-    const qty = Number(itemData.qty) > 0 ? Number(itemData.qty) : 1;
-    const grossAmount = Number(itemData.grossAmount) > 0 ? Number(itemData.grossAmount) : 0;
-    const unitPrice = itemData.unitPrice !== undefined && Number(itemData.unitPrice) >= 0
-      ? Number(itemData.unitPrice)
-      : Number((grossAmount / qty).toFixed(2));
-
-    const newItem: ChargemasterItem = {
-      id: `item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      code: itemData.code || `CHG-${itemData.category.slice(0, 3)}-${Date.now().toString().slice(-4)}`,
-      description: itemData.description,
-      category: itemData.category,
-      qty,
-      unitPrice,
-      grossAmount,
-      isVatable: true,
-      philhealthCovered: 0,
-      hmoCovered: 0,
-      patientOop: grossAmount,
-      status: 'COVERED',
-      isDisputed: false,
-      plainLanguageExplainer: `Standard clinical hospital charge for ${itemData.description}.`
-    };
-
-    const updatedItems = [...enc.items, newItem];
-    const newWaterfall = recalculateWaterfall(
-      updatedItems,
-      enc.patient.isSeniorCitizen || enc.patient.isPwd,
-      enc.philhealth.hciAmount,
-      enc.philhealth.pfAmount,
-      enc.hmo.approvedAmount,
-      enc.waterfall.roomUpgradeExcess,
-      enc.doctorExcessPf || 0
-    );
-
-    setEncounters((prev) =>
-      prev.map((e) => {
-        if (e.id !== encounterId) return e;
-        return {
-          ...e,
-          items: updatedItems,
-          waterfall: newWaterfall,
-          remainingBalance: Math.max(0, Number((newWaterfall.netPatientDue - (e.amountPaid || 0)).toFixed(2)))
-        };
-      })
-    );
-
-    try {
-      const res = await apiClient.addChargeItem(encounterId, {
-        description: itemData.description,
-        category: itemData.category === 'MEDICAL_SUPPLIES' ? 'CENTRAL_SUPPLIES' : itemData.category,
-        grossAmount,
-        qty,
-        quantity: qty,
-        unitPrice,
-        code: newItem.code,
-        coverageType: itemData.coverageType || 'PHILHEALTH_FIRST'
-      });
-      if (res && res.item) {
-        setEncounters((prev) =>
-          prev.map((e) => {
-            if (e.id !== encounterId) return e;
-            return {
-              ...e,
-              items: e.items.map((i) =>
-                i.id === newItem.id ? { ...i, id: res.item.id, code: res.item.code } : i
-              )
-            };
-          })
-        );
-      }
-    } catch (err) {
-      console.warn('Backend addChargeItem sync notice:', err);
-    }
+  const addChargeItem = (encounterId: string, itemData: any) => confirmEncounterMutation(encounterId, 'Could not add charge', () => apiClient.addChargeItem(encounterId, itemData));
+  const editChargeItem = (encounterId: string, itemId: string, updates: any) => {
+    const item = encounters.find(enc => enc.id === encounterId)?.items.find(item => item.id === itemId);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId);
+    return confirmEncounterMutation(encounterId, 'Could not update charge', () => apiClient.editChargeItem(isUuid ? itemId : item?.code || itemId, updates));
   };
-
-  const editChargeItem = async (encounterId: string, itemId: string, updates: any) => {
-    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
-    if (!enc) return;
-
-    const item = enc.items.find((i) => i.id === itemId);
-
-    const updatedItems = enc.items.map((i) => {
-      if (i.id !== itemId) return i;
-      const qty = updates.qty !== undefined ? Number(updates.qty) : (i.qty || 1);
-      const grossAmount = updates.grossAmount !== undefined ? Number(updates.grossAmount) : i.grossAmount;
-      const unitPrice = updates.unitPrice !== undefined
-        ? Number(updates.unitPrice)
-        : Number((grossAmount / (qty || 1)).toFixed(2));
-      return {
-        ...i,
-        ...updates,
-        qty,
-        grossAmount,
-        unitPrice
-      };
-    });
-
-    const newWaterfall = recalculateWaterfall(
-      updatedItems,
-      enc.patient.isSeniorCitizen || enc.patient.isPwd,
-      enc.philhealth.hciAmount,
-      enc.philhealth.pfAmount,
-      enc.hmo.approvedAmount,
-      enc.waterfall.roomUpgradeExcess,
-      enc.doctorExcessPf || 0
-    );
-
-    setEncounters((prev) =>
-      prev.map((e) => {
-        if (e.id !== encounterId) return e;
-        return {
-          ...e,
-          items: updatedItems,
-          waterfall: newWaterfall,
-          remainingBalance: Math.max(0, Number((newWaterfall.netPatientDue - (e.amountPaid || 0)).toFixed(2)))
-        };
-      })
-    );
-
-    try {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId);
-      const targetId = isUuid ? itemId : (item?.code || itemId);
-      await apiClient.editChargeItem(targetId, {
-        description: updates.description,
-        category: updates.category === 'MEDICAL_SUPPLIES' ? 'CENTRAL_SUPPLIES' : updates.category,
-        grossAmount: updates.grossAmount,
-        qty: updates.qty,
-        quantity: updates.qty,
-        unitPrice: updates.unitPrice
-      });
-    } catch (err: any) {
-      console.warn('Backend editChargeItem sync notice:', err);
-      setApiError(`Failed to update charge item on server: ${err.message || 'Unknown error'}`);
-    }
-  };
-
   const deleteChargeItem = (encounterId: string, itemId: string) => {
-    const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
-    const item = enc?.items.find((i) => i.id === itemId);
-    const itemName = item?.description || 'Item';
-    const itemAmt = item?.grossAmount ? formatPhp(item.grossAmount) : '₱0.00';
-
-    requestConfirmation({
-      title: 'Delete Chargemaster Item',
-      description: `Are you sure you want to permanently remove "${itemName}" (${itemAmt}) from this patient's running bill? This will automatically recalculate the Philippine statutory deduction waterfall and update the net patient balance.`,
-      confirmLabel: 'Delete Item',
-      cancelLabel: 'Keep Item',
-      variant: 'danger',
-      contextInfo: [
-        { label: 'Item Description', value: itemName },
-        { label: 'Gross Amount', value: itemAmt },
-        { label: 'Patient', value: enc?.patient.fullName || enc?.patient.maskedName || 'Patient' },
-        { label: 'Encounter', value: enc?.encounterNumber || encounterId }
-      ],
-      onConfirm: async () => {
-        if (!enc) return;
-        const updatedItems = enc.items.filter((i) => i.id !== itemId);
-        const newWaterfall = recalculateWaterfall(
-          updatedItems,
-          enc.patient.isSeniorCitizen || enc.patient.isPwd,
-          enc.philhealth.hciAmount,
-          enc.philhealth.pfAmount,
-          enc.hmo.approvedAmount,
-          enc.waterfall.roomUpgradeExcess,
-          enc.doctorExcessPf || 0
-        );
-
-        setEncounters((prev) =>
-          prev.map((e) => {
-            if (e.id !== encounterId) return e;
-            return {
-              ...e,
-              items: updatedItems,
-              waterfall: newWaterfall,
-              remainingBalance: Math.max(0, Number((newWaterfall.netPatientDue - (e.amountPaid || 0)).toFixed(2)))
-            };
-          })
-        );
-
-        try {
-          const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(itemId);
-          const targetId = isUuid ? itemId : (item?.code || itemId);
-          await apiClient.deleteChargeItem(targetId);
-        } catch (err: any) {
-          console.warn('Backend deleteChargeItem sync notice:', err);
-          setApiError(`Failed to delete charge item on server: ${err.message || 'Unknown error'}`);
-        }
-      }
-    });
+    const enc = encounters.find(enc => enc.id === encounterId);
+    const item = enc?.items.find(item => item.id === itemId);
+    requestConfirmation({ title: 'Delete Chargemaster Item', description: `Remove "${item?.description || 'Item'}" from this hospital bill?`,
+      confirmLabel: 'Delete Item', cancelLabel: 'Keep Item', variant: 'danger',
+      onConfirm: () => confirmEncounterMutation(encounterId, 'Could not delete charge', () => apiClient.deleteChargeItem(/^[0-9a-f-]{36}$/i.test(itemId) ? itemId : item?.code || itemId)) });
   };
 
   // --- ENCOUNTER CRUD IMPLEMENTATION ---
   const admitPatient = async (data: any) => {
-    const newEncId = `enc-${Date.now().toString().slice(-4)}`;
-    const encNumber = `ENC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
-    const billNumber = `SOA-SJMC-26-${Math.floor(1000 + Math.random() * 9000)}`;
-
-    const initialItems: ChargemasterItem[] = [
-      {
-        id: `item-${Date.now()}-1`,
-        code: 'CHG-ROOM-001',
-        description: `Inpatient Room Accommodation (${data.roomCategory?.replace(/_/g, ' ') || 'Regular Private'}) - Day 1`,
-        category: 'ROOM_BOARD',
-        qty: 1,
-        unitPrice: data.dailyRoomRate || 3200,
-        grossAmount: data.dailyRoomRate || 3200,
-        isVatable: true,
-        philhealthCovered: 0,
-        hmoCovered: 0,
-        patientOop: data.dailyRoomRate || 3200,
-        status: 'COVERED',
-        isDisputed: false,
-        plainLanguageExplainer: 'Standard daily room rate charged on admission.'
-      },
-      {
-        id: `item-${Date.now()}-2`,
-        code: 'CHG-SUPP-001',
-        description: 'Standard Inpatient Admission & Hygiene Kit',
-        category: 'CENTRAL_SUPPLIES',
-        qty: 1,
-        unitPrice: 850,
-        grossAmount: 850,
-        isVatable: true,
-        philhealthCovered: 0,
-        hmoCovered: 0,
-        patientOop: 850,
-        status: 'COVERED',
-        isDisputed: false,
-        plainLanguageExplainer: 'Basic clinical hygiene and admission materials.'
-      }
-    ];
-
-    const newWaterfall = recalculateWaterfall(
-      initialItems,
-      data.isSeniorCitizen || data.isPwd,
-      18000,
-      6000,
-      data.hmoProvider ? 50000 : 0,
-      0,
-      0
-    );
-
-    const newEncounter: Encounter = {
-      id: newEncId,
-      encounterNumber: encNumber,
-      billNumber,
-      billState: 'DRAFT',
-      admissionDate: new Date().toISOString().split('T')[0],
-      stage: 'MGH_DECLARED',
-      slaStatus: 'NORMAL',
-      elapsedMinutes: 5,
-      mghOrderTimestamp: new Date().toISOString(),
-      primaryDiagnosis: data.primaryDiagnosis,
-      primaryIcd10: 'Z00.0',
-      roomBed: data.roomBed,
-      bedNumber: data.roomBed,
-      roomCategory: data.roomCategory,
-      roomType: data.roomCategory?.replace(/_/g, ' '),
-      dailyRoomRate: data.dailyRoomRate,
-      dailyRoomAllowance: data.dailyRoomRate || 3200,
-      attendingDoctor: data.attendingDoctor,
-      doctorPan: 'PAN-DOC-2026-001',
-      doctorAgreedFee: 6000,
-      doctorExcessPf: 0,
-      pharmacyRtsCleared: false,
-      unreturnedMedsCount: 0,
-      patient: {
-        id: `pat-${Date.now().toString().slice(-4)}`,
-        mrn: data.mrn,
-        fullName: data.fullName,
-        maskedName: data.fullName,
-        gender: data.gender,
-        age: data.age,
-        isSeniorCitizen: data.isSeniorCitizen,
-        seniorCitizenId: data.isSeniorCitizen ? 'SC-2026-ACTIVE' : undefined,
-        isPwd: data.isPwd,
-        pwdId: data.isPwd ? 'PWD-2026-ACTIVE' : undefined,
-        philhealthPin: data.philhealthPin,
-        contactNumber: '0917-000-0000'
-      },
-      hmo: {
-        providerName: data.hmoProvider || 'Self-Pay / None',
-        hmoName: data.hmoProvider || 'Self-Pay / None',
-        cardMasked: 'CARD-***-9921',
-        loaNumber: data.hmoPolicyNumber ? `LOA-${data.hmoPolicyNumber.slice(-6)}` : 'N/A',
-        policyMbl: 150000,
-        mblRemaining: data.hmoProvider ? 150000 : 0,
-        dailyRoomAllowance: data.dailyRoomRate || 3200,
-        initialLoaApproved: true,
-        finalLoaStatus: data.hmoProvider ? 'PENDING_SUBMISSION' : 'APPROVED',
-        approvedAmount: data.hmoProvider ? 50000 : 0,
-        disallowedConsumables: 0
-      },
-      philhealth: {
-        id: `clm-${Date.now().toString().slice(-4)}`,
-        primaryIcd10: 'Z00.0',
-        primaryDescription: data.primaryDiagnosis || 'General Examination',
-        caseRateCode: 'P01',
-        totalCaseRate: 24000,
-        hciAmount: 18000,
-        pfAmount: 6000,
-        isNbb: false,
-        rthRiskScore: 0.12,
-        cf4VitalsRecorded: true,
-        cf4CourseInWardRecorded: true,
-        cf4LabsConsistent: true,
-        eSoaXmlConformity: true,
-        status: 'CLEAN'
-      },
-      items: initialItems,
-      waterfall: newWaterfall,
-      amountPaid: 0,
-      remainingBalance: newWaterfall.netPatientDue,
-      paymentHistory: [],
-      receipts: [],
-      disputes: [],
-      timeline: [
-        {
-          id: `evt-${Date.now()}-1`,
-          timestamp: new Date().toISOString(),
-          timeDisplay: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          title: 'Patient Admitted',
-          actor: 'Admissions Lead',
-          type: 'BILLING',
-          status: 'COMPLETED',
-          description: `Patient admitted to ${data.roomBed} under ${data.attendingDoctor}. Diagnosis: ${data.primaryDiagnosis}.`
-        }
-      ]
-    };
-
-    setEncounters((prev) => [newEncounter, ...prev]);
-    setSelectedEncounterId(newEncId);
-
     try {
       const res = await apiClient.createEncounter({
         fullName: data.fullName,
@@ -1616,47 +992,16 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         hmoPolicyNumber: data.hmoPolicyNumber
       });
 
-      if (res && res.encounter) {
-        const backendEnc = res.encounter;
-        setEncounters((prev) =>
-          prev.map((e) => {
-            if (e.id !== newEncId) return e;
-            return {
-              ...e,
-              id: backendEnc.id,
-              encounterNumber: backendEnc.encounterNumber || e.encounterNumber,
-              billNumber: backendEnc.billNumber || e.billNumber,
-              items: backendEnc.items && backendEnc.items.length > 0 ? backendEnc.items : e.items
-            };
-          })
-        );
-        setSelectedEncounterId(backendEnc.id);
-      }
-    } catch (err) {
-      console.warn('Backend createEncounter sync notice:', err);
+      if (!res?.success || !res.encounter) throw new Error('The hospital did not confirm admission.');
+      setEncounters(prev => [res.encounter, ...prev]);
+      setSelectedEncounterId(res.encounter.id);
+    } catch (error: unknown) {
+      setApiError(error instanceof Error ? error.message : 'Could not admit the patient.');
+      throw error;
     }
   };
 
-  const editEncounter = async (encounterId: string, updates: any) => {
-    setEncounters((prev) =>
-      prev.map((e) => {
-        if (e.id !== encounterId) return e;
-        return {
-          ...e,
-          ...updates,
-          bedNumber: updates.roomBed || e.bedNumber,
-          roomBed: updates.roomBed || e.roomBed
-        };
-      })
-    );
-
-    try {
-      await apiClient.editEncounter(encounterId, updates);
-    } catch (err: any) {
-      console.warn('Backend editEncounter sync notice:', err);
-      setApiError(`Failed to update encounter on server: ${err.message || 'Unknown error'}`);
-    }
-  };
+  const editEncounter = (encounterId: string, updates: any) => confirmEncounterMutation(encounterId, 'Could not update encounter', () => apiClient.editEncounter(encounterId, updates));
 
   const deleteEncounter = (encounterId: string) => {
     const enc = encounters.find((e) => e.id === encounterId) || selectedEncounter;
@@ -1677,20 +1022,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         { label: 'Net Patient Due', value: formatPhp(enc?.waterfall.netPatientDue || 0) }
       ],
       onConfirm: async () => {
-        setEncounters((prev) => {
-          const remaining = prev.filter((e) => e.id !== encounterId);
-          if (selectedEncounterId === encounterId && remaining.length > 0) {
-            setSelectedEncounterId(remaining[0].id);
-          }
-          return remaining;
-        });
-
+        const generation = sessionGeneration.current;
         try {
-          await apiClient.deleteEncounter(encounterId);
-        } catch (err: any) {
-          console.warn('Backend deleteEncounter sync notice:', err);
-          setApiError(`Failed to delete encounter on server: ${err.message || 'Unknown error'}`);
-        }
+          const response = await apiClient.deleteEncounter(encounterId);
+          if (generation !== sessionGeneration.current) throw new Error('Your session changed.');
+          if (!response?.success) throw new Error('The hospital did not confirm encounter removal.');
+          setEncounters(prev => prev.filter(enc => enc.id !== encounterId));
+          if (selectedEncounterId === encounterId) setSelectedEncounterId(encounters.find(enc => enc.id !== encounterId)?.id || '');
+        } catch (error: unknown) { setApiError(error instanceof Error ? error.message : 'Could not remove encounter.'); throw error; }
       }
     });
   };
@@ -1767,6 +1106,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         openDossierDrawer,
         closeDossierDrawer,
         advanceStage,
+        signDoctorFee,
         nudgeDoctor,
         applyAccreditedCeiling,
         clearPharmacyRts,
