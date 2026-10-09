@@ -1,3 +1,4 @@
+import { usePullRefresh } from '../hooks/usePullRefresh';
 import { useCallback, useMemo } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
@@ -34,6 +35,7 @@ export default function DocumentsScreen({ navigation }: { navigation: any }) {
   const { client } = useAuth();
   const load = useCallback(() => createDocumentsApi(client).list(), [client]);
   const { data, loading, error, refresh: loadList } = useResource(load);
+  const pullRefresh = usePullRefresh(loadList);
   const docs = data?.items || [];
 
   const groups = useMemo(() => ({
@@ -53,7 +55,7 @@ export default function DocumentsScreen({ navigation }: { navigation: any }) {
 
   return (
     <Screen>
-      <ScrollView refreshControl={<RefreshControl refreshing={loading} onRefresh={loadList} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
         <RefreshNotice error={error} onRetry={loadList} />
         <Text style={[T.meta, { marginTop: 8 }]}>Statements, receipts and clearance documents, organized by type.</Text>
         {docs.length === 0 && <EmptyState title="No documents yet" detail="Statements, receipts, and discharge papers will appear here." />}

@@ -9,6 +9,7 @@ import { verifyPassword, hashPassword, generateSessionToken, hashSessionToken } 
 import { apiError } from '../middleware/error';
 import { requireAuth } from '../middleware/auth';
 import { getClientIp } from '../utils/clientIp';
+import { mobileDemoCapability } from '../services/mobileDemoAccess';
 
 const authApp = new Hono();
 
@@ -109,7 +110,8 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
       title: user.title,
       avatarInitials: user.avatarInitials,
       facilityId: facility.id,
-      facilityName: facility.name
+      facilityName: facility.name,
+      mobileDemoAdmin: mobileDemoCapability(user)
     }
   });
 });

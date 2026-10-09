@@ -1,0 +1,13 @@
+{
+  "environment": "Actual React Native Web components in isolated jsdom; controlled refresh promises and focus events; no network",
+  "passed": 7,
+  "results": [
+    "automatic/focus data loading never activates the native pull indicator",
+    "a user pull starts one request and completion clears its indicator",
+    "tab blur clears the pull, and a late completion cannot stop a newer pull",
+    "network failure clears the indicator without an unhandled rejection",
+    "resource scope changes discard the prior pull state and completion",
+    "unmount removes focus listeners and ignores pending completion",
+    "full-bleed content uses zero outer top gap; standard and safe-area spacing stay intact"
+  ]
+}

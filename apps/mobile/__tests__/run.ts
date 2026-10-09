@@ -18,6 +18,8 @@ import { resolveApiConfig } from '../src/config/apiConfig';
 import { PaymentAttemptStore } from '../src/lib/paymentAttemptStore';
 import { SessionToken } from '../src/lib/sessionToken';
 import { ApiClient, ApiError } from '../src/lib/api';
+import { canUseMobile, paymentAccountNamespace } from '../src/lib/mobileAccess';
+import { validateGovernmentId, type GovernmentIdType } from '../../shared/governmentId';
 import { parseReadIds, notificationReadKey } from '../src/lib/notificationRead';
 import { remainingBalance } from '../src/lib/format';
 import { estimatedFirstDueDate, previewInstallments } from '../src/lib/promissory';
@@ -33,6 +35,41 @@ function check(name: string, fn: () => void) {
     process.exitCode = 1;
   }
 }
+
+check('government ID formats accept the documented lengths and preserve leading zeros', () => {
+  const valid: [GovernmentIdType, string, string][] = [
+    ['PHILSYS_NATIONAL_ID', '0123456789012345', '0123-4567-8901-2345'],
+    ['PHILSYS_NATIONAL_ID', '0123 4567 8901 2345', '0123-4567-8901-2345'],
+    ['UMID', '012345678901', '0123-4567890-1'], ['UMID', '0123-4567890-1', '0123-4567890-1'],
+    ['DRIVERS_LICENSE', ' a0123123456 ', 'A01-23-123456'], ['DRIVERS_LICENSE', 'A01-23-123456', 'A01-23-123456'],
+    ['PASSPORT', 'p1234567a', 'P1234567A'], ['PASSPORT', 'EC1234567', 'EC1234567'],
+    ['PASSPORT', 'AB123456', 'AB123456'], ['PASSPORT', 'A123456', 'A123456']
+  ];
+  for (const [type, input, normalized] of valid) assert.deepEqual(validateGovernmentId(type, input), { valid: true, normalized });
+});
+check('government ID validation rejects short IDs, wrong types, private PSNs and malformed characters', () => {
+  for (const type of ['PHILSYS_NATIONAL_ID', 'UMID', 'DRIVERS_LICENSE', 'PASSPORT'] as const) {
+    for (const input of ['1234', 'ABCD', 'ABCD1234', '１２３４５６７８９０１２３４５６', '1234\n5678', 'x'.repeat(65)]) assert.equal(validateGovernmentId(type, input).valid, false);
+  }
+  for (const [type, input] of [['PHILSYS_NATIONAL_ID','012345678901'], ['UMID','0123456789'], ['UMID','CRN-0123-4567890-1'], ['DRIVERS_LICENSE','123-45-123456'], ['PASSPORT','123456789'], ['PASSPORT','P12345678'], ['PASSPORT','ß1234567']]) assert.equal(validateGovernmentId(type, input).valid, false);
+  assert.equal(validateGovernmentId('__proto__', '1234').valid, false);
+});
+check('government ID validation cannot turn surplus or hidden characters into a valid ID', () => {
+  for (const input of ['01234567890123456', '0123-4567-8901-2345!', '0123--4567-8901-2345', '0123\u200b456789012345']) assert.equal(validateGovernmentId('PHILSYS_NATIONAL_ID', input).valid, false);
+});
+
+check('mobile admits only patients or the backend-authorized presentation account', () => {
+  assert.ok(canUseMobile({ role: 'PATIENT_GUARANTOR' }));
+  assert.ok(canUseMobile({ role: 'HOSPITAL_CFO', mobileDemoAdmin: true }));
+  assert.equal(canUseMobile({ role: 'HOSPITAL_CFO' }), false);
+  assert.equal(canUseMobile({ role: 'BILLING_SPECIALIST', mobileDemoAdmin: true }), false);
+});
+check('presentation payment recovery is isolated per patient and SecureStore safe', () => {
+  const admin = { id: 'admin-uuid', role: 'HOSPITAL_CFO', mobileDemoAdmin: true };
+  const a = paymentAccountNamespace(admin, 'patient-a'); const b = paymentAccountNamespace(admin, 'patient-b');
+  assert.notEqual(a, b); assert.match(`medcore_pending_payment.${a}`, /^[\w.-]+$/);
+  assert.equal(paymentAccountNamespace({ id: 'patient-user', role: 'PATIENT_GUARANTOR' }, 'ignored'), 'patient-user');
+});
 
 // Expo Go embeds native implementations; incompatible JS packages can bundle
 // successfully but fail only when a simulator/device calls the native module.
@@ -379,6 +416,36 @@ async function integrationChecks() {
     await asyncCheck('API request timeout aborts the request without expiring the session', async () => {
       globalThis.fetch = (async (_url, options) => new Promise((_resolve, reject) => options?.signal?.addEventListener('abort', () => reject(new Error('Aborted'))))) as typeof fetch;
       await assert.rejects(new ApiClient(async () => 'test').request('/test', { timeoutMs: 5 }), (e: unknown) => e instanceof ApiError && e.code === 'TIMEOUT');
+    });
+    await asyncCheck('selected patient headers are scoped and late subject responses are discarded', async () => {
+      let subject = 'patient-a'; let header: string | null = null;
+      const api = new ApiClient(async () => 'same-account', undefined, { patientId: subject, getCurrent: () => subject });
+      globalThis.fetch = (async (_url, options) => { header = new Headers(options?.headers).get('X-Medcore-Patient-Id'); return new Response('{}'); }) as typeof fetch;
+      await api.get('/patient/me'); assert.equal(header, 'patient-a');
+      await api.get('/auth/me'); assert.equal(header, null);
+      globalThis.fetch = (async () => ({ status: 200, ok: true, json: async () => { subject = 'patient-b'; return {}; } }) as Response) as typeof fetch;
+      await assert.rejects(api.get('/patient/me'), (e: unknown) => e instanceof ApiError && e.code === 'PATIENT_SCOPE_CHANGED');
+      let sent = false; globalThis.fetch = (async () => { sent = true; return new Response('{}'); }) as typeof fetch;
+      await assert.rejects(api.get('/patient/me')); assert.equal(sent, false);
+    });
+    await asyncCheck('patient changes while resolving credentials prevent transmission', async () => {
+      let subject = 'patient-a'; let sent = false;
+      const api = new ApiClient(async () => { subject = 'patient-b'; return 'same-account'; }, undefined,
+        { patientId: subject, getCurrent: () => subject });
+      globalThis.fetch = (async () => { sent = true; return new Response('{}'); }) as typeof fetch;
+      await assert.rejects(api.request('/payments', { method: 'POST', body: '{}' }),
+        (e: unknown) => e instanceof ApiError && e.code === 'PATIENT_SCOPE_CHANGED');
+      assert.equal(sent, false);
+    });
+    await asyncCheck('patient changes during transport discard responses before parsing', async () => {
+      let subject = 'patient-a'; let parsed = false;
+      const api = new ApiClient(async () => 'same-account', undefined, { patientId: subject, getCurrent: () => subject });
+      globalThis.fetch = (async () => {
+        subject = 'patient-b';
+        return { status: 200, ok: true, json: async () => { parsed = true; return {}; } } as Response;
+      }) as typeof fetch;
+      await assert.rejects(api.get('/patient/me'), (e: unknown) => e instanceof ApiError && e.code === 'PATIENT_SCOPE_CHANGED');
+      assert.equal(parsed, false);
     });
   } finally { globalThis.fetch = originalFetch; }
   console.log(`\nMOBILE_UNIT_TESTS_DONE passed=${passed}`);

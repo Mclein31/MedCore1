@@ -10,6 +10,7 @@ import { runWithDb } from '../src/db';
 import clearanceApp from '../src/routes/clearance';
 import { authMiddleware } from '../src/middleware/auth';
 import { hashSessionToken } from '../src/services/authService';
+import { mobileDemoCapability, MOBILE_DEMO_USERNAME } from '../src/services/mobileDemoAccess';
 import paymentsApp from '../src/routes/payments';
 import promissoryApp from '../src/routes/promissory';
 import disputesApp from '../src/routes/disputes';
@@ -78,6 +79,10 @@ class Query {
       if (this.inTransaction && name === 'encounters') { if (this.joined) assert.ok(lockReads > 0, 'Acquire the encounter lock before hydrating'); else { assert.ok(this.lock, 'Encounter must be locked before reading balances'); lockReads++; } }
       const selected = items.filter(row => matches(this.table, this.condition, row)).slice(0, this.cap);
       if (this.joined && this.projection?.encounter) return selected.map(encounter => ({ encounter: { ...encounter }, patient: rows.patients.find(patient => patient.id === encounter.patientId), waterfall: rows.statutory_waterfalls?.find(w => w.encounterId === encounter.id) || null, philhealth: null, hmo: rows.hmo_authorizations?.find(h => h.encounterId === encounter.id) || null }));
+      if (this.projection) {
+        const columns = Object.fromEntries(Object.entries(getTableColumns(this.table)).map(([key, col]: any) => [col.name, key]));
+        return selected.map(row => Object.fromEntries(Object.entries(this.projection).map(([alias, col]: any) => [alias, row[columns[col.name]]])));
+      }
       return selected.map(row => ({ ...row }));
     }
     writes++;
@@ -118,9 +123,40 @@ async function request(path: string, body: any, key?: string) {
   }, { NODE_ENV: process.env.NODE_ENV || 'development' }));
 }
 const payment = (amount: number) => ({ amount, paymentRail: 'GCASH', payerName: 'Test Payer' });
-const note = (principalAmount: number) => ({ principalAmount, borrowerName: 'Test Borrower', borrowerRelationship: 'PATIENT', borrowerIdType: 'PASSPORT', borrowerIdNumber: 'TEST-ID-0001', installmentMonths: 3 });
+const note = (principalAmount: number) => ({ principalAmount, borrowerName: 'Test Borrower', borrowerRelationship: 'PATIENT', borrowerIdType: 'PASSPORT', borrowerIdNumber: 'P1234567A', installmentMonths: 3 });
 let passed = 0;
 async function check(label: string, fn: () => Promise<void> | void) { reset(); await fn(); passed++; console.log(`[PASS] ${label}`); }
+
+await check('invalid government IDs cannot finance or clear a bill through direct API calls', async () => {
+  for (const borrowerIdType of ['PHILSYS_NATIONAL_ID', 'UMID', 'DRIVERS_LICENSE', 'PASSPORT']) {
+    for (const borrowerIdNumber of ['1234', 'ABCD', 'ABCD1234', '1234-5678', '１２３４５６７８９０１２３４５６']) {
+      const response = await request(`/encounters/${ownId}/promissory-notes`, { ...note(5), borrowerIdType, borrowerIdNumber });
+      assert.equal(response.status, 400);
+      assert.equal(writes, 0); assert.equal((rows.promissory_notes || []).length, 0); assert.equal((rows.discharge_passes || []).length, 0);
+      assert.equal(rows.encounters[0].remainingBalance, '100.00');
+    }
+  }
+});
+await check('each supported government ID persists canonically and equivalent retries reuse the note', async () => {
+  for (const [borrowerIdType, input, canonical] of [
+    ['PHILSYS_NATIONAL_ID', '0123456789012345', '0123-4567-8901-2345'],
+    ['UMID', '012345678901', '0123-4567890-1'],
+    ['DRIVERS_LICENSE', 'a0123123456', 'A01-23-123456'],
+    ['PASSPORT', 'p1234567a', 'P1234567A']
+  ]) {
+    reset();
+    const response = await request(`/encounters/${ownId}/promissory-notes`, { ...note(5), borrowerIdType, borrowerIdNumber: input });
+    assert.equal(response.status, 200);
+    const created = await response.json() as any;
+    assert.equal(rows.promissory_notes[0].borrowerIdNumber, canonical);
+    const before = writes;
+    const retry = await request(`/encounters/${ownId}/promissory-notes`, { ...note(5), borrowerIdType, borrowerIdNumber: canonical });
+    assert.equal(retry.status, 200);
+    const cached = await retry.json() as any;
+    assert.equal(cached.cached, true); assert.equal(cached.promissoryNote.id, created.promissoryNote.id);
+    assert.equal(writes, before); assert.equal(rows.encounters[0].remainingBalance, '95.00');
+  }
+});
 
 await check('centavo guards reject fractional, nonfinite, zero and negative amounts', async () => {
   for (const amount of [0, -1, 0.001, 1.001, NaN, Infinity]) assert.equal(isCentavoAmount(amount), false);
@@ -349,5 +385,51 @@ await check('real authentication middleware rejects expired sessions and disting
 await check('patients cannot bypass dedicated note/cashier flows through online payments', async () => {
   for (const paymentRail of ['PROMISSORY_NOTE', 'CASHIER_OVER_THE_COUNTER']) assert.equal((await request(`/encounters/${ownId}/payments`, { ...payment(10), paymentRail }, paymentRail)).status, 400);
   assert.equal(writes, 0);
+});
+await check('mobile presentation capability requires the reserved persisted principal', () => {
+  assert.equal(mobileDemoCapability({ username: MOBILE_DEMO_USERNAME, role: 'HOSPITAL_CFO' }), true);
+  for (const role of ['PATIENT_GUARANTOR', 'BILLING_SPECIALIST']) assert.equal(mobileDemoCapability({ username: MOBILE_DEMO_USERNAME, role }), false);
+  assert.equal(mobileDemoCapability({ username: 'ordinary-cfo', role: 'HOSPITAL_CFO' }), false);
+});
+await check('ordinary patient and CFO accounts cannot browse or select other patients', async () => {
+  const original = { ...user }; const principal = user as any;
+  try {
+    for (const role of ['PATIENT_GUARANTOR', 'HOSPITAL_CFO']) {
+      principal.role = role; principal.mobileDemoAdmin = false;
+      assert.equal((await runWithDb(mockDb(), () => app.request('/patient/demo/patients'))).status, 403);
+      assert.equal((await runWithDb(mockDb(), () => app.request('/patient/me', { headers: { 'X-Medcore-Patient-Id': patientId } }))).status, 403);
+    }
+  } finally { Object.assign(user, original); delete principal.mobileDemoAdmin; }
+  assert.equal(writes, 0);
+});
+await check('presentation directory and selected records remain facility scoped', async () => {
+  rows.patients.push({ id: otherPatientId, facilityId, mrn: 'TEST-002', fullName: 'Other Patient', contactNumber: 'private' });
+  const foreignPatient = '30000000-0000-4000-8000-000000000003';
+  rows.patients.push({ id: foreignPatient, facilityId: 'other-facility', fullName: 'Foreign Patient' });
+  const original = { ...user }; const principal = user as any;
+  try {
+    principal.role = 'HOSPITAL_CFO'; principal.mobileDemoAdmin = true;
+    const directory = await runWithDb(mockDb(), () => app.request('/patient/demo/patients'));
+    const body = await directory.json() as any;
+    assert.equal(directory.status, 200); assert.equal(body.total, 2);
+    assert.deepEqual(Object.keys(body.items[0]).sort(), ['fullName', 'id', 'mrn']);
+    const selected = await runWithDb(mockDb(), () => app.request('/patient/me', { headers: { 'X-Medcore-Patient-Id': otherPatientId } }));
+    assert.equal(selected.status, 200); assert.equal(((await selected.json()) as any).patient.id, otherPatientId);
+    assert.equal((await runWithDb(mockDb(), () => app.request('/patient/me', { headers: { 'X-Medcore-Patient-Id': foreignPatient } }))).status, 404);
+    assert.equal((await runWithDb(mockDb(), () => app.request('/patient/me', { headers: { 'X-Medcore-Patient-Id': 'not-a-uuid' } }))).status, 400);
+    assert.equal((await runWithDb(mockDb(), () => app.request(`/patient/me/encounters/${foreignFacilityId}`, { headers: { 'X-Medcore-Patient-Id': patientId } }))).status, 404);
+    assert.equal((await runWithDb(mockDb(), () => app.request(`/patient/me/encounters/${ownId}`, { headers: { 'X-Medcore-Patient-Id': otherPatientId } }))).status, 404);
+  } finally { Object.assign(user, original); delete principal.mobileDemoAdmin; }
+});
+await check('role override headers cannot grant the presentation capability', async () => {
+  const principal = { ...user, username: MOBILE_DEMO_USERNAME, role: 'BILLING_SPECIALIST', isActive: true };
+  const authDb: any = { select: () => {
+    const query: any = { from: () => query, innerJoin: () => query, where: () => query, limit: async () => [{ sessionId: 'synthetic-id', user: principal }] }; return query;
+  } };
+  const secured = new Hono(); secured.use('*', authMiddleware);
+  secured.get('/probe', c => c.json({ capability: c.get('user').mobileDemoAdmin, role: c.get('user').role }));
+  const response = await runWithDb(authDb, () => secured.request('/probe', { headers: { Authorization: 'Bearer synthetic-token', 'X-Demo-Role': 'HOSPITAL_CFO' } }, { NODE_ENV: 'development' }));
+  const body = await response.json() as any;
+  assert.equal(body.role, 'HOSPITAL_CFO'); assert.equal(body.capability, false);
 });
 console.log(`SERVER_HARDENING_CHECKS_DONE passed=${passed}; no database connected`);

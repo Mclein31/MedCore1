@@ -1,3 +1,4 @@
+import { usePullRefresh } from '../hooks/usePullRefresh';
 import { useCallback } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,10 +20,11 @@ export default function NotificationsScreen() {
     return { items: res.items, read };
   }, [client, user]);
   const { data, loading, error, refresh } = useResource(load);
+  const pullRefresh = usePullRefresh(refresh);
   if (loading && !data) return <LoadingState message="Loading your updates…" />;
   if (!data) return <ErrorState message={error || 'We could not load your updates.'} onRetry={refresh} />;
   const unread = data.items.filter((item) => !data.read.includes(item.id)).length;
-  return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} />} showsVerticalScrollIndicator={false}>
+  return <Screen><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />} showsVerticalScrollIndicator={false}>
     <RefreshNotice error={error} onRetry={refresh} />
     <Text style={[T.title, { marginTop: 12 }]}>Hospital updates</Text><Text style={[T.meta, { marginVertical: 8 }]}>{unread > 0 ? `${unread} new update${unread === 1 ? '' : 's'} since your last visit.` : 'You are all caught up.'}</Text>
     {data.items.length === 0 && <EmptyState title="No updates yet" detail="Bill updates, approvals and discharge changes will appear here." />}

@@ -15,7 +15,7 @@ export function HeaderBack({ onPress, disabled }: { onPress: () => void; disable
 }
 
 // Shared by tabs and pushed screens. Only title/branding and required actions vary.
-export default function MedHeader({ navigation, title = 'Home', leading }: { navigation?: any; title?: string; leading?: ReactNode }) {
+export default function MedHeader({ navigation, title = 'Home', leading, titleAccessory }: { navigation?: any; title?: string; leading?: ReactNode; titleAccessory?: ReactNode }) {
   const focused = useIsFocused();
   const unread = useUnreadCount();
   const insets = useSafeAreaInsets();
@@ -28,7 +28,10 @@ export default function MedHeader({ navigation, title = 'Home', leading }: { nav
     <View testID={focused ? 'app-header-row' : 'inactive-app-header-row'} style={{ minHeight: height, paddingVertical: 2, paddingLeft: Math.max(HeaderLayout.gutter, insets.left), paddingRight: Math.max(HeaderLayout.gutter, insets.right), width: '100%', maxWidth: 720, alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
       {branded ? <View style={{ flex: 1 }}><Brand size={30} /></View> : <>
         <View style={{ width: HeaderLayout.actionSize, alignItems: 'center' }}>{leading}</View>
-        <Text accessibilityRole="header" style={{ flex: 1, minWidth: 0, textAlign: 'center', fontSize: HeaderLayout.titleSize, lineHeight: HeaderLayout.titleLineHeight, fontWeight: '600', color: C.ink }} numberOfLines={2}>{title}</Text>
+        <View style={{ flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+          <Text accessibilityRole="header" style={{ flexShrink: 1, minWidth: 0, textAlign: 'center', fontSize: HeaderLayout.titleSize, lineHeight: HeaderLayout.titleLineHeight, fontWeight: '600', color: C.ink }} numberOfLines={2}>{title}</Text>
+          {titleAccessory}
+        </View>
       </>}
       <View style={{ width: HeaderLayout.actionSize }}>
         {notifications && <Pressable onPress={() => navigation?.navigate('Notifications')} accessibilityRole="button" accessibilityLabel={unread ? `Open notifications, ${unread} unread` : 'Open notifications'} style={({ pressed }) => ({ width: HeaderLayout.actionSize, height: HeaderLayout.actionSize, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.65 : 1 })}><Icon name="bell" size={HeaderLayout.iconSize} color={C.ink} />{unread > 0 && <View style={{ position: 'absolute', right: 10, top: 10, width: 7, height: 7, borderRadius: 4, backgroundColor: C.brand }} />}</Pressable>}

@@ -13,6 +13,8 @@ import { ApiError } from '../lib/api';
 import { parsePaymentAmount, validatePaymentAmount } from '../lib/guards';
 import type { PayInput } from '../services/paymentApi';
 import { useAuth } from '../lib/auth';
+import { isMobileDemoAdmin, paymentAccountNamespace } from '../lib/mobileAccess';
+import { GOVERNMENT_ID_RULES, validateGovernmentId } from '../../../shared/governmentId';
 import { ASSETS } from '../lib/assets';
 import { usePatient } from '../hooks/usePatient';
 import { createPaymentApi } from '../services/paymentApi';
@@ -71,7 +73,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   const [recovering, setRecovering] = useState(true);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const selectedId = useRef(route.params?.encounterId);
-  const account = user!.id;
+  const account = paymentAccountNamespace(user!, patient?.id);
   const restoreAttempt = useCallback(async () => {
     setRecovering(true); setRecoveryError(null);
     try { setPending(await paymentAttempts.restore(account)); }
@@ -86,7 +88,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   const [mode, setMode] = useState<Mode>('FULL');
   const [partial, setPartial] = useState('');
   const [rail, setRail] = useState('GCASH');
-  const [payerName, setPayerName] = useState(user?.fullName || '');
+  const [payerName, setPayerName] = useState((isMobileDemoAdmin(user) ? patient?.fullName : user?.fullName) || '');
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [processingPhase, setProcessingPhase] = useState('Preparing your request');
   const [cardNumber, setCardNumber] = useState('');
@@ -101,7 +103,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   const [bankName, setBankName] = useState('');
   // promissory state
   const [months, setMonths] = useState<3 | 6 | 12>(6);
-  const [borrowerName, setBorrowerName] = useState(user?.fullName || '');
+  const [borrowerName, setBorrowerName] = useState((isMobileDemoAdmin(user) ? patient?.fullName : user?.fullName) || '');
   const [relationship, setRelationship] = useState<typeof RELATIONSHIPS[number]>('PATIENT');
   const [idType, setIdType] = useState<typeof ID_TYPES[number]['id']>('PHILSYS_NATIONAL_ID');
   const [idNumber, setIdNumber] = useState('');
@@ -219,7 +221,9 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   }
 
   async function submitNote() {
-    if (!currentEncounter || !amountValid || submissionLock.current || uncertain || patientError || !acknowledged || borrowerName.trim().length < 2 || idNumber.trim().length < 4) return;
+    const identity = validateGovernmentId(idType, idNumber);
+    if (!identity.valid) { setError(identity.error); return; }
+    if (!currentEncounter || !amountValid || submissionLock.current || uncertain || patientError || !acknowledged || borrowerName.trim().length < 2) return;
     Keyboard.dismiss();
     submissionLock.current = true;
     setBusy(true);
@@ -231,7 +235,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
         borrowerName: borrowerName.trim(),
         borrowerRelationship: relationship,
         borrowerIdType: idType,
-        borrowerIdNumber: idNumber.trim(),
+        borrowerIdNumber: identity.normalized,
         installmentMonths: months,
         principalAmount: Math.round(amount * 100) / 100
       });
@@ -282,7 +286,9 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   </Screen>;
   const wallet = WALLET_PRESETS[rail];
   const isNote = method.kind === 'promissory';
-  const noteValid = borrowerName.trim().length >= 2 && idNumber.trim().length >= 4 && acknowledged;
+  const identity = validateGovernmentId(idType, idNumber);
+  const idRule = GOVERNMENT_ID_RULES[idType];
+  const noteValid = borrowerName.trim().length >= 2 && identity.valid && acknowledged;
   return <Screen keyboard keyboardOffset={headerHeight}>
     <ScrollView ref={checkoutScroll} automaticallyAdjustKeyboardInsets keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32, flexGrow: 1 }} showsVerticalScrollIndicator={false}>
       <RefreshNotice error={patientError} onRetry={refresh} />
@@ -338,8 +344,8 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
             <Card flush><LedgerRow title="Principal financed" value={formatPeso(plan.financedAmount)} /><LedgerRow title="Interest" value="0%" tone="ok" /><LedgerRow title="Estimated first due" value={formatDate(estimatedFirstDueDate())} /><LedgerRow title="Total repayment" value={formatPeso(plan.totalRepayment)} last /></Card>
             <Field label="Borrower / guarantor legal name" value={borrowerName} onChangeText={setBorrowerName} autoCapitalize="words" editable={!busy && !uncertain} />
             <Text style={T.eyebrow}>Relationship to patient</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12 }}>{RELATIONSHIPS.map(value => <View key={value} style={{ flexBasis: '46%', flexGrow: 1 }}><Chip label={value.charAt(0) + value.slice(1).toLowerCase()} selected={relationship === value} onPress={() => setRelationship(value)} disabled={busy || uncertain} /></View>)}</View>
-            <Text style={T.eyebrow}>Government ID</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12 }}>{ID_TYPES.map(value => <View key={value.id} style={{ flexBasis: '46%', flexGrow: 1 }}><Chip label={value.label} selected={idType === value.id} onPress={() => setIdType(value.id)} disabled={busy || uncertain} /></View>)}</View>
-            <Field label="ID number" value={idNumber} onChangeText={setIdNumber} editable={!busy && !uncertain} />
+            <Text style={T.eyebrow}>Government ID</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginVertical: 12 }}>{ID_TYPES.map(value => <View key={value.id} style={{ flexBasis: '46%', flexGrow: 1 }}><Chip label={value.label} selected={idType === value.id} onPress={() => { setIdType(value.id); setIdNumber(''); }} disabled={busy || uncertain} /></View>)}</View>
+            <Field label={idRule.label} value={idNumber} onChangeText={setIdNumber} keyboard={idRule.numeric ? 'number-pad' : 'default'} autoCapitalize={idRule.numeric ? 'none' : 'characters'} autoComplete="off" placeholder={idRule.placeholder} hint={idRule.hint} error={idNumber.length > 0 && !identity.valid ? identity.error : undefined} editable={!busy && !uncertain} />
             <Pressable disabled={busy || uncertain} onPress={() => setAcknowledged(value => !value)} accessibilityRole="checkbox" accessibilityState={{ checked: acknowledged, disabled: busy || uncertain }} accessibilityLabel="Acknowledge repayment terms" style={({ pressed }) => ({ flexDirection: 'row', gap: 12, paddingVertical: 16, opacity: pressed ? 0.6 : 1 })}><View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 1.5, borderColor: C.brand, backgroundColor: acknowledged ? C.brand : C.surface, alignItems: 'center', justifyContent: 'center' }}>{acknowledged && <Icon name="check" size={18} color="#FFFFFF" />}</View><Text style={[T.meta, { flex: 1 }]}>I acknowledge this repayment schedule. The hospital billing desk arranges the formal promissory agreement.</Text></Pressable>
             <PrimaryButton title="Review payment plan" onPress={() => setStep('review')} disabled={busy || uncertain || !noteValid || !amountValid || !!patientError} /><SecondaryButton title="Back" onPress={goBack} disabled={busy || uncertain} />
           </>}
