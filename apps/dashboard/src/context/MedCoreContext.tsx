@@ -165,7 +165,7 @@ interface MedCoreContextType {
   isLoadingEncounters: boolean;
   apiError: string | null;
   clearApiError: () => void;
-  refreshEncounters: () => Promise<boolean>;
+  refreshEncounters: (retries?: number, silent?: boolean) => Promise<boolean>;
 }
 
 
@@ -249,9 +249,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearApiError = () => setApiError(null);
 
-  const refreshEncounters = async (retries = 2): Promise<boolean> => {
+  const refreshEncounters = async (retries = 2, silent = false): Promise<boolean> => {
     try {
-      setIsLoadingEncounters(true);
+      if (!silent) setIsLoadingEncounters(true);
       const res = await apiClient.getEncounters();
       if (res && Array.isArray(res.items)) {
         setEncounters(res.items);
@@ -267,7 +267,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (err instanceof ApiError && (err.status === 401 || err.code === 'SESSION_CHANGED')) return false;
       if (retries > 0) {
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        return refreshEncounters(retries - 1);
+        return refreshEncounters(retries - 1, silent);
       }
       console.warn('Failed to load encounters from API after retries:', err);
       setEncounters((current) => {
@@ -278,7 +278,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
       return false;
     } finally {
-      setIsLoadingEncounters(false);
+      if (!silent) setIsLoadingEncounters(false);
     }
   };
 
@@ -399,6 +399,28 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       isMounted = false;
     };
   }, [sessionCheck]);
+
+  // Periodic background synchronization to detect external mobile payments and stage updates
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const interval = setInterval(() => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void refreshEncounters(0, true);
+      }
+    }, 4000);
+    const onFocus = () => {
+      void refreshEncounters(0, true);
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('focus', onFocus);
+    }
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', onFocus);
+      }
+    };
+  }, [isAuthenticated]);
 
   const login = async (credentials: { email: string; password: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
     try {

@@ -20,18 +20,22 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
   const generation = useRef(0);
   const pending = useRef<Promise<void> | null>(null);
   const mounted = useRef(true);
-  if (source.current !== scope) { source.current = scope; generation.current++; pending.current = null; }
+  const hasSnapshot = useRef(false);
+  if (source.current !== scope) { source.current = scope; generation.current++; pending.current = null; hasSnapshot.current = false; }
   const refresh = useCallback(() => {
     if (!scope.userId) return Promise.resolve();
     if (pending.current) return pending.current;
     const version = generation.current;
     const active = () => mounted.current && source.current === scope && generation.current === version;
-    setStatus({ scope, loading: true, error: null });
+    if (!hasSnapshot.current) setStatus({ scope, loading: true, error: null });
     const request = (async () => {
       try {
         const [me, overview, encounters] = await Promise.all([api.getMe(), api.getOverview(), api.getEncounters()]);
         if (!me.patient?.id || !Array.isArray(encounters.items)) throw new Error('The server returned incomplete patient information. Please try again.');
-        if (active()) setSnapshot({ scope, patient: me.patient, overview, encounters: encounters.items, lastSynced: new Date() });
+        if (active()) {
+          setSnapshot({ scope, patient: me.patient, overview, encounters: encounters.items, lastSynced: new Date() });
+          hasSnapshot.current = true;
+        }
       } catch (e: unknown) {
         if (active()) setStatus({ scope, loading: false, error: e instanceof Error ? e.message : 'We could not load your information.' });
       } finally { if (active()) setStatus(previous => ({ ...previous, loading: false })); }

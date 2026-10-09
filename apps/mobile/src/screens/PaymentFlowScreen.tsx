@@ -125,6 +125,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       title: step === 'amount' ? 'Pay balance' : step === 'method' ? 'Payment methods' : step === 'review' ? 'Review payment' : step === 'verification' ? 'Wallet verification' : step === 'success' ? 'Payment successful' : step === 'done' ? (receipt ? 'Receipt' : 'Payment plan') : methodForRail(rail).label,
       headerStyle: { backgroundColor: C.surface },
       headerTintColor: C.ink,
+      headerShadowVisible: false,
       headerLeft: () => <HeaderBack disabled={busy} onPress={() => {
         if (step === 'amount' || step === 'success' || step === 'done' || pending || uncertain) navigation.goBack();
         else {
@@ -261,14 +262,14 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   if (patientError && !currentEncounter) return <ErrorState message={patientError} onRetry={refresh} />;
   if (!currentEncounter) return <Screen><EmptyState title="No bill to pay" detail="Your hospital statements will appear when a stay is linked to your account." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
 
-  if (step === 'success' && receipt) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}><PaymentSuccess amount={receipt.amount} rail={receipt.methodRail} reference={receipt.paymentReference} hospital={hospital} bill={receipt.billReference || currentEncounter.billNumber || currentEncounter.encounterNumber} date={receipt.settledAt || receipt.createdAt} onReceipt={() => setStep('done')} onBills={() => navigation.navigate('Main', { screen: 'Bill' })} /></ScrollView></Screen>;
+  if (step === 'success' && receipt) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}><PaymentSuccess amount={receipt.amount} rail={receipt.methodRail} reference={receipt.paymentReference} hospital={hospital} bill={receipt.billReference || currentEncounter.billNumber || currentEncounter.encounterNumber} date={receipt.settledAt || receipt.createdAt} onReceipt={() => setStep('done')} onBills={() => navigation.navigate('Main', { screen: 'Bill' })} passIssued={passIssued} onPass={() => navigation.navigate('Documents')} /></ScrollView></Screen>;
   if (step === 'done' && receipt) return <Screen gutter={0} background={C.hero}>
     <View pointerEvents="none" style={{ position: 'absolute', top: 200, left: 0, right: 0, bottom: 0, backgroundColor: C.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24 }} />
     <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 4, paddingBottom: 20 }} showsVerticalScrollIndicator={false}>
       <ReceiptSheet number={receipt.officialReceiptNumber} amount={receipt.amount} rail={receipt.methodRail} payer={receipt.payerName} date={receipt.issuedAt || receipt.settledAt || receipt.createdAt} reference={receipt.paymentReference} bill={receipt.billReference || currentEncounter.billNumber || currentEncounter.encounterNumber} patient={patient?.fullName} mrn={patient?.mrn} status={receipt.status} surroundingColor={C.hero} />
       {passIssued && <StatusBadge tone="ok" text="Discharge pass released" />}
     </ScrollView>
-    <View style={{ backgroundColor: C.paper, paddingHorizontal: 24, paddingBottom: 20, flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><SecondaryButton title="Back to Bills" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /></View><View style={{ flex: 1 }}><PrimaryButton title="Payment history" onPress={() => navigation.navigate('Main', { screen: 'Payments' })} /></View></View>
+    <View style={{ backgroundColor: C.paper, paddingHorizontal: 24, paddingBottom: 20, flexDirection: 'row', gap: 12 }}><View style={{ flex: 1 }}><SecondaryButton title="Back to Bills" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /></View><View style={{ flex: 1 }}>{passIssued ? <PrimaryButton title="View Gate Pass" onPress={() => navigation.navigate('Documents')} /> : <PrimaryButton title="Payment history" onPress={() => navigation.navigate('Main', { screen: 'Payments' })} />}</View></View>
   </Screen>;
   if (step === 'done' && note) return <Screen><ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
     {note && <>
@@ -281,7 +282,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
   </ScrollView></Screen>;
   if (balance <= 0 && !pending) return <Screen><EmptyState title="No outstanding balance" detail="Review your payment history and discharge documents." /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
   if (currentEncounter.stage !== 'PENDING_SETTLEMENT' && !pending) return <Screen><EmptyState title="Your final bill is being reviewed" detail="Hospital clearance checks must finish before online settlement. You can review the running bill now." /><SecondaryButton title="Review bill" onPress={() => navigation.navigate('Main', { screen: 'Bill' })} /><SecondaryButton title="Go back" onPress={() => navigation.goBack()} /></Screen>;
-  if (step === 'amount' && !pending) return <Screen keyboard keyboardOffset={headerHeight} gutter={0} background={C.hero}>
+  if (step === 'amount' && !pending) return <Screen keyboard keyboardOffset={headerHeight} gutter={0} background={C.surface} topSpacing={0} safeBottom={false}>
     <PaymentAmountEntry balance={balance} mode={mode} partial={partial} onMode={value => { setMode(value); resetKey(); }} onPartial={value => { setPartial(value); resetKey(); }} onContinue={() => { Keyboard.dismiss(); setSelectedAmount(enteredAmount); setStep('method'); }} error={error || patientError || (partial ? amountError : null)} onRetry={patientError ? refresh : undefined} disabled={!amountValid || !!patientError || uncertain || busy} />
   </Screen>;
   const wallet = WALLET_PRESETS[rail];

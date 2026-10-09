@@ -28,6 +28,7 @@ export default function BillScreen({ navigation }: { navigation: any }) {
       <Text style={T.meta}>{enc.encounterNumber} · Your responsibility before payments: {formatPeso(enc.waterfall.netPatientDue)}</Text>
       <View style={{ marginTop: 12 }}><StatusBadge tone={enc.billState === 'PAID' ? 'ok' : enc.stage === 'PENDING_SETTLEMENT' ? 'info' : 'warn'} text={enc.billState === 'PAID' ? 'Paid' : enc.stage === 'PENDING_SETTLEMENT' ? 'Final bill ready' : 'Bill under review'} /></View>
       {balance > 0 && enc.stage === 'PENDING_SETTLEMENT' && <PrimaryButton title="Continue to Payment" disabled={!!error || loading} onPress={() => navigation.navigate('PaymentFlow', { encounterId: enc.uuid, startAtMethod: true })} />}
+      {enc.stage === 'CLEARED_GATE_PASS' && <PrimaryButton title="View Digital Gate Pass" onPress={() => navigation.navigate('Documents')} />}
       <BillBreakdown encounter={enc} />
     </View>
   </ScrollView></Screen>;

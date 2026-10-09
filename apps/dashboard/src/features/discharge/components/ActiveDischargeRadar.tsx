@@ -265,18 +265,41 @@ export const ActiveDischargeRadar: React.FC = () => {
             return approveHmoFinalLoa(enc.id);
           }
         };
-      case 'PENDING_SETTLEMENT':
+      case 'PENDING_SETTLEMENT': {
+        const remaining = enc.remainingBalance !== undefined ? enc.remainingBalance : enc.waterfall.netPatientDue;
+        if (remaining <= 0) {
+          return {
+            title: 'Discharge Clearance Complete',
+            explanation: 'All clinical and financial milestones cleared. Patient authorized for lobby exit.',
+            actionType: 'cleared',
+            actionText: 'View Digital Gate Pass',
+            confirmText: 'View Pass',
+            modalTitle: 'View Digital Exit Gate Pass?',
+            modalDescription: 'Open verified gate pass modal.',
+            contextInfo: [],
+            isDangerous: false,
+            variant: 'outline' as const,
+            confirmVariant: 'outline' as const,
+            buttonColor: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+            onAction: (e?: React.MouseEvent) => {
+              if (e) e.stopPropagation();
+              selectEncounter(enc.id);
+              openGatePassModal();
+              return Promise.resolve();
+            }
+          };
+        }
         return {
           title: 'Patient Out-of-Pocket Balance Settlement',
-          explanation: `Net patient due of ${formatPhp(enc.waterfall.netPatientDue)} requires settlement at cashier or via QR Ph digital POS.`,
+          explanation: `Net patient due of ${formatPhp(remaining)} requires settlement at cashier or via QR Ph digital POS.`,
           actionType: 'settlement',
           actionText: 'Collect via QR Ph / POS',
           confirmText: 'Record Payment',
           modalTitle: 'Confirm QR Ph Patient Payment?',
-          modalDescription: `Record point-of-sale settlement of ${formatPhp(enc.waterfall.netPatientDue)} for ${pName}. This clears all financial holds.`,
+          modalDescription: `Record point-of-sale settlement of ${formatPhp(remaining)} for ${pName}. This clears all financial holds.`,
           contextInfo: [
             { label: 'Patient', value: pName },
-            { label: 'Net Due', value: formatPhp(enc.waterfall.netPatientDue) },
+            { label: 'Net Due', value: formatPhp(remaining) },
             { label: 'Channel', value: 'QR Ph / POS' }
           ],
           isDangerous: true,
@@ -289,6 +312,7 @@ export const ActiveDischargeRadar: React.FC = () => {
             return settlePatientBalance(enc.id, 'QR_PH');
           }
         };
+      }
       case 'CLEARED_GATE_PASS':
         return {
           title: 'Discharge Clearance Complete',
@@ -400,21 +424,22 @@ export const ActiveDischargeRadar: React.FC = () => {
     }
 
     // 4. Out-of-pocket settlement
-    if (enc.waterfall.netPatientDue > 0) {
+    const balanceDue = enc.remainingBalance !== undefined ? enc.remainingBalance : enc.waterfall.netPatientDue;
+    if (balanceDue > 0) {
       return (
         <ConfirmButton
           label={
             <div className="flex items-center gap-2 font-bold text-xs">
               <CreditCard className="w-4 h-4" />
-              <span>Record Settlement / QR Ph ({formatPhp(enc.waterfall.netPatientDue)})</span>
+              <span>Record Settlement / QR Ph ({formatPhp(balanceDue)})</span>
             </div>
           }
           modalTitle="Confirm QR Ph Patient Payment?"
-          modalDescription={`Record point-of-sale settlement of ${formatPhp(enc.waterfall.netPatientDue)} for ${pName}. This clears all financial holds and authorizes departure.`}
+          modalDescription={`Record point-of-sale settlement of ${formatPhp(balanceDue)} for ${pName}. This clears all financial holds and authorizes departure.`}
           contextInfo={[
             { label: 'Patient', value: pName },
             { label: 'Encounter', value: enc.encounterNumber },
-            { label: 'Net Amount Due', value: formatPhp(enc.waterfall.netPatientDue) },
+            { label: 'Net Amount Due', value: formatPhp(balanceDue) },
             { label: 'Channel', value: 'QR Ph / POS' }
           ]}
           confirmLabel="Record Payment"
@@ -594,9 +619,11 @@ export const ActiveDischargeRadar: React.FC = () => {
                       {/* Net Due */}
                       <div className="text-right shrink-0">
                         <div className="font-mono font-bold text-xs sm:text-sm text-slate-900 tabular-nums">
-                          {formatPhp(enc.waterfall.netPatientDue)}
+                          {formatPhp(enc.stage === 'CLEARED_GATE_PASS' ? 0 : (enc.remainingBalance !== undefined ? enc.remainingBalance : enc.waterfall.netPatientDue))}
                         </div>
-                        <div className="text-[10px] text-slate-400 font-medium uppercase">Net Due</div>
+                        <div className="text-[10px] text-slate-400 font-medium uppercase">
+                          {enc.stage === 'CLEARED_GATE_PASS' || (enc.remainingBalance !== undefined && enc.remainingBalance <= 0) ? 'Settled' : 'Net Due'}
+                        </div>
                       </div>
                     </div>
 
@@ -705,10 +732,10 @@ export const ActiveDischargeRadar: React.FC = () => {
                   <div className="flex items-center gap-3 shrink-0 flex-wrap">
                     <div className="text-right pr-2 border-r border-slate-200">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                        Net Patient Due
+                        {currentSelectedEncounter.stage === 'CLEARED_GATE_PASS' || (currentSelectedEncounter.remainingBalance !== undefined && currentSelectedEncounter.remainingBalance <= 0) ? 'Remaining Due (Settled)' : 'Net Patient Due'}
                       </span>
                       <div className="text-lg sm:text-xl font-bold font-mono text-slate-900 tabular-nums">
-                        {formatPhp(currentSelectedEncounter.waterfall.netPatientDue)}
+                        {formatPhp(currentSelectedEncounter.stage === 'CLEARED_GATE_PASS' ? 0 : (currentSelectedEncounter.remainingBalance !== undefined ? currentSelectedEncounter.remainingBalance : currentSelectedEncounter.waterfall.netPatientDue))}
                       </div>
                     </div>
 
@@ -1480,7 +1507,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                     </td>
 
                     <td className="py-3 px-4 text-left font-mono font-bold text-slate-900 text-sm tabular-nums">
-                      {formatPhp(enc.waterfall.netPatientDue)}
+                      {formatPhp(enc.stage === 'CLEARED_GATE_PASS' ? 0 : (enc.remainingBalance !== undefined ? enc.remainingBalance : enc.waterfall.netPatientDue))}
                     </td>
 
                     <td className="py-3 px-6 text-left">
@@ -1597,7 +1624,7 @@ export const ActiveDischargeRadar: React.FC = () => {
                         Patient Due:
                       </span>
                       <span className="text-lg font-bold font-mono text-slate-900 tabular-nums">
-                        {formatPhp(enc.waterfall.netPatientDue)}
+                        {formatPhp(enc.stage === 'CLEARED_GATE_PASS' ? 0 : (enc.remainingBalance !== undefined ? enc.remainingBalance : enc.waterfall.netPatientDue))}
                       </span>
                     </div>
                     <div className="text-xs text-slate-600 mt-2 flex justify-between">
