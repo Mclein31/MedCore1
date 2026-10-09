@@ -1,0 +1,18 @@
+{
+  "verified": "2026-10-09",
+  "browser": "Native Brave",
+  "data": "Public synthetic seed; backend requests intercepted",
+  "beforeUnusedBottomPx": {"waterfall": 67.5, "claims": 30.3, "department": 23.7, "oop": 150},
+  "finalViewports": [
+    {"width": 375, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [15, 28.1]},
+    {"width": 390, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [15, 28.1]},
+    {"width": 1024, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [14.4, 27]},
+    {"width": 1279, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [14.4, 27]},
+    {"width": 1280, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [14.4, 27]},
+    {"width": 1366, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [14.4, 27]},
+    {"width": 1920, "passed": true, "allCardUnusedBottomPx": 0, "primaryMoneyFontPx": [15, 28.1]}
+  ],
+  "finalPdf": {"pages": 12, "paper": "A4 landscape", "textAndDrawingMarginsPassed": true, "rightmostTableHeadingsPresent": true},
+  "afterPrintRecovery": {"passed": true, "viewport": 1920, "allCardUnusedBottomPx": 0, "departmentViewBox": "0 0 600 271", "aspectDifferencePx": 0.7},
+  "productionDeployment": false
+}

@@ -47,7 +47,7 @@ export const PatientOopDriverCard: React.FC<PatientOopDriverCardProps> = ({ oopD
   ];
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-5 print:block print:space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -61,13 +61,13 @@ export const PatientOopDriverCard: React.FC<PatientOopDriverCardProps> = ({ oopD
 
         <div className="text-left font-mono">
           <div className="text-xs text-slate-400 font-sans">Total Patient Responsibility</div>
-          <div className="text-lg font-bold text-slate-900">{formatPhp(totalNetPatientDue)}</div>
+          <div className="text-xl font-bold text-slate-900">{formatPhp(totalNetPatientDue)}</div>
         </div>
       </div>
 
       {/* 3 Drivers Stacked Bar & List */}
-      <div className="space-y-3">
-        <div className="h-3 w-full rounded-full bg-slate-100 flex overflow-hidden">
+      <div className="flex flex-col gap-3 xl:flex-1 print:block print:space-y-3">
+        <div className="h-3 shrink-0 w-full rounded-full bg-slate-100 flex overflow-hidden">
           <div
             style={{ width: `${roomUpgradePercent}%` }}
             className="h-full bg-amber-500"
@@ -85,7 +85,7 @@ export const PatientOopDriverCard: React.FC<PatientOopDriverCardProps> = ({ oopD
           />
         </div>
 
-        <div className="space-y-2 pt-1">
+        <div className="grid gap-2 pt-1 xl:flex-1 xl:auto-rows-fr print:block print:space-y-2">
           {drivers.map((d) => (
             <div
               key={d.label}
@@ -100,7 +100,7 @@ export const PatientOopDriverCard: React.FC<PatientOopDriverCardProps> = ({ oopD
               </div>
 
               <div className="text-left shrink-0">
-                <div className="font-mono font-bold text-slate-900">{formatPhp(d.amount)}</div>
+                <div className="font-mono font-bold text-base sm:text-lg text-slate-900">{formatPhp(d.amount)}</div>
                 <div className="text-[11px] font-mono text-slate-500">{d.percent}% of balance</div>
               </div>
             </div>
@@ -109,7 +109,7 @@ export const PatientOopDriverCard: React.FC<PatientOopDriverCardProps> = ({ oopD
       </div>
 
       {/* Digital Payment Rail Adoption Mix */}
-      <div className="pt-3 border-t border-slate-100 space-y-2.5">
+      <div className="shrink-0 pt-3 border-t border-slate-100 space-y-2.5">
         <div className="flex items-center justify-between text-xs">
           <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
             <CreditCard className="w-3.5 h-3.5 text-blue-600" />
@@ -126,7 +126,7 @@ export const PatientOopDriverCard: React.FC<PatientOopDriverCardProps> = ({ oopD
             >
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-slate-800 text-[11px]">{p.channel}</span>
-                <span className="font-mono font-bold text-blue-700 text-xs">{p.percent}%</span>
+                <span className="font-mono font-bold text-blue-700 text-base">{p.percent}%</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-slate-100 overflow-hidden">
                 <div

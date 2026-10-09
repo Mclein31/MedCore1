@@ -97,7 +97,7 @@ export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
   ];
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-4">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-4 print:block print:space-y-4">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -126,7 +126,7 @@ export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
       </div>
 
       {/* Bottleneck Department Bar Chart */}
-      <div className="space-y-3.5 pt-1">
+      <div className="grid gap-3.5 pt-1 xl:flex-1 xl:auto-rows-fr print:block print:space-y-3.5">
         {bottlenecks.map((item) => {
           const Icon = item.icon;
           const maxScale = 60; // 60 mins scale
@@ -134,7 +134,7 @@ export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
           const actualWidthPct = Math.min(100, (item.actualTat / maxScale) * 100);
 
           return (
-            <div key={item.name} className="space-y-1.5">
+            <div key={item.name} className="flex flex-col justify-center gap-1.5 print:block print:space-y-1.5">
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center shrink-0 text-slate-600">
@@ -183,7 +183,7 @@ export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
       </div>
 
       {/* Legend & Compliance Footer */}
-      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
+      <div className="shrink-0 pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 flex-wrap gap-2">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />

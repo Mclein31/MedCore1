@@ -103,7 +103,7 @@ export const ClaimsScrutinyPipeline: React.FC<ClaimsScrutinyPipelineProps> = ({
   });
 
   return (
-    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs space-y-5">
+    <div className="h-full min-w-0 p-6 rounded-xl bg-white border border-slate-200 shadow-2xs flex flex-col gap-5 print:block print:space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -123,15 +123,15 @@ export const ClaimsScrutinyPipeline: React.FC<ClaimsScrutinyPipelineProps> = ({
 
         <div className="text-left font-mono">
           <div className="text-xs text-slate-400 font-sans">Pre-Flight Pass Rate</div>
-          <div className="text-lg font-bold text-emerald-700">{preFlightVerifiedPercent}%</div>
+          <div className="text-xl font-bold text-emerald-700">{preFlightVerifiedPercent}%</div>
         </div>
       </div>
 
       {/* Donut Chart & Legend Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-center">
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-6 items-stretch xl:flex-1">
         {/* SVG Donut */}
         <div className="sm:col-span-5 flex flex-col items-center justify-center relative">
-          <svg width="180" height="180" viewBox="0 0 180 180" className="transform -rotate-90">
+          <svg width="180" height="180" viewBox="0 0 180 180" className="w-[180px] h-[180px] xl:w-full xl:h-auto xl:max-w-[220px] print:w-[180px] print:h-[180px] transform -rotate-90">
             {/* Background circle track */}
             <circle
               cx="90"
@@ -171,7 +171,7 @@ export const ClaimsScrutinyPipeline: React.FC<ClaimsScrutinyPipelineProps> = ({
 
           {/* Central Metric Badge in Donut Hole */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-            <span className="text-2xl font-bold font-mono text-slate-900 leading-tight">
+            <span className="text-3xl font-bold font-mono text-slate-900 leading-tight">
               {totalClaims}
             </span>
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -181,7 +181,7 @@ export const ClaimsScrutinyPipeline: React.FC<ClaimsScrutinyPipelineProps> = ({
         </div>
 
         {/* Donut Legend & Filterable Pills */}
-        <div className="sm:col-span-7 space-y-1.5">
+        <div className="sm:col-span-7 grid gap-1.5 xl:auto-rows-fr print:block print:space-y-1.5">
           {rawSegments.map((s) => {
             const isSelected = selectedStatus === s.id;
             const isDimmed = selectedStatus && !isSelected;
@@ -205,7 +205,7 @@ export const ClaimsScrutinyPipeline: React.FC<ClaimsScrutinyPipelineProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 font-mono">
-                  <span className="font-bold text-slate-900">{s.count}</span>
+                  <span className="font-bold text-base text-slate-900">{s.count}</span>
                   <span className="text-slate-400 text-[11px]">({s.percent}%)</span>
                 </div>
               </div>
@@ -215,7 +215,7 @@ export const ClaimsScrutinyPipeline: React.FC<ClaimsScrutinyPipelineProps> = ({
       </div>
 
       {/* Pre-Flight Audit Checklist Strip (PhilHealth Circular 2023-0026 Standards) */}
-      <div className="pt-3 border-t border-slate-100 space-y-2">
+      <div className="shrink-0 pt-3 border-t border-slate-100 space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
             <FileCheck className="w-3.5 h-3.5 text-blue-600" />

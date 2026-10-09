@@ -144,7 +144,7 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
                     <td className="py-3.5 px-4 text-left font-mono font-bold text-emerald-700">
                       {c.cleanApprovalRate.toFixed(1)}%
                     </td>
-                    <td className="py-3.5 px-5 text-left font-mono font-bold text-slate-900">
+                    <td className="py-3.5 px-5 text-left font-mono font-bold text-base text-slate-900">
                       {formatPhp(c.reconciledTotal)}
                     </td>
                   </tr>
@@ -191,7 +191,7 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
       </div>
 
       {/* Denial / PhilHealth RTH Root Cause Elimination Sub-Panel */}
-      <div className="p-5 border-t border-slate-200 bg-slate-50/50 space-y-3">
+      <div className="p-5 border-t border-slate-200 bg-slate-50/50 flex flex-col gap-3 xl:flex-1 print:block print:space-y-3">
         <div className="flex items-center justify-between text-xs">
           <div>
             <h4 className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -207,11 +207,11 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
           </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 xl:flex-1 xl:auto-rows-fr">
           {rthEliminationCategories.map((r) => (
             <div
               key={r.reason}
-              className="p-3 rounded-lg border border-slate-200 bg-white text-xs space-y-1 text-left"
+              className="p-3 rounded-lg border border-slate-200 bg-white text-xs flex flex-col justify-center gap-1 text-left print:space-y-1"
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="font-semibold text-slate-800 text-left">{r.reason}</span>
