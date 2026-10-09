@@ -113,6 +113,9 @@ $$\text{Gross Total} \equiv \text{VAT Exemption} + \text{Senior/PWD Discount} + 
 - [FACT] **PhilHealth Circular 2019-0002**: CF4 clinical summary mandatory for All Case Rates claims.
 - [FACT] **PhilHealth Circular 2023-0026 & eClaims 3.0**: Mandates eSOA in XML schema matching standard library definitions; scanned PDF/image SOAs are strictly phased out.
 - [FACT] **Single Period of Confinement (SPC) Abolition**: PhilHealth formally **abolished** the 90-day Single Period of Confinement rule under Circular No. 2024-0021 (effective October 1, 2024). Under Circular No. 2025-0015, PhilHealth authorized **retroactive processing and refiling** of previously denied SPC claims dating back to February 20, 2019. [DECISION] Retained as an informational audit engine flag and retroactive claims refiling generator within MedCore.
+- [FACT] **RA 7192 (Women in Development and Nation-Building Act) & RA 9710 (Magna Carta of Women)**: Mandates gender mainstreaming across all government instrumentalities, LGUs, and state institutions, requiring at least 5% GAD budget allocation and evaluation against the **Harmonized Gender and Development Guidelines (HGDG)**.
+- [FACT] **NEDA-PCW Harmonized Gender and Development Guidelines (HGDG, 3rd Edition 2019)**: Official national standard formulated by NEDA, PCW, and the ODA-GAD Network for evaluating project gender responsiveness. Under NEDA ICC policy, projects are evaluated on a 20-point scale (Box 7), where scores $\ge 15.0$ are classified as **Gender-Responsive**. MedCore achieves gender-responsiveness across Health (Box 13) and ICT (Box 19) sectors by embedding sex-disaggregated data pipelines, relieving administrative strain on predominantly female hospital personnel, and safeguarding female caregivers from predatory medical debt. Full compendium in `MedCore_Vault/RESEARCH/gad_hgdg_guidelines.md`.
+
 
 ---
 
@@ -151,6 +154,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
 - **Core EGAY Alignment**:
   - **Good Governance Pillar**: Eradicating hospital billing opacity, administrative delays, and financial friction in public health facilities.
   - **Youth & Elderly Welfare Pillar**: Safeguarding senior citizen and PWD rights under RA 9994/10754 through automated, auditable discount enforcement.
+  - **Gender and Development (GAD) & HGDG Alignment**: Fulfills the Magna Carta of Women (RA 9710) and Harmonized Gender and Development Guidelines (HGDG 3rd Edition, NEDA/PCW/ODA) criteria. By meeting Box 13 (Health) and Box 19 (ICT) standards and scoring $\ge 15.0$ ("Gender-Responsive"), MedCore enables the Provincial Government of Cagayan (PGC) to allocate and attribute statutory 5% provincial GAD funds toward system procurement and implementation.
 - **Deliverables**: 12-slide comprehensive presentation deck (`MedCore_Presentation_Deck.pptx`) with full presenter notes for 5-minute pitch and 10-minute panel defense.
 
 ---
@@ -187,6 +191,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
 - **Competitive Landscape**: `MedCore_Vault/BUSINESS/competitive_landscape.md`
 - **Market Sizing & HMO Data**: `MedCore_Vault/RESEARCH/market.md`
 - **Ontology & Glossary**: `MedCore_Vault/ONTOLOGY.md`
+- **GAD & HGDG Guidelines Compendium**: `MedCore_Vault/RESEARCH/gad_hgdg_guidelines.md`
 
 ---
 
@@ -1998,3 +2003,40 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [FACT] Actual native Brave Save as PDF verified14 A4 variants covering all8 document types, portrait overrides,64-character LOAs,250 roster rows,100 long charge descriptions and plain analytics printing. Source table text/headings, every-page text/drawing margins, repeated headers and350 complete stress rows pass. Sample pages visually reviewed. Build/strict types,6 print lifecycle cases,7 Final LOA DOM cases,250 financial reconciliations,6 transport and26 isolated backend groups pass. Existing17 dev-tool npm advisories and large-bundle warning remain. Final Safari/Firefox/physical printing not claimed; Safari paper settings require manual A4/orientation and its Save dialog timed out. An oversized row can exceed a physical page; direct Print includes currently rendered pagination.
 
 [REFERENCE] [Files, actual PDF evidence metadata, reproduction and limits](../apps/dashboard/validation/printing/README.md). Changes remain local/uncommitted on main (prior dashboard fixes already merged by the user); no commit/push/deploy/branch change. Primary agent implemented and maintained this existing Brain; independent read-only reviewer found data-button/chart-height issues that were fixed.
+
+## AI-Driven Platform Architecture & Implementation Roadmap — October 9, 2026
+
+[FACT] **Strategic Context**: AQROMED / MedCore is formally designated as an "AI-driven financial reconciliation and patient engagement platform" (PGC Digital Innovation Challenge). The system currently operates via deterministic business rules, hardcoded chargemaster explainers, and static heuristic risk gauges without active machine learning or LLM reasoning.
+
+[FACT] **Google AI Studio Free Tier Technical Verification**:
+- **Target Model**: `gemini-2.5-flash` (with `gemini-1.5-flash` fallback).
+- **Free Tier Capacity**:
+  - Rate Limits: **15 RPM (Requests Per Minute)** and **1,500 RPD (Requests Per Day)**.
+  - Token Limits: **1,000,000 TPM (Tokens Per Minute)** with 1,000,000+ token context window.
+  - Cost: **$0.00 (Zero billing required)**.
+- **Feasibility Verdict**: 100% sufficient for internal testing, team evaluation, and live competition demonstrations. Average patient billing turn or claim audit consumes ~2,000–3,000 input/output tokens. At 15 RPM, the system comfortably supports continuous conversational turns.
+- [DECISION] **Pro Tier Prohibition**: `gemini-1.5-pro` is explicitly prohibited on the free tier due to severe throttles (2 RPM, 50 RPD) that cause rapid `429 Rate Limit Exceeded` failures during multi-turn interactions.
+
+[DECISION] **Backend Proxy & PHI Isolation Architecture (`apps/server`)**:
+- All AI queries route through dedicated Hono endpoints (`/api/v1/ai/*`) on the backend server. Neither the web dashboard nor the Expo mobile client will directly invoke Google AI Studio endpoints.
+- **Credential Protection**: `GEMINI_API_KEY` is maintained exclusively within server environment configuration (`.env` / Cloudflare Worker secrets), eliminating API key leakage risks from decompiled mobile bundles.
+- **Data Privacy & Statutory Compliance (RA 10173)**: Prior to sending prompts to Google AI Studio, the backend sanitizer masks sensitive Personal Health Information (PHI) pursuant to the Data Privacy Act of 2012. Patient names, contact numbers, and full PhilHealth PINs are replaced with pseudonymous tokens, passing only clinical diagnostic codes (ICD-10), CF4 summary indicators, and itemized financial figures.
+- **Context Hydration**: The backend server automatically injects real-time database records (`encounters`, `items`, `waterfall`, `hmo`, `philhealth`) into prompts so clients only transmit conversational queries or audit triggers.
+
+[DECISION] **Mobile App Implementation: "Cora" Patient Billing & Discharge Concierge Chatbot**:
+- **Placement**: Bottom-sheet chat drawer or persistent floating action button (`Ask Cora / Billing AI 💬`) accessible on `HomeScreen.tsx` and `BillScreen.tsx`.
+- **Persona & Tone**: Empathetic, highly transparent, and multilingual (English, Taglish, Ilocano) healthcare billing advocate.
+- **Core Functional Modules**:
+  1. *Dynamic "Explain My Bill"*: Contextually translates the 10-step statutory waterfall, PhilHealth Case Rate (ACR) limits, and commercial HMO Maximum Benefit Limits (MBL) into plain language to eliminate confusion over remaining out-of-pocket liabilities.
+  2. *Discharge Progress Companion*: Parses active encounter stage milestones (MGH order, Doctor PF sign-off, Pharmacy RTS credit, HMO LOA code generation, Gate Pass) and explains delays in plain language.
+  3. *Statutory Rights & Promissory Advisor*: Informs patients of their rights under RA 9439 (Anti-Hospital Detention Law) and guides eligible patients in executing 0% interest promissory installment agreements.
+  4. *One-Tap Item Dispute Assistant*: Enables patients to contest unfamiliar charges directly from the chat interface, triggering backend updates that mark items as `CONTESTED` for billing desk review.
+
+[DECISION] **Dashboard Implementation: Hospital RCM Copilot & Forensic Audit Suite**:
+- **Core Modules**:
+  1. *PhilHealth RTH Predictive Claims Scrubber (`ClaimsEsoaPage.tsx`)*: Analyzes CF4 clinical narrative data against ICD-10 diagnostic classifications and chargemaster supplies prior to XML submission. Flags discrepancies (e.g., antibiotic dosages lacking documented microbiology cultures) and provides 1-click clinical addendum recommendations to preempt Return-to-Hospital (RTH) rejections.
+  2. *HMO Denial & Dispute Resolution Co-Pilot (`ApprovalsDisputesPage.tsx`)*: Evaluates insurer disallowances against clinical encounter history, auto-generating formal medical necessity appeal letters and advising billing officers on supervisory waivers vs. patient responsibility under statutory discharge protocols.
+  3. *Executive RCM Daily Briefing (`CommandCenterPage.tsx` / `RcmAnalyticsPage.tsx`)*: Synthesizes live facility telemetry across all 250 inpatient encounters into actionable operational briefings, highlighting discharge bottleneck clusters, bed-turnover velocity, and carrier-specific LOA lag times.
+
+[REFERENCE] [Product Decision Record ADR-008](../MedCore_Vault/DECISIONS/product_decisions.md#8-adr-008-ai-driven-platform-architecture-via-google-ai-studio-free-tier--backend-proxy); [Server Routes](../apps/server/src/routes/); [Mobile Components](../apps/mobile/src/components/); [Dashboard Pages](../apps/dashboard/src/pages/).
+

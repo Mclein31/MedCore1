@@ -67,7 +67,8 @@ MedCore_Vault/
 │   ├── competitors.md                  # 12-point capability matrix of global and domestic players
 │   ├── cedar_model.md                  # Cedar Healthcare ($3.2B) model deep-dive and Philippine translation
 │   ├── statistics.md                   # Consolidated metrics (TAT, denial rates, PHAPi backlog)
-│   ├── regulations.md                  # Codified legal frameworks (RA 9994, 10754, 9439, 10932, 11223, 10173)
+│   ├── regulations.md                  # Codified legal frameworks (RA 9994, 10754, 9439, 10932, 11223, 10173, 7192, 9710)
+│   ├── gad_hgdg_guidelines.md          # Harmonized Gender & Development Guidelines (HGDG 3rd Ed, NEDA/PCW/ODA)
 │   └── sources.md                      # Bibliographic registry of government circulars, reports, and citations
 │
 ├── BUSINESS/                           # Commercial Model, Monetization, & Go-to-Market

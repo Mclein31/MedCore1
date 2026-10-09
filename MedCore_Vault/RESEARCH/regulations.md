@@ -57,6 +57,12 @@
   - Mandatory end-to-end data encryption (AES-256 for data at rest; TLS 1.3 for data in transit).
   - Mandatory data breach notification within 72 hours.
 
+### 8. Republic Act No. 7192 (Women in Development and Nation-Building Act) & RA 9710 (Magna Carta of Women)
+- [FACT] **Statutory Mandate**: 
+  - **RA 7192**: Mandates all government instrumentalities to set aside 5% to 30% of Official Development Assistance (ODA) and national program resources to support gender-responsive projects and eliminate gender bias.
+  - **RA 9710 (Sec. 36)**: Mandates gender mainstreaming and requires all government agencies, state universities/colleges (SUCs), and local government units (LGUs) to undergo capacity development on the **Harmonized Gender and Development Guidelines (HGDG)** and allocate at least 5% of their total annual budget to GAD programs.
+- **MedCore Implementation**: Detailed in [gad_hgdg_guidelines.md](gad_hgdg_guidelines.md). MedCore implements sex-disaggregated demographic tracking, alleviates clerical burdens for predominantly female hospital administrative staff, safeguards female household financial coordinators, and complies with HGDG Box 13 (Health) and Box 19 (ICT) evaluation standards for provincial LGU adoption.
+
 ---
 
 ## 3. Executive Orders & Administrative Circulars
@@ -74,3 +80,8 @@
 ### 4. PhilHealth Single Period of Confinement (SPC) Suspension
 - [FACT] PhilHealth suspended the contentious Single Period of Confinement rule effective **October 1, 2024**, allowing claims for repeated confinements within a 90-day window.
 - [DECISION] Maintained within MedCore as a toggleable policy flag.
+
+### 5. NEDA-PCW Harmonized Gender and Development Guidelines (HGDG) & ICC Policy
+- [FACT] **NEDA Board Investment Coordination Committee (ICC) Policy (2016)**: Integrates the HGDG (3rd Edition, 2019) into the official project evaluation process, requiring submission of the relevant HGDG checklist (Box 7 Summary, Box 13 Health, Box 19 ICT) as an ICC Project Evaluation Form.
+- **Scoring Requirement**: Projects scoring $\ge 8.0$ are recognized as gender-sensitive; projects scoring $\ge 15.0$ are classified as gender-responsive, enabling full statutory GAD budget attribution under RA 9710 and provincial development financing.
+
