@@ -5,7 +5,7 @@ import { ASSETS } from '../lib/assets';
 import { useFacilityName } from '../hooks/useFacility';
 import { describeRail, formatDateTime, formatPeso } from '../lib/format';
 
-export default function ReceiptSheet({ number, amount, rail, payer, date, reference, bill, patient, mrn, status = 'SUCCESS', surroundingColor = C.surface }: {
+export default function ReceiptSheet({ number, amount, rail, payer, date, reference, bill, patient, mrn, status = 'SUCCESS', surroundingColor = C.receiptSurround }: {
   number: string; amount: number; rail: string; payer: string; date: string | null | undefined; reference?: string; bill?: string; patient?: string; mrn?: string; status?: string; surroundingColor?: string;
 }) {
   const facility = useFacilityName();
@@ -13,7 +13,21 @@ export default function ReceiptSheet({ number, amount, rail, payer, date, refere
     ['Date & time', formatDateTime(date)], ['Transaction reference', reference || number],
     ['Bill reference', bill || 'Not provided'], ['Patient', patient || payer], ...(mrn ? [['Patient number', mrn]] : []), ['Payment method', describeRail(rail)], ['Payer', payer], ['Currency', 'PHP'], ['Status', status === 'SUCCESS' ? 'Paid' : status]
   ];
-  return <View style={{ backgroundColor: C.surface, marginVertical: 16, paddingHorizontal: 18, paddingTop: 40, paddingBottom: 28 }}>
+  return <View style={{
+    backgroundColor: C.surface,
+    marginVertical: 12,
+    paddingHorizontal: 20,
+    paddingTop: 36,
+    paddingBottom: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.08)',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3
+  }}>
     <View accessible={false} style={{ position: 'absolute', top: -4, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-around' }}>{Array.from({ length: 20 }, (_, i) => <View key={i} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: surroundingColor }} />)}</View>
     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}><Icon name="success" size={20} color={C.success} /><Text accessibilityRole="header" style={[T.body, { fontSize: 18, fontWeight: '600' }]}>Payment receipt</Text></View>
     <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 40 }}><Image source={ASSETS.brand.badge} resizeMode="contain" accessibilityLabel="MedCore" style={{ width: 28, height: 28 }} /><Text style={{ fontSize: 22, lineHeight: 28, fontWeight: '600', color: C.ink, textAlign: 'center', flexShrink: 1 }}>{facility}</Text></View>
