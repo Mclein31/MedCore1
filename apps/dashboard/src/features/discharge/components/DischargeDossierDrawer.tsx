@@ -403,8 +403,9 @@ export const DischargeDossierDrawer: React.FC = () => {
           </div>
 
           <button
+            disabled={enc.stage!=='PENDING_SETTLEMENT'||!enc.billFinalizedAt||!!enc.billSentAt}
             onClick={handleDispatchLink}
-            className="w-full py-2 px-3 text-xs text-blue-600 hover:text-blue-800 font-semibold text-center transition-colors"
+            className="w-full py-2 px-3 text-xs text-blue-600 hover:text-blue-800 font-semibold text-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {copiedLink ? '✓ Bill is available in the patient app' : 'Send bill to patient app →'}
           </button>

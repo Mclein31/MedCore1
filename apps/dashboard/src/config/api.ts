@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 /**
  * MedCore Frontend API Configuration
  * 
@@ -50,8 +51,10 @@ function resolveConfig(): ResolvedApiConfig {
   // default to relative '/api/v1' so requests are same-origin and proxied
   // seamlessly through vercel.json (or vite.config.ts), avoiding cross-origin
   // third-party cookie blocks, CORS preflight latency, and domain mismatches.
-  // Explicit VITE_API_BASE_URL is respected when provided (e.g. for native mobile apps).
-  const effectiveRaw = raw;
+  // The deployed web dashboard uses its hosting proxy, including when a build
+  // supplies the Worker URL. Development can still target an explicit backend.
+  // Native mobile has a separate EXPO_PUBLIC_API_BASE_URL configuration.
+  const effectiveRaw = isProduction ? '' : raw;
 
   let rootUrl = '';
   let baseUrl = '/api/v1';

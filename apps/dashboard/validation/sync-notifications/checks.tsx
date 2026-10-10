@@ -69,6 +69,8 @@ try {
  click('Payment received via Maya');await waitFor(()=>current.activeRoute==='DISCHARGE_CLEARANCE','Notification did not navigate');assert(current.selectedEncounterId==='enc-8812','Notification selected wrong patient');assert(!document.querySelector('#hospital-notifications'),'Notification panel did not close');results.push('notification selects the correct encounter and discharge workstation');
  current.setActiveRoute('ENCOUNTERS_LEDGER');
  await waitFor(()=>!!document.querySelector('button[title="Remove line item from patient running bill"]'),'Ledger delete control did not render');
+ const sendButton=()=>[...document.querySelectorAll<HTMLButtonElement>('button')].find(button=>button.textContent?.includes('Send bill to patient app')||button.textContent?.includes('Bill sent to app'));
+ assert(sendButton()?.disabled,'An unfinalized bill must not offer dispatch');
  const countBefore=record.items.length;
  (document.querySelector('button[title="Remove line item from patient running bill"]') as HTMLButtonElement).click();
  await waitFor(()=>!!current.confirmationState,'Delete confirmation missing');
@@ -97,7 +99,9 @@ try {
  await waitFor(()=>current.encounters[0].hmo.finalLoaStatus==='APPROVED','Late census overwrote confirmed HMO approval');
  window.fetch=originalFetch;results.push('late census replies cannot undo a confirmed HMO approval');
 await waitFor(()=>current.encounters[0].billState==='FINALIZED','Finalized state missing');
+ current.setActiveRoute('ENCOUNTERS_LEDGER');await waitFor(()=>!!sendButton()&&!sendButton()!.disabled,'Ready finalized bill cannot be dispatched');
  await current.sendBillToPatient('enc-8812');await waitFor(()=>current.encounters[0].billState==='SENT_TO_PATIENT','Sent state missing');results.push('finalize/send use authoritative replies; rejection retains balance and bill');
+ await waitFor(()=>!!sendButton()?.disabled,'Already dispatched bill still offers a new dispatch');results.push('bill dispatch is disabled until finalized settlement readiness and after delivery');
  record={...record,remainingBalance:0,stage:'CLEARED_GATE_PASS'};eventId='payment:from-mobile';read=false;
  const feedsBeforeFocus=feedCalls;window.dispatchEvent(new window.Event('focus'));
  await waitFor(()=>feedCalls>feedsBeforeFocus && current.encounters[0].remainingBalance===0,'Foreground event did not rehydrate payment balance');
