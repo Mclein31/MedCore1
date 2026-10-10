@@ -27,7 +27,7 @@ function resolveConfig(): ResolvedApiConfig {
   let raw = '';
   
   try {
-    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any)?.env : undefined;
+    const metaEnv = import.meta.env;
     if (metaEnv) {
       raw = (metaEnv.VITE_API_BASE_URL || metaEnv.VITE_API_URL || '').trim();
     }
@@ -40,7 +40,7 @@ function resolveConfig(): ResolvedApiConfig {
 
   let isProduction = false;
   try {
-    const metaEnv = typeof import.meta !== 'undefined' ? (import.meta as any)?.env : undefined;
+    const metaEnv = import.meta.env;
     isProduction = metaEnv?.PROD === true || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production');
   } catch {
     isProduction = false;
