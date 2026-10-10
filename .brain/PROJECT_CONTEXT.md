@@ -2148,3 +2148,38 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - `patient.ts`: Query now targets latest admission encounter (`encRows[0]`) rather than filtering out cleared stays (`stage !== 'CLEARED_GATE_PASS'`), ensuring cleared patients consistently view their active exit pass.
 
 [REFERENCE] Thoroughly verified via comprehensive end-to-end multi-stage sync script (`scratch/test-full-stages-sync.ts`) across all 8 discharge milestones, 24/24 offline audit suites, 250/250 financial fixtures, and 49/49 mobile unit tests.
+
+
+## Staff notifications and authoritative dashboard/mobile synchronization — October 10, 2026
+
+[FACT] CODEX_SYNC_AND_NOTIFICATIONS_PROMPT.md and the annotated header changes are implemented. Dashboard no longer hydrates fake encounters or locally finalizes/sends bills. New bill lifecycle routes persist encounter state/timestamps, timeline and audit in one transaction, preserve paid balances, and require PENDING_SETTLEMENT for finalize/send. Confirmed mutations invalidate older census results, including HMO approval.
+
+[DECISION] Staff notifications are derived from actual SUCCESS payments, system_audit_logs and active/verified passes, with facility-scoped joins and persistent per-user acknowledgements in staff_notification_reads (migration0003). Default unread count covers the latest30 events; max100. Ten-second visible dashboard polling refreshes feed and census; new events read authoritative encounters. Failed read acknowledgement never clears the badge. Notification click selects canonical encounter slug and opens Discharge Clearance.
+
+[DECISION] The annotated screenshot supersedes previous per-page search guidance: one header search supports MRN/bill/patient search with Ctrl/Cmd-K and Enter. Header clock/database/SLA strip and rendered local search inputs are removed. Account switching uses actual logout/sign-in with target-email prefill; production rejects legacy role emulation. Bill delivery means authenticated patient-app availability, with no fabricated SMS or magic-link delivery.
+
+[FACT] Reserved mobile demo admin selects its authorized primary MRN before scoped requests; ordinary patients keep linked ownership. Directory401/session-change failures propagate; late directory results cannot restore a logged-out identity. Patient ordering prioritizes active stays and unverified exit passes over completed history. Existing active5-second polling/foreground refresh and scope generations remain, with successful hydration clearing stale errors.
+
+[FACT] All eight required regressions exit0: offline24, financial250 exact, server45 groups plus notification tenant/per-user/anonymous/patient probes, dashboard auth, mobile49, dashboard build and server/mobile types. Additional actual React DOM checks: dashboard11, mobile auth8, existing mutation17 and provider polling5; script/test typechecks and mobile strict lint pass. Synthetic tests do not prove PostgreSQL or native synchronization.
+
+[FACT] Live first-prompt verification remains BLOCKED: PostgreSQL connectEPERM before any database write; automatic approval review rejected escalation because sandbox approval is disabled. Prepared verifier only creates/migrates/reseeds a dedicated local medcore_payment_validation_sync DB and checks authenticated stage/payment/bed/feed/read/lobby parity. Migration0003 has not been applied to the hospital DB and live services were preserved. The user expressly deferred the later E2E prompt until this first task is successfully verified. No AI feature, commit, push, deployment or new Brain system; pre-existing mobile package changes preserved.
+
+
+## Dashboard Login Screen Redesign Aligned with Mobile Preload & Onboarding — October 10, 2026
+
+[FACT] The web dashboard login screen (`apps/dashboard/src/components/auth/LoginScreen.tsx`) was redesigned to visually align with the mobile app's preload (`LaunchScreen.tsx` / `preload.png`) and onboarding (`OnboardingScreen.tsx` / `FinancialIllustration.tsx` / `onboarding.png`).
+
+[DECISION] **Visual Design Alignment**:
+- **Palette & Atmosphere**: Replaced generic `slate-900` dark theme and high-contrast square grid with MedCore's signature deep navy hero atmosphere (`#0A1D33` / `#0F2A4A` / `#18385E`), ambient radial orbs, diagonal geometric sashes, and fine constellation/circuit lines with teal (`#11806D`) and cyan (`#0284C7`) anchor nodes echoing `LaunchScreen`.
+- **Preload Orbital Emblem Header**: The authentication card header incorporates the concentric orbital rings and shield badge aura from `LaunchScreen`, featuring the MedCore emblem, `v2.4 Enterprise` pill, single-facility context, and high-security PBKDF2 SHA-256 badge with active pulse indicator.
+- **Onboarding Card & Stepper Language**: The form body features rounded card architecture (`rounded-3xl`), an onboarding-inspired 3-pill accent, refined form fields with soft elevated backgrounds, and a primary CTA styled in MedCore brand teal (`#11806D` / `#0F6D5F`).
+- **1-Click Staff Persona Cards**: Transformed the boxy demo buttons into polished card components matching mobile onboarding cards, complete with role-colored avatar initials (`ES`, `AD`, `MR`, `MV`, `GT`, `BA`), active teal rings (`#11806D`), and checkmarks upon selection.
+- **Tokens & Build**: Extended `apps/dashboard/tailwind.config.js` with `brand.teal` (`#11806D`), `brand.teal-dark` (`#0F6D5F`), and `brand.teal-soft` (`#E7F4F0`).
+- **VibeUI Split-Screen Layout (Desktop)**: Applied VibeUI's top auth pattern ("Split-screen with visual panel") for desktop viewports (`lg:grid-cols-12`). The left column (5 cols) showcases the mobile preload orbital shield emblem, rotating orbit paths, brand telemetry bento cards, and live workstation status, while the right column (7 cols) hosts the command sign-in form and persona switchers. On mobile/tablet viewports, it collapses gracefully into a compact unified card.
+- **Color-Coordinated Visual Refinements**:
+  - Removed decorative badges/chips: `v2.4 Enterprise` pill, `PBKDF2 SHA-256` header badge, `Demo: HospitalRCM2026!` label pill, `Active` shift life pill, bottom-left status beacon, stepper indicator dots, bottom-right audit badge (`HITP-MEDCORE-MANILA-092`), and external footer dot row.
+  - Logos: Removed glass card backgrounds from both top-left and central orbital emblem, rendering plain enlarged shield logo assets directly on the navy canvas.
+  - Bento cards: Converted to clean plain-text cards without leading icons.
+  - Control geometry: Reduced corner radius on all form input boxes, facility box, shift box, submit button, and staff persona cards from `rounded-xl` to crisp `rounded-md`.
+- **Compatibility**: All form logic, credential auto-fill, `initialLoginEmail`, `sessionNotice`, accessible roles, test IDs, and compliance markings (`RA 10173`) remain 100% intact. All automated test suites (`npm test`) and dashboard production builds pass cleanly.
+
