@@ -6,3 +6,4 @@ export * from './IconButton';
 export * from './SearchInput';
 export * from './Select';
 export * from './SegmentedTabs';
+export * from './MarkdownNarrative';

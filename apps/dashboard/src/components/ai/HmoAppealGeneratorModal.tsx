@@ -13,7 +13,7 @@ import {
   Calendar,
   AlertCircle
 } from 'lucide-react';
-import { Button } from '@/components/common';
+import { Button, MarkdownNarrative } from '@/components/common';
 
 export interface HmoAppealGeneratorModalProps {
   isOpen: boolean;
@@ -212,8 +212,8 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
 
               {/* Letter Display */}
               {activeTab === 'PREVIEW' ? (
-                <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs font-serif text-slate-900 text-xs sm:text-sm leading-relaxed max-h-[420px] overflow-y-auto whitespace-pre-wrap select-all">
-                  {editableMarkdown}
+                <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs text-slate-900 text-xs sm:text-sm leading-relaxed max-h-[420px] overflow-y-auto select-all">
+                  <MarkdownNarrative content={editableMarkdown} />
                 </div>
               ) : (
                 <textarea

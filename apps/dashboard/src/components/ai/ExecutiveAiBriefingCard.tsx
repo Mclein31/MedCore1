@@ -16,7 +16,7 @@ import {
   FileText,
   ShieldAlert
 } from 'lucide-react';
-import { Button } from '@/components/common';
+import { Button, MarkdownNarrative } from '@/components/common';
 
 export interface ExecutiveAiBriefingCardProps {
   className?: string;
@@ -210,14 +210,12 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
           </div>
 
           {/* Executive Narrative Section */}
-          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 text-xs text-slate-700 leading-relaxed space-y-2">
-            <div className="flex items-center gap-2 font-bold text-slate-900 text-xs">
+          <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700 leading-relaxed space-y-3">
+            <div className="flex items-center gap-2 font-bold text-slate-900 text-xs border-b border-slate-200/80 pb-2">
               <FileText className="w-3.5 h-3.5 text-purple-600" />
               <span>Operational &amp; Financial Narrative</span>
             </div>
-            <div className="whitespace-pre-line text-slate-600 font-sans text-xs">
-              {briefing.briefingMarkdown}
-            </div>
+            <MarkdownNarrative content={briefing.briefingMarkdown} />
           </div>
 
           {/* Strategic Recommendations Strip */}
