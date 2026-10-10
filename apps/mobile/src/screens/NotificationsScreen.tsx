@@ -1,7 +1,8 @@
 import { usePullRefresh } from '../hooks/usePullRefresh';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { paymentAccountNamespace } from '../lib/mobileAccess';
 import { useAuth } from '../lib/auth';
 import { useResource } from '../hooks/useResource';
 import { createNotificationsApi } from '../services/notificationsApi';
@@ -9,16 +10,18 @@ import { notificationReadKey, parseReadIds } from '../lib/notificationRead';
 import { formatDateTime } from '../lib/format';
 import { C, EmptyState, ErrorState, LoadingState, RefreshNotice, Screen, T } from '../components/ui';
 export default function NotificationsScreen() {
-  const { client, user } = useAuth();
+  const { client, user, selectedPatientId } = useAuth();
+  const visitRead=useRef<{key:string;ids:string[]} | null>(null);
   const load = useCallback(async () => {
-    const key = notificationReadKey(user!.id);
+    const key = notificationReadKey(paymentAccountNamespace(user!,selectedPatientId||undefined));
     const [res, saved] = await Promise.all([createNotificationsApi(client).list(), AsyncStorage.getItem(key).catch(() => null)]);
-    const read = parseReadIds(saved);
+    if(visitRead.current?.key!==key)visitRead.current={key,ids:parseReadIds(saved)};
+    const read = visitRead.current.ids;
     // Preserve the previous read snapshot for this visit's 'new' labels.
     // The next visit and header use the acknowledged IDs.
-    await AsyncStorage.setItem(key, JSON.stringify(res.items.map((item) => item.id))).catch(() => {});
+    await AsyncStorage.setItem(key, JSON.stringify([...new Set([...parseReadIds(saved),...res.items.map(item=>item.id)])].slice(-1000))).catch(() => {});
     return { items: res.items, read };
-  }, [client, user]);
+  }, [client, user, selectedPatientId]);
   const { data, loading, error, refresh } = useResource(load, 5000);
   const pullRefresh = usePullRefresh(refresh);
   if (loading && !data) return <LoadingState message="Loading your updates…" />;

@@ -192,12 +192,15 @@ clearanceApp.post(
     const enc = encList[0];
     const now = new Date();
 
+    const [coverage]=await tx.select().from(hmoAuthorizations).where(eq(hmoAuthorizations.encounterId,enc.id)).limit(1);
+    const nextStage=coverage&&coverage.providerName!=='None'?'HMO_FINAL_LOA':'PENDING_SETTLEMENT';
+
     await tx
       .update(encounters)
       .set({
         pharmacyRtsCleared: true,
         unreturnedMedsCount: 0,
-        stage: enc.stage === 'PHARMACY_RTS_AUDIT' ? 'HMO_FINAL_LOA' : enc.stage,
+        stage: enc.stage === 'PHARMACY_RTS_AUDIT' ? nextStage : enc.stage,
         updatedAt: now
       })
       .where(eq(encounters.id, enc.id));
@@ -219,7 +222,7 @@ clearanceApp.post(
       action: 'PHARMACY_RTS_CLEARED',
       resourceType: 'encounters',
       resourceId: enc.id,
-      newState: { pharmacyRtsCleared: true, unreturnedMedsCount: 0, stage: 'HMO_FINAL_LOA' },
+      newState: { pharmacyRtsCleared: true, unreturnedMedsCount: 0, stage: enc.stage === 'PHARMACY_RTS_AUDIT' ? nextStage : enc.stage },
       ipAddress: getClientIp(c),
       userAgent: c.req.header('user-agent')
     });

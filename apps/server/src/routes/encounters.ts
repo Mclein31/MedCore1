@@ -1,3 +1,7 @@
+import {gatePassPayload} from '../../../shared/gatePassPayload';
+import {generateGatePassHmac,generateDeterministicExitPin,resolveGatePassSecret} from '../services/gatePassService';
+import { moneyCents } from '../services/statutoryWaterfall';
+import { encounterAccessCondition } from '../utils/encounterAccess';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -95,7 +99,7 @@ export function formatHydratedEncounter(ctx: HydrationContext) {
       seniorCitizenId: patient.seniorCitizenId || undefined,
       isPwd: patient.isPwd,
       pwdId: patient.pwdId || undefined,
-      age: 45, // default
+      age: (()=>{const birth=new Date(patient.dateOfBirth);const now=new Date();if(!Number.isFinite(birth.getTime()))return 0;return now.getUTCFullYear()-birth.getUTCFullYear()-(now.getUTCMonth()<birth.getUTCMonth()||now.getUTCMonth()===birth.getUTCMonth()&&now.getUTCDate()<birth.getUTCDate()?1:0);})(),
       gender: patient.gender as 'M' | 'F',
       contactNumber: patient.contactNumber
     },
@@ -109,6 +113,7 @@ export function formatHydratedEncounter(ctx: HydrationContext) {
     attendingDoctor: doctor?.fullName || 'Attending Physician',
     attendingDoctorObj: doctor
       ? {
+          id: doctor.id,
           name: doctor.fullName,
           prcLicense: doctor.prcLicense || '',
           specialization: doctor.title,
@@ -239,7 +244,8 @@ export function formatHydratedEncounter(ctx: HydrationContext) {
           verifiedAt: dischargePass.verifiedAt?.toISOString(),
           status: dischargePass.status as any,
           hmacSignature: dischargePass.hmacSignature,
-          exitPin: dischargePass.exitPin
+          exitPin: dischargePass.exitPin,
+          qrPayload: gatePassPayload(dischargePass)
         }
       : undefined,
     promissoryNote: promissoryNote
@@ -431,6 +437,13 @@ export async function getHydratedEncounter(encounterIdOrNumber: string, facility
 export function invalidateEncountersCache() {
   // Patient/census records are deliberately not cached across DB bindings.
 }
+
+encountersApp.get('/physicians',requireAuth,requireRole(['BILLING_SPECIALIST','HOSPITAL_CFO']),async c=>{
+  const user=c.get('user');
+  const items=await db.select({id:users.id,name:users.fullName}).from(users)
+    .where(and(eq(users.facilityId,user.facilityId),eq(users.role,'ATTENDING_PHYSICIAN'),eq(users.isActive,true))).orderBy(users.fullName);
+  return c.json({items});
+});
 
 // GET /api/v1/encounters
 encountersApp.get('/', async (c) => {
@@ -711,6 +724,70 @@ const handleStatement = async (c: any) => {
 encountersApp.get('/:id/statement', handleStatement);
 encountersApp.get('/:id/invoice', handleStatement);
 
+// Persist bill lifecycle transitions; settlement readiness remains authoritative.
+for (const action of ['finalize-bill', 'send-bill', 'view-bill'] as const) {
+  encountersApp.post(`/:id/${action}`, requireAuth,
+    requireRole(action === 'view-bill' ? ['PATIENT_GUARANTOR','BILLING_SPECIALIST','HOSPITAL_CFO'] : ['BILLING_SPECIALIST','HOSPITAL_CFO']),
+    async c => {
+      const user=c.get('user');
+      const id=c.req.param('id');
+      if(!id) return apiError(c,400,'MISSING_ID','Encounter identifier is required.');
+      const condition=await encounterAccessCondition(user,id);
+      const result=await db.transaction(async tx=>{
+        const [enc]=await tx.select().from(encounters).where(condition).limit(1).for('update');
+        if(!enc) return apiError(c,404,'NOT_FOUND','Encounter not found.');
+        const existing=action==='finalize-bill'?enc.billFinalizedAt:action==='send-bill'?enc.billSentAt:enc.billFirstViewedAt;
+        if(existing) return {id:enc.id};
+        if(action!=='view-bill' && enc.stage!=='PENDING_SETTLEMENT') return apiError(c,409,'STAGE_NOT_READY','Complete discharge checks before finalizing or sending the bill.');
+        if(action==='send-bill' && !enc.billFinalizedAt) return apiError(c,409,'BILL_NOT_FINALIZED','Finalize the bill before sending it.');
+        if(action==='view-bill' && !enc.billSentAt) return {id:enc.id};
+        const now=new Date();
+        const paid=enc.billState==='PAID' || enc.billState==='PARTIALLY_PAID';
+        const billState=paid?enc.billState:action==='finalize-bill'?'FINALIZED':action==='send-bill'?'SENT_TO_PATIENT':'VIEWED';
+        await tx.update(encounters).set({billState,updatedAt:now,
+          ...(action==='finalize-bill'?{billFinalizedAt:now}:action==='send-bill'?{billSentAt:now}:{billFirstViewedAt:now})}).where(eq(encounters.id,enc.id));
+        const title=action==='finalize-bill'?'Final hospital bill ready':action==='send-bill'?'Hospital bill available in MedCore':'Hospital bill viewed';
+        await tx.insert(encounterTimelineEvents).values({encounterId:enc.id,eventType:'BILLING',title,
+          description:title,actorId:user.id,actorName:user.fullName,status:'COMPLETED'});
+        await tx.insert(systemAuditLogs).values({facilityId:user.facilityId,userId:user.id,actorRole:user.role,
+          action:action==='finalize-bill'?'BILL_FINALIZED':action==='send-bill'?'BILL_SENT_TO_PATIENT':'BILL_VIEWED',
+          resourceType:'encounters',resourceId:enc.id,newState:{billState},ipAddress:getClientIp(c)});
+        return {id:enc.id};
+      });
+      if(result instanceof Response) return result;
+      invalidateEncountersCache();
+      return c.json({success:true,encounter:user.role==='PATIENT_GUARANTOR'?undefined:await getHydratedEncounter(result.id)});
+    });
+}
+
+// Covered stays with no patient copay still require an authoritative exit release.
+encountersApp.post('/:id/gate-pass',requireAuth,requireRole(['BILLING_SPECIALIST','HOSPITAL_CFO']),async c=>{
+  const user=c.get('user');const id=c.req.param('id');
+  if(!id)return apiError(c,400,'MISSING_ID','Encounter identifier is required.');
+  const result=await db.transaction(async tx=>{
+    const [enc]=await tx.select().from(encounters).where(and(matchEncounterCondition(id),eq(encounters.facilityId,user.facilityId))).limit(1).for('update');
+    if(!enc)return apiError(c,404,'NOT_FOUND','Encounter not found.');
+    const [existing]=await tx.select().from(dischargePasses).where(and(eq(dischargePasses.encounterId,enc.id),inArray(dischargePasses.status,['ACTIVE_READY_FOR_EXIT','VERIFIED_AT_LOBBY']))).limit(1);
+    if(enc.stage==='CLEARED_GATE_PASS'&&existing)return {id:enc.id};
+    if(enc.stage!=='PENDING_SETTLEMENT'||moneyCents(Number(enc.remainingBalance))!==0)return apiError(c,409,'STAGE_NOT_READY','Complete discharge checks and settle the patient balance before releasing a pass.');
+    const [patient]=await tx.select().from(patients).where(and(eq(patients.id,enc.patientId),eq(patients.facilityId,user.facilityId))).limit(1);
+    if(!patient)return apiError(c,404,'NOT_FOUND','Patient not found.');
+    const now=new Date();const amount=moneyCents(Number(enc.amountPaid))/100;
+    const secret=resolveGatePassSecret((c.env as any)?.GATE_PASS_SECRET,((c.env as any)?.NODE_ENV||process.env.NODE_ENV||'development')==='production');
+    const passNumber=`PASS-MC-${crypto.randomUUID()}`;
+    await tx.insert(dischargePasses).values({encounterId:enc.id,passNumber,patientName:patient.fullName,roomBed:enc.roomBed,
+      settledAmount:amount.toFixed(2),settlementChannel:'CASHIER_OVER_THE_COUNTER',hmacSignature:await generateGatePassHmac(enc.id,amount,now.toISOString(),secret),
+      exitPin:await generateDeterministicExitPin(passNumber,secret),status:'ACTIVE_READY_FOR_EXIT',issuedAt:now});
+    await tx.update(encounters).set({stage:'CLEARED_GATE_PASS',stageEnteredAt:now,billState:'PAID',updatedAt:now}).where(eq(encounters.id,enc.id));
+    if(enc.bedId)await tx.update(beds).set({status:'HOUSEKEEPING',currentEncounterId:null,updatedAt:now}).where(and(eq(beds.id,enc.bedId),eq(beds.currentEncounterId,enc.id),eq(beds.facilityId,user.facilityId)));
+    await tx.insert(encounterTimelineEvents).values({encounterId:enc.id,eventType:'DISCHARGE',title:'Digital Gate Pass Issued',description:'No outstanding patient balance; hospital clearance confirmed.',actorId:user.id,actorName:user.fullName,status:'COMPLETED'});
+    await tx.insert(systemAuditLogs).values({facilityId:user.facilityId,userId:user.id,actorRole:user.role,action:'GATE_PASS_ISSUED',resourceType:'encounters',resourceId:enc.id,newState:{passNumber,stage:'CLEARED_GATE_PASS'},ipAddress:getClientIp(c)});
+    return {id:enc.id};
+  });
+  if(result instanceof Response)return result;
+  invalidateEncountersCache();return c.json({success:true,encounter:await getHydratedEncounter(result.id)});
+});
+
 // POST /api/v1/encounters/:id/advance-stage
 const stageOrder = [
   'MGH_DECLARED',
@@ -792,18 +869,20 @@ encountersApp.post(
 );
 
 // POST /api/v1/encounters - Admit new patient encounter
+const roomRateSchema=z.number().nonnegative().refine(value=>{try{moneyCents(value);return true;}catch{return false;}},'Use a finite amount with exact centavos.');
 const createEncounterSchema = z.object({
   fullName: z.string().min(2).max(128),
   mrn: z.string().min(3).max(32),
-  dateOfBirth: z.string().optional(),
+  dateOfBirth: z.string().date().refine(value=>value>='1800-01-01'&&value<=new Date().toISOString().slice(0,10),'Enter a valid past birth date.').optional(),
+  age: z.number().int().min(0).max(130).optional(),
   gender: z.enum(['M', 'F', 'OTHER']).default('M'),
   isSeniorCitizen: z.boolean().default(false),
   isPwd: z.boolean().default(false),
   philhealthPin: z.string().optional(),
   roomBed: z.string().min(2).max(32),
   roomCategory: z.enum(['REGULAR_PRIVATE', 'SEMI_PRIVATE', 'WARD', 'SUITE', 'ICU', 'NICU']).default('REGULAR_PRIVATE'),
-  dailyRoomRate: z.number().default(2500),
-  attendingPhysicianId: z.string().optional(),
+  dailyRoomRate: roomRateSchema.default(2500),
+  attendingPhysicianId: z.string().uuid().optional(),
   primaryDiagnosis: z.string().min(2).max(256),
   hmoProvider: z.string().optional(),
   hmoPolicyNumber: z.string().optional()
@@ -819,6 +898,11 @@ encountersApp.post(
     const user = c.get('user');
 
     const createdEncounterId = await db.transaction(async (tx) => {
+      const [physician]=await tx.select().from(users).where(and(data.attendingPhysicianId?eq(users.id,data.attendingPhysicianId):undefined,eq(users.facilityId,user.facilityId),eq(users.role,'ATTENDING_PHYSICIAN'),eq(users.isActive,true))).orderBy(users.fullName).limit(1);
+      if(!physician)return apiError(c,400,'INVALID_PHYSICIAN','Choose an active attending physician from this hospital.');
+      const [bed]=await tx.select().from(beds).where(and(eq(beds.bedNumber,data.roomBed),eq(beds.facilityId,user.facilityId))).limit(1).for('update');
+      if(!bed)return apiError(c,400,'INVALID_BED','Choose an existing hospital bed.');
+      if(bed.status!=='AVAILABLE'||bed.currentEncounterId)return apiError(c,409,'BED_UNAVAILABLE','This bed is unavailable. Choose an available bed.');
       // 1. Resolve or Create Patient (Finding 6: prevent unique constraint crash on existing MRN)
       let patientId: string;
       const existingPatient = await tx
@@ -832,7 +916,7 @@ encountersApp.post(
       } else {
         const dob = data.dateOfBirth
           ? new Date(data.dateOfBirth)
-          : new Date(Date.now() - 40 * 365.25 * 24 * 3600 * 1000);
+          : new Date(new Date().setUTCFullYear(new Date().getUTCFullYear()-(data.age ?? 40)));
         const insertedPatients = await tx
           .insert(patients)
           .values({
@@ -850,17 +934,10 @@ encountersApp.post(
         patientId = insertedPatients[0].id;
       }
 
-      // 2. Allocate Bed
-      const bedList = await tx
-        .select()
-        .from(beds)
-        .where(and(eq(beds.bedNumber, data.roomBed), eq(beds.facilityId, user.facilityId)))
-        .limit(1);
-
-      const bedId = bedList[0]?.id || null;
+      const bedId = bed.id;
 
       // 3. Generate Encounter Number
-      const encNumber = `ENC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+      const encNumber = `ENC-2026-${crypto.randomUUID()}`;
 
       const insertedEncounters = await tx
         .insert(encounters)
@@ -870,8 +947,8 @@ encountersApp.post(
           patientId,
           bedId,
           roomBed: data.roomBed,
-          attendingPhysicianId: data.attendingPhysicianId || user.id,
-          doctorPan: user.panNumber || '',
+          attendingPhysicianId: physician.id,
+          doctorPan: physician?.panNumber || '',
           admissionTimestamp: new Date(),
           stage: 'MGH_DECLARED',
           stageEnteredAt: new Date(),
@@ -918,7 +995,7 @@ encountersApp.post(
       // 5. Create initial PhilHealth claim
       await tx.insert(philhealthClaims).values({
         encounterId: enc.id,
-        claimNumber: `CLM-PH-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+        claimNumber: `CLM-PH-2026-${crypto.randomUUID()}`,
         primaryIcd10: 'Z00.0',
         primaryDescription: data.primaryDiagnosis,
         caseRateCode: 'P01',
@@ -971,6 +1048,7 @@ encountersApp.post(
       return enc.id;
     });
 
+    if(createdEncounterId instanceof Response)return createdEncounterId;
     invalidateEncountersCache();
     const hydrated = await getHydratedEncounter(createdEncounterId);
     return c.json({ success: true, encounter: hydrated });
@@ -980,7 +1058,7 @@ encountersApp.post(
 // PATCH /api/v1/encounters/:id - Edit encounter
 const editEncounterSchema = z.object({
   primaryDiagnosis: z.string().min(2).max(256).optional(),
-  dailyRoomRate: z.number().positive().optional(),
+  dailyRoomRate: roomRateSchema.optional(),
   slaStatus: z.enum(['NORMAL', 'ON_TRACK', 'WARNING', 'BREACH']).optional(),
   roomBed: z.string().optional()
 });
@@ -996,11 +1074,12 @@ encountersApp.patch(
     const updates = c.req.valid('json');
     const user = c.get('user');
 
-    const encList = await db
+    const result=await db.transaction(async tx=>{
+    const encList = await tx
       .select()
       .from(encounters)
       .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (encList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Encounter ${id} not found.`);
@@ -1016,21 +1095,18 @@ encountersApp.patch(
     }
 
     if (updates.roomBed && updates.roomBed !== enc.roomBed) {
-      patchData.roomBed = updates.roomBed;
-      const newBed = await db.select().from(beds).where(and(eq(beds.bedNumber, updates.roomBed), eq(beds.facilityId, user.facilityId))).limit(1);
-      if (newBed.length > 0) {
-        // Free old bed
-        if (enc.bedId) {
-          await db.update(beds).set({ status: 'AVAILABLE', currentEncounterId: null, updatedAt: new Date() }).where(eq(beds.id, enc.bedId));
-        }
-        patchData.bedId = newBed[0].id;
-        await db.update(beds).set({ status: 'OCCUPIED', currentEncounterId: enc.id, updatedAt: new Date() }).where(eq(beds.id, newBed[0].id));
-      }
+      const [newBed]=await tx.select().from(beds).where(and(eq(beds.bedNumber,updates.roomBed),eq(beds.facilityId,user.facilityId))).limit(1).for('update');
+      if(!newBed)return apiError(c,400,'INVALID_BED','Choose an existing hospital bed.');
+      if(newBed.status!=='AVAILABLE'||newBed.currentEncounterId)return apiError(c,409,'BED_UNAVAILABLE','This bed is unavailable. Choose an available bed.');
+      if(enc.stage==='CLEARED_GATE_PASS')return apiError(c,409,'ENCOUNTER_CLOSED','A discharged encounter cannot occupy a bed.');
+      if(enc.bedId)await tx.update(beds).set({status:'AVAILABLE',currentEncounterId:null,updatedAt:new Date()}).where(and(eq(beds.id,enc.bedId),eq(beds.currentEncounterId,enc.id),eq(beds.facilityId,user.facilityId)));
+      patchData.roomBed=updates.roomBed;patchData.bedId=newBed.id;
+      await tx.update(beds).set({status:'OCCUPIED',currentEncounterId:enc.id,updatedAt:new Date()}).where(eq(beds.id,newBed.id));
     }
 
-    await db.update(encounters).set(patchData).where(eq(encounters.id, enc.id));
+    await tx.update(encounters).set(patchData).where(eq(encounters.id, enc.id));
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: enc.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -1043,8 +1119,11 @@ encountersApp.patch(
       userAgent: c.req.header('user-agent')
     });
 
+    return enc.id;
+    });
+    if(result instanceof Response)return result;
     invalidateEncountersCache();
-    const hydrated = await getHydratedEncounter(enc.id);
+    const hydrated = await getHydratedEncounter(result);
     return c.json({ success: true, encounter: hydrated });
   }
 );
@@ -1077,7 +1156,7 @@ encountersApp.delete(
         await tx
           .update(beds)
           .set({ status: 'AVAILABLE', currentEncounterId: null, updatedAt: new Date() })
-          .where(eq(beds.id, enc.bedId));
+          .where(and(eq(beds.id, enc.bedId), eq(beds.currentEncounterId, enc.id), eq(beds.facilityId, user.facilityId)));
       }
 
       // Cascade deletion

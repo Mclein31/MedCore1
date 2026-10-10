@@ -1,3 +1,4 @@
+import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import React, { useState, useMemo } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import {
@@ -33,7 +34,7 @@ import { SearchX, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/common';
 
 export const RcmAnalyticsPage: React.FC = () => {
-  const { encounters } = useMedCore();
+  const { encounters, searchQuery, setSearchQuery } = useMedCore();
 
   // Primary Filter State
   const [filters, setFilters] = useState<AnalyticsFilterState>({
@@ -55,6 +56,7 @@ export const RcmAnalyticsPage: React.FC = () => {
   };
 
   const handleResetFilters = () => {
+    setSearchQuery('');
     setFilters({
       timeframe: '30D',
       department: 'All Wards',
@@ -70,6 +72,10 @@ export const RcmAnalyticsPage: React.FC = () => {
   // Filter encounters dynamically
   const filteredEncounters = useMemo(() => {
     return encounters.filter((enc) => {
+      const admitted=Date.parse(enc.admissionDate);
+      const cutoff=filters.timeframe==='YTD'?new Date(new Date().getFullYear(),0,1).getTime():Date.now()-(filters.timeframe==='90D'?90:30)*86400000;
+      if(filters.timeframe!=='ALL'&&(!Number.isFinite(admitted)||admitted<cutoff)) return false;
+      if(!matchesEncounterSearch(enc,searchQuery)) return false;
       // 1. Department / Ward Filter
       if (filters.department !== 'All Wards') {
         const w = getEncounterWard(enc);
@@ -127,7 +133,7 @@ export const RcmAnalyticsPage: React.FC = () => {
 
       return true;
     });
-  }, [encounters, filters, selectedFrictionCategory]);
+  }, [encounters, filters, selectedFrictionCategory, searchQuery]);
 
   // Derived Analytics Datasets based on active filtered encounters
   const waterfall = useMemo(() => computeWaterfallAggregate(filteredEncounters), [filteredEncounters]);

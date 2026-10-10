@@ -1,0 +1,5 @@
+
+> medcore-mobile@1.0.0 test:qr
+> node --import ../../node_modules/tsx/dist/loader.mjs __tests__/qr.ts
+
+[PASS] Independent QR decoding: 16 rendered patterns (135, 180, 225, 270px); payment and signed discharge payloads preserved.

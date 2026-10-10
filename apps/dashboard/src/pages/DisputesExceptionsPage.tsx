@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
 import { CheckCircle2, ShieldAlert, HelpCircle, FileText } from 'lucide-react';
-import { ConfirmButton, SegmentedTabs, SearchInput, Button } from '@/components/common';
+import { ConfirmButton, SegmentedTabs, Button } from '@/components/common';
 
 export const DisputesExceptionsPage: React.FC = () => {
-  const {
+  const { searchQuery,
     encounters,
     openWhyDoIOweThis,
     supervisoryWaiveItem,
@@ -14,10 +14,10 @@ export const DisputesExceptionsPage: React.FC = () => {
   } = useMedCore();
 
   const [activeTab, setActiveTab] = useState<'CONTESTED_ITEMS' | 'PROMISSORY_REGISTER'>('CONTESTED_ITEMS');
-  const [searchQuery, setSearchQuery] = useState('');
   const [itemsPage, setItemsPage] = useState(1);
   const [notesPage, setNotesPage] = useState(1);
   const pageSize = 11;
+  useEffect(()=>{ setItemsPage(1); setNotesPage(1); }, [searchQuery]);
 
   // Collect all contested items (excluding waived items)
   const disputedItems = encounters.flatMap((enc) =>
@@ -150,26 +150,7 @@ export const DisputesExceptionsPage: React.FC = () => {
             ariaLabel="Disputes view selector"
           />
 
-          <SearchInput
-            size="sm"
-            placeholder={
-              activeTab === 'CONTESTED_ITEMS'
-                ? 'Search patient, bed, contested item...'
-                : 'Search borrower, note number, patient...'
-            }
-            value={searchQuery}
-            onChange={(val) => {
-              setSearchQuery(val);
-              setItemsPage(1);
-              setNotesPage(1);
-            }}
-            onClear={() => {
-              setSearchQuery('');
-              setItemsPage(1);
-              setNotesPage(1);
-            }}
-            className="w-56 sm:w-64"
-          />
+
         </div>
       </div>
 

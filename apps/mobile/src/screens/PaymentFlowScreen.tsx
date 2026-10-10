@@ -189,7 +189,6 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
       attemptKey.current = key;
       const input: PayInput = previous?.input ?? {
         amount: Math.round(amount * 100) / 100, paymentRail: rail, payerName: payerName.trim(),
-        ...(WALLET_PRESETS[rail] ? { payerContactMasked: WALLET_PRESETS[rail].contact } : {}),
         ...(rail === 'CREDIT_DEBIT_CARD' ? { cardBrand, cardLast4: cardLast4.trim() } : {}),
         ...(rail === 'BANK_TRANSFER' ? { bankName: bankName.trim() } : {})
       };
@@ -323,7 +322,7 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
             <Text style={T.heroSub}>{currentEncounter.billNumber || currentEncounter.encounterNumber}</Text>
           </View>}
           {step === 'detail' && !isNote && <>
-            {method.kind === 'qr' && <Card><PaymentQr /><Text style={[T.meta, { textAlign: 'center', marginTop: 12 }]}>Scan this code, then review the payment details.</Text></Card>}
+            {method.kind === 'qr' && <Card><PaymentQr /><Text style={[T.meta, { textAlign: 'center', marginTop: 12 }]}>Demonstration QR only. Review and confirm below; no bank transfer is initiated.</Text></Card>}
             {wallet && <Card><Text accessibilityRole="header" style={T.section}>Pay with {method.label}</Text><LedgerRow title="Hospital" value={hospital} /><LedgerRow title="Bill reference" value={currentEncounter.billNumber || currentEncounter.encounterNumber} last /><Text style={T.meta}>Review your payment details before confirming.</Text></Card>}
             {method.kind === 'card' && <Card><Text accessibilityRole="header" style={T.section}>Card details</Text>
               <View style={{ flexDirection: 'row', gap: 24, marginVertical: 16 }}>{(['VISA', 'MASTERCARD'] as const).map(brand => <Image key={brand} source={ASSETS.cardNetworkLogo[brand]} resizeMode="contain" accessibilityLabel={brand === 'VISA' ? 'Visa' : 'Mastercard'} style={{ width: 64, height: 32 }} />)}</View>

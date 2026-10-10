@@ -56,20 +56,22 @@ bedsApp.patch(
       ? or(eq(beds.id, bedIdOrNumber), eq(beds.bedNumber, bedIdOrNumber))
       : eq(beds.bedNumber, bedIdOrNumber);
 
-    const bedList = await db
+    const result=await db.transaction(async tx=>{
+    const bedList = await tx
       .select()
       .from(beds)
       .where(and(bedQuery, eq(beds.facilityId, user.facilityId)))
-      .limit(1);
+      .limit(1).for('update');
 
     if (bedList.length === 0) {
       return apiError(c, 404, 'NOT_FOUND', `Bed ${bedIdOrNumber} not found.`);
     }
 
     const bed = bedList[0];
+    if(bed.currentEncounterId&&status!==bed.status)return apiError(c,409,'BED_OCCUPIED','Release this bed through its encounter discharge or transfer.');
     const now = new Date();
 
-    const updatedBeds = await db
+    const updatedBeds = await tx
       .update(beds)
       .set({
         status,
@@ -79,7 +81,7 @@ bedsApp.patch(
       .where(eq(beds.id, bed.id))
       .returning();
 
-    await db.insert(systemAuditLogs).values({
+    await tx.insert(systemAuditLogs).values({
       facilityId: bed.facilityId,
       userId: user.id,
       actorRole: user.role,
@@ -96,6 +98,8 @@ bedsApp.patch(
       success: true,
       bed: updatedBeds[0]
     });
+    });
+    return result;
   }
 );
 

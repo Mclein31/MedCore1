@@ -16,7 +16,6 @@ export const DoctorQuickSignModal: React.FC = () => {
     isDoctorQuickSignOpen,
     closeDoctorQuickSign,
     selectedEncounter,
-    nudgeDoctor,
     applyAccreditedCeiling,
     signDoctorFee
   } = useMedCore();
@@ -29,7 +28,7 @@ export const DoctorQuickSignModal: React.FC = () => {
   const declared = selectedEncounter.doctorAgreedFee;
   const excess = selectedEncounter.doctorExcessPf;
   const ceiling = Math.max(0, declared - excess);
-  const prc = selectedEncounter.doctorPan.replace('PAN-', 'PRC-');
+  const prc = selectedEncounter.attendingDoctorObj?.prcLicense || 'Not provided';
   const hmoName = selectedEncounter.hmo.hmoName || selectedEncounter.hmo.providerName;
   const isSigned = Boolean(selectedEncounter.doctorSignedAt);
 
@@ -93,10 +92,10 @@ export const DoctorQuickSignModal: React.FC = () => {
                 {doctorName}
               </div>
               <div className="text-xs text-slate-600 mt-1">
-                License: <span className="font-mono font-medium text-slate-800">{prc}</span> • Internal Medicine / Surgery
+                License: <span className="font-mono font-medium text-slate-800">{prc}</span> • {selectedEncounter.attendingDoctorObj?.specialization || 'Attending physician'}
               </div>
               <div className="text-xs text-slate-500 mt-0.5 font-mono">
-                +63 917 882 1920
+                {selectedEncounter.attendingDoctorObj?.contactNumber || 'Contact hospital billing'}
               </div>
             </div>
             <div className="text-right">
@@ -195,7 +194,7 @@ export const DoctorQuickSignModal: React.FC = () => {
                   variant="warning"
                   confirmVariant="warning"
                   size="md"
-                  className="py-2.5 px-3 rounded-lg font-semibold text-sm shadow-xs justify-center"
+                  className="!h-14 w-full px-3 rounded-lg font-semibold text-sm shadow-xs justify-center leading-5"
                   contextInfo={[
                     { label: 'Attending Physician', value: selectedEncounter.attendingDoctor },
                     { label: 'Declared PF', value: formatPeso(declared) },
@@ -208,12 +207,9 @@ export const DoctorQuickSignModal: React.FC = () => {
                   size="md"
                   variant="secondary"
                   icon={Send}
-                  onClick={() => {
-                    nudgeDoctor(selectedEncounter.id);
-                    closeDoctorQuickSign();
-                  }}
+                  disabled title="SMS delivery is not configured" className="!h-14 w-full px-3 justify-center !whitespace-normal leading-5"
                 >
-                  Send SMS Link
+                  SMS Delivery Unavailable
                 </Button>
               </div>
             </div>

@@ -1,5 +1,6 @@
+import {gatePassPayload} from '../../../shared/gatePassPayload';
 import { Hono } from 'hono';
-import { eq, and, desc, asc } from 'drizzle-orm';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import {
   encounters,
@@ -46,7 +47,7 @@ async function getPatientEncounters(patientId: string, facilityId: string) {
     .select()
     .from(encounters)
     .where(and(eq(encounters.patientId, patientId), eq(encounters.facilityId, facilityId)))
-    .orderBy(desc(encounters.admissionTimestamp));
+    .orderBy(asc(sql`case when ${encounters.stage} <> 'CLEARED_GATE_PASS' then 0 when exists (select 1 from ${dischargePasses} where ${dischargePasses.encounterId} = ${encounters.id} and ${dischargePasses.status} = 'ACTIVE_READY_FOR_EXIT') then 1 else 2 end`), desc(encounters.admissionTimestamp), desc(encounters.createdAt), desc(encounters.id));
 }
 
 // Allowlisted projection: adding a staff field cannot expose it to patients.
@@ -81,7 +82,7 @@ export async function toPatientSafeEncounter(hydrated: Awaited<ReturnType<typeof
       totalCaseRate: ph.totalCaseRate, hciAmount: ph.hciAmount, pfAmount: ph.pfAmount, isNbb: ph.isNbb, rthRiskScore: ph.rthRiskScore, status: ph.status },
     dischargePass: pass ? { passNumber: pass.passNumber, status: pass.status, settledAmount: pass.settledAmount,
       roomBed: pass.roomBed, issuedAt: pass.issuedAt, verifiedAt: pass.verifiedAt, exitPin: passRows[0]?.exitPin ?? null,
-      qrPayload: passRows[0]?.exitPin ? `MEDCORE-PASS:${pass.passNumber}:${passRows[0].exitPin}` : null } : undefined,
+      qrPayload: gatePassPayload({passNumber:pass.passNumber,status:pass.status,exitPin:passRows[0]?.exitPin}) } : undefined,
     promissoryNote: h.promissoryNote ? { id: h.promissoryNote.id, principalAmount: h.promissoryNote.principalAmount,
       installmentMonths: h.promissoryNote.installmentMonths, monthlyInstallment: h.promissoryNote.monthlyInstallment, status: h.promissoryNote.status } : undefined,
     disputes: h.disputes.map((d) => ({ id: d.id, itemDescription: d.itemDescription, contestedAmount: d.contestedAmount,
@@ -181,8 +182,8 @@ patientApp.get('/me/overview', requireAuth, async (c) => {
 
   const stageIndex = STAGE_ORDER.indexOf(current.stage);
   const checklist = [
-    { key: 'clinical', label: 'Doctor clearance', done: stageIndex > 0 || current.stage === 'CLEARED_GATE_PASS' },
-    { key: 'insurance', label: 'Insurance verified', done: Boolean((safe as any).hmo?.initialLoaApproved) || stageIndex >= 3 },
+    { key: 'clinical', label: 'Doctor clearance', done: stageIndex >= 2 || Boolean(current.doctorSignedAt) },
+    { key: 'insurance', label: 'Insurance verified', done: (safe as any).hmo?.finalLoaStatus === 'APPROVED' || (safe as any).hmo?.providerName === 'None' },
     { key: 'billing', label: 'Billing reviewed', done: stageIndex >= 4 },
     {
       key: 'payment',

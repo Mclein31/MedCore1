@@ -81,6 +81,8 @@ gatePassApp.post(
       );
     }
 
+    if(!['ACTIVE_READY_FOR_EXIT','VERIFIED_AT_LOBBY'].includes(pass.status))return apiError(c,409,'PASS_INACTIVE','This pass is no longer active. Contact hospital billing.');
+
     // Guard against repeated exit pass verification (Idempotency)
     if (pass.status === 'VERIFIED_AT_LOBBY') {
       return c.json({

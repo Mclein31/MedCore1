@@ -1,3 +1,4 @@
+import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import React, { useState, useRef, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { Encounter } from '@/types/domain';
@@ -29,10 +30,10 @@ import {
   Scale,
   ArrowRight
 } from 'lucide-react';
-import { ConfirmButton, Button, IconButton, SearchInput, SegmentedTabs } from '@/components/common';
+import { ConfirmButton, Button, IconButton, SegmentedTabs } from '@/components/common';
 
 export const ActiveDischargeRadar: React.FC = () => {
-  const {
+  const { searchQuery,
     encounters,
     selectedEncounterId,
     selectEncounter,
@@ -40,6 +41,7 @@ export const ActiveDischargeRadar: React.FC = () => {
     openDoctorQuickSign,
     openPromissoryModal,
     openGatePassModal,
+    issueDigitalGatePass,
     applyAccreditedCeiling,
     clearPharmacyRts,
     approveHmoFinalLoa,
@@ -52,7 +54,7 @@ export const ActiveDischargeRadar: React.FC = () => {
     deleteEncounter
   } = useMedCore();
 
-  const [filterQuery, setFilterQuery] = useState('');
+  const filterQuery = searchQuery;
   const [viewMode, setViewMode] = useState<'MASTER_DETAIL' | 'TABLE' | 'CARD_LIST'>('MASTER_DETAIL');
   const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
   const [mobileActivePane, setMobileActivePane] = useState<'QUEUE' | 'DETAIL'>('QUEUE');
@@ -100,7 +102,7 @@ export const ActiveDischargeRadar: React.FC = () => {
       const matchDoctor = enc.attendingDoctor.toLowerCase().includes(q);
       const matchHmo = (enc.hmo.hmoName || enc.hmo.providerName).toLowerCase().includes(q);
       const matchDiag = (enc.primaryDiagnosis || '').toLowerCase().includes(q);
-      return matchName || matchRoom || matchDoctor || matchHmo || matchDiag;
+      return matchName || matchRoom || matchDoctor || matchHmo || matchDiag || matchesEncounterSearch(enc,filterQuery);
     }
     return true;
   });
@@ -284,8 +286,7 @@ export const ActiveDischargeRadar: React.FC = () => {
             onAction: (e?: React.MouseEvent) => {
               if (e) e.stopPropagation();
               selectEncounter(enc.id);
-              openGatePassModal();
-              return Promise.resolve();
+              return issueDigitalGatePass(enc.id);
             }
           };
         }
@@ -456,6 +457,8 @@ export const ActiveDischargeRadar: React.FC = () => {
       );
     }
 
+    if(enc.stage==='PENDING_SETTLEMENT'&&Number(enc.remainingBalance)===0)return <ConfirmButton size="sm" variant="success" label="Release Digital Gate Pass" modalTitle="Release hospital discharge pass?" modalDescription="All discharge checks are complete and no patient balance remains." confirmLabel="Release Gate Pass" onConfirm={()=>issueDigitalGatePass(enc.id)}/>;
+
     // 5. Default
     return (
       <Button
@@ -515,14 +518,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           <div className="h-5 w-px bg-slate-200 hidden sm:block" />
 
           {/* Search Input: Equal Height h-9 */}
-          <SearchInput
-            size="md"
-            placeholder="Search patients, rooms, doctors..."
-            value={filterQuery}
-            onChange={setFilterQuery}
-            onClear={() => setFilterQuery('')}
-            className="w-48 sm:w-60"
-          />
+
 
           {/* Admit Inpatient Button: Equal Height h-9 */}
           <Button

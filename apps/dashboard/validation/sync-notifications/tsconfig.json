@@ -1,0 +1,5 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": { "types": ["node"], "noUnusedLocals": false, "noUnusedParameters": false },
+  "include": ["checks.tsx", "../../../../scripts/verify-sync-and-notifications.ts", "../../../server/__tests__/notifications.ts"]
+}

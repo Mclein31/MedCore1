@@ -88,7 +88,7 @@ async function seed() {
     const defaultPassword = 'HospitalRCM2026!';
     const userRoleConfigs: Array<{
       username: string; email: string; fullName: string; role: string; title: string;
-      avatar: string; prc: string | null; pan: string | null; phone: string;
+      avatar: string; prc: string | null; pan: string | null; phone: string | null;
       password?: string; linkedMrn?: string;
     }> = [
       {
@@ -252,6 +252,10 @@ async function seed() {
         prc: 'PRC-0044192',
         pan: 'PAN-5510-8821',
         phone: '0917-882-9910'
+      }
+      ,{
+        username:'mobile.admin.demo',email:'mobile.admin.demo@example.test',fullName:'Mobile Demo Administrator',
+        role:'HOSPITAL_CFO',title:'Patient Presentation Account',avatar:'MD',prc:null,pan:null,phone:null
       }
     ];
 
@@ -428,6 +432,7 @@ async function seed() {
     console.log('[5/7] Ingesting 250 Encounters & Clinical/Financial Relational Nodes...');
     const defaultDoctorId = userIdByUsername.get('manuel.reyes')!;
 
+    const occupiedBedIds = new Set<string>();
     let totalChargemasterCount = 0;
     let totalWaterfallsCount = 0;
     let totalClaimsCount = 0;
@@ -463,25 +468,10 @@ async function seed() {
       );
       const patientId = patientRes.rows[0].id;
 
-      // 4.2 Resolve Bed ID
-      let matchedBedId = bedIdByNumber.get(enc.roomBed);
-      if (!matchedBedId) {
-        // Map to an existing bed from the 200 operational beds inventory
-        const allBedNumbers = Array.from(bedIdByNumber.keys());
-        const hash = Math.abs(enc.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0));
-        const fallbackBedNumber = allBedNumbers[hash % allBedNumbers.length];
-        matchedBedId = bedIdByNumber.get(fallbackBedNumber)!;
-      }
-
-      await client.query(
-        `
-        UPDATE beds SET
-          status = $1,
-          updated_at = NOW()
-        WHERE id = $2;
-      `,
-        [enc.stage === 'CLEARED_GATE_PASS' ? 'HOUSEKEEPING' : 'OCCUPIED', matchedBedId]
-      );
+      // Historic or synthetic rooms never overwrite a physical bed owner.
+      const candidateBedId=bedIdByNumber.get(enc.roomBed);
+      const matchedBedId=enc.stage!=='CLEARED_GATE_PASS'&&candidateBedId&&!occupiedBedIds.has(candidateBedId)?candidateBedId:null;
+      if(matchedBedId)occupiedBedIds.add(matchedBedId);
 
       // 4.3 Resolve Attending Physician ID
       const doctorId = (enc.id === 'enc-8812' ? userIdByUsername.get('carlos.mendoza') : userIdByPan.get(enc.doctorPan)) || defaultDoctorId;
@@ -538,8 +528,8 @@ async function seed() {
       const insertedEncounterId = encRes.rows[0].id;
 
       // Update bed current_encounter_id if occupied
-      if (enc.stage !== 'CLEARED_GATE_PASS') {
-        await client.query('UPDATE beds SET current_encounter_id = $1 WHERE id = $2;', [
+      if (matchedBedId) {
+        await client.query("UPDATE beds SET status = 'OCCUPIED', current_encounter_id = $1 WHERE id = $2;", [
           insertedEncounterId,
           matchedBedId
         ]);
@@ -734,7 +724,7 @@ async function seed() {
         const issuedTs = dp?.issuedAt ? new Date(dp.issuedAt) : new Date();
         const verifiedTs = dp?.verifiedAt ? new Date(dp.verifiedAt) : null;
         const seedSecret = resolveGatePassSecret(process.env.GATE_PASS_SECRET, false);
-        const hmac = dp?.hmacSignature || (await generateGatePassHmac(insertedEncounterId, settledAmount, issuedTs.toISOString(), seedSecret));
+        const hmac = await generateGatePassHmac(insertedEncounterId, settledAmount, issuedTs.toISOString(), seedSecret);
         const exitPin = await generateDeterministicExitPin(passNum, seedSecret);
 
         await client.query(

@@ -1,3 +1,4 @@
+import {apiClient} from '@/api';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useMedCore } from '@/context/MedCoreContext';
@@ -17,7 +18,12 @@ export const EditEncounterModal: React.FC = () => {
   const [dailyRoomRate, setDailyRoomRate] = useState<number>(3200);
   const [attendingDoctor, setAttendingDoctor] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error,setError]=useState<string|null>(null);
 
+  const [availableBeds,setAvailableBeds]=useState<string[]>([]);
+  useEffect(()=>{if(!isEditEncounterModalOpen)return;let active=true;setAvailableBeds([]);setError(null);
+    apiClient.getBeds().then(res=>{if(active)setAvailableBeds(res.items.filter(b=>b.status==='AVAILABLE'&&!b.currentEncounterId).map(b=>b.bedNumber));}).catch(error=>{if(active)setError(error instanceof Error?error.message:'Could not load available beds.');});return()=>{active=false;};
+  },[isEditEncounterModalOpen]);
   useEffect(() => {
     if (encounterToEdit) {
       setPrimaryDiagnosis(encounterToEdit.primaryDiagnosis || '');
@@ -42,27 +48,19 @@ export const EditEncounterModal: React.FC = () => {
     e.preventDefault();
     if (!primaryDiagnosis.trim()) return;
 
-    setIsSubmitting(true);
+    setIsSubmitting(true);setError(null);
     try {
       await editEncounter(encounterToEdit.id, {
         primaryDiagnosis: primaryDiagnosis.trim(),
         roomBed,
-        dailyRoomRate,
-        attendingDoctor
+        dailyRoomRate
       });
       closeEditEncounterModal();
-    } finally {
+    } catch(error) {setError(error instanceof Error?error.message:'The edit was not confirmed. Try again.');} finally {
       setIsSubmitting(false);
     }
   };
 
-  const roomOptions = [
-    'Bed 401', 'Bed 402', 'Bed 408-A', 'Bed 412', 'Bed 415',
-    'Bed 501', 'Bed 506', 'Bed 512-B', 'Bed 518', 'Bed 525',
-    'Bed 301-A', 'Bed 301-B', 'Bed 304', 'Bed 314-A', 'Bed 318-B',
-    'Bed 201', 'Bed 210', 'Bed 214', 'Bed 220', 'Bed 224',
-    'ED-1', 'ED-23', 'Suite 421', 'ICU-7'
-  ];
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -92,7 +90,8 @@ export const EditEncounterModal: React.FC = () => {
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        {error&&<p role="alert" className="px-6 py-3 text-sm text-rose-700">{error}</p>}
+      <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-blue-600" />
@@ -115,12 +114,13 @@ export const EditEncounterModal: React.FC = () => {
               </label>
               <Select
                 size="md"
+                disabled={encounterToEdit.stage==='CLEARED_GATE_PASS'}
                 value={roomBed}
                 onChange={(e) => setRoomBed(e.target.value)}
                 wrapperClassName="w-full"
                 className="w-full text-sm font-medium"
               >
-                {roomOptions.map((b) => (
+                {[encounterToEdit.roomBed,...availableBeds.filter(b=>b!==encounterToEdit.roomBed)].map((b) => (
                   <option key={b} value={b}>{b}</option>
                 ))}
               </Select>
@@ -151,7 +151,7 @@ export const EditEncounterModal: React.FC = () => {
               type="text"
               required
               value={attendingDoctor}
-              onChange={(e) => setAttendingDoctor(e.target.value)}
+              readOnly title="Physician assignment cannot be changed from this editor"
               className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
             />
           </div>

@@ -1,0 +1,47 @@
+[PASS] invalid government IDs cannot finance or clear a bill through direct API calls
+[PASS] each supported government ID persists canonically and equivalent retries reuse the note
+[PASS] centavo guards reject fractional, nonfinite, zero and negative amounts
+[PASS] patient cannot mutate another patient or facility, even with a known cached key
+[PASS] cached key from another stay returns conflict without disclosure
+[PASS] same payment retry creates one payment; confirmations omit staff data
+[PASS] different payment keys preserve cumulative balances under overlapping handlers
+[PASS] payment and note cannot both consume the same original balance
+[PASS] overpayments and oversized notes do not mutate balances
+[PASS] full note retry recovers the same agreement and pass after zero balance
+[PASS] disputes require encounter ownership and charge membership
+[PASS] blank registered phone cannot pass self-registration
+[PASS] staff predicates retain facility scope; unlinked patients fail closed
+[PASS] tiny and large installment plans stay nonnegative and reconcile to centavos
+[PASS] central access blocks anonymous and patient internal reads including aliases
+[PASS] stale MRN and phone-only accounts cannot select a different family record
+[PASS] patient projection excludes nested identifiers, signatures, payment metadata and staff fields
+[PASS] patients cannot settle early-stage bills; hosted payments use the same simulated processor
+[PASS] recalculation retains paid and financed principal without restoring cash debt
+[PASS] payment and recalculation cannot restore an older paid balance
+[PASS] all four methods persist successful records and update the correct bill
+[PASS] full settlement is paid and different duplicate keys cannot pay it again
+[PASS] receipt and payment history remain retrievable by a fresh router
+[PASS] card secrets and missing keys/method metadata are rejected without mutation
+[PASS] Final LOA approval confirms persisted status for each authorized staff role
+[PASS] Final LOA rejects anonymous users, patient roles and another facility
+Session lookup failed.
+[PASS] real authentication middleware rejects expired sessions and distinguishes DB outages
+[PASS] patients cannot bypass dedicated note/cashier flows through online payments
+[PASS] mobile presentation capability requires the reserved persisted principal
+[PASS] ordinary patient and CFO accounts cannot browse or select other patients
+[PASS] presentation directory and selected records remain facility scoped
+[PASS] role override headers cannot grant the presentation capability
+[PASS] money validation rejects amounts beyond numeric(15,2) before a settlement write
+[PASS] all roles reject new early-stage payments and notes without mutation
+[PASS] QuickSign synchronizes PF gross, allocations, waterfall, stage and audit in one transaction
+[PASS] QuickSign insertion and tiny fee keep coverage within the confirmed gross
+[PASS] QuickSign audit failure rolls back the fee, balance, stage and timeline
+[PASS] supervisory waiver shares transaction context and confirms exact zero OOP and balance
+[PASS] supervisory waiver audit failure rolls back charge, dispute, waterfall and balance
+[PASS] payment receipt and audit failure leave no orphaned rows or changed balance
+[PASS] HMO audit failure cannot expose a settlement stage or persist changed coverage
+[PASS] charge and HMO money schemas reject fractional centavos before any write
+[PASS] bill finalize and send persist state/timeline without changing the authoritative balance
+[PASS] bill lifecycle rejects early stages, foreign facilities and patient staff actions
+[PASS] bill finalization audit failure rolls back state and its delivery timeline
+SERVER_HARDENING_CHECKS_DONE passed=45; no database connected

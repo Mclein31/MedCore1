@@ -1,17 +1,18 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
 import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
-import { ConfirmButton, Button, SearchInput, Select, SegmentedTabs } from '@/components/common';
+import { ConfirmButton, Button, Select, SegmentedTabs } from '@/components/common';
 
 export const CoverageApprovalsPage: React.FC = () => {
-  const { encounters, approveHmoFinalLoa, openDossierDrawer, printDocument } = useMedCore();
+  const { searchQuery, encounters, approveHmoFinalLoa, openDossierDrawer, printDocument, refreshEncounters } = useMedCore();
   const [isVerifying, setIsVerifying] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPayer, setFilterPayer] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+  useEffect(()=>{ setCurrentPage(1); }, [searchQuery]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const handlePageChange = (newPage: number) => {
@@ -21,11 +22,9 @@ export const CoverageApprovalsPage: React.FC = () => {
     }
   };
 
-  const triggerBatchVerification = () => {
+  const triggerBatchVerification = async () => {
     setIsVerifying(true);
-    setTimeout(() => {
-      setIsVerifying(false);
-    }, 1200);
+    try { await refreshEncounters(0); } finally { setIsVerifying(false); }
   };
 
   const handlePrintRoster = () => {
@@ -72,7 +71,7 @@ export const CoverageApprovalsPage: React.FC = () => {
       const card = (enc.hmo.cardMasked || '').toLowerCase();
       const code = (enc.hmo.approvalCode || enc.hmo.loaNumber || '').toLowerCase();
       const room = enc.roomBed.toLowerCase();
-      return pName.includes(q) || card.includes(q) || code.includes(q) || room.includes(q);
+      return matchesEncounterSearch(enc,q) || pName.includes(q) || card.includes(q) || code.includes(q) || room.includes(q);
     }
     return true;
   });
@@ -124,21 +123,22 @@ export const CoverageApprovalsPage: React.FC = () => {
             icon={RefreshCw}
             isLoading={isVerifying}
             onClick={triggerBatchVerification}
-            title="Ping All Payer Gateways"
+            title="Refresh Coverage"
           >
-            {isVerifying ? 'Pinging payer gateways...' : 'Ping All Payer Gateways'}
+            {isVerifying ? 'Refreshing Coverage...' : 'Refresh Coverage'}
           </Button>
         </div>
       </div>
 
       {/* Gateway Status Strip */}
+      <p className="text-xs text-slate-500">Gateway configuration preview. External payer connectivity and latency are not monitored.</p>
       <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-xs text-slate-600 shrink-0">
         {hmoGateways.map((g) => (
           <div key={g.name} className="flex items-center gap-2 p-1.5 rounded-lg bg-slate-50 border border-slate-100">
-            <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-slate-400 shrink-0" />
             <div className="min-w-0">
               <div className="font-semibold text-slate-900 text-xs truncate">{g.name}</div>
-              <div className="text-slate-400 font-mono text-[10px]">{g.latency} · {g.successRate}</div>
+              <div className="text-slate-400 font-mono text-[10px]">Connection unavailable</div>
             </div>
           </div>
         ))}
@@ -159,20 +159,7 @@ export const CoverageApprovalsPage: React.FC = () => {
             </div>
 
             {/* Search Input */}
-            <SearchInput
-              size="sm"
-              placeholder="Search patient, card, approval code..."
-              value={searchQuery}
-              onChange={(val) => {
-                setSearchQuery(val);
-                setCurrentPage(1);
-              }}
-              onClear={() => {
-                setSearchQuery('');
-                setCurrentPage(1);
-              }}
-              className="w-56 sm:w-64"
-            />
+
           </div>
 
           {/* Filter Bar */}

@@ -163,9 +163,9 @@ export const EncountersLedgerPage: React.FC = () => {
                 fullWidth
                 size="md"
                 variant="primary"
-                onClick={() => alert(`Pre-admission orientation link generated for ${currentProc.name}`)}
+                disabled title="SMS delivery is not configured"
               >
-                Send Upfront Orientation SMS
+                SMS Delivery Unavailable
               </Button>
             </div>
 

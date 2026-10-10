@@ -27,7 +27,6 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
     openPromissoryModal,
     openGatePassModal,
     advanceStage,
-    nudgeDoctor,
     clearPharmacyRts,
     approveHmoFinalLoa,
     settlePatientBalance
@@ -83,16 +82,12 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
         return (
           <div className="flex gap-2 mt-3">
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                selectEncounter(encounter.id);
-                nudgeDoctor(encounter.id);
-              }}
+              disabled
               className="flex-1 py-2 px-2.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-medium text-slate-700 flex items-center justify-center gap-1 transition-colors"
-              title="Send SMS nudge to doctor"
+              title="SMS delivery is not configured"
             >
               <Send className="w-3 h-3 text-slate-500" />
-              <span>Nudge SMS</span>
+              <span>SMS Unavailable</span>
             </button>
             <button
               onClick={(e) => {
@@ -103,7 +98,7 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
               className="flex-1 py-2 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-xs"
             >
               <FileCheck2 className="w-3.5 h-3.5" />
-              <span>Apply Ceiling</span>
+              <span>Review Doctor PF</span>
             </button>
           </div>
         );

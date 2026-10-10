@@ -16,6 +16,7 @@ import bedsApp from './routes/beds';
 import analyticsApp from './routes/analytics';
 import chargesApp from './routes/charges';
 import patientApp from './routes/patient';
+import notificationsApp from './routes/notifications';
 
 const app = new Hono();
 
@@ -232,6 +233,7 @@ app.route('/api/v1/beds', bedsApp);
 app.route('/api/v1/analytics', analyticsApp);
 app.route('/api/v1', chargesApp);
 app.route('/api/v1/patient', patientApp);
+app.route('/api/v1/notifications', notificationsApp);
 
 // 404 Not Found Handler
 app.notFound((c) => {

@@ -9,6 +9,8 @@ export const DischargeDossierDrawer: React.FC = () => {
     isDossierDrawerOpen,
     closeDossierDrawer,
     dossierEncounter,
+    encounters,
+    advanceStage,
     applyAccreditedCeiling,
     clearPharmacyRts,
     approveHmoFinalLoa,
@@ -20,22 +22,18 @@ export const DischargeDossierDrawer: React.FC = () => {
     selectEncounter
   } = useMedCore();
 
+  const [copiedLink, setCopiedLink] = React.useState(false);
   if (!isDossierDrawerOpen || !dossierEncounter) return null;
 
-  const enc = dossierEncounter;
+  const enc = encounters.find(item=>item.id===dossierEncounter.id);
+  if (!enc) return null;
   const patientName = enc.patient.fullName || enc.patient.maskedName;
   const remainingMinutes = 45 - enc.elapsedMinutes;
   const isBreached = remainingMinutes <= 0;
 
-  const [copiedLink, setCopiedLink] = React.useState(false);
-
-  const handleDispatchLink = () => {
-    const { magicLink } = sendBillToPatient(enc.id);
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(magicLink).catch(() => {});
-    }
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 3000);
+  const handleDispatchLink = async () => {
+    try { await sendBillToPatient(enc.id); setCopiedLink(true); setTimeout(()=>setCopiedLink(false),3000); }
+    catch { /* The provider reports the failed dispatch; retain confirmed bill state. */ }
   };
 
   const handleOpenLedger = () => {
@@ -370,11 +368,13 @@ export const DischargeDossierDrawer: React.FC = () => {
               />
             )}
 
+            {enc.stage==='MGH_DECLARED'&&<ConfirmButton label="Initiate Discharge" modalTitle="Start discharge clearance?" modalDescription="Advance this stay to attending physician clearance." confirmLabel="Initiate Discharge" onConfirm={()=>advanceStage(enc.id)} />}
             <ConfirmButton
-              label="Issue Gate Pass"
-              modalTitle="Issue Digital Discharge Gate Pass?"
-              modalDescription={`Issue a cryptographically signed digital gate pass for ${patientName}. This certifies that all station clearances are completed.`}
-              confirmLabel="Issue Gate Pass"
+              disabled={!(enc.stage==='CLEARED_GATE_PASS'&&enc.dischargePass)&&!(enc.stage==='PENDING_SETTLEMENT'&&Number(enc.remainingBalance)===0)}
+              label={enc.dischargePass?'View Gate Pass':'Release Gate Pass'}
+              modalTitle="View Digital Discharge Gate Pass?"
+              modalDescription={`View the hospital-issued discharge pass for ${patientName}.`}
+              confirmLabel="View Gate Pass"
               variant="success"
               confirmVariant="success"
               contextInfo={[
@@ -386,9 +386,9 @@ export const DischargeDossierDrawer: React.FC = () => {
               className="py-2.5 px-3 rounded-lg font-bold text-sm shadow-xs justify-center"
               onConfirm={() => {
                 selectEncounter(enc.id);
-                issueDigitalGatePass(enc.id);
+                return issueDigitalGatePass(enc.id);
               }}
-              title="Generate cryptographic digital exit pass"
+              title="Available after confirmed hospital settlement"
             />
 
             <button
@@ -406,7 +406,7 @@ export const DischargeDossierDrawer: React.FC = () => {
             onClick={handleDispatchLink}
             className="w-full py-2 px-3 text-xs text-blue-600 hover:text-blue-800 font-semibold text-center transition-colors"
           >
-            {copiedLink ? '✓ eSOA Statement Dispatched & Copied to Clipboard!' : 'Dispatch Plain-Language Statement (eSOA Link) →'}
+            {copiedLink ? '✓ Bill is available in the patient app' : 'Send bill to patient app →'}
           </button>
         </div>
       </div>

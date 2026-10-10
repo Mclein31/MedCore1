@@ -13,7 +13,7 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
   const { client } = useAuth();
   const { currentEncounter, encounters, loading: patientLoading, error: patientError, refresh: refreshPatient } = usePatient();
   const load = useCallback(async () => { const api = createPaymentApi(client); const [payments, receipts, plans] = await Promise.all([api.getHistory(), api.getReceipts(), api.listPromissoryNotes()]); return { payments: payments.items, receipts: receipts.items, plans: plans.items }; }, [client]);
-  const { data, loading, error, refresh: loadList } = useResource(load);
+  const { data, loading, error, refresh: loadList } = useResource(load, 5000);
   const pullRefresh = usePullRefresh(loadList);
   const payments = data?.payments || [];
   const receipts = data?.receipts || [];

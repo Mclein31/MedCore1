@@ -28,7 +28,6 @@ export const PatientPortalStandalone: React.FC = () => {
     encounters,
     selectedEncounter,
     selectEncounter,
-    setActiveRole,
     setActiveRoute,
     fileBillingDispute,
     processDemoPayment,
@@ -117,12 +116,11 @@ export const PatientPortalStandalone: React.FC = () => {
   // Record patient view event on load
   useEffect(() => {
     if (recordPatientViewed) {
-      recordPatientViewed(enc.id);
+      void recordPatientViewed(enc.id).catch(()=>{ /* Retain confirmed state when view acknowledgement fails. */ });
     }
   }, [enc.id]);
 
   const handleReturnToHospital = () => {
-    setActiveRole('BILLING_SPECIALIST');
     setActiveRoute('COMMAND_CENTER');
   };
 

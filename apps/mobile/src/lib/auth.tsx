@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { ApiClient, ApiError } from './api';
 import { SessionToken } from './sessionToken';
+import { clearSavedPass } from './gatePassCache';
 import { ENV } from '../config/env';
 import { canUseMobile, isMobileDemoAdmin } from './mobileAccess';
 
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
   const patientScope = useRef<string | null>(null);
+  const cacheUser = useRef<string | null>(null);
   const session = useMemo(() => new SessionToken({
     read: () => Platform.OS === 'web' ? Promise.resolve(null) : SecureStore.getItemAsync(TOKEN_KEY),
     write: (value) => Platform.OS === 'web' ? Promise.resolve() : SecureStore.setItemAsync(TOKEN_KEY, value),
@@ -37,6 +39,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }), []);
   const publicClient = useMemo(() => new ApiClient(async () => null), []);
   const clearSession = useCallback(async () => {
+    const previousCacheUser=cacheUser.current;cacheUser.current=null;
+    if(previousCacheUser)void clearSavedPass(previousCacheUser).catch(()=>{});
     patientScope.current = null;
     setSelectedPatientId(null);
     setUser(null);
@@ -59,10 +63,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isMobileDemoAdmin(user) ? { patientId: selectedPatientId, getCurrent: () => patientScope.current } : undefined),
     [session, onExpired, user, selectedPatientId]);
   const selectPatient = useCallback((id: string) => {
+    if (!id?.trim()) throw new ApiError('Choose a hospital patient first.',400);
     if (!isMobileDemoAdmin(user)) throw new ApiError('Hospital patient browsing is not available to this account.', 403);
     patientScope.current = id;
     setSelectedPatientId(id);
   }, [user]);
+
+  const defaultPatient = useCallback(async (principal: SessionUser, directoryClient: ApiClient): Promise<string | null> => {
+    if (!isMobileDemoAdmin(principal)) return null;
+    try {
+      const directory=await directoryClient.get<{items:Array<{id:string;mrn:string}>}>('/patient/demo/patients');
+      if(!Array.isArray(directory.items)) throw new Error('The hospital directory is unavailable.');
+      return directory.items.find(patient=>patient.mrn==='MRN-2026-8812')?.id || directory.items[0]?.id || null;
+    } catch (error: unknown) {
+      if (error instanceof ApiError && (error.status === 401 || error.code === 'SESSION_CHANGED')) throw error;
+      setNotice('Choose a patient in Profile when the hospital directory is available.');
+      return null;
+    }
+  },[]);
 
   const retrySession = useCallback(async () => {
     setLoading(true);
@@ -77,14 +95,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setNotice('Use your patient account to access MedCore mobile.');
         return;
       }
-      if (!isMobileDemoAdmin(me.user)) { patientScope.current = null; setSelectedPatientId(null); }
+      const selected=await defaultPatient(me.user,authClient);
+      if (saved !== await session.get()) return;
+      patientScope.current=selected; setSelectedPatientId(selected);
+      cacheUser.current=me.user.id;
       setToken(saved);
       setUser(me.user);
     } catch (error: unknown) {
+      if (saved !== await session.get()) return;
       if (error instanceof ApiError && error.status === 401) await clearSession();
       else setSessionError(error instanceof Error ? error.message : 'We could not verify your session.');
     } finally { setLoading(false); }
-  }, [authClient, session, clearSession]);
+  }, [authClient, session, clearSession, defaultPatient]);
   useEffect(() => { void retrySession(); }, [retrySession]);
 
   const acceptSession = useCallback(async (res: AuthResponse) => {
@@ -95,12 +117,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new ApiError('Use your patient account to access MedCore mobile.', 403);
     }
     await session.set(res.token);
-    patientScope.current = null;
-    setSelectedPatientId(null);
-    setToken(res.token);
-    setUser(res.user);
     setNotice(null);
-  }, [session]);
+    try {
+      const selected = await defaultPatient(res.user, authClient);
+      if (res.token !== await session.get()) throw new ApiError('Your session changed. Please log in again.', 0, 'SESSION_CHANGED');
+      patientScope.current = selected;
+      setSelectedPatientId(selected);
+      cacheUser.current=res.user.id;
+      setToken(res.token);
+      setUser(res.user);
+    } catch (error: unknown) {
+      if (error instanceof ApiError && error.status === 401 && res.token === await session.get()) await clearSession();
+      throw error;
+    }
+  }, [session, defaultPatient, authClient, clearSession]);
   const login = useCallback(async (email: string, password: string) => {
     const res = await publicClient.request<AuthResponse>('/auth/login', {
       method: 'POST', body: JSON.stringify({ email: email.trim().toLowerCase(), password, facilityCode: ENV.facilityCode })

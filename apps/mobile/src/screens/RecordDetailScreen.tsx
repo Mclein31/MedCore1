@@ -1,6 +1,10 @@
 import { usePullRefresh } from '../hooks/usePullRefresh';
 import { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, Share, Text, View } from 'react-native';
+import { readSavedPass,parseSavedPass,reconcileSavedPass } from '../lib/gatePassCache';
+import { paymentAccountNamespace } from '../lib/mobileAccess';
+import { ApiError } from '../lib/api';
+import GatePassCard from '../components/GatePassCard';
 import { useAuth } from '../lib/auth';
 import { useResource } from '../hooks/useResource';
 import { createPaymentApi } from '../services/paymentApi';
@@ -8,36 +12,52 @@ import { createPatientApi } from '../services/patientApi';
 import { describeDischargeStage, formatDate, formatDateTime, formatPeso } from '../lib/format';
 import ReceiptSheet from '../components/ReceiptSheet';
 import BillBreakdown from '../components/BillBreakdown';
-import { C, Card, ConfirmationModal, ErrorState, LoadingState, RefreshNotice, Row, Screen, SecondaryButton, SectionHeader, StatusBadge, T } from '../components/ui';
+import { C, Card, ConfirmationModal, ErrorState, LoadingState, RefreshNotice, Row, Screen, SecondaryButton, SectionHeader, T } from '../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 
 export default function RecordDetailScreen({ route }: NativeStackScreenProps<RootStackParamList, 'RecordDetail'>) {
-  const { client } = useAuth();
+  const { client, user, selectedPatientId } = useAuth();
   const { encounterId, documentKind, documentId } = route.params;
   const load = useCallback(async () => {
     const api = createPaymentApi(client);
+    try {
     const [encounter, receipts, notes] = await Promise.all([
       createPatientApi(client).getEncounter(encounterId),
       documentKind === 'RECEIPT' ? api.getReceipts() : Promise.resolve({ items: [] }),
       documentKind === 'PROMISSORY_NOTE' ? api.listPromissoryNotes() : Promise.resolve({ items: [] })
     ]);
-    if (documentKind === 'GATE_PASS' && documentId !== encounter.dischargePass?.passNumber) throw new Error('This historical discharge pass is no longer the current pass. Contact hospital billing to review it.');
+    if(user)await reconcileSavedPass(user.id,paymentAccountNamespace(user,selectedPatientId||undefined),encounter.uuid,encounter).catch(()=>{});
+    if (documentKind === 'GATE_PASS' && documentId !== encounter.dischargePass?.passNumber) return {encounter:null,receipt:undefined,note:undefined,offlinePass:null,invalidPass:'This historical discharge pass is no longer the current pass. Contact hospital billing to review it.',confirmedAt:0};
     const receipt = receipts.items.find((item) => item.id === documentId || item.officialReceiptNumber === documentId);
     const note = notes.items.find((item) => item.id === documentId || item.noteNumber === documentId);
     if (documentKind === 'RECEIPT' && (!receipt || receipt.encounterNumber !== encounter.encounterNumber)) throw new Error('This receipt is not available for this stay.');
     if (documentKind === 'PROMISSORY_NOTE' && (!note || note.encounterNumber !== encounter.encounterNumber)) throw new Error('This payment plan is not available for this stay.');
-    return { encounter, receipt, note };
-  }, [client, encounterId, documentKind, documentId]);
-  const { data, loading, error, refresh } = useResource(load);
+    return { encounter, receipt, note, offlinePass:null,invalidPass:null,confirmedAt:Date.now() };
+    } catch(error) {
+      if(error instanceof ApiError&&[403,404].includes(error.status)) {
+        if(user)void reconcileSavedPass(user.id,paymentAccountNamespace(user,selectedPatientId||undefined),encounterId,null).catch(()=>{});
+        return {encounter:null,receipt:undefined,note:undefined,offlinePass:null,invalidPass:error.message,confirmedAt:0};
+      }
+      if(documentKind!=='GATE_PASS'||!(error instanceof ApiError)||error.status!==0||!['NETWORK_ERROR','TIMEOUT'].includes(error.code||'')||!user)throw error;
+      const saved=await readSavedPass(user.id,paymentAccountNamespace(user,selectedPatientId||undefined));
+      if(!saved||saved.pass.passNumber!==documentId||![saved.encounterId,saved.encounterNumber].includes(encounterId))return {encounter:null,receipt:undefined,note:undefined,offlinePass:null,invalidPass:'No valid saved discharge pass is available. Reconnect to refresh it.',confirmedAt:0};
+      return {encounter:null,receipt:undefined,note:undefined,offlinePass:saved,invalidPass:null,confirmedAt:saved.savedAt};
+    }
+  }, [client, encounterId, documentKind, documentId, user, selectedPatientId]);
+  const { data, loading, error, refresh } = useResource(load, 5000);
   const pullRefresh = usePullRefresh(refresh);
   const enc = data?.encounter;
   const [shareOpen, setShareOpen] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
-  if (loading && !enc) return <LoadingState message="Loading your hospital record…" />;
+  if (loading && !enc && !data?.offlinePass) return <LoadingState message="Loading your hospital record…" />;
+  if(data?.invalidPass)return <ErrorState message={data.invalidPass} onRetry={refresh}/>;
+  if(data?.offlinePass&&!parseSavedPass(JSON.stringify(data.offlinePass),paymentAccountNamespace(user!,selectedPatientId||undefined)))return <ErrorState message="The saved discharge pass expired. Reconnect to refresh it." onRetry={refresh}/>;
+  if(data?.offlinePass)return <Screen><ScrollView contentContainerStyle={{paddingBottom:32}}><SectionHeader title={data.offlinePass.encounterNumber}/><GatePassCard pass={data.offlinePass.pass} offline/></ScrollView></Screen>;
   if (!enc) return <ErrorState message={error || 'This record is not available.'} onRetry={refresh} />;
   const pass = enc.dischargePass;
-  const passActive = pass?.status === 'ACTIVE_READY_FOR_EXIT';
+  const passFresh=Date.now()-(data?.confirmedAt||0)<=86400000;
+  if(documentKind==='GATE_PASS'&&pass&&!passFresh)return <ErrorState message="Reconnect to refresh this discharge pass." onRetry={refresh}/>;
   async function shareSummary() {
     setShareOpen(false); setShareError(null);
     try { await Share.share({ message: `MedCore hospital stay ${enc!.encounterNumber}\nAdmitted ${formatDate(enc!.admissionDate)}\nPatient responsibility: ${formatPeso(enc!.waterfall.netPatientDue)}\nFor a full statement, contact the hospital billing desk.` }); }
@@ -46,7 +66,7 @@ export default function RecordDetailScreen({ route }: NativeStackScreenProps<Roo
   return <Screen><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />} showsVerticalScrollIndicator={false}>
     <RefreshNotice error={error} onRetry={refresh} />
     <Text style={[T.title, { marginTop: 12 }]}>{enc.encounterNumber}</Text><Text style={[T.meta, { marginTop: 6 }]}>Admitted {formatDate(enc.admissionDate)} · Room {enc.roomBed}</Text>
-    {pass && <><SectionHeader title="Your discharge pass" /><Card><StatusBadge tone={passActive ? 'ok' : pass.status === 'VERIFIED_AT_LOBBY' ? 'info' : 'warn'} text={passActive ? 'Ready for exit' : pass.status === 'VERIFIED_AT_LOBBY' ? 'Exit already verified' : 'Pass no longer active'} /><Row label="Pass number" value={pass.passNumber} />{pass.exitPin && passActive && <View style={{ paddingVertical: 20 }}><Text style={T.meta}>Exit PIN</Text><Text selectable style={[T.display, { marginTop: 6, letterSpacing: 4 }]}>{pass.exitPin}</Text></View>}<Text style={[T.body, { marginTop: 8 }]}>{passActive ? 'Show this pass number and exit PIN to lobby staff. Keep the PIN private.' : 'This pass cannot be used for exit. Contact hospital billing if you need a current pass.'}</Text><Row label="Issued" value={formatDateTime(pass.issuedAt)} /></Card></>}
+    {pass&&passFresh&&<><SectionHeader title="Your discharge pass"/><GatePassCard pass={pass}/></>}
     {documentKind === 'GATE_PASS' && !pass && <Text style={[T.body, { color: C.warning, marginTop: 12 }]}>No discharge pass is available for this stay. Contact your hospital billing desk.</Text>}
     {data?.receipt && <View testID="historical-payment-ticket" style={{ backgroundColor: C.paper, paddingHorizontal: 16, borderRadius: 12, marginTop: 16 }}><ReceiptSheet surroundingColor={C.paper} number={data.receipt.officialReceiptNumber} amount={data.receipt.amount} rail={data.receipt.paymentRail} payer={data.receipt.payerName} date={data.receipt.issuedAt} reference={data.receipt.paymentReference} bill={data.receipt.billReference || enc.billNumber || enc.encounterNumber} patient={data.receipt.patientName} mrn={data.receipt.patientMrn} status={data.receipt.status} /></View>}
     {data?.note && <><SectionHeader title="Selected payment plan" /><Card><Row label="Note number" value={data.note.noteNumber} /><Row label="Principal" value={formatPeso(data.note.principalAmount)} /><Row label="First due date" value={formatDate(data.note.firstDueDate)} />{data.note.schedule.map((amount, i) => <Row key={i} label={`Month ${i + 1}`} value={formatPeso(amount)} />)}</Card></>}

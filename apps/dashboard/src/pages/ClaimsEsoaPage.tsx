@@ -1,96 +1,52 @@
 import React, { useState, useEffect } from 'react';
+import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
 import { claimsApi } from '@/api';
 import { formatPhp } from '@/utils/formatters';
 import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer } from 'lucide-react';
-import { Button, IconButton, SearchInput, SegmentedTabs } from '@/components/common';
+import { Button, IconButton, SegmentedTabs } from '@/components/common';
 
 export const ClaimsEsoaPage: React.FC = () => {
-  const { encounters, printDocument } = useMedCore();
+  const { encounters, printDocument, searchQuery: claimSearch } = useMedCore();
   const [copied, setCopied] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string>(encounters[0]?.id || 'enc-8812');
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
   const [filterClaimStatus, setFilterClaimStatus] = useState<string>('ALL');
-  const [claimSearch, setClaimSearch] = useState<string>('');
-  const [serverXml, setServerXml] = useState<string | null>(null);
+  const [serverXml, setServerXml] = useState<{key:string;xml:string} | null>(null);
+  const [xmlError,setXmlError]=useState<string | null>(null);
+  const [xmlRetry,setXmlRetry]=useState(0);
   const [xmlLoading, setXmlLoading] = useState(false);
 
+  const [claimPage, setClaimPage] = useState(1);
+  const claimPageSize = 8;
+  useEffect(()=>{ setClaimPage(1); }, [claimSearch]);
+
   const currentEncounter = encounters.find((e) => e.id === selectedClaimId) || encounters[0];
-  const claim = currentEncounter.philhealth;
+  const claim = currentEncounter?.philhealth;
+  const xmlKey=JSON.stringify(currentEncounter);
 
-  // Unify PhilHealth Circular 2023-0026 eSOA XML generation with backend claimsApi
   useEffect(() => {
-    let isMounted = true;
-    if (!claim?.id) return;
-
+    let active=true;
+    setServerXml(null);setCopied(false);setXmlError(null);
+    if(!claim?.id) return;
     setXmlLoading(true);
-    claimsApi
-      .getPhilhealthEsoaXml(claim.id)
-      .then((xml: string) => {
-        if (isMounted && typeof xml === 'string' && xml.trim().startsWith('<?xml')) {
-          setServerXml(xml);
-        }
-      })
-      .catch((err: unknown) => {
-        console.warn('Backend eSOA XML unavailable, falling back to local schema generation:', err);
-      })
-      .finally(() => {
-        if (isMounted) setXmlLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [claim?.id, currentEncounter?.encounterNumber]);
-
-  // Deterministic PhilHealth Circular 2023-0026 eSOA XML conforming fallback payload
-  const fallbackXmlString = `<?xml version="1.0" encoding="UTF-8"?>
-<eSOA xmlns="http://www.philhealth.gov.ph/claims/esoa/v3" version="3.0">
-  <Header>
-    <HospitalCode>HOSP-NCR-004921</HospitalCode>
-    <HospitalName>St. Jude Medical Center Manila</HospitalName>
-    <BatchID>BAT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-001</BatchID>
-    <GenerationTimestamp>${new Date().toISOString()}</GenerationTimestamp>
-  </Header>
-  <ClaimDetails>
-    <ClaimID>${claim.id}</ClaimID>
-    <EncounterNumber>${currentEncounter.encounterNumber}</EncounterNumber>
-    <PatientPIN>${currentEncounter.patient.philhealthPin}</PatientPIN>
-    <MemberName>${currentEncounter.patient.fullName || currentEncounter.patient.maskedName}</MemberName>
-    <SeniorCitizenFlag>${currentEncounter.patient.isSeniorCitizen ? 'Y' : 'N'}</SeniorCitizenFlag>
-    <PWDFlag>${currentEncounter.patient.isPwd ? 'Y' : 'N'}</PWDFlag>
-    <AdmissionDate>${currentEncounter.admissionDate}</AdmissionDate>
-    <DischargeDate>${currentEncounter.mghOrderTimestamp}</DischargeDate>
-    <PrimaryICD10>${claim.primaryIcd10}</PrimaryICD10>
-    <PrimaryDescription>${claim.primaryDescription}</PrimaryDescription>
-    <CaseRateCode>${claim.caseRateCode}</CaseRateCode>
-    <HCICoverage>${claim.hciAmount.toFixed(2)}</HCICoverage>
-    <PFCoverage>${claim.pfAmount.toFixed(2)}</PFCoverage>
-    <TotalACRClaimed>${claim.totalCaseRate.toFixed(2)}</TotalACRClaimed>
-    <CF4ClinicalData>
-      <VitalsRecorded>${claim.cf4VitalsRecorded ? 'true' : 'false'}</VitalsRecorded>
-      <CourseInWardRecorded>${claim.cf4CourseInWardRecorded ? 'true' : 'false'}</CourseInWardRecorded>
-      <LabResultsConsistent>${claim.cf4LabsConsistent ? 'true' : 'false'}</LabResultsConsistent>
-    </CF4ClinicalData>
-    <StatutoryWaterfalls>
-      <GrossHospitalCharges>${currentEncounter.waterfall.grossHospitalCharges.toFixed(2)}</GrossHospitalCharges>
-      <VATExemption>${currentEncounter.waterfall.vatExemption.toFixed(2)}</VATExemption>
-      <SeniorDiscount>${currentEncounter.waterfall.seniorPwdDiscount.toFixed(2)}</SeniorDiscount>
-      <HMOApprovedAmount>${currentEncounter.waterfall.hmoApprovedAmount.toFixed(2)}</HMOApprovedAmount>
-      <NetPatientOOPDue>${currentEncounter.waterfall.netPatientDue.toFixed(2)}</NetPatientOOPDue>
-    </StatutoryWaterfalls>
-  </ClaimDetails>
-</eSOA>`;
-
-  const eSoaXmlString = serverXml || fallbackXmlString;
-
-  const handleCopyXml = () => {
-    navigator.clipboard.writeText(eSoaXmlString);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    claimsApi.getPhilhealthEsoaXml(claim.id).then(xml=>{
+      if(!active) return;
+      if(typeof xml!=='string'||!xml.trim().startsWith('<?xml')) throw new Error('The server returned invalid XML.');
+      setServerXml({key:xmlKey,xml});
+    }).catch(error=>{if(active)setXmlError(error instanceof Error?error.message:'Could not load the hospital XML.');})
+      .finally(()=>{if(active)setXmlLoading(false);});
+    return()=>{active=false;};
+  },[xmlKey,xmlRetry]);
+  const eSoaXmlString=serverXml?.key===xmlKey?serverXml.xml:'';
+  const handleCopyXml=async()=>{
+    if(!eSoaXmlString) return;
+    try {await navigator.clipboard.writeText(eSoaXmlString);setCopied(true);setTimeout(()=>setCopied(false),2000);}
+    catch {setXmlError('Clipboard access failed. You can download the XML instead.');}
   };
 
   const handleDownloadXml = () => {
+    if(!eSoaXmlString) return;
     const blob = new Blob([eSoaXmlString], { type: 'application/xml' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -99,6 +55,8 @@ export const ClaimsEsoaPage: React.FC = () => {
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  if(!currentEncounter)return <div className="p-6 text-sm text-slate-600">No hospital claims are available.</div>;
 
   const filteredClaims = encounters.filter((enc) => {
     if (filterClaimStatus === 'CLEAN' && enc.philhealth.status !== 'CLEAN') return false;
@@ -115,7 +73,7 @@ export const ClaimsEsoaPage: React.FC = () => {
       const icd = (enc.philhealth.primaryIcd10 || '').toLowerCase();
       const diag = (enc.philhealth.primaryDescription || '').toLowerCase();
       return (
-        pName.includes(q) ||
+        matchesEncounterSearch(enc,q) || pName.includes(q) ||
         cid.includes(q) ||
         encNum.includes(q) ||
         room.includes(q) ||
@@ -127,8 +85,7 @@ export const ClaimsEsoaPage: React.FC = () => {
     return true;
   });
 
-  const [claimPage, setClaimPage] = useState(1);
-  const claimPageSize = 8;
+
 
   const totalClaimPages = Math.max(1, Math.ceil(filteredClaims.length / claimPageSize));
   const safeClaimPage = Math.min(claimPage, totalClaimPages);
@@ -146,6 +103,7 @@ export const ClaimsEsoaPage: React.FC = () => {
 
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
+      {xmlError&&<div role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{xmlError} <button type="button" onClick={()=>setXmlRetry(value=>value+1)} className="underline">Retry XML</button></div>}
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -205,20 +163,7 @@ export const ClaimsEsoaPage: React.FC = () => {
               </p>
             </div>
 
-            <SearchInput
-              size="sm"
-              placeholder="Search patient, claim ID, diagnosis..."
-              value={claimSearch}
-              onChange={(val) => {
-                setClaimSearch(val);
-                setClaimPage(1);
-              }}
-              onClear={() => {
-                setClaimSearch('');
-                setClaimPage(1);
-              }}
-              className="w-64 sm:w-72"
-            />
+
           </div>
 
           <SegmentedTabs
@@ -463,7 +408,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                 size="sm"
                 variant="secondary"
                 icon={copied ? Check : Copy}
-                onClick={handleCopyXml}
+                disabled={!eSoaXmlString||xmlLoading} onClick={()=>void handleCopyXml()}
               >
                 {copied ? 'Copied' : 'Copy XML'}
               </Button>
@@ -471,7 +416,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                 size="sm"
                 variant="primary"
                 icon={Download}
-                onClick={handleDownloadXml}
+                disabled={!eSoaXmlString||xmlLoading} onClick={handleDownloadXml}
               >
                 Download .XML
               </Button>
@@ -479,7 +424,7 @@ export const ClaimsEsoaPage: React.FC = () => {
           </div>
 
           <pre className="p-4 rounded-lg bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto max-h-[340px] leading-relaxed">
-            {eSoaXmlString}
+            {xmlLoading?'Loading hospital XML…':eSoaXmlString||'XML is unavailable. Retry before exporting.'}
           </pre>
         </div>
       </div>
@@ -522,7 +467,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                   size="sm"
                   variant="secondary"
                   icon={copied ? Check : Copy}
-                  onClick={handleCopyXml}
+                  disabled={!eSoaXmlString||xmlLoading} onClick={()=>void handleCopyXml()}
                 >
                   {copied ? 'Copied' : 'Copy XML'}
                 </Button>
@@ -530,7 +475,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                   size="sm"
                   variant="primary"
                   icon={Download}
-                  onClick={handleDownloadXml}
+                  disabled={!eSoaXmlString||xmlLoading} onClick={handleDownloadXml}
                 >
                   Download .XML
                 </Button>
@@ -582,7 +527,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                   <span>Encoding: UTF-8</span>
                 </div>
                 <pre className="font-mono text-xs text-emerald-400 overflow-x-auto max-h-[420px] leading-relaxed select-all">
-                  {eSoaXmlString}
+                  {xmlLoading?'Loading hospital XML…':eSoaXmlString||'XML is unavailable. Retry before exporting.'}
                 </pre>
               </div>
             </div>

@@ -23,7 +23,7 @@ globalThis.fetch = (...args) => dom.window.fetch(...args);
 const temp = await mkdtemp(path.join(os.tmpdir(), 'medcore-loa-dom-'));
 try {
   const bundle = path.join(temp, 'checks.mjs');
-  await build({ entryPoints: [path.join(directory, 'checks.tsx')], outfile: bundle, bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', tsconfig: path.join(directory, '../../tsconfig.json'), loader: { '.css': 'empty' }, alias: { react: path.join(project, 'node_modules/react'), 'react-dom': path.join(project, 'node_modules/react-dom') }, banner: { js: "import {createRequire as __require} from 'node:module'; const require = __require(import.meta.url);" } });
+  await build({ entryPoints: [path.join(directory, 'checks.tsx')], outfile: bundle, bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', tsconfig: path.join(directory, '../../tsconfig.json'), loader: { '.css': 'empty' }, alias: { react: path.join(project, 'node_modules/react'), 'react-dom': path.join(project, 'node_modules/react-dom') }, banner: { js: "import {createRequire as __auditCreateRequire} from 'node:module'; const require = __auditCreateRequire(import.meta.url);" } });
   await import(pathToFileURL(bundle).href);
   const results = dom.window.__dashboardLoaResults;
   if (!results) throw new Error('Dashboard regression suite did not finish.');

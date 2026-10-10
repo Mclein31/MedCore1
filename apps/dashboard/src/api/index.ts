@@ -89,6 +89,10 @@ class UnifiedMedCoreApiClient {
     return this.patients.getEncounter(id);
   }
 
+  public finalizeBill(id: string) { return this.patients.finalizeBill(id); }
+  public sendBill(id: string) { return this.patients.sendBill(id); }
+  public recordBillViewed(id: string) { return this.patients.recordBillViewed(id); }
+
   public advanceStage(id: string) {
     return this.patients.advanceStage(id);
   }

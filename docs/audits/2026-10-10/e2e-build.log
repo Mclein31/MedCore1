@@ -1,0 +1,18 @@
+
+> medcore-dashboard@1.0.0 build
+> tsc -p apps/dashboard/tsconfig.json && vite build --config apps/dashboard/vite.config.ts
+
+vite v6.4.3 building for production...
+transforming...
+✓ 1731 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   1.03 kB │ gzip:   0.53 kB
+dist/assets/index-BAPFQcyx.css   75.48 kB │ gzip:  12.99 kB
+dist/assets/index-DSMDYq2t.js   774.19 kB │ gzip: 183.31 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.02s

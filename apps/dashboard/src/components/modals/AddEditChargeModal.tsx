@@ -28,8 +28,10 @@ export const AddEditChargeModal: React.FC = () => {
   const [grossAmount, setGrossAmount] = useState<number>(1500);
   const [coverageType, setCoverageType] = useState<'PHILHEALTH_FIRST' | 'HMO_COVERED' | 'PATIENT_DIRECT'>('PHILHEALTH_FIRST');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error,setError]=useState<string|null>(null);
 
   useEffect(() => {
+    setError(null);
     if (chargeToEdit && isEditing) {
       setDescription(chargeToEdit.description);
       setCategory(chargeToEdit.category);
@@ -86,7 +88,7 @@ export const AddEditChargeModal: React.FC = () => {
     e.preventDefault();
     if (!description.trim() || grossAmount <= 0) return;
 
-    setIsSubmitting(true);
+    setIsSubmitting(true);setError(null);
     try {
       if (isEditing && chargeToEdit) {
         await editChargeItem(selectedEncounterId, chargeToEdit.id, {
@@ -110,7 +112,7 @@ export const AddEditChargeModal: React.FC = () => {
         });
       }
       closeAddEditChargeModal();
-    } finally {
+    } catch(error) {setError(error instanceof Error?error.message:'The charge was not confirmed. Try again.');} finally {
       setIsSubmitting(false);
     }
   };
@@ -151,6 +153,7 @@ export const AddEditChargeModal: React.FC = () => {
         </div>
 
         {/* Form Body */}
+        {error&&<p role="alert" className="px-6 py-3 text-sm text-rose-700">{error}</p>}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">

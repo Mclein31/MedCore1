@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
 import { CheckCircle2, ArrowRight, HelpCircle, FileText, ChevronRight } from 'lucide-react';
-import { ConfirmButton, Button, SearchInput } from '@/components/common';
+import { ConfirmButton, Button } from '@/components/common';
 
 interface DualOperationalPipelinesProps {
   onViewAllPayer?: () => void;
@@ -13,7 +13,7 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
   onViewAllPayer,
   onViewAllExceptions
 }) => {
-  const {
+  const { searchQuery,
     encounters,
     approveHmoFinalLoa,
     supervisoryWaiveItem,
@@ -24,11 +24,11 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
   } = useMedCore();
 
   // Search & Pagination States
-  const [payerSearch, setPayerSearch] = useState('');
+  const payerSearch = searchQuery;
   const [payerPage, setPayerPage] = useState(1);
   const payerPageSize = 9;
 
-  const [exceptionsSearch, setExceptionsSearch] = useState('');
+  const exceptionsSearch = searchQuery;
   const [exceptionsPage, setExceptionsPage] = useState(1);
   const exceptionsPageSize = 7;
 
@@ -99,6 +99,7 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
     filteredExceptions[0] ||
     null;
 
+  useEffect(()=>{ setPayerPage(1); setExceptionsPage(1); }, [searchQuery]);
   return (
     <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 overflow-hidden space-y-2">
       <div className="flex items-center justify-between shrink-0">
@@ -128,20 +129,7 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
               </div>
 
               <div className="flex items-center gap-2">
-                <SearchInput
-                  size="sm"
-                  placeholder="Search patient, bed, HMO..."
-                  value={payerSearch}
-                  onChange={(val) => {
-                    setPayerSearch(val);
-                    setPayerPage(1);
-                  }}
-                  onClear={() => {
-                    setPayerSearch('');
-                    setPayerPage(1);
-                  }}
-                  className="w-44"
-                />
+
 
                 <Button
                   size="sm"
@@ -275,20 +263,7 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
               </div>
 
               <div className="flex items-center gap-2">
-                <SearchInput
-                  size="sm"
-                  placeholder="Search exceptions, patient..."
-                  value={exceptionsSearch}
-                  onChange={(val) => {
-                    setExceptionsSearch(val);
-                    setExceptionsPage(1);
-                  }}
-                  onClear={() => {
-                    setExceptionsSearch('');
-                    setExceptionsPage(1);
-                  }}
-                  className="w-44"
-                />
+
 
                 <Button
                   size="sm"

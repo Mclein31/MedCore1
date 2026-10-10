@@ -25,7 +25,7 @@ interface Props {
   onBack: () => void;
   onOpenPaymentModal: () => void;
   onOpenPromissoryModal: () => void;
-  onSubmitDispute: (itemId: string, reason: string) => void;
+  onSubmitDispute: (itemId: string, reason: string) => Promise<void>;
 }
 
 export const PatientStatementView: React.FC<Props> = ({

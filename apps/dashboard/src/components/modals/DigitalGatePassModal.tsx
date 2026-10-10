@@ -1,3 +1,5 @@
+import GatePassQr from '../common/GatePassQr';
+import {gatePassPayload} from '../../../../shared/gatePassPayload';
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPeso, formatPstTimestamp } from '@/utils/formatters';
@@ -22,6 +24,7 @@ export const DigitalGatePassModal: React.FC = () => {
   } = useMedCore();
 
   const [copiedToken, setCopiedToken] = useState(false);
+  const [copyError,setCopyError]=useState<string|null>(null);
 
   if (!isGatePassModalOpen) return null;
 
@@ -30,12 +33,14 @@ export const DigitalGatePassModal: React.FC = () => {
   if (!pass) return <div className="fixed inset-0 z-50 bg-white p-6" role="dialog" aria-modal="true"><p>Discharge clearance is still being processed.</p><Button onClick={closeGatePassModal}>Close</Button></div>;
   const isVerified = pass.status === 'VERIFIED_AT_LOBBY';
   const deterministicPin = pass.exitPin || 'Unavailable';
+  const qrPayload=gatePassPayload(pass);
+  const active=pass.status==='ACTIVE_READY_FOR_EXIT';
   const handleVerify = async () => { await verifyGatePass(enc.id); };
 
-  const copyToken = () => {
-    navigator.clipboard.writeText(pass.hmacSignature);
-    setCopiedToken(true);
-    setTimeout(() => setCopiedToken(false), 2000);
+  const copyToken = async () => {
+    setCopyError(null);
+    try {await navigator.clipboard.writeText(pass.hmacSignature);setCopiedToken(true);setTimeout(()=>setCopiedToken(false),2000);}
+    catch {setCopyError('Clipboard access failed.');}
   };
 
   return (
@@ -87,53 +92,7 @@ export const DigitalGatePassModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Cryptographic QR Code Visual */}
-          <div className="w-44 h-44 mx-auto p-3 rounded-xl bg-white border border-slate-200 shadow-xs flex flex-col items-center justify-center">
-            {/* SVG Simulated QR Matrix */}
-            <svg viewBox="0 0 100 100" className="w-full h-full text-slate-900">
-              {/* Corner position markers */}
-              <rect x="5" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" />
-              <rect x="12" y="12" width="14" height="14" fill="currentColor" />
-
-              <rect x="67" y="5" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" />
-              <rect x="74" y="12" width="14" height="14" fill="currentColor" />
-
-              <rect x="5" y="67" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="6" />
-              <rect x="12" y="74" width="14" height="14" fill="currentColor" />
-
-              {/* Data modules */}
-              <rect x="38" y="10" width="8" height="8" fill="currentColor" />
-              <rect x="52" y="10" width="8" height="8" fill="currentColor" />
-              <rect x="38" y="24" width="8" height="8" fill="currentColor" />
-              <rect x="52" y="24" width="8" height="8" fill="currentColor" />
-
-              <rect x="10" y="38" width="8" height="8" fill="currentColor" />
-              <rect x="24" y="38" width="8" height="8" fill="currentColor" />
-              <rect x="38" y="38" width="8" height="8" fill="currentColor" />
-              <rect x="60" y="38" width="12" height="8" fill="currentColor" />
-              <rect x="78" y="38" width="12" height="8" fill="currentColor" />
-
-              <rect x="10" y="52" width="8" height="8" fill="currentColor" />
-              <rect x="24" y="52" width="8" height="8" fill="currentColor" />
-              <rect x="42" y="52" width="16" height="8" fill="currentColor" />
-              <rect x="68" y="52" width="8" height="8" fill="currentColor" />
-              <rect x="82" y="52" width="8" height="8" fill="currentColor" />
-
-              <rect x="38" y="68" width="12" height="8" fill="currentColor" />
-              <rect x="56" y="68" width="8" height="8" fill="currentColor" />
-              <rect x="72" y="68" width="18" height="8" fill="currentColor" />
-
-              <rect x="38" y="82" width="8" height="8" fill="currentColor" />
-              <rect x="52" y="82" width="16" height="8" fill="currentColor" />
-              <rect x="74" y="16" width="8" height="8" fill="currentColor" />
-            </svg>
-            <span className="text-[10px] font-mono text-slate-500 mt-1">
-              HMAC SHA-256 Validated
-            </span>
-            <div className="font-mono text-xs font-black tracking-widest text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded mt-1.5 border border-slate-200">
-              PIN: {deterministicPin}
-            </div>
-          </div>
+          {active&&qrPayload?<div className="space-y-3"><GatePassQr payload={qrPayload}/><div className="text-center"><p className="text-xs text-slate-500">Exit PIN</p><p className="mt-1 font-mono text-3xl font-bold tracking-[0.25em] text-slate-900">{deterministicPin}</p></div><p className="text-xs text-slate-500">Show the QR and private PIN to lobby staff. The hospital verifies this pass online.</p></div>:<div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-600">{isVerified?'Exit already verified. This pass cannot be reused.':'No active QR is available. Refresh the hospital pass.'}</div>}
 
           {/* Details Table */}
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-left text-sm space-y-2 shadow-xs">
@@ -168,10 +127,10 @@ export const DigitalGatePassModal: React.FC = () => {
               size="sm"
               variant="ghost"
               icon={copiedToken ? Check : Copy}
-              onClick={copyToken}
+              onClick={()=>void copyToken()}
               className="h-7 px-2.5 text-xs font-semibold text-slate-700 hover:text-slate-900"
             >
-              {copiedToken ? 'Copied' : 'Copy'}
+              {copyError|| (copiedToken ? 'Copied' : 'Copy')}
             </Button>
           </div>
 
