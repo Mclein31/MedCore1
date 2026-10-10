@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { MedCoreProvider, useMedCore } from '@/context/MedCoreContext';
 import { GlobalCommandBar } from '@/components/layout/GlobalCommandBar';
 import { SidebarNav } from '@/components/layout/SidebarNav';
@@ -385,6 +386,7 @@ export const App: React.FC = () => {
       <MedCoreProvider>
         <MainLayout />
       </MedCoreProvider>
+      <SpeedInsights />
     </ErrorBoundary>
   );
 };
