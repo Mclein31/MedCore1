@@ -10,7 +10,10 @@ export default {
           'navy-dark': '#0A1D33',
           blue: '#0284C7',
           'blue-light': '#38BDF8',
-          'blue-dark': '#0369A1'
+          'blue-dark': '#0369A1',
+          teal: '#11806D',
+          'teal-dark': '#0F6D5F',
+          'teal-soft': '#E7F4F0'
         },
         surface: {
           app: 'var(--bg-app)',
