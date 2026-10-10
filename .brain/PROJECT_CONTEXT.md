@@ -2331,3 +2331,10 @@ An exhaustive end-to-end performance and reliability audit and refactor was comp
 - `npm run --prefix apps/mobile typecheck`: **0 errors**.
 - `npm run build`: Vite production bundle compiles cleanly with dynamic route chunks.
 
+[DECISION] **AI Multi-Model Quota Optimization (October 11, 2026)**:
+- Migrated primary generative AI model from `gemini-3.8-flash` (capped at 20 RPD on Google AI Studio Free Tier) to **`gemini-3.5-flash-lite`** (500 RPD, 15 RPM, 250K TPM).
+- Configured **`gemini-3.1-flash-lite`** (500 RPD, 15 RPM) as the automatic live failover backup model.
+- Updated `GeminiClient` (`apps/server/src/services/ai/geminiClient.ts`) to automatically detect HTTP 429 quota exhaustion or transient upstream failures on the primary model and instantly switch to the backup model before reverting to deterministic mock fallbacks.
+- Verified live round-trip latency: ~1.5s with strict JSON mode.
+
+
