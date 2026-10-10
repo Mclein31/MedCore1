@@ -144,7 +144,7 @@ export interface PromissoryNote {
   monthlyInstallment: number;
   firstDueDate: string;
   digitalSignatureTimestamp: string;
-  status: 'ACTIVE' | 'CURRENT' | 'DEFAULTED' | 'FULFILLED';
+  status: 'ACTIVE' | 'CURRENT' | 'DEFAULTED' | 'FULFILLED' | 'SETTLED';
 }
 
 export interface BillingDispute {

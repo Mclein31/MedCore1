@@ -4,6 +4,41 @@
 > **Knowledge Layer**: Product Intelligence Vault (`MedCore_Vault/`)  
 > **Standards Compliance**: Keep a Changelog & Semantic Versioning
 
+## [1.24.0] — 2026-10-10
+
+### MedCore Multi-Agent AI Suite Delivery: Cora Concierge, Forensic Scrubber, HMO Appeal Drafter, Executive Briefing & Multimodal OCR
+
+#### Added
+- [AI FOUNDATION & SECURITY GUARDRAILS] **Zero PHI Leakage Bidirectional Sanitizer & Offline Mock Resilience (`apps/server/src/config/aiConfig.ts`, `apps/server/src/services/ai/phiScrubber.ts`, `apps/server/src/services/ai/geminiClient.ts`)**:
+  - Implemented bidirectional ephemeral de-identification (`scrubPatientData` and `rehydrateText`) compliant with RA 10173 (Data Privacy Act of 2012). Masks patient names, MRNs, PhilHealth PINs, mobile/landline numbers, room/bed numbers, and doctor credentials into ephemeral tokens kept exclusively in transient memory during requests.
+  - Implemented Google AI Studio REST client (`gemini-2.5-flash` default, `gemini-1.5-pro-latest` escalation) with exponential backoff retries (3 attempts on HTTP 429/503), structured JSON mode (`responseMimeType: "application/json"`), and deterministic typed offline mock fallbacks ensuring 100% test continuity when `GEMINI_API_KEY` is unset or `NODE_ENV === 'test'`.
+  - Added PostgreSQL Drizzle audit logging tables `ai_conversations` and `ai_audit_logs` tracking inference latency, risk scores, models used, and non-blocking telemetry.
+  - Codified prompt architectures and Zod validation schemas (`coraPrompts.ts`, `scrubberPrompts.ts`, `appealPrompts.ts`, `briefingPrompts.ts`, `ocrPrompts.ts`).
+- [STAFF DASHBOARD AI] **Clinical Claims Forensic Scrubber & RTH Risk Gauge (`apps/dashboard/src/components/ai/ClaimsPreflightScrubberModal.tsx`, `apps/dashboard/src/pages/ClaimsEsoaPage.tsx`)**:
+  - Integrated pre-flight forensic claims auditor analyzing CF4 clinical narratives against ICD-10 diagnostic classifications and chargemaster feeds prior to PhilHealth XML submission.
+  - Generates numerical RTH risk score (0.00–1.00), risk tier badge, discrepancy flags with regulatory citations, clean claim readiness score, and 1-click suggested doctor addendum copy to preempt Return-to-Hospital rejections. Respects PhilHealth Circulars 2024-0021 and 2025-0015 regarding abolition of the 90-day Single Period of Confinement (SPC) penalty.
+- [STAFF DASHBOARD AI] **Automated HMO Medical Necessity Appeal Drafter (`apps/dashboard/src/components/ai/HmoAppealGeneratorModal.tsx`, `apps/dashboard/src/pages/DisputesExceptionsPage.tsx`, `apps/dashboard/src/pages/CoverageApprovalsPage.tsx`)**:
+  - Built medico-legal reconsideration letter generator citing RA 11765 (Financial Products and Services Consumer Protection Act) and Insurance Commission Executive Order No. 192 (s. 2015).
+  - Integrates with print engine (`HMO_APPEAL_LETTER` print template in `PrintDocumentContainer.tsx` and `printEngine.ts`), providing live editable markdown, letterhead preview, copy-to-clipboard, and formal physician conforms.
+- [STAFF DASHBOARD AI] **Executive RCM Telemetry Briefing (`apps/dashboard/src/components/ai/ExecutiveAiBriefingCard.tsx`, `apps/dashboard/src/pages/CommandCenterPage.tsx`, `apps/dashboard/src/pages/RcmAnalyticsPage.tsx`)**:
+  - Synthesizes 3-minute executive C-suite briefing on hospital census, departmental dwell times (Doctor PF sign-off, Pharmacy RTS credit, HMO LOA turnaround, Cashier settlement), reclaimed bed-hours, trapped capital, and top 3 strategic recommendations.
+  - Mounted at top of Hospital Operations Home and Executive RCM Analytics.
+- [PATIENT MOBILE AI] **Cora Multilingual Billing Concierge (`apps/mobile/src/components/CoraAssistantModal.tsx`, `apps/mobile/src/components/CoraFloatingPill.tsx`, `apps/mobile/src/services/aiApi.ts`)**:
+  - Developed conversational patient advocate modal supporting Taglish (`fil`), English (`en`), and Ilocano (`ilo`).
+  - Presents grounded statutory waterfall summary guaranteed with Zero Centavo Drift ($\Delta = ₱0.00$), ensuring generative models never mutate or calculate financial balances.
+  - Integrated speech-to-text (Web Speech API) with graceful fallback and contextual suggested action chips that navigate directly to billing, payment, coverage, and dispute screens.
+  - Triggered via floating Cora pill FAB on `HomeScreen.tsx`, hero card action on `BillScreen.tsx`, coverage action on `CoverageScreen.tsx`, and charge explanation action on `RecordDetailScreen.tsx`.
+- [PATIENT MOBILE AI] **Multimodal Benefit Card & Gov ID Scanner (`apps/mobile/src/components/BenefitCardScannerModal.tsx`, `apps/mobile/src/screens/CoverageScreen.tsx`)**:
+  - Multimodal Gemini vision scanner extracting PhilHealth PINs, Senior Citizen OSCA ID control numbers, PWD IDs, PhilSys National IDs, and commercial HMO card certificates.
+- [SYSTEM VERIFICATION] **Multi-Agent Verification Suite (`apps/server/__tests__/aiServices.test.ts`, `package.json`)**:
+  - Added `npm run test:ai` test suite certifying: Zero PHI leaks, 100% bidirectional rehydration fidelity, offline mock schema conformance across all 5 schemas, Zero Centavo Drift invariant, security role-gating (401 enforcement), and live Hono API route integration (14/14 tests pass).
+
+#### Changed
+- [SECURITY & ROUTING] **Staff AI Route Authentication & Patient Access (`apps/server/src/routes/ai.ts`, `apps/server/src/middleware/access.ts`)**:
+  - Mounted `/api/v1/ai` router under `aiApp`. Protected staff audit endpoints with `requireAuth` and `requireRole(['BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HOSPITAL_CFO', 'HMO_COORDINATOR'])`. Granted `PATIENT_GUARANTOR` role access to Cora chat and card OCR endpoints.
+- [COMMAND PALETTE] **Staff AI Query Integration (`apps/dashboard/src/components/layout/SearchModal.tsx`)**:
+  - Added instant navigation shortcuts for AI Claims Scrubber, HMO Appeal Drafter, Executive Briefing, and Statutory Deductions Verification into the `Cmd+K` command palette.
+
 ## [1.23.0] — 2026-10-10
 
 ### Promissory Note Settlement State Machine & Native Mobile Font Typography Alignment

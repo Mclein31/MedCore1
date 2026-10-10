@@ -1,13 +1,17 @@
+import { useState } from 'react';
 import { usePullRefresh } from '../hooks/usePullRefresh';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { formatDate, formatPeso, remainingBalance } from '../lib/format';
+import { Sparkles } from 'lucide-react-native';
 import BillBreakdown from '../components/BillBreakdown';
 import QuickActions from '../components/QuickActions';
+import { CoraAssistantModal } from '../components/CoraAssistantModal';
 import { C, EmptyState, ErrorState, Hero, LoadingState, PrimaryButton, RefreshNotice, Screen, StatusBadge, T } from '../components/ui';
 export default function BillScreen({ navigation }: { navigation: any }) {
   const { currentEncounter, loading, error, refresh } = usePatient();
   const pullRefresh = usePullRefresh(refresh);
+  const [coraOpen, setCoraOpen] = useState(false);
   if (loading && !currentEncounter) return <LoadingState message="Loading your bill…" />;
   if (error && !currentEncounter) return <ErrorState message={error} onRetry={refresh} />;
   if (!currentEncounter) return <Screen safeBottom={false}><EmptyState title="No bill yet" detail="Your itemized bill will appear once hospital charges are posted." /></Screen>;
@@ -29,7 +33,38 @@ export default function BillScreen({ navigation }: { navigation: any }) {
       <View style={{ marginTop: 12 }}><StatusBadge tone={enc.billState === 'PAID' ? 'ok' : enc.stage === 'PENDING_SETTLEMENT' ? 'info' : 'warn'} text={enc.billState === 'PAID' ? 'Paid' : enc.stage === 'PENDING_SETTLEMENT' ? 'Final bill ready' : 'Bill under review'} /></View>
       {balance > 0 && enc.stage === 'PENDING_SETTLEMENT' && <PrimaryButton title="Continue to Payment" disabled={!!error || loading} onPress={() => navigation.navigate('PaymentFlow', { encounterId: enc.uuid, startAtMethod: true })} />}
       {enc.stage === 'CLEARED_GATE_PASS' && <PrimaryButton title="View Digital Gate Pass" onPress={() => navigation.navigate('Documents')} />}
+      <Pressable
+        onPress={() => setCoraOpen(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Explain My Bill with Cora AI"
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          backgroundColor: '#F0FDF4',
+          borderWidth: 1,
+          borderColor: '#BBF7D0',
+          paddingVertical: 11,
+          paddingHorizontal: 16,
+          borderRadius: 14,
+          marginTop: 14,
+          marginBottom: 10
+        }}
+      >
+        <Sparkles size={16} color={C.brand} />
+        <Text style={{ fontSize: 13, fontWeight: '700', color: C.brandDark }}>
+          Explain My Bill with Cora AI
+        </Text>
+      </Pressable>
       <BillBreakdown encounter={enc} />
     </View>
-  </ScrollView></Screen>;
+  </ScrollView>
+  <CoraAssistantModal
+    visible={coraOpen}
+    onClose={() => setCoraOpen(false)}
+    encounter={enc}
+    navigation={navigation}
+  />
+  </Screen>;
 }

@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer, Sparkles } from 'lucide-react';
 import { ConfirmButton, Button, Select, SegmentedTabs } from '@/components/common';
+import { HmoAppealGeneratorModal } from '@/components/ai/HmoAppealGeneratorModal';
 
 export const CoverageApprovalsPage: React.FC = () => {
   const { searchQuery, encounters, approveHmoFinalLoa, openDossierDrawer, printDocument, refreshEncounters } = useMedCore();
@@ -11,6 +12,12 @@ export const CoverageApprovalsPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [filterPayer, setFilterPayer] = useState<string>('ALL');
   const [currentPage, setCurrentPage] = useState(1);
+  const [appealModalState, setAppealModalState] = useState<{
+    isOpen: boolean;
+    encounter: any;
+    itemDescription?: string;
+    amount?: number;
+  }>({ isOpen: false, encounter: null });
   const pageSize = 12;
   useEffect(()=>{ setCurrentPage(1); }, [searchQuery]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
@@ -340,6 +347,27 @@ export const CoverageApprovalsPage: React.FC = () => {
                           View LOA
                         </Button>
 
+                        {/* AI Appeal Action for Disallowed Supplies */}
+                        {(enc.hmo.disallowedConsumables > 0 || isDisallowed) && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            icon={Sparkles}
+                            className="text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200"
+                            onClick={() =>
+                              setAppealModalState({
+                                isOpen: true,
+                                encounter: enc,
+                                itemDescription: 'Disallowed Inpatient Consumables & Emergency Room Supplies',
+                                amount: enc.hmo.disallowedConsumables > 0 ? enc.hmo.disallowedConsumables : undefined
+                              })
+                            }
+                            title="Draft AI HMO Medical Necessity Appeal"
+                          >
+                            Appeal
+                          </Button>
+                        )}
+
                         {/* Primary Approval Action or Approved Status */}
                         {!isApproved ? (
                           <ConfirmButton
@@ -411,6 +439,14 @@ export const CoverageApprovalsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* HMO Medical Necessity Appeal AI Modal */}
+      <HmoAppealGeneratorModal
+        isOpen={appealModalState.isOpen}
+        onClose={() => setAppealModalState({ isOpen: false, encounter: null })}
+        encounter={appealModalState.encounter}
+        deniedItemDescription={appealModalState.itemDescription}
+        deniedAmount={appealModalState.amount}
+      />
     </div>
   );
 };

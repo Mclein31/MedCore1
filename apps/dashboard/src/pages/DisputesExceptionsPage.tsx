@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
-import { CheckCircle2, ShieldAlert, HelpCircle, FileText } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, HelpCircle, FileText, Scale } from 'lucide-react';
 import { ConfirmButton, SegmentedTabs, Button } from '@/components/common';
+import { HmoAppealGeneratorModal } from '@/components/ai/HmoAppealGeneratorModal';
 
 export const DisputesExceptionsPage: React.FC = () => {
   const { searchQuery,
@@ -16,6 +17,12 @@ export const DisputesExceptionsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'CONTESTED_ITEMS' | 'PROMISSORY_REGISTER'>('CONTESTED_ITEMS');
   const [itemsPage, setItemsPage] = useState(1);
   const [notesPage, setNotesPage] = useState(1);
+  const [appealModalState, setAppealModalState] = useState<{
+    isOpen: boolean;
+    encounter: any;
+    itemDescription?: string;
+    amount?: number;
+  }>({ isOpen: false, encounter: null });
   const pageSize = 11;
   useEffect(()=>{ setItemsPage(1); setNotesPage(1); }, [searchQuery]);
 
@@ -230,6 +237,25 @@ export const DisputesExceptionsPage: React.FC = () => {
                               Why?
                             </Button>
 
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              icon={Scale}
+                              onClick={() => {
+                                const enc = encounters.find((e) => e.id === encounterId) || encounters[0];
+                                setAppealModalState({
+                                  isOpen: true,
+                                  encounter: enc,
+                                  itemDescription: item.description,
+                                  amount: item.grossAmount
+                                });
+                              }}
+                              className="text-purple-700 hover:text-purple-800 hover:bg-purple-50 border-purple-200"
+                              title="Draft AI Medical Necessity Appeal for HMO"
+                            >
+                              Draft Appeal
+                            </Button>
+
                             {/* Visual Divider between Review and Interventions */}
                             <div className="h-4 w-px bg-slate-200 shrink-0" />
 
@@ -442,6 +468,14 @@ export const DisputesExceptionsPage: React.FC = () => {
           )}
         </div>
       )}
+      {/* HMO Medical Necessity Appeal AI Modal */}
+      <HmoAppealGeneratorModal
+        isOpen={appealModalState.isOpen}
+        onClose={() => setAppealModalState({ isOpen: false, encounter: null })}
+        encounter={appealModalState.encounter}
+        deniedItemDescription={appealModalState.itemDescription}
+        deniedAmount={appealModalState.amount}
+      />
     </div>
   );
 };

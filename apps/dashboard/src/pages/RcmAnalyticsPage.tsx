@@ -32,6 +32,7 @@ import {
 } from '@/utils/rcmAnalyticsCalculations';
 import { SearchX, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/common';
+import { ExecutiveAiBriefingCard } from '@/components/ai/ExecutiveAiBriefingCard';
 
 export const RcmAnalyticsPage: React.FC = () => {
   const { encounters, searchQuery, setSearchQuery } = useMedCore();
@@ -188,6 +189,9 @@ export const RcmAnalyticsPage: React.FC = () => {
           </div>
         ) : (
           <>
+            {/* AI Executive RCM Telemetry Briefing */}
+            <ExecutiveAiBriefingCard />
+
             {/* Level 1: Macro Revenue Scorecard (Bento Grid) */}
             <MacroRevenueScorecard
               metrics={kpis}

@@ -730,3 +730,41 @@ export const staffNotificationReads = pgTable('staff_notification_reads', {
   notificationId: varchar('notification_id', { length: 128 }).notNull(),
   readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow()
 }, table => ({ pk: primaryKey({ columns: [table.facilityId, table.userId, table.notificationId] }) }));
+
+// ----------------------------------------------------------------------
+// 17. AI Suite Tables (Conversations & Forensic Audit Logs)
+// ----------------------------------------------------------------------
+export const aiConversations = pgTable('ai_conversations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  facilityId: uuid('facility_id').references(() => facilities.id, { onDelete: 'cascade' }),
+  encounterId: uuid('encounter_id').references(() => encounters.id, { onDelete: 'cascade' }),
+  patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  module: varchar('module', { length: 64 }).notNull(),
+  sessionToken: varchar('session_token', { length: 128 }),
+  language: varchar('language', { length: 16 }).default('en'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+});
+
+export const aiAuditLogs = pgTable('ai_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  conversationId: uuid('conversation_id').references(() => aiConversations.id, { onDelete: 'cascade' }),
+  facilityId: uuid('facility_id').references(() => facilities.id, { onDelete: 'cascade' }),
+  encounterId: uuid('encounter_id').references(() => encounters.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  module: varchar('module', { length: 64 }).notNull(),
+  action: varchar('action', { length: 64 }).notNull(),
+  modelUsed: varchar('model_used', { length: 64 }).notNull(),
+  tokensPrompt: integer('tokens_prompt'),
+  tokensCompletion: integer('tokens_completion'),
+  latencyMs: integer('latency_ms'),
+  phiScrubbed: boolean('phi_scrubbed').notNull().default(true),
+  rthRiskScore: numeric('rth_risk_score', { precision: 5, scale: 4 }),
+  status: varchar('status', { length: 32 }).notNull().default('SUCCESS'),
+  errorMessage: text('error_message'),
+  requestSummary: text('request_summary'),
+  responseSummary: text('response_summary'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+});
