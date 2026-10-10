@@ -16,7 +16,8 @@
   - Replaced 250-element `inArray` queries with indexed inner joins on `encounters.facility_id` for full facility census fetches.
   - Consolidated 7 child entity queries from sequential batches into a single concurrent `Promise.all`.
   - Added a 10-second TTL facility census cache (`censusCache`) with deterministic mutation-triggered cache invalidation (`invalidateEncountersCache`). Dropped warm census latency to 234ms (>98% speedup).
-- [AI SERVICES & TIMEOUT DEADLINES] **Bounded Timeout Deadlines, Fast-Fail & Context Pruning (`apps/server/src/services/ai/geminiClient.ts`, `apps/server/src/services/ai/executiveBriefingService.ts`, `apps/dashboard/src/components/ai/ExecutiveAiBriefingCard.tsx`)**:
+- [AI SERVICES & TIMEOUT DEADLINES] **Bounded Timeout Deadlines, Fast-Fail & Multi-Model Quota Failover (`apps/server/src/services/ai/geminiClient.ts`, `apps/server/src/config/aiConfig.ts`, `apps/server/src/services/ai/executiveBriefingService.ts`, `apps/dashboard/src/components/ai/ExecutiveAiBriefingCard.tsx`)**:
+  - Migrated primary generative model to `gemini-3.5-flash-lite` (500 RPD, 15 RPM, 250K TPM) with automatic failover to `gemini-3.1-flash-lite` (500 RPD, 15 RPM) before falling back to offline mock schemas.
   - Added explicit 15-second timeout deadline (`AbortSignal.timeout(15000)`) and immediate fast-fail for permanent client 4xx HTTP errors (400, 401, 403, 404).
   - Pruned unused statutory waterfalls, PhilHealth claims, and HMO authorization queries from executive briefing compilation.
   - Implemented 5-minute facility-scoped TTL cache (`briefingCache`) and dashboard card module-level caching with user force refresh support.

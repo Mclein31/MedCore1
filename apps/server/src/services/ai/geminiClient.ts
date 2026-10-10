@@ -44,32 +44,32 @@ async function sleep(ms: number) {
 export class GeminiClient {
   private apiKey?: string;
   private defaultModel: string;
+  private backupModel: string;
   private proModel: string;
 
   constructor(envOverrides?: Record<string, any>) {
     const config = getAiConfig(envOverrides);
     this.apiKey = config.geminiApiKey;
     this.defaultModel = config.geminiModel;
+    this.backupModel = config.geminiBackupModel;
     this.proModel = config.geminiProModel;
   }
 
   /**
-   * Generates content using Google AI Studio REST API v1beta with exponential backoff and mock fallback.
+   * Generates content using Google AI Studio REST API v1beta with backup model fallback and offline mock fallback.
    */
   async generate(req: GeminiGenerateRequest): Promise<GeminiGenerateResponse> {
     const startTime = Date.now();
     const currentConfig = getAiConfig(req.env);
     const apiKey = req.env?.GEMINI_API_KEY || currentConfig.geminiApiKey || this.apiKey;
-    const model = req.model || req.env?.GEMINI_MODEL || currentConfig.geminiModel || this.defaultModel;
+    const primaryModel = req.model || req.env?.GEMINI_MODEL || currentConfig.geminiModel || this.defaultModel;
+    const backupModel = req.env?.GEMINI_BACKUP_MODEL || currentConfig.geminiBackupModel || this.backupModel;
 
     // Check if AI is enabled or offline mock should be used
     if (!isAiEnabled(req.env) || !apiKey) {
-      console.log(`[GeminiClient] ℹ️ Using offline mock fallback for ${req.mockFallbackType || model} (GEMINI_API_KEY is unset or test mode active)`);
-      return this.generateMockFallback(req, startTime, model);
+      console.log(`[GeminiClient] ℹ️ Using offline mock fallback for ${req.mockFallbackType || primaryModel} (GEMINI_API_KEY is unset or test mode active)`);
+      return this.generateMockFallback(req, startTime, primaryModel);
     }
-
-    console.log(`[GeminiClient] 🚀 Calling LIVE Google AI Studio API: model=${model}`);
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
     const contents: any[] = [];
     const userParts: any[] = [];
@@ -105,8 +105,41 @@ export class GeminiClient {
       };
     }
 
+    // 1. Attempt primary model
+    try {
+      console.log(`[GeminiClient] 🚀 Calling primary Google AI Studio model: ${primaryModel}`);
+      const result = await this.callApiWithRetries(primaryModel, apiKey, payload, req, startTime);
+      return result;
+    } catch (primaryErr: any) {
+      console.warn(`[GeminiClient] ⚠️ Primary model ${primaryModel} failed (${primaryErr?.message || primaryErr}).`);
+
+      // 2. Attempt backup model if available and distinct
+      if (backupModel && backupModel !== primaryModel) {
+        try {
+          console.log(`[GeminiClient] 🔄 Switching to backup Google AI Studio model: ${backupModel}`);
+          const backupResult = await this.callApiWithRetries(backupModel, apiKey, payload, req, startTime);
+          return backupResult;
+        } catch (backupErr: any) {
+          console.warn(`[GeminiClient] ⚠️ Backup model ${backupModel} also failed (${backupErr?.message || backupErr}).`);
+        }
+      }
+
+      // 3. Fallback to deterministic mock
+      console.warn(`[GeminiClient] All live AI Studio models failed, reverting to deterministic mock fallback.`);
+      return this.generateMockFallback(req, startTime, primaryModel);
+    }
+  }
+
+  private async callApiWithRetries(
+    model: string,
+    apiKey: string,
+    payload: Record<string, any>,
+    req: GeminiGenerateRequest,
+    startTime: number
+  ): Promise<GeminiGenerateResponse> {
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 2;
     let lastError: any = null;
 
     while (attempts < maxAttempts) {
@@ -120,6 +153,10 @@ export class GeminiClient {
         });
 
         if (response.status === 429 || response.status === 503 || response.status === 502 || response.status === 504) {
+          if (response.status === 429) {
+            const errText = await response.text();
+            throw new Error(`HTTP 429 Quota/Rate Limit: ${errText}`);
+          }
           const delay = Math.pow(2, attempts) * 500;
           await sleep(delay);
           continue;
@@ -129,9 +166,8 @@ export class GeminiClient {
           const errText = await response.text();
           const isPermanent = response.status >= 400 && response.status < 500 && response.status !== 429;
           if (isPermanent) {
-            console.warn(`[GeminiClient] Permanent client error HTTP ${response.status}: ${errText}. Failing fast without retries.`);
-            lastError = new Error(`Google AI Studio HTTP ${response.status}: ${errText}`);
-            break;
+            console.warn(`[GeminiClient] Permanent client error HTTP ${response.status}: ${errText}. Failing fast.`);
+            throw new Error(`Google AI Studio HTTP ${response.status}: ${errText}`);
           }
           throw new Error(`Google AI Studio HTTP ${response.status}: ${errText}`);
         }
@@ -163,6 +199,9 @@ export class GeminiClient {
         };
       } catch (err: any) {
         lastError = err;
+        if (err.message?.includes('HTTP 429')) {
+          throw err;
+        }
         if (attempts >= maxAttempts) {
           break;
         }
@@ -170,8 +209,7 @@ export class GeminiClient {
       }
     }
 
-    console.warn(`[GeminiClient] External API request failed after ${maxAttempts} attempts, reverting to deterministic mock fallback. Cause:`, lastError?.message || lastError);
-    return this.generateMockFallback(req, startTime, model);
+    throw lastError || new Error(`Failed to generate content with model ${model}`);
   }
 
   /**

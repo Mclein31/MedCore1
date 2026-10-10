@@ -1,6 +1,7 @@
 export interface AiConfig {
   geminiApiKey?: string;
   geminiModel: string;
+  geminiBackupModel: string;
   geminiProModel: string;
   cloudflareAccountId?: string;
   cloudflareApiToken?: string;
@@ -27,7 +28,8 @@ export function getAiConfig(env?: Record<string, any>): AiConfig {
 
   const isTestMode = merged.NODE_ENV === 'test';
   const geminiApiKey = merged.GEMINI_API_KEY ? String(merged.GEMINI_API_KEY).trim() : undefined;
-  const geminiModel = merged.GEMINI_MODEL ? String(merged.GEMINI_MODEL).trim() : 'gemini-3.8-flash';
+  const geminiModel = merged.GEMINI_MODEL ? String(merged.GEMINI_MODEL).trim() : 'gemini-3.5-flash-lite';
+  const geminiBackupModel = merged.GEMINI_BACKUP_MODEL ? String(merged.GEMINI_BACKUP_MODEL).trim() : 'gemini-3.1-flash-lite';
   const geminiProModel = merged.GEMINI_PRO_MODEL ? String(merged.GEMINI_PRO_MODEL).trim() : 'gemini-1.5-pro-latest';
   const cloudflareAccountId = merged.CLOUDFLARE_ACCOUNT_ID ? String(merged.CLOUDFLARE_ACCOUNT_ID).trim() : undefined;
   const cloudflareApiToken = merged.CLOUDFLARE_API_TOKEN ? String(merged.CLOUDFLARE_API_TOKEN).trim() : undefined;
@@ -35,6 +37,7 @@ export function getAiConfig(env?: Record<string, any>): AiConfig {
   return {
     geminiApiKey,
     geminiModel,
+    geminiBackupModel,
     geminiProModel,
     cloudflareAccountId,
     cloudflareApiToken,
