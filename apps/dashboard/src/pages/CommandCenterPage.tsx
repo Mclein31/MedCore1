@@ -4,6 +4,7 @@ import { formatPhp } from '@/utils/formatters';
 import { PriorityActionStrip } from '@/features/command-center/components/PriorityActionStrip';
 import { VelocityRecoveryPulse } from '@/features/command-center/components/VelocityRecoveryPulse';
 import { ConfirmButton, Button } from '@/components/common';
+import { ExecutiveAiBriefingCard } from '@/components/ai/ExecutiveAiBriefingCard';
 import {
   ArrowRight,
   Clock,
@@ -92,6 +93,9 @@ export const CommandCenterPage: React.FC = () => {
 
       {/* Main Scrollable Executive Dashboard Content */}
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
+        {/* Executive AI Briefing Telemetry */}
+        <ExecutiveAiBriefingCard />
+
         {/* Tier 1: 3-Pillar Operational Scorecard */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           {/* Card 1: Active Inpatient Census & Bed Utilization */}

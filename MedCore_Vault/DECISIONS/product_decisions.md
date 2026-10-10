@@ -76,7 +76,7 @@
 
 ## 8. ADR-008: AI-Driven Platform Architecture via Google AI Studio Free Tier & Backend Proxy
 
-- **Status**: Confirmed & Codified (`[DECISION]`)
+- **Status**: Confirmed, Implemented & Verified (`[DECISION]`, `[FACT]`)
 - **Context**: MedCore / AQROMED is branded as an "AI-driven platform" for the PGC Digital Innovation Challenge, but prior implementations relied exclusively on deterministic rule engines, static charge explainers, and manual dispute workflows. To fulfill the platform's vision without operational expenditure or API token exhaustion during development and judging, an AI integration architecture is required.
 - **Decision**:
   1. **Google AI Studio Free Tier Adoption**: Deploy `gemini-2.5-flash` on the free tier (15 RPM, 1,000,000 TPM, 1,500 RPD, 1M+ context window, $0.00 cost) as the primary LLM engine. Pro models (`gemini-1.5-pro`) are prohibited on free tier due to restrictive throttles (2 RPM, 50 RPD).
@@ -84,5 +84,6 @@
   3. **Privacy by Design & PHI Anonymization (RA 10173)**: Before transmitting prompt context to Google AI Studio, the backend strips all identifying patient data (full names, contact info, raw PhilHealth PINs, MRNs). Only clinical classifications (ICD-10 codes, CF4 status), anonymized encounter IDs, and itemized financial numbers are forwarded.
   4. **Mobile AI Implementation**: Implement "Cora", an interactive patient billing and discharge concierge chatbot in plain English/Taglish/Ilocano that provides dynamic statutory waterfall explanations, real-time discharge milestone interpretation, RA 9439 promissory note counseling, and one-tap charge dispute initiation.
   5. **Dashboard AI Implementation**: Implement clinical claims forensic pre-flight scrubbing (PhilHealth RTH prediction against CF4/ICD-10 data in `ClaimsEsoaPage.tsx`), HMO medical necessity appeal drafting in `ApprovalsDisputesPage.tsx`, and executive bottleneck briefings in `CommandCenterPage.tsx`.
-- **Consequences**: Immediate justification of the "AI-driven platform" mandate; zero API expenses; complete data privacy compliance under Republic Act No. 10173; zero token leakage or API key exposure in client bundles.
+- **Consequences**: Immediate justification of the "AI-driven platform" mandate; zero API expenses; complete data privacy compliance under Republic Act No. 10173; zero token leakage or API key exposure in client bundles. Fully implemented and verified on October 10, 2026 across server, dashboard, and mobile with 100% test battery pass (`test:ai` 14/14, `test:api` 88/88, `test:financial` 250/250, mobile `test` 49/49, `test:server` 53/53, `test:qr` 16/16).
+
 

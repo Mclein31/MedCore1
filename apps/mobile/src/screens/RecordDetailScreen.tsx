@@ -1,6 +1,6 @@
 import { usePullRefresh } from '../hooks/usePullRefresh';
 import { useCallback, useState } from 'react';
-import { RefreshControl, ScrollView, Share, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Share, Text, View } from 'react-native';
 import { readSavedPass,parseSavedPass,reconcileSavedPass } from '../lib/gatePassCache';
 import { paymentAccountNamespace } from '../lib/mobileAccess';
 import { ApiError } from '../lib/api';
@@ -10,8 +10,10 @@ import { useResource } from '../hooks/useResource';
 import { createPaymentApi } from '../services/paymentApi';
 import { createPatientApi } from '../services/patientApi';
 import { describeDischargeStage, formatDate, formatDateTime, formatPeso } from '../lib/format';
+import { Sparkles } from 'lucide-react-native';
 import ReceiptSheet from '../components/ReceiptSheet';
 import BillBreakdown from '../components/BillBreakdown';
+import { CoraAssistantModal } from '../components/CoraAssistantModal';
 import { C, Card, ConfirmationModal, ErrorState, LoadingState, RefreshNotice, Row, Screen, SecondaryButton, SectionHeader, T } from '../components/ui';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
@@ -19,6 +21,7 @@ import type { RootStackParamList } from '../navigation/types';
 export default function RecordDetailScreen({ route }: NativeStackScreenProps<RootStackParamList, 'RecordDetail'>) {
   const { client, user, selectedPatientId } = useAuth();
   const { encounterId, documentKind, documentId } = route.params;
+  const [coraOpen, setCoraOpen] = useState(false);
   const load = useCallback(async () => {
     const api = createPaymentApi(client);
     try {
@@ -71,10 +74,41 @@ export default function RecordDetailScreen({ route }: NativeStackScreenProps<Roo
     {data?.receipt && <View testID="historical-payment-ticket" style={{ backgroundColor: C.receiptSurround, paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16, marginTop: 16 }}><ReceiptSheet surroundingColor={C.receiptSurround} number={data.receipt.officialReceiptNumber} amount={data.receipt.amount} rail={data.receipt.paymentRail} payer={data.receipt.payerName} date={data.receipt.issuedAt} reference={data.receipt.paymentReference} bill={data.receipt.billReference || enc.billNumber || enc.encounterNumber} patient={data.receipt.patientName} mrn={data.receipt.patientMrn} status={data.receipt.status} /></View>}
     {data?.note && <><SectionHeader title="Selected payment plan" /><Card><Row label="Note number" value={data.note.noteNumber} /><Row label="Principal" value={formatPeso(data.note.principalAmount)} /><Row label="First due date" value={formatDate(data.note.firstDueDate)} />{data.note.schedule.map((amount, i) => <Row key={i} label={`Month ${i + 1}`} value={formatPeso(amount)} />)}</Card></>}
     <SectionHeader title="Hospital stay" /><Row label="Doctor" value={enc.attendingDoctor || 'Not provided'} /><Row label="Diagnosis on file" value={enc.primaryDiagnosis || 'Not provided'} /><Text style={[T.meta, { marginVertical: 12 }]}>{describeDischargeStage(enc.stage)}</Text>
-    {enc.promissoryNote && <><SectionHeader title="Payment plan" /><Card><Row label="Principal financed" value={formatPeso(enc.promissoryNote.principalAmount)} /><Row label="Repayment term" value={`${enc.promissoryNote.installmentMonths} months`} /><Row label="Monthly installment" value={formatPeso(enc.promissoryNote.monthlyInstallment)} /><Text style={[T.meta, { marginTop: 8 }]}>View the complete repayment schedule in Payments.</Text></Card></>}
+    <Pressable
+      onPress={() => setCoraOpen(true)}
+      accessibilityRole="button"
+      accessibilityLabel="Ask Cora about this hospital stay"
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: '#BBF7D0',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginTop: 12,
+        marginBottom: 8
+      }}
+    >
+      <Sparkles size={16} color={C.brand} />
+      <Text style={{ fontSize: 13, fontWeight: '700', color: C.brandDark }}>
+        Ask Cora about these charges
+      </Text>
+    </Pressable>
     <BillBreakdown encounter={enc} />
     {enc.disputes?.length > 0 && <><SectionHeader title="Billing questions" />{enc.disputes.map((issue) => <View key={issue.id} style={{ borderBottomWidth: 1, borderBottomColor: C.border, paddingVertical: 12 }}><Text style={T.section}>{issue.itemDescription}</Text><Text style={[T.body, { marginTop: 6 }]}>{issue.reason}</Text><Row label="Amount questioned" value={formatPeso(issue.contestedAmount)} />{issue.resolutionClause && <Text style={T.meta}>{issue.resolutionClause}</Text>}</View>)}</>}
     {enc.timeline?.length > 0 && <><SectionHeader title="Stay updates" />{enc.timeline.map((event) => <View key={event.id} style={{ borderBottomWidth: 1, borderBottomColor: C.border, paddingVertical: 12 }}><Text style={T.section}>{event.title}</Text><Text style={[T.meta, { marginTop: 4 }]}>{event.description}</Text><Text style={[T.meta, { marginTop: 4 }]}>{formatDateTime(event.timestamp)}</Text></View>)}</>}
     <SecondaryButton title="Share a billing summary" onPress={() => setShareOpen(true)} />{shareError && <Text style={[T.meta, { color: C.danger }]} accessibilityRole="alert">{shareError}</Text>}
-  </ScrollView><ConfirmationModal visible={shareOpen} title="Share your billing summary?" detail="The summary includes your stay reference, admission date and patient responsibility. Share only with someone you trust. Your exit PIN is excluded." confirmLabel="Open share sheet" onConfirm={shareSummary} onCancel={() => setShareOpen(false)} /></Screen>;
+  </ScrollView>
+  <ConfirmationModal visible={shareOpen} title="Share your billing summary?" detail="The summary includes your stay reference, admission date and patient responsibility. Share only with someone you trust. Your exit PIN is excluded." confirmLabel="Open share sheet" onConfirm={shareSummary} onCancel={() => setShareOpen(false)} />
+  <CoraAssistantModal
+    visible={coraOpen}
+    onClose={() => setCoraOpen(false)}
+    encounter={enc}
+    initialQuery="Can you explain the itemized charges and deductions for this hospital stay?"
+  />
+  </Screen>;
 }

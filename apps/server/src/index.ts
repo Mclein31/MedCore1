@@ -17,6 +17,7 @@ import analyticsApp from './routes/analytics';
 import chargesApp from './routes/charges';
 import patientApp from './routes/patient';
 import notificationsApp from './routes/notifications';
+import aiApp from './routes/ai';
 
 const app = new Hono();
 
@@ -234,6 +235,7 @@ app.route('/api/v1/analytics', analyticsApp);
 app.route('/api/v1', chargesApp);
 app.route('/api/v1/patient', patientApp);
 app.route('/api/v1/notifications', notificationsApp);
+app.route('/api/v1/ai', aiApp);
 
 // 404 Not Found Handler
 app.notFound((c) => {
@@ -243,7 +245,7 @@ app.notFound((c) => {
 // Global Exception Handler
 app.onError((err, c) => {
   // Do not log SQL parameters, tokens, connection URLs or medical records.
-  console.error('Unhandled API error', { name: err.name });
+  console.error('Unhandled API error', { name: err.name, message: err.message });
   return apiError(c, 500, 'INTERNAL_SERVER_ERROR', 'The server could not complete this request. Please try again.');
 });
 

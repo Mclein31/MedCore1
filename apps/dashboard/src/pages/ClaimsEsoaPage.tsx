@@ -3,14 +3,16 @@ import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
 import { claimsApi } from '@/api';
 import { formatPhp } from '@/utils/formatters';
-import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer } from 'lucide-react';
+import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer, Sparkles } from 'lucide-react';
 import { Button, IconButton, SegmentedTabs } from '@/components/common';
+import { ClaimsPreflightScrubberModal } from '@/components/ai/ClaimsPreflightScrubberModal';
 
 export const ClaimsEsoaPage: React.FC = () => {
   const { encounters, printDocument, searchQuery: claimSearch } = useMedCore();
   const [copied, setCopied] = useState(false);
   const [selectedClaimId, setSelectedClaimId] = useState<string>(encounters[0]?.id || 'enc-8812');
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
+  const [isAiScrubberOpen, setIsAiScrubberOpen] = useState(false);
   const [filterClaimStatus, setFilterClaimStatus] = useState<string>('ALL');
   const [serverXml, setServerXml] = useState<{key:string;xml:string} | null>(null);
   const [xmlError,setXmlError]=useState<string | null>(null);
@@ -265,18 +267,34 @@ export const ClaimsEsoaPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-6 text-left">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-semibold"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedClaimId(enc.id);
-                          setIsXmlModalOpen(true);
-                        }}
-                      >
-                        Inspect XML →
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-teal-700 hover:text-teal-800 hover:bg-teal-50 font-semibold text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClaimId(enc.id);
+                            setIsAiScrubberOpen(true);
+                          }}
+                          title="Run Gemini Clinical Claims Scrubber on this encounter"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 mr-1 text-teal-600" />
+                          AI Scrub
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-blue-600 hover:text-blue-800 hover:bg-blue-50 font-semibold text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedClaimId(enc.id);
+                            setIsXmlModalOpen(true);
+                          }}
+                        >
+                          XML →
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -330,6 +348,16 @@ export const ClaimsEsoaPage: React.FC = () => {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="primary"
+                icon={Sparkles}
+                onClick={() => setIsAiScrubberOpen(true)}
+                className="bg-teal-600 hover:bg-teal-700 text-white"
+                title="Run Gemini-powered CF4 & eSOA clinical audit"
+              >
+                Run AI Audit
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"
@@ -546,6 +574,12 @@ export const ClaimsEsoaPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* PhilHealth Claims Pre-Flight Forensic Scrubber AI Modal */}
+      <ClaimsPreflightScrubberModal
+        isOpen={isAiScrubberOpen}
+        onClose={() => setIsAiScrubberOpen(false)}
+        encounter={currentEncounter}
+      />
     </div>
   );
 };

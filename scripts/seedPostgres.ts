@@ -34,6 +34,8 @@ async function seed() {
     console.log('[1/7] Cleaning existing tables...');
     await client.query(`
       TRUNCATE TABLE
+        ai_audit_logs,
+        ai_conversations,
         system_audit_logs,
         encounter_timeline_events,
         billing_disputes,

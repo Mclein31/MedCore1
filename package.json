@@ -11,7 +11,9 @@
     "preview": "vite preview --config apps/dashboard/vite.config.ts",
     "seed": "npx tsx scripts/seedPostgres.ts",
     "test": "node --import ./node_modules/tsx/dist/loader.mjs scripts/testProject.ts",
-    "test:api": "npx tsx scripts/seedPostgres.ts && npx tsx scripts/testBackendApi.ts",
+    "test:api": "NODE_ENV=test npx tsx scripts/seedPostgres.ts && NODE_ENV=test npx tsx scripts/testBackendApi.ts",
+    "test:ai": "NODE_ENV=test npx tsx apps/server/__tests__/aiServices.test.ts",
+    "test:ai:live": "npx tsx scripts/testLiveAi.ts",
     "test:financial": "node --import ./node_modules/tsx/dist/loader.mjs scripts/auditFinancials.ts"
   },
   "dependencies": {

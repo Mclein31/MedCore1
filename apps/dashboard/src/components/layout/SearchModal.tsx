@@ -52,6 +52,38 @@ export const SearchModal: React.FC = () => {
   // System command suggestions
   const commandSuggestions = [
     {
+      title: 'AI Claims Scrubber: Pre-flight audit CF4 narratives & eSOA XML for RTH risk',
+      action: () => {
+        setActiveRoute('CLAIMS_ESOA');
+        closeSearchModal();
+      },
+      category: 'AI Assistant'
+    },
+    {
+      title: 'AI HMO Appeal Drafter: Medico-legal appeal for denied consumables (RA 11765)',
+      action: () => {
+        setActiveRoute('DISPUTES_EXCEPTIONS');
+        closeSearchModal();
+      },
+      category: 'AI Assistant'
+    },
+    {
+      title: 'AI Executive Briefing: View 3-minute RCM dwell time & trapped capital telemetry',
+      action: () => {
+        setActiveRoute('COMMAND_CENTER');
+        closeSearchModal();
+      },
+      category: 'AI Assistant'
+    },
+    {
+      title: 'AI Coverage Verification: Adjudicate PhilHealth PEC & commercial HMO eLOA',
+      action: () => {
+        setActiveRoute('COVERAGE_APPROVALS');
+        closeSearchModal();
+      },
+      category: 'AI Assistant'
+    },
+    {
       title: 'Navigate to Inpatient Encounters & Ledgers',
       action: () => {
         setActiveRoute('ENCOUNTERS_LEDGER');

@@ -814,5 +814,38 @@ export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ confi
     );
   }
 
+  // 8. HMO APPEAL LETTER
+  if (config.type === 'HMO_APPEAL_LETTER') {
+    const { letterContent, encounter: enc, appealData } = config.data;
+    const docName = appealData?.attendingPhysicianName || enc?.attendingDoctor || 'Attending Physician';
+    const docPan = appealData?.doctorPan || '0098412';
+
+    return (
+      <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
+        <div className="print-document w-full max-w-4xl mx-auto p-6 sm:p-10 bg-white text-slate-900 text-xs font-sans text-left">
+          {renderFacilityHeader('Medical Necessity Reconsideration Appeal Letter')}
+
+          <div className="my-4 p-3 bg-slate-50 border border-slate-200 rounded text-xs space-y-1">
+            <div className="grid grid-cols-2 gap-2">
+              <div><strong>Case Reference:</strong> {appealData?.referenceNumber || enc?.encounterNumber}</div>
+              <div><strong>HMO Carrier:</strong> {enc?.hmo?.providerName || enc?.hmo?.hmoName || 'HMO Claims Department'}</div>
+              <div><strong>Patient:</strong> {enc?.patient?.fullName || enc?.patient?.maskedName}</div>
+              <div><strong>Encounter / MRN:</strong> {enc?.encounterNumber} / {enc?.patient?.mrn}</div>
+            </div>
+          </div>
+
+          <div className="my-6 whitespace-pre-wrap font-serif text-[13px] leading-relaxed text-slate-800">
+            {letterContent}
+          </div>
+
+          {renderSignatures([
+            { title: 'Attending Physician / Specialist', name: docName, subtitle: `PRC License / PAN: ${docPan}` },
+            { title: 'Medical Director', name: 'Dr. Roberto Mendoza, MHA', subtitle: 'Hospital Medical Director' }
+          ])}
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };

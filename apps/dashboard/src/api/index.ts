@@ -19,6 +19,7 @@ export * from './payments';
 export * from './disputes';
 export * from './claims';
 export * from './analytics';
+export * from './ai';
 
 /**
  * Unified MedCore API Facade

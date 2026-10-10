@@ -1,11 +1,15 @@
+import { useState } from 'react';
 import { usePullRefresh } from '../hooks/usePullRefresh';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
 import { useNetworkStatus } from '../lib/offline';
 import { describeClaimStatus, describeDischargeStage, describeHmoStatus, formatDate, formatDateTime, formatPeso, hasHmo, remainingBalance } from '../lib/format';
+import { Sparkles } from 'lucide-react-native';
 import QuickActions from '../components/QuickActions';
 import { Icon } from '../components/icons';
+import { CoraAssistantModal } from '../components/CoraAssistantModal';
+import { CoraFloatingPill } from '../components/CoraFloatingPill';
 import { C, Card, EmptyState, ErrorState, Expandable, Hero, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
 
 function firstName(full: string | undefined): string {
@@ -17,6 +21,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const pullRefresh = usePullRefresh(refresh);
   const facility = useFacilityName();
   const net = useNetworkStatus();
+  const [coraOpen, setCoraOpen] = useState(false);
+  const [coraQuery, setCoraQuery] = useState<string | undefined>(undefined);
   if (loading && !overview) return <LoadingState message="Loading your hospital account…" />;
   if (error && !overview) return <ErrorState message={error} onRetry={refresh} />;
   const checklist = overview?.dischargeChecklist || [];
@@ -55,7 +61,36 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
         <LedgerRow title="PhilHealth" sub={describeClaimStatus(currentEncounter.philhealth?.status || '').title} value={formatPeso(currentEncounter.waterfall.philhealthTotal)} onPress={() => navigation.navigate('Coverage')} />
         <LedgerRow title={hasHmo(currentEncounter) ? currentEncounter.hmo.providerName : 'No HMO on file'} sub={hasHmo(currentEncounter) ? describeHmoStatus(currentEncounter.hmo.finalLoaStatus).title : 'Contact billing to add coverage details'} value={formatPeso(currentEncounter.waterfall.hmoApprovedAmount)} onPress={() => navigation.navigate('Coverage')} last />
       </Card>
-      {steps.length > 0 && <><SectionHeader title="Your discharge journey" /><View style={{ paddingVertical: 8 }}><Stepper steps={steps} /></View></>}
+      {steps.length > 0 && (
+        <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
+            <SectionHeader title="Your discharge journey" />
+            <Pressable
+              onPress={() => {
+                setCoraQuery('What does this discharge stage mean and what is needed next?');
+                setCoraOpen(true);
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Ask Cora about this stage"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+                paddingVertical: 4,
+                paddingHorizontal: 8,
+                backgroundColor: '#F0FDF4',
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#BBF7D0'
+              }}
+            >
+              <Sparkles size={13} color={C.brand} />
+              <Text style={{ fontSize: 11, fontWeight: '700', color: C.brandDark }}>Ask Cora</Text>
+            </Pressable>
+          </View>
+          <View style={{ paddingVertical: 8 }}><Stepper steps={steps} /></View>
+        </>
+      )}
       <Expandable title="How your bill adds up" subtitle="Charges, benefits, discounts and payments">
         <Row label="Total hospital charges" value={formatPeso(currentEncounter.waterfall.grossTotal)} />
         <Row label="VAT exemption" value={`−${formatPeso(currentEncounter.waterfall.vatExemption)}`} />
@@ -71,5 +106,22 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     {encounters.length > 1 && <><SectionHeader title="Recent stays" /><Card flush>{encounters.slice(0, 3).map((enc, i, all) => <LedgerRow key={enc.uuid} title={enc.encounterNumber} sub={`${formatDate(enc.admissionDate)} · ${enc.primaryDiagnosis || 'Hospital stay'}`} onPress={() => navigation.navigate('RecordDetail', { encounterId: enc.uuid })} last={i === all.length - 1} />)}</Card></>}
     {lastSynced && <Text style={[T.meta, { marginTop: 12 }]}>Last updated {formatDateTime(lastSynced.toISOString())}</Text>}
     </View>
-  </ScrollView></Screen>;
+  </ScrollView>
+  {currentEncounter && (
+    <CoraFloatingPill
+      onPress={() => {
+        setCoraQuery(undefined);
+        setCoraOpen(true);
+      }}
+      style={{ position: 'absolute', bottom: 20, right: 18, zIndex: 100 }}
+    />
+  )}
+  <CoraAssistantModal
+    visible={coraOpen}
+    onClose={() => setCoraOpen(false)}
+    encounter={currentEncounter}
+    navigation={navigation}
+    initialQuery={coraQuery}
+  />
+  </Screen>;
 }
