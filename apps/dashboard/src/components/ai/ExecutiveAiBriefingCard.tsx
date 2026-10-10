@@ -23,20 +23,23 @@ export interface ExecutiveAiBriefingCardProps {
   defaultCollapsed?: boolean;
 }
 
+let cachedBriefing: ExecutiveBriefingResponse | null = null;
+
 export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = ({
   className = '',
   defaultCollapsed = false
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [briefing, setBriefing] = useState<ExecutiveBriefingResponse | null>(null);
+  const [briefing, setBriefing] = useState<ExecutiveBriefingResponse | null>(() => cachedBriefing);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  const fetchBriefing = async () => {
+  const fetchBriefing = async (forceRefresh: boolean = false) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await rcmAi.getExecutiveBriefing();
+      const data = await rcmAi.getExecutiveBriefing(forceRefresh);
+      cachedBriefing = data;
       setBriefing(data);
     } catch (err: any) {
       setError(err?.message || 'Failed to generate real-time executive RCM briefing.');
@@ -46,7 +49,9 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
   };
 
   useEffect(() => {
-    void fetchBriefing();
+    if (!cachedBriefing) {
+      void fetchBriefing(false);
+    }
   }, []);
 
   return (
@@ -87,7 +92,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
             variant="secondary"
             icon={RefreshCw}
             isLoading={loading}
-            onClick={fetchBriefing}
+            onClick={() => void fetchBriefing(true)}
             className="text-xs border-purple-200 hover:bg-purple-100/50"
             title="Refresh Executive Telemetry"
           >
@@ -128,7 +133,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
             <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{error}</span>
           </div>
-          <Button size="sm" variant="secondary" onClick={fetchBriefing}>
+          <Button size="sm" variant="secondary" onClick={() => void fetchBriefing(true)}>
             Retry
           </Button>
         </div>

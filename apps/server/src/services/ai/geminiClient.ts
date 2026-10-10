@@ -115,10 +115,11 @@ export class GeminiClient {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(15000)
         });
 
-        if (response.status === 429 || response.status === 503) {
+        if (response.status === 429 || response.status === 503 || response.status === 502 || response.status === 504) {
           const delay = Math.pow(2, attempts) * 500;
           await sleep(delay);
           continue;
@@ -126,11 +127,17 @@ export class GeminiClient {
 
         if (!response.ok) {
           const errText = await response.text();
+          const isPermanent = response.status >= 400 && response.status < 500 && response.status !== 429;
+          if (isPermanent) {
+            console.warn(`[GeminiClient] Permanent client error HTTP ${response.status}: ${errText}. Failing fast without retries.`);
+            lastError = new Error(`Google AI Studio HTTP ${response.status}: ${errText}`);
+            break;
+          }
           throw new Error(`Google AI Studio HTTP ${response.status}: ${errText}`);
         }
 
-        const data = await response.json();
-        const candidate = data.candidates?.[0];
+        const data = (await response.json()) as any;
+        const candidate = data?.candidates?.[0];
         const text = candidate?.content?.parts?.map((p: any) => p.text).join('') || '';
 
         let parsedJson: any = undefined;
@@ -149,8 +156,8 @@ export class GeminiClient {
           text,
           rawJson: parsedJson,
           modelUsed: model,
-          tokensPrompt: data.usageMetadata?.promptTokenCount || 0,
-          tokensCompletion: data.usageMetadata?.candidatesTokenCount || 0,
+          tokensPrompt: data?.usageMetadata?.promptTokenCount || 0,
+          tokensCompletion: data?.usageMetadata?.candidatesTokenCount || 0,
           latencyMs: Date.now() - startTime,
           isMock: false
         };
@@ -304,9 +311,9 @@ export class GeminiClient {
 
   private getOcrMock(ctx: any): CardOcrResponse {
     if (ctx.cardCategory === 'HMO_CARD') {
-      return OCR_FEW_SHOT_EXAMPLES[1].output as CardOcrResponse;
+      return OCR_FEW_SHOT_EXAMPLES[1].output as unknown as CardOcrResponse;
     }
-    return OCR_FEW_SHOT_EXAMPLES[0].output as CardOcrResponse;
+    return OCR_FEW_SHOT_EXAMPLES[0].output as unknown as CardOcrResponse;
   }
 }
 

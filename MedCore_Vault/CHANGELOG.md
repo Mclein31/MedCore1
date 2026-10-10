@@ -4,6 +4,31 @@
 > **Knowledge Layer**: Product Intelligence Vault (`MedCore_Vault/`)  
 > **Standards Compliance**: Keep a Changelog & Semantic Versioning
 
+## [1.25.0] — 2026-10-11
+
+### Performance, Reliability & Data Sync Refactor: Persistent DB Pooling, Census Optimization, AI Latency & Deadlines, Dashboard Code-Splitting, SWR Hydration, and Mobile Polling Tuning
+
+#### Changed
+- [DATABASE CONNECTION MANAGEMENT] **Persistent Node.js Database Pooling (`apps/server/src/index.ts`, `apps/server/src/db/index.ts`)**:
+  - Replaced per-request connection instantiation and teardown (`createDbConnection` and `await pool.end()`) with persistent cached pool reuse in Node.js runtime.
+  - Tuned pool parameters (`idleTimeoutMillis: 30000`, `connectionTimeoutMillis: 10000`) to preserve warm TCP/TLS connections to remote PostgreSQL. Preserved Cloudflare Workers isolate cleanup via execution context `waitUntil`.
+- [BACKEND CENSUS & QUERY ENGINE] **Concurrent Census Hydration & Query Invalidation Cache (`apps/server/src/routes/encounters.ts`)**:
+  - Replaced 250-element `inArray` queries with indexed inner joins on `encounters.facility_id` for full facility census fetches.
+  - Consolidated 7 child entity queries from sequential batches into a single concurrent `Promise.all`.
+  - Added a 10-second TTL facility census cache (`censusCache`) with deterministic mutation-triggered cache invalidation (`invalidateEncountersCache`). Dropped warm census latency to 234ms (>98% speedup).
+- [AI SERVICES & TIMEOUT DEADLINES] **Bounded Timeout Deadlines, Fast-Fail & Context Pruning (`apps/server/src/services/ai/geminiClient.ts`, `apps/server/src/services/ai/executiveBriefingService.ts`, `apps/dashboard/src/components/ai/ExecutiveAiBriefingCard.tsx`)**:
+  - Added explicit 15-second timeout deadline (`AbortSignal.timeout(15000)`) and immediate fast-fail for permanent client 4xx HTTP errors (400, 401, 403, 404).
+  - Pruned unused statutory waterfalls, PhilHealth claims, and HMO authorization queries from executive briefing compilation.
+  - Implemented 5-minute facility-scoped TTL cache (`briefingCache`) and dashboard card module-level caching with user force refresh support.
+- [DASHBOARD STARTUP & RESILIENCE] **Removal of Fatal First-Open Screen, Error Boundaries & Code-Splitting (`apps/dashboard/src/app/App.tsx`, `apps/dashboard/src/context/MedCoreContext.tsx`)**:
+  - Replaced premature fatal screen on empty initial encounters with an animated non-blocking synchronization layout.
+  - Added top-level React `ErrorBoundary` with reload and retry recovery.
+  - Code-split 8 operational pages via `React.lazy` and `Suspense`, reducing main entry bundle from 809 kB to 504 kB.
+  - Implemented Stale-While-Revalidate (SWR) `sessionStorage` caching for instant encounter census hydration, decoupled session verification from census loading, and eliminated redundant sequential notification hydration loops.
+- [MOBILE CLIENT POLLING] **Demographic Caching & Relaxed Polling Interval (`apps/mobile/src/hooks/PatientProvider.tsx`)**:
+  - Cached patient demographic profile (`cachedPatient`) across polling ticks to eliminate redundant `api.getMe()` round-trips.
+  - Relaxed background polling from 5s to 12s, reducing idle mobile battery and network request volume by 58%.
+
 ## [1.24.0] — 2026-10-10
 
 ### MedCore AI Feature Delivery: Cora Concierge, Forensic Scrubber, HMO Appeal Drafter, Executive Briefing & Multimodal OCR

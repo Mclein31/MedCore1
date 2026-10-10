@@ -180,7 +180,18 @@ interface MedCoreContextType {
 const MedCoreContext = createContext<MedCoreContextType | undefined>(undefined);
 
 export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [encounters, setEncounters] = useState<Encounter[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('medcore_cached_encounters');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [selectedEncounterId, setSelectedEncounterId] = useState<string>('enc-8812');
   const [activeRoute, setActiveRoute] = useState<NavRoute>('COMMAND_CENTER');
   const [activeRole, setActiveRoleState] = useState<UserRole>('BILLING_SPECIALIST');
@@ -205,10 +216,16 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
             const res=await apiClient.getEncounters();
             if(generation!==sessionGeneration.current || revision!==encounterRevision.current) return false;
             if(!Array.isArray(res?.items)) throw new Error('The hospital returned incomplete encounter records.');
-            setEncounters(res.items); return true;
+            setEncounters(res.items);
+            if (typeof window !== 'undefined') {
+              try {
+                sessionStorage.setItem('medcore_cached_encounters', JSON.stringify(res.items));
+              } catch {}
+            }
+            return true;
           } catch(error:unknown) {
             if(generation!==sessionGeneration.current || (error instanceof ApiError && (error.status===401 || error.code==='SESSION_CHANGED'))) return false;
-            if(attempt<retries) { await new Promise(resolve=>setTimeout(resolve,1200)); continue; }
+            if(attempt<retries) { await new Promise(resolve=>setTimeout(resolve,800*(attempt+1))); continue; }
             if(!silent) setApiError(error instanceof Error?error.message:'Could not refresh hospital records.');
           }
         }
@@ -298,7 +315,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsAddChargeModalOpen(false); setIsEditChargeModalOpen(false); setChargeToEdit(null);
     setIsAdmitPatientModalOpen(false); setIsEditEncounterModalOpen(false); setEncounterToEdit(null);
     setSearchQuery(''); setSelectedWhyItem(null); setIsSearchModalOpen(false);
-    try { for (const key of ['medcore_auth', 'medcore_user', 'aqromed_auth', 'aqromed_user']) localStorage.removeItem(key); } catch {}
+    try { for (const key of ['medcore_auth', 'medcore_user', 'aqromed_auth', 'aqromed_user', 'medcore_cached_encounters']) { localStorage.removeItem(key); sessionStorage.removeItem(key); } } catch {}
   }
   useEffect(() => apiClient.client.onSessionExpired(() => clearSessionState('expired')), []);
 
@@ -324,11 +341,18 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
             localStorage.setItem('medcore_auth', 'true');
             localStorage.setItem('medcore_user', JSON.stringify(res.user));
           }
-          if (!await refreshEncounters() && isMounted && generation === sessionGeneration.current) setSessionError('We could not load hospital records. Check your connection and try again.');
+          // Unblock the session view immediately so dashboard renders with cached/skeleton state
+          if (isMounted) setIsVerifyingSession(false);
+          void refreshEncounters(2, false).then(ok => {
+            if (!ok && isMounted && generation === sessionGeneration.current && encounters.length === 0) {
+              setApiError('Unable to synchronize real-time hospital records. Click Refresh to retry.');
+            }
+          });
         } else {
           setIsAuthenticated(false);
           setCurrentUser(null);
           apiClient.setDemoRole(null);
+          if (isMounted) setIsVerifyingSession(false);
         }
       })
       .catch((err: unknown) => {
@@ -336,8 +360,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (!(err instanceof ApiError && (err.status === 401 || err.code === 'SESSION_CHANGED'))) {
           setSessionError('We could not verify your session. Check your connection and try again.');
         }
-      })
-      .finally(() => { if (isMounted) setIsVerifyingSession(false); });
+        if (isMounted) setIsVerifyingSession(false);
+      });
 
     return () => {
       isMounted = false;
@@ -351,7 +375,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clearSessionState();
         verifiedSession.current = true;
         const generation = sessionGeneration.current;
-        setIsVerifyingSession(true);
         setIsAuthenticated(true);
         setCurrentUser(res.user);
         if (typeof window !== 'undefined') {
@@ -363,8 +386,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           apiClient.setDemoRole(res.user.role);
         }
         setApiError(null);
-        if (!await refreshEncounters() && generation === sessionGeneration.current) setSessionError('We could not load hospital records. Check your connection and try again.');
         setIsVerifyingSession(false);
+        void refreshEncounters(2, false);
         return { success: true };
       }
       return { success: false, error: 'Login failed: Invalid server response' };
@@ -921,12 +944,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
       try {
         const feed=await notificationsApi.getFeed();
         if(generation!==sessionGeneration.current) return;
-        const changed=[...new Set(feed.notifications.filter(item=>!seenNotifications.current.has(item.id)).map(item=>item.encounterId))];
-        setNotifications(feed.notifications); setUnreadNotificationCount(feed.unreadCount); setNotificationError(null);
-        for(const id of changed) {
-          await refreshServerEncounter(id);
-          if(generation!==sessionGeneration.current) return;
-        }
+        setNotifications(feed.notifications);
+        setUnreadNotificationCount(feed.unreadCount);
+        setNotificationError(null);
         seenNotifications.current=new Set(feed.notifications.map(item=>item.id));
       } catch(error:unknown) {
         if(generation===sessionGeneration.current) setNotificationError(error instanceof Error?error.message:'Could not load hospital updates.');
@@ -950,17 +970,29 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
   const pollingRef=useRef({refreshNotifications,refreshEncounters});
   pollingRef.current={refreshNotifications,refreshEncounters};
+  const lastPollTime=useRef<number>(0);
   useEffect(()=>{
     if(!isAuthenticated || currentUser?.role==='PATIENT_GUARANTOR') return;
-    const poll=()=>{
+    const poll=(force=false)=>{
+      const now=Date.now();
+      if(!force && now-lastPollTime.current<5000) return; // Debounce rapid focus/tab switches
       if(document.visibilityState==='visible') {
+        lastPollTime.current=now;
         void pollingRef.current.refreshNotifications();
         void pollingRef.current.refreshEncounters(0,true);
       }
     };
-    poll(); const interval=setInterval(poll,10000);
-    window.addEventListener('focus',poll); document.addEventListener('visibilitychange',poll);
-    return ()=>{clearInterval(interval);window.removeEventListener('focus',poll);document.removeEventListener('visibilitychange',poll);};
+    poll(true);
+    const interval=setInterval(()=>poll(true),15000);
+    const onFocus=()=>poll(false);
+    const onVisibility=()=>poll(false);
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisibility);
+    return ()=>{
+      clearInterval(interval);
+      window.removeEventListener('focus',onFocus);
+      document.removeEventListener('visibilitychange',onVisibility);
+    };
   },[isAuthenticated,currentUser?.id]);
 
   return (

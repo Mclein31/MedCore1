@@ -23,7 +23,8 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
   const pending = useRef<Promise<void> | null>(null);
   const mounted = useRef(true);
   const hasSnapshot = useRef(false);
-  if (source.current !== scope) { source.current = scope; generation.current++; pending.current = null; hasSnapshot.current = false; }
+  const cachedPatient = useRef<SafePatient | null>(null);
+  if (source.current !== scope) { source.current = scope; generation.current++; pending.current = null; hasSnapshot.current = false; cachedPatient.current = null; }
   const refresh = useCallback(() => {
     if (!scope.userId) return Promise.resolve();
     if (pending.current) return pending.current;
@@ -32,9 +33,13 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
     if (!hasSnapshot.current) setStatus({ scope, loading: true, error: null });
     const request = (async () => {
       try {
-        const [me, overview, encounters] = await Promise.all([api.getMe(), api.getOverview(), api.getEncounters()]);
+        const mePromise = cachedPatient.current
+          ? Promise.resolve({ patient: cachedPatient.current })
+          : api.getMe();
+        const [me, overview, encounters] = await Promise.all([mePromise, api.getOverview(), api.getEncounters()]);
         if (!me.patient?.id || !Array.isArray(encounters.items)) throw new Error('The server returned incomplete patient information. Please try again.');
         if (active()) {
+          cachedPatient.current = me.patient;
           setSnapshot({ scope, patient: me.patient, overview, encounters: encounters.items, lastSynced: new Date() });
           void saveGatePass(user!.id,paymentAccountNamespace(user!,selectedPatientId||undefined),overview.currentEncounter).catch(()=>{});
           hasSnapshot.current = true;
@@ -52,7 +57,7 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
     mounted.current = true;
     if (!scope.userId) return () => { mounted.current = false; generation.current++; pending.current = null; };
     void refresh();
-    const interval = setInterval(() => { if (AppState.currentState === 'active') void refresh(); }, 5000);
+    const interval = setInterval(() => { if (AppState.currentState === 'active') void refresh(); }, 12000);
     const sub = AppState.addEventListener('change', state => { if (state === 'active') void refresh(); });
     return () => { mounted.current = false; generation.current++; pending.current = null; clearInterval(interval); sub.remove(); };
   }, [refresh, scope]);

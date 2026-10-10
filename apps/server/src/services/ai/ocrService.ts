@@ -6,9 +6,16 @@ import {
   buildOcrPrompt
 } from './prompts/ocrPrompts';
 
+export type AllowedCardCategory =
+  | 'PHILHEALTH' | 'PHILHEALTH_ID'
+  | 'SENIOR_CITIZEN' | 'SENIOR_CITIZEN_OSCA'
+  | 'PWD' | 'PWD_ID'
+  | 'HMO' | 'HMO_CARD'
+  | 'NATIONAL_ID' | 'PHILSYS_NATIONAL_ID';
+
 export interface ExtractCardOptions {
   imageBase64: string;
-  cardCategory?: 'PHILHEALTH_ID' | 'SENIOR_CITIZEN_OSCA' | 'PWD_ID' | 'HMO_CARD' | 'NATIONAL_ID';
+  cardCategory?: AllowedCardCategory | string;
   env?: Record<string, any>;
 }
 

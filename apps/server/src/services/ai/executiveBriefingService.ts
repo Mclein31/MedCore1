@@ -1,6 +1,6 @@
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '../../db';
-import { encounters, statutoryWaterfalls, philhealthClaims, hmoAuthorizations } from '../../db/schema';
+import { encounters } from '../../db/schema';
 import { geminiClient } from './geminiClient';
 import {
   ExecutiveBriefingResponse,
@@ -12,31 +12,34 @@ import { moneyCents } from '../statutoryWaterfall';
 
 export interface GenerateExecutiveBriefingOptions {
   facilityId?: string;
+  forceRefresh?: boolean;
   env?: Record<string, any>;
 }
 
+interface CachedBriefing {
+  data: ExecutiveBriefingResponse;
+  timestamp: number;
+}
+
+const briefingCache = new Map<string, CachedBriefing>();
+const BRIEFING_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export class ExecutiveBriefingService {
   async generateBriefing(options: GenerateExecutiveBriefingOptions = {}): Promise<ExecutiveBriefingResponse> {
-    const { facilityId } = options;
+    const { facilityId, forceRefresh } = options;
+    const cacheKey = facilityId || 'default';
+
+    if (!forceRefresh) {
+      const cached = briefingCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < BRIEFING_TTL_MS) {
+        return cached.data;
+      }
+    }
 
     let allEncountersQuery = db.select().from(encounters);
     const allEncounters = facilityId
       ? await allEncountersQuery.where(eq(encounters.facilityId, facilityId))
       : await allEncountersQuery;
-
-    const ownedEncIds = allEncounters.map((e) => e.id);
-
-    const [allWaterfalls, allClaims, allHmos] = await Promise.all([
-      ownedEncIds.length > 0
-        ? db.select().from(statutoryWaterfalls).where(inArray(statutoryWaterfalls.encounterId, ownedEncIds))
-        : [],
-      ownedEncIds.length > 0
-        ? db.select().from(philhealthClaims).where(inArray(philhealthClaims.encounterId, ownedEncIds))
-        : [],
-      ownedEncIds.length > 0
-        ? db.select().from(hmoAuthorizations).where(inArray(hmoAuthorizations.encounterId, ownedEncIds))
-        : []
-    ]);
 
     const activeInpatients = allEncounters.filter((e) => e.stage !== 'CLEARED_GATE_PASS');
     const dischargesToday = allEncounters.filter((e) => e.stage === 'CLEARED_GATE_PASS').length;
@@ -108,11 +111,14 @@ export class ExecutiveBriefingService {
     if (response.rawJson) {
       const parsed = ExecutiveBriefingResponseSchema.safeParse(response.rawJson);
       if (parsed.success) {
+        briefingCache.set(cacheKey, { data: parsed.data, timestamp: Date.now() });
         return parsed.data;
       }
     }
 
-    return geminiClient['getBriefingMock'](telemetryMetrics);
+    const fallback = geminiClient['getBriefingMock'](telemetryMetrics);
+    briefingCache.set(cacheKey, { data: fallback, timestamp: Date.now() });
+    return fallback;
   }
 }
 

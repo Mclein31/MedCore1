@@ -434,9 +434,25 @@ export async function getHydratedEncounter(encounterIdOrNumber: string, facility
   });
 }
 
-// In-memory cache for default encounters list payload to prevent Worker CPU limit breaches
-export function invalidateEncountersCache() {
-  // Patient/census records are deliberately not cached across DB bindings.
+interface CachedCensus {
+  payload: string;
+  timestamp: number;
+}
+
+const censusCache = new Map<string, CachedCensus>();
+const CENSUS_CACHE_TTL_MS = 10000; // 10 seconds TTL
+
+// In-memory cache for encounters list payload to prevent Worker CPU limit breaches & excessive DB queries
+export function invalidateEncountersCache(facilityId?: string) {
+  if (facilityId) {
+    for (const key of censusCache.keys()) {
+      if (key.startsWith(`${facilityId}:`)) {
+        censusCache.delete(key);
+      }
+    }
+  } else {
+    censusCache.clear();
+  }
 }
 
 encountersApp.get('/physicians',requireAuth,requireRole(['BILLING_SPECIALIST','HOSPITAL_CFO']),async c=>{
@@ -450,6 +466,16 @@ encountersApp.get('/physicians',requireAuth,requireRole(['BILLING_SPECIALIST','H
 encountersApp.get('/', async (c) => {
   const facilityId = c.get('user').facilityId;
   const { search, status, stage, hmo } = c.req.query();
+
+  const cacheKey = `${facilityId}:${search || ''}:${status || ''}:${stage || ''}:${hmo || ''}`;
+  const cached = censusCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CENSUS_CACHE_TTL_MS) {
+    return c.body(cached.payload, 200, {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'private, no-store',
+      'X-Cache-Status': 'HIT'
+    });
+  }
 
   const conditions = [eq(encounters.facilityId, facilityId)];
 
@@ -538,34 +564,79 @@ encountersApp.get('/', async (c) => {
   }
 
   const encIds = encRecords.map((r) => r.encounter.id);
-  const isAll = conditions.length === 0;
+  const isFacilityAll = (!search || !search.trim()) && (!stage || stage === 'ALL') && (!status || status === 'ALL') && (!hmo || hmo === 'ALL');
 
   // Batch fetch child relations across matched encounters
-  // If fetching all encounters, scan directly without sending 250 UUID parameters in SQL
-  const [allItems, allDisputes, allPasses] = await Promise.all([
-    isAll
-      ? db.select().from(chargemasterItems)
+  // If fetching all facility encounters, use indexed join to avoid sending 250 UUID parameters in SQL
+  const [
+    allItems,
+    allDisputes,
+    allPasses,
+    allNotes,
+    allPayments,
+    allReceipts,
+    allTimeline
+  ] = await Promise.all([
+    isFacilityAll
+      ? db
+          .select({ item: chargemasterItems })
+          .from(chargemasterItems)
+          .innerJoin(encounters, eq(chargemasterItems.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .then((rows) => rows.map((r) => r.item))
       : db.select().from(chargemasterItems).where(inArray(chargemasterItems.encounterId, encIds)),
-    isAll
-      ? db.select().from(billingDisputes)
+    isFacilityAll
+      ? db
+          .select({ item: billingDisputes })
+          .from(billingDisputes)
+          .innerJoin(encounters, eq(billingDisputes.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .then((rows) => rows.map((r) => r.item))
       : db.select().from(billingDisputes).where(inArray(billingDisputes.encounterId, encIds)),
-    isAll
-      ? db.select().from(dischargePasses).orderBy(desc(dischargePasses.issuedAt))
-      : db.select().from(dischargePasses).where(inArray(dischargePasses.encounterId, encIds)).orderBy(desc(dischargePasses.issuedAt))
-  ]);
-
-  const [allNotes, allPayments, allReceipts, allTimeline] = await Promise.all([
-    isAll
-      ? db.select().from(promissoryNotes).orderBy(desc(promissoryNotes.createdAt))
+    isFacilityAll
+      ? db
+          .select({ item: dischargePasses })
+          .from(dischargePasses)
+          .innerJoin(encounters, eq(dischargePasses.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .orderBy(desc(dischargePasses.issuedAt))
+          .then((rows) => rows.map((r) => r.item))
+      : db.select().from(dischargePasses).where(inArray(dischargePasses.encounterId, encIds)).orderBy(desc(dischargePasses.issuedAt)),
+    isFacilityAll
+      ? db
+          .select({ item: promissoryNotes })
+          .from(promissoryNotes)
+          .innerJoin(encounters, eq(promissoryNotes.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .orderBy(desc(promissoryNotes.createdAt))
+          .then((rows) => rows.map((r) => r.item))
       : db.select().from(promissoryNotes).where(inArray(promissoryNotes.encounterId, encIds)).orderBy(desc(promissoryNotes.createdAt)),
-    isAll
-      ? db.select().from(payments).orderBy(desc(payments.createdAt))
+    isFacilityAll
+      ? db
+          .select({ item: payments })
+          .from(payments)
+          .innerJoin(encounters, eq(payments.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .orderBy(desc(payments.createdAt))
+          .then((rows) => rows.map((r) => r.item))
       : db.select().from(payments).where(inArray(payments.encounterId, encIds)).orderBy(desc(payments.createdAt)),
-    isAll
-      ? db.select().from(paymentReceipts).orderBy(desc(paymentReceipts.issuedAt))
+    isFacilityAll
+      ? db
+          .select({ item: paymentReceipts })
+          .from(paymentReceipts)
+          .innerJoin(encounters, eq(paymentReceipts.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .orderBy(desc(paymentReceipts.issuedAt))
+          .then((rows) => rows.map((r) => r.item))
       : db.select().from(paymentReceipts).where(inArray(paymentReceipts.encounterId, encIds)).orderBy(desc(paymentReceipts.issuedAt)),
-    isAll
-      ? db.select().from(encounterTimelineEvents).orderBy(desc(encounterTimelineEvents.eventTimestamp))
+    isFacilityAll
+      ? db
+          .select({ item: encounterTimelineEvents })
+          .from(encounterTimelineEvents)
+          .innerJoin(encounters, eq(encounterTimelineEvents.encounterId, encounters.id))
+          .where(eq(encounters.facilityId, facilityId))
+          .orderBy(desc(encounterTimelineEvents.eventTimestamp))
+          .then((rows) => rows.map((r) => r.item))
       : db.select().from(encounterTimelineEvents).where(inArray(encounterTimelineEvents.encounterId, encIds)).orderBy(desc(encounterTimelineEvents.eventTimestamp))
   ]);
 
@@ -637,6 +708,8 @@ encountersApp.get('/', async (c) => {
     items,
     total: items.length
   });
+
+  censusCache.set(cacheKey, { payload: responsePayload, timestamp: Date.now() });
 
   return c.body(responsePayload, 200, {
     'Content-Type': 'application/json',
