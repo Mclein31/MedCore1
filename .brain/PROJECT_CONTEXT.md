@@ -2195,3 +2195,20 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
   - Control geometry: Reduced corner radius on all form input boxes, facility box, shift box, submit button, and staff persona cards from `rounded-xl` to crisp `rounded-md`.
 - **Compatibility**: All form logic, credential auto-fill, `initialLoginEmail`, `sessionNotice`, accessible roles, test IDs, and compliance markings (`RA 10173`) remain 100% intact. All automated test suites (`npm test`) and dashboard production builds pass cleanly.
 
+
+## Cloudflare Backend Deployment & Mobile API Synchronization — October 10, 2026
+
+[FACT] The updated backend containing `finalize-bill`, `send-bill`, and `notifications` routes has been published to Cloudflare Workers (`medcore-backend.mcleinonza0531.workers.dev`, Version ID: `650e0bae-a052-4f5d-b88b-00a1ce62274f`).
+- Probes confirmed missing routes are resolved: previous `404 ROUTE_NOT_FOUND` now returns authenticated `401 UNAUTHORIZED`.
+- Health check returns `ONLINE`, `latencyMs: 966`, and 250 encounters connected through Cloudflare Hyperdrive.
+
+[FACT] Mobile presentation principal (`mobile.admin.demo@example.test`, role `HOSPITAL_CFO`) and patient account (`juan.delacruz@gmail.com`, role `PATIENT_GUARANTOR`, linked to `MRN-882190`) have been provisioned in the hosted Neon PostgreSQL database (`neondb`).
+- Live authentication verified via Cloudflare Worker: `POST /api/v1/auth/login` returns HTTP 200 with session token and `mobileDemoAdmin: true`.
+- Directory retrieval verified: `GET /api/v1/patient/demo/patients` returns all 250 patients from the hosted database.
+- Patient scoped projection verified: `GET /api/v1/patient/me` with `X-Medcore-Patient-Id` successfully returns hydrated patient record.
+
+[DECISION] Mobile environment (`apps/mobile/.env`) is configured to `EXPO_PUBLIC_API_BASE_URL=https://medcore-backend.mcleinonza0531.workers.dev`, pointing the mobile client directly to the shared hosted Cloudflare backend and Neon database.
+- Hosted Vercel staff dashboard (`https://med-core1.vercel.app`) and mobile client now operate on the exact same backend and database instance.
+- Verified test suites: Financial audit 250/250 (100% exact), mobile unit tests 49/49, server hardening 53/53, and QR decoding 16/16.
+
+
