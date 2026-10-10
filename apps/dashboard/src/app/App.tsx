@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { MedCoreProvider, useMedCore } from '@/context/MedCoreContext';
 import { GlobalCommandBar } from '@/components/layout/GlobalCommandBar';
 import { SidebarNav } from '@/components/layout/SidebarNav';
-import { SearchModal } from '@/components/layout/SearchModal';
 import { WhyDoIOweThisDrawer } from '@/features/ledger';
 import { ContextualActionDrawer, DischargeDossierDrawer } from '@/features/discharge';
 import { PatientPortalStandalone } from '@/features/patient-clarify';
@@ -42,7 +41,6 @@ export const MainLayout: React.FC = () => {
     sessionError,
     retrySession,
     setActiveRoute,
-    setActiveRole,
     selectEncounter,
     encounters,
     confirmationState,
@@ -63,16 +61,14 @@ export const MainLayout: React.FC = () => {
           selectEncounter(id);
         }
         setActiveRoute('PATIENT_PORTAL');
-        if (activeRole !== 'PATIENT_GUARANTOR') setActiveRole('PATIENT_GUARANTOR');
       } else if (hash === '#/patient-portal') {
         setActiveRoute('PATIENT_PORTAL');
-        if (activeRole !== 'PATIENT_GUARANTOR') setActiveRole('PATIENT_GUARANTOR');
       }
     };
     handleHashChange();
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, [encounters, selectEncounter, setActiveRoute, setActiveRole, isAuthenticated, activeRole]);
+  }, [encounters, selectEncounter, setActiveRoute, isAuthenticated]);
 
   const renderApiErrorToast = () => {
     if (!apiError || !isAuthenticated) return null;
@@ -136,7 +132,6 @@ export const MainLayout: React.FC = () => {
       <>
         <div id="medcore-app-root" className="min-h-screen w-full bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
           <PatientPortalStandalone />
-          <SearchModal />
           <WhyDoIOweThisDrawer />
           <DoctorQuickSignModal />
           <DigitalPromissoryModal />
@@ -211,7 +206,6 @@ export const MainLayout: React.FC = () => {
         </div>
 
         {/* Modals, Overlays & Slide-Over Drawers */}
-        <SearchModal />
         <DischargeDossierDrawer />
         <WhyDoIOweThisDrawer />
         <ContextualActionDrawer />

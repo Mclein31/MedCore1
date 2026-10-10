@@ -19,7 +19,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
   { rail: 'MAYA', label: 'Maya', hint: 'Review and confirm your wallet payment', icon: 'phone', kind: 'wallet', hasLogo: true, hasQr: false },
   { rail: 'CREDIT_DEBIT_CARD', label: 'Debit / Credit', hint: 'Visa or Mastercard', icon: 'payments', kind: 'card', hasLogo: false, hasQr: false },
   { rail: 'BANK_TRANSFER', label: 'Bank Transfer', hint: 'InstaPay / PESONet details', icon: 'bank', kind: 'bank', hasLogo: false, hasQr: false },
-  { rail: 'QR_PH', label: 'QR Ph', hint: 'Scan with any bank or e-wallet app', icon: 'qr', kind: 'qr', hasLogo: true, hasQr: true },
+  { rail: 'QR_PH', label: 'QR Ph', hint: 'Review a simulated QR Ph payment', icon: 'qr', kind: 'qr', hasLogo: true, hasQr: true },
   { rail: 'PROMISSORY_NOTE', label: 'RA 9439 Note', hint: '0% statutory installments', icon: 'scale', kind: 'promissory', hasLogo: false, hasQr: false }
 ];
 

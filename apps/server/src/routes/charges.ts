@@ -1,3 +1,4 @@
+import {moneyCents} from '../services/statutoryWaterfall';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -13,6 +14,7 @@ import { getClientIp } from '../utils/clientIp';
 import { isCentavoAmount } from '../utils/encounterAccess';
 
 const chargesApp = new Hono();
+const quantitySchema=z.number().positive().max(99999999.99).refine(isCentavoAmount,'Quantity must have at most two decimals.');
 
 const addChargeSchema = z.object({
   description: z.string().min(2).max(256),
@@ -26,8 +28,8 @@ const addChargeSchema = z.object({
     'PROFESSIONAL_FEE'
   ]),
   grossAmount: z.number().positive().refine(isCentavoAmount, 'Enter an exact centavo amount.'),
-  qty: z.number().positive().optional(),
-  quantity: z.number().positive().optional(),
+  qty: quantitySchema.optional(),
+  quantity: quantitySchema.optional(),
   unitPrice: z.number().nonnegative().refine(value => value === 0 || isCentavoAmount(value), 'Enter an exact centavo amount.').optional(),
   code: z.string().optional(),
   coverageType: z.enum(['PHILHEALTH_FIRST', 'HMO_COVERED', 'PATIENT_DIRECT']).default('PHILHEALTH_FIRST')
@@ -124,8 +126,8 @@ chargesApp.post(
 const editChargeSchema = z.object({
   description: z.string().min(2).max(256).optional(),
   grossAmount: z.number().positive().refine(isCentavoAmount, 'Enter an exact centavo amount.').optional(),
-  qty: z.number().positive().optional(),
-  quantity: z.number().positive().optional(),
+  qty: quantitySchema.optional(),
+  quantity: quantitySchema.optional(),
   unitPrice: z.number().nonnegative().refine(value => value === 0 || isCentavoAmount(value), 'Enter an exact centavo amount.').optional(),
   category: z.enum([
     'PHARMACY',
@@ -197,6 +199,18 @@ chargesApp.patch(
     } else if (resolvedQty !== undefined && updates.grossAmount !== undefined) {
       patchPayload.unitPrice = (updates.grossAmount / resolvedQty).toFixed(2);
     }
+
+    if(updates.grossAmount===undefined&&(resolvedQty!==undefined||updates.unitPrice!==undefined)){
+      try{
+        const quantityCents=moneyCents(resolvedQty??Number(item.quantity));
+        const priceCents=moneyCents(updates.unitPrice??Number(item.unitPrice));
+        const grossCents=Number((BigInt(quantityCents)*BigInt(priceCents)+50n)/100n);
+        const gross=moneyCents(grossCents/100)/100;
+        patchPayload.grossAmount=gross.toFixed(2);patchPayload.patientOop=gross.toFixed(2);
+      }catch{return apiError(c,400,'INVALID_CHARGE_AMOUNT','The quantity and unit price exceed the supported charge amount.');}
+    }
+
+    if(item.status==='SUPERVISORY_WAIVED'||item.status==='WAIVED')patchPayload.patientOop='0.00';
 
     const updated = await tx
       .update(chargemasterItems)

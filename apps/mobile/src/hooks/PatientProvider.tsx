@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import { saveGatePass } from '../lib/gatePassCache';
+import { paymentAccountNamespace } from '../lib/mobileAccess';
 import { useAuth } from '../lib/auth';
 import { createPatientApi } from '../services/patientApi';
 import type { PatientEncounter, PatientOverview, SafePatient } from '../types/domain';
@@ -11,7 +13,7 @@ interface PatientState {
 }
 export const PatientContext = createContext<PatientState | null>(null);
 export function PatientProvider({ children }: { children: React.ReactNode }) {
-  const { client, user } = useAuth();
+  const { client, user, selectedPatientId } = useAuth();
   const api = useMemo(() => createPatientApi(client), [client]);
   const scope = useMemo(() => ({ api, userId: user?.id }), [api, user?.id]);
   const [snapshot, setSnapshot] = useState<{ scope: typeof scope; patient: SafePatient; overview: PatientOverview; encounters: PatientEncounter[]; lastSynced: Date } | null>(null);
@@ -34,7 +36,9 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
         if (!me.patient?.id || !Array.isArray(encounters.items)) throw new Error('The server returned incomplete patient information. Please try again.');
         if (active()) {
           setSnapshot({ scope, patient: me.patient, overview, encounters: encounters.items, lastSynced: new Date() });
+          void saveGatePass(user!.id,paymentAccountNamespace(user!,selectedPatientId||undefined),overview.currentEncounter).catch(()=>{});
           hasSnapshot.current = true;
+          setStatus({scope,loading:false,error:null});
         }
       } catch (e: unknown) {
         if (active()) setStatus({ scope, loading: false, error: e instanceof Error ? e.message : 'We could not load your information.' });
@@ -43,7 +47,7 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
     pending.current = request;
     void request.finally(() => { if (pending.current === request) pending.current = null; });
     return request;
-  }, [api, scope]);
+  }, [api, scope, user, selectedPatientId]);
   useEffect(() => {
     mounted.current = true;
     if (!scope.userId) return () => { mounted.current = false; generation.current++; pending.current = null; };

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { apiClient } from '@/api';
 import { useMedCore } from '@/context/MedCoreContext';
 import { X, UserPlus, Building2, Stethoscope, Shield, CreditCard, BedDouble } from 'lucide-react';
 import { Button, IconButton } from '@/components/common';
@@ -18,14 +19,21 @@ export const AdmitPatientModal: React.FC = () => {
   const [isSeniorCitizen, setIsSeniorCitizen] = useState(false);
   const [isPwd, setIsPwd] = useState(false);
   const [philhealthPin, setPhilhealthPin] = useState('12-009182391-4');
-  const [roomBed, setRoomBed] = useState('Bed 402');
-  const [roomCategory, setRoomCategory] = useState<'REGULAR_PRIVATE' | 'SEMI_PRIVATE' | 'WARD' | 'SUITE'>('REGULAR_PRIVATE');
+  const [roomBed, setRoomBed] = useState('');
+  const [roomCategory, setRoomCategory] = useState<'REGULAR_PRIVATE' | 'SEMI_PRIVATE' | 'WARD' | 'SUITE' | 'ICU' | 'NICU'>('REGULAR_PRIVATE');
   const [dailyRoomRate, setDailyRoomRate] = useState<number>(3200);
-  const [attendingDoctor, setAttendingDoctor] = useState('Dr. Manuel Reyes (FPCP)');
+  const [attendingDoctor, setAttendingDoctor] = useState('');
   const [primaryDiagnosis, setPrimaryDiagnosis] = useState('');
   const [hmoProvider, setHmoProvider] = useState('Maxicare');
   const [hmoPolicyNumber, setHmoPolicyNumber] = useState(`POL-MAX-${Math.floor(100000 + Math.random() * 900000)}`);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error,setError]=useState<string|null>(null);
+  const [roomOptions,setRoomOptions]=useState<Array<{bed:string;category:typeof roomCategory;rate:number}>>([]);
+  useEffect(()=>{if(!isAdmitPatientModalOpen)return;let active=true;setRoomOptions([]);setRoomBed('');setError(null);
+    apiClient.getBeds().then(res=>{if(active)setRoomOptions(res.items.filter(b=>b.status==='AVAILABLE'&&!b.currentEncounterId).map(b=>({bed:b.bedNumber,category:b.roomCategory,rate:Number(b.dailyRate)})));}).catch(error=>{if(active)setError(error instanceof Error?error.message:'Could not load available hospital beds.');});return()=>{active=false;};
+  },[isAdmitPatientModalOpen]);
+  const [physicians,setPhysicians]=useState<Array<{id:string;name:string}>>([]);
+  useEffect(()=>{if(!isAdmitPatientModalOpen)return;let active=true;setPhysicians([]);apiClient.patients.getPhysicians().then(res=>{if(active)setPhysicians(res.items);}).catch(error=>{if(active)setError(error instanceof Error?error.message:'Could not load hospital physicians.');});return()=>{active=false;};},[isAdmitPatientModalOpen]);
 
   useEffect(() => {
     if (!isAdmitPatientModalOpen || typeof document === 'undefined') return;
@@ -42,7 +50,7 @@ export const AdmitPatientModal: React.FC = () => {
     e.preventDefault();
     if (!fullName.trim() || !primaryDiagnosis.trim()) return;
 
-    setIsSubmitting(true);
+    setIsSubmitting(true);setError(null);
     try {
       await admitPatient({
         fullName: fullName.trim(),
@@ -55,27 +63,17 @@ export const AdmitPatientModal: React.FC = () => {
         roomBed,
         roomCategory,
         dailyRoomRate,
-        attendingDoctor,
+        attendingPhysicianId: attendingDoctor,
         primaryDiagnosis: primaryDiagnosis.trim(),
         hmoProvider: hmoProvider === 'None' ? undefined : hmoProvider,
         hmoPolicyNumber: hmoProvider === 'None' ? undefined : hmoPolicyNumber
       });
       closeAdmitPatientModal();
-    } finally {
+    } catch(error) {setError(error instanceof Error?error.message:'Admission was not confirmed. Try again.');} finally {
       setIsSubmitting(false);
     }
   };
 
-  const roomOptions = [
-    { bed: 'Bed 401', category: 'REGULAR_PRIVATE' as const, rate: 3200 },
-    { bed: 'Bed 402', category: 'REGULAR_PRIVATE' as const, rate: 3200 },
-    { bed: 'Bed 501', category: 'REGULAR_PRIVATE' as const, rate: 2500 },
-    { bed: 'Bed 301-A', category: 'SEMI_PRIVATE' as const, rate: 2000 },
-    { bed: 'Bed 301-B', category: 'SEMI_PRIVATE' as const, rate: 2000 },
-    { bed: 'Bed 201', category: 'WARD' as const, rate: 1800 },
-    { bed: 'ED-1', category: 'WARD' as const, rate: 800 },
-    { bed: 'Suite 421', category: 'SUITE' as const, rate: 5500 }
-  ];
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -106,6 +104,7 @@ export const AdmitPatientModal: React.FC = () => {
 
         {/* Scrollable Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto flex-1">
+          {error&&<p role="alert" className="text-sm text-rose-700">{error}</p>}
           {/* Section 1: Demographics */}
           <div>
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
@@ -213,6 +212,7 @@ export const AdmitPatientModal: React.FC = () => {
                   <span>Bed Assignment (200-Bed Inventory)</span>
                 </label>
                 <select
+                  required
                   value={roomBed}
                   onChange={(e) => {
                     const sel = roomOptions.find((r) => r.bed === e.target.value);
@@ -226,6 +226,7 @@ export const AdmitPatientModal: React.FC = () => {
                   }}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 >
+                  <option value="">{roomOptions.length ? 'Choose an available bed' : 'No available beds loaded'}</option>
                   {roomOptions.map((r) => (
                     <option key={r.bed} value={r.bed}>
                       {r.bed} — {r.category} (₱{r.rate.toLocaleString()}/day)
@@ -240,15 +241,13 @@ export const AdmitPatientModal: React.FC = () => {
                   <span>Attending Physician</span>
                 </label>
                 <select
+                  required
                   value={attendingDoctor}
                   onChange={(e) => setAttendingDoctor(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
                 >
-                  <option>Dr. Manuel Reyes (FPCP) - Internal Medicine</option>
-                  <option>Dr. Cristina Abad (FPCS) - Laparoscopic Surgery</option>
-                  <option>Dr. Rafael Santos (FPUA) - Urology Specialist</option>
-                  <option>Dr. Angela Cruz (FPOGS) - OB-GYN</option>
-                  <option>Dr. Victor Mendoza (FPCP) - Pulmonology</option>
+                  <option value="">Choose an assigned hospital physician</option>
+                  {physicians.map(doctor=><option key={doctor.id} value={doctor.id}>{doctor.name}</option>)}
                 </select>
               </div>
             </div>

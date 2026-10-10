@@ -1,3 +1,5 @@
+import GatePassQr from '../common/GatePassQr';
+import {gatePassPayload} from '../../../../shared/gatePassPayload';
 import React, { useEffect, useState } from 'react';
 import { printEngine, PrintDocumentConfig, getPrintOrientation } from '@/services/printEngine';
 import { Encounter } from '@/types/domain';
@@ -304,21 +306,20 @@ export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ confi
   if (config.type === 'DIGITAL_GATE_PASS') {
     const enc: Encounter = config.data.encounter || config.data;
     const pass = enc.dischargePass || config.data.pass;
+    const payload = pass ? gatePassPayload(pass) : null;
     const pName = enc.patient.fullName || enc.patient.maskedName;
 
     return (
       <div id="medcore-print-root" data-print-orientation={getPrintOrientation(config)} className="hidden print:block w-full">
         <div className="print-document w-full max-w-5xl mx-auto p-4 sm:p-8 bg-white text-slate-900 text-xs font-sans text-left">
-          {renderFacilityHeader('Official Digital Lobby Exit Clearance Slip & Gate Pass', pass?.passNumber || `PASS-MC-${enc.encounterNumber}`)}
+          {renderFacilityHeader('Official Digital Lobby Exit Clearance Slip & Gate Pass', pass?.passNumber || 'No issued pass')}
 
         <div className="border-2 border-slate-900 p-5 rounded-xl space-y-4 text-center my-4 print-avoid-break">
           <div className="inline-block px-3 py-1 bg-slate-900 text-white font-extrabold text-sm uppercase tracking-wider rounded">
-            CLEARED FOR DEPARTURE
+            {payload ? 'CLEARED FOR DEPARTURE' : 'NO ACTIVE EXIT CREDENTIAL'}
           </div>
 
-          <div className="font-mono text-3xl font-black tracking-widest text-slate-900 my-2">
-            PIN: {(pass?.passNumber || enc.encounterNumber).replace(/\D/g, '').slice(-4).padStart(4, '0')}
-          </div>
+          {payload && <><GatePassQr payload={payload}/><div className="font-mono text-3xl font-black tracking-widest text-slate-900 my-2">PIN: {pass.exitPin}</div></>}
 
           <p className="text-xs text-slate-600">
             Present this physical clearance slip to Lobby Security for gate release.
@@ -339,7 +340,7 @@ export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ confi
             </div>
             <div>
               <span className="text-slate-500 block text-[10px] uppercase font-bold">Clearance Timestamp</span>
-              <span className="font-mono">{formatPstTimestamp(pass?.issuedAt || new Date().toISOString())}</span>
+              <span className="font-mono">{pass?.issuedAt ? formatPstTimestamp(pass.issuedAt) : 'Not issued'}</span>
             </div>
             <div className="col-span-2 pt-1 border-t border-slate-200">
               <span className="text-slate-500 block text-[10px] uppercase font-bold">Digital Security Verification Signature</span>

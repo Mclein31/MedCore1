@@ -8,7 +8,7 @@ interface Props {
   item: ChargemasterItem | null;
   isOpen: boolean;
   onClose: () => void;
-  onSubmitDispute: (itemId: string, reason: string) => void;
+  onSubmitDispute: (itemId: string, reason: string) => Promise<void>;
 }
 
 export const DisputeItemModal: React.FC<Props> = ({
@@ -17,11 +17,11 @@ export const DisputeItemModal: React.FC<Props> = ({
   onClose,
   onSubmitDispute
 }) => {
-  if (!isOpen || !item) return null;
-
   const [category, setCategory] = useState('UNADMINISTERED_MED');
   const [details, setDetails] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error,setError]=useState<string | null>(null);
+  if (!isOpen || !item) return null;
 
   const reasons = [
     { id: 'UNADMINISTERED_MED', label: 'Medicine not administered / unreturned to pharmacy' },
@@ -31,17 +31,16 @@ export const DisputeItemModal: React.FC<Props> = ({
     { id: 'OTHER', label: 'Other billing discrepancy' }
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
+    if(isSubmitting)return;
+    setIsSubmitting(true);setError(null);
     const selectedReasonLabel = reasons.find((r) => r.id === category)?.label || 'Disputed charge';
     const fullReason = details.trim() ? `${selectedReasonLabel}: ${details.trim()}` : selectedReasonLabel;
     
-    setTimeout(() => {
-      onSubmitDispute(item.id, fullReason);
-      setIsSubmitting(false);
-      onClose();
-    }, 400);
+    try {await onSubmitDispute(item.id,fullReason);onClose();}
+    catch(error) {setError(error instanceof Error?error.message:'The hospital did not confirm your dispute. Try again.');}
+    finally {setIsSubmitting(false);}
   };
 
   return (
@@ -87,6 +86,7 @@ export const DisputeItemModal: React.FC<Props> = ({
 
         {/* Dispute Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs font-sans">
+          {error&&<p role="alert" className="text-rose-700">{error}</p>}
           <div>
             <label className="font-bold text-slate-800 block mb-1.5">
               Reason for Contestation

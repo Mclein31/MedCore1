@@ -11,7 +11,8 @@ import {
   jsonb,
   bigserial,
   index,
-  unique
+  unique,
+  primaryKey
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -721,3 +722,11 @@ export const paymentReceiptsRelations = relations(paymentReceipts, ({ one }) => 
   payment: one(payments, { fields: [paymentReceipts.paymentId], references: [payments.id] }),
   encounter: one(encounters, { fields: [paymentReceipts.encounterId], references: [encounters.id] })
 }));
+
+// Read acknowledgements belong to an authenticated staff member, not the event itself.
+export const staffNotificationReads = pgTable('staff_notification_reads', {
+  facilityId: uuid('facility_id').notNull().references(() => facilities.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  notificationId: varchar('notification_id', { length: 128 }).notNull(),
+  readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow()
+}, table => ({ pk: primaryKey({ columns: [table.facilityId, table.userId, table.notificationId] }) }));

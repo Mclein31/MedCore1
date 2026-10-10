@@ -2,7 +2,6 @@ import { validateGovernmentId, type GovernmentIdType } from '../../../shared/gov
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Encounter, ChargemasterItem, DischargeStage, PromissoryNote, DischargePass, PaymentReceipt } from '@/types/domain';
 import { NavRoute, UserRole } from '@/types/navigation';
-import { INITIAL_ENCOUNTERS } from '@/data/mockData';
 import { recalculateWaterfall } from '@/utils/waterfall';
 import { calculateInstallmentPlan } from '@/utils/financing';
 import { formatPhp } from '@/utils/formatters';
@@ -17,6 +16,8 @@ import {
 import { printEngine, PrintDocumentConfig } from '@/services/printEngine';
 import type { ConfirmationModalVariant, ConfirmationContextInfo } from '@/components/modals';
 import { apiClient, ApiError, ApiUser } from '@/api';
+import { notificationsApi } from '@/api/notifications';
+import type { StaffNotification } from '../../../shared/notifications';
 
 export interface ConfirmModalRequest {
   title: string;
@@ -88,7 +89,7 @@ interface MedCoreContextType {
   clearPharmacyRts: (encounterId: string) => Promise<void>;
   approveHmoFinalLoa: (encounterId: string) => Promise<void>;
   settlePatientBalance: (encounterId: string, channel: 'QR_PH' | 'GCASH' | 'MAYA' | 'PROMISSORY_NOTE') => Promise<void>;
-  issueDigitalGatePass: (encounterId: string) => void;
+  issueDigitalGatePass: (encounterId: string) => Promise<void>;
   verifyGatePass: (encounterId: string) => Promise<void>;
   signDoctorFee: (encounterId: string, agreedFee: number) => Promise<void>;
   executePromissoryNote: (
@@ -103,10 +104,10 @@ interface MedCoreContextType {
   supervisoryWaiveItem: (encounterId: string, itemId: string, notes: string) => void;
 
   // Patient Billing & Demo Settlement
-  finalizeBill: (encounterId: string) => void;
-  sendBillToPatient: (encounterId: string) => { magicLink: string; token: string };
-  recordPatientViewed: (encounterId: string) => void;
-  fileBillingDispute: (encounterId: string, itemId: string, reason: string) => void;
+  finalizeBill: (encounterId: string) => Promise<void>;
+  sendBillToPatient: (encounterId: string) => Promise<void>;
+  recordPatientViewed: (encounterId: string) => Promise<void>;
+  fileBillingDispute: (encounterId: string, itemId: string, reason: string) => Promise<void>;
   processDemoPayment: (params: {
     encounterId: string;
     amount: number;
@@ -128,6 +129,13 @@ interface MedCoreContextType {
   sessionNotice: string | null;
   retrySession: () => void;
   currentUser: any | null;
+  initialLoginEmail: string;
+  beginAccountSwitch: (email?: string) => Promise<void>;
+  notifications: StaffNotification[];
+  unreadNotificationCount: number;
+  notificationError: string | null;
+  refreshNotifications: () => Promise<void>;
+  markNotificationsRead: (ids: string[]) => Promise<void>;
   login: (credentials: { email: string; password: string; facilityCode?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 
@@ -151,7 +159,7 @@ interface MedCoreContextType {
   // CRUD Actions
   addChargeItem: (encounterId: string, itemData: any) => Promise<void>;
   editChargeItem: (encounterId: string, itemId: string, updates: any) => Promise<void>;
-  deleteChargeItem: (encounterId: string, itemId: string) => void;
+  deleteChargeItem: (encounterId: string, itemId: string) => Promise<void>;
   admitPatient: (data: any) => Promise<void>;
   editEncounter: (encounterId: string, updates: any) => Promise<void>;
   deleteEncounter: (encounterId: string) => void;
@@ -169,76 +177,10 @@ interface MedCoreContextType {
 }
 
 
-const buildInitialEncounterState = (): Encounter[] => {
-  return INITIAL_ENCOUNTERS.map((enc) => {
-    const isPaid = enc.stage === 'CLEARED_GATE_PASS';
-    const isPending = enc.stage === 'PENDING_SETTLEMENT';
-    const hasDisputes = enc.disputes && enc.disputes.length > 0;
-    const netDue = enc.waterfall.netPatientDue;
-
-    // Bill 3 Preset: Partially Paid encounter (enc-4552: Gutierrez, Rolando T.)
-    if (enc.id === 'enc-4552') {
-      const amountPaid = 10000;
-      const remainingBalance = Math.max(0, Number((netDue - amountPaid).toFixed(2)));
-      const sampleTx: DemoPaymentRecord = {
-        id: 'tx-init-4552',
-        paymentId: 'PAY-DEMO-4552-INIT001',
-        billId: 'BILL-2026-4552',
-        encounterId: enc.id,
-        amount: 10000,
-        currency: 'PHP',
-        paymentRail: 'GCASH',
-        channelReference: 'TXN-DEMO-GCASH-441209',
-        gatewayAuthCode: 'AUTH-88219',
-        payerName: 'Gutierrez, Rolando T.',
-        payerContactMasked: '0917-***-4552',
-        timestamp: '2026-09-28T09:15:00.000Z',
-        status: 'SUCCESS',
-        officialReceiptNumber: 'OR-SJMC-2026-88120',
-        isSimulatedDemo: true,
-        notes: 'Initial partial payment towards room differential & doctor fee'
-      };
-      const initialReceipt = createOrGetReceipt(sampleTx);
-      sampleTx.receiptId = initialReceipt.id;
-      sampleTx.receipt = initialReceipt;
-
-      return {
-        ...enc,
-        billNumber: 'SOA-SJMC-26-4552',
-        billState: 'PARTIALLY_PAID',
-        amountPaid,
-        remainingBalance,
-        paymentHistory: [sampleTx],
-        receipts: [initialReceipt]
-      };
-    }
-
-    let defaultState: BillLifecycleState = 'DRAFT';
-    if (isPaid) defaultState = 'PAID';
-    else if (hasDisputes) defaultState = 'DISPUTED';
-    else if (isPending) defaultState = 'SENT_TO_PATIENT';
-
-    const billNumber = enc.billNumber || `SOA-SJMC-26-${enc.encounterNumber.replace(/\D/g, '') || enc.id.replace(/\D/g, '')}`;
-    const amountPaid = isPaid ? (enc.waterfall.patientPaid || netDue) : 0;
-    const remainingBalance = isPaid ? 0 : netDue;
-    const initialReceipts = (enc.paymentHistory || []).map((p) => p.receipt || createOrGetReceipt(p));
-
-    return {
-      ...enc,
-      billNumber,
-      billState: enc.billState || defaultState,
-      amountPaid: enc.amountPaid !== undefined ? enc.amountPaid : amountPaid,
-      remainingBalance: enc.remainingBalance !== undefined ? enc.remainingBalance : remainingBalance,
-      paymentHistory: enc.paymentHistory || [],
-      receipts: enc.receipts || initialReceipts
-    };
-  });
-};
-
 const MedCoreContext = createContext<MedCoreContextType | undefined>(undefined);
 
 export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [encounters, setEncounters] = useState<Encounter[]>(buildInitialEncounterState);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [selectedEncounterId, setSelectedEncounterId] = useState<string>('enc-8812');
   const [activeRoute, setActiveRoute] = useState<NavRoute>('COMMAND_CENTER');
   const [activeRole, setActiveRoleState] = useState<UserRole>('BILLING_SPECIALIST');
@@ -249,37 +191,32 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const clearApiError = () => setApiError(null);
 
+  const encounterRevision=useRef(0);
+  const censusPending=useRef<{generation:number;request:Promise<boolean>} | null>(null);
   const refreshEncounters = async (retries = 2, silent = false): Promise<boolean> => {
-    try {
-      if (!silent) setIsLoadingEncounters(true);
-      const res = await apiClient.getEncounters();
-      if (res && Array.isArray(res.items)) {
-        setEncounters(res.items);
-        setApiError(null);
-        setSelectedEncounterId((prev) => {
-          if (res.items.some((e: any) => e.id === prev || e.encounterNumber === prev)) return prev;
-          return res.items[0]?.id || '';
-        });
-        return true;
-      }
-      throw new Error('The server returned an incomplete encounter list.');
-    } catch (err: any) {
-      if (err instanceof ApiError && (err.status === 401 || err.code === 'SESSION_CHANGED')) return false;
-      if (retries > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        return refreshEncounters(retries - 1, silent);
-      }
-      console.warn('Failed to load encounters from API after retries:', err);
-      setEncounters((current) => {
-        if (!current || current.length === 0) {
-          setApiError(`Backend API communication error: ${err.message || 'Cannot fetch encounters'}`);
+    const generation=sessionGeneration.current;
+    if(censusPending.current?.generation===generation) return censusPending.current.request;
+    const revision=encounterRevision.current;
+    const request=(async()=>{
+      if(!silent) setIsLoadingEncounters(true);
+      try {
+        for(let attempt=0;attempt<=retries;attempt++) {
+          try {
+            const res=await apiClient.getEncounters();
+            if(generation!==sessionGeneration.current || revision!==encounterRevision.current) return false;
+            if(!Array.isArray(res?.items)) throw new Error('The hospital returned incomplete encounter records.');
+            setEncounters(res.items); return true;
+          } catch(error:unknown) {
+            if(generation!==sessionGeneration.current || (error instanceof ApiError && (error.status===401 || error.code==='SESSION_CHANGED'))) return false;
+            if(attempt<retries) { await new Promise(resolve=>setTimeout(resolve,1200)); continue; }
+            if(!silent) setApiError(error instanceof Error?error.message:'Could not refresh hospital records.');
+          }
         }
-        return current;
-      });
-      return false;
-    } finally {
-      if (!silent) setIsLoadingEncounters(false);
-    }
+        return false;
+      } finally { if(generation===sessionGeneration.current && !silent) setIsLoadingEncounters(false); }
+    })();
+    censusPending.current={generation,request};
+    try { return await request; } finally { if(censusPending.current?.request===request) censusPending.current=null; }
   };
 
   const setActiveRole = (role: UserRole) => {
@@ -337,11 +274,18 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const retrySession = () => setSessionCheck(value => value + 1);
 
   const sessionGeneration = useRef(0);
+  const [initialLoginEmail,setInitialLoginEmail]=useState('elena.santos@stjude.ph');
+  const [notifications,setNotifications]=useState<StaffNotification[]>([]);
+  const [unreadNotificationCount,setUnreadNotificationCount]=useState(0);
+  const [notificationError,setNotificationError]=useState<string | null>(null);
+  const seenNotifications=useRef(new Set<string>());
+  const notificationPending=useRef<{generation:number;request:Promise<void>} | null>(null);
   const verifiedSession = useRef(false);
   function clearSessionState(reason?: 'expired') {
     const hadVerifiedSession = verifiedSession.current;
     verifiedSession.current = false;
-    sessionGeneration.current++;
+    sessionGeneration.current++; encounterRevision.current++;
+    seenNotifications.current=new Set(); setNotifications([]); setUnreadNotificationCount(0); setNotificationError(null);
     setApiError(null);
     setSessionNotice(previous => reason === 'expired'
       ? hadVerifiedSession ? 'Your session expired. Sign in again to continue.' : previous
@@ -400,28 +344,6 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [sessionCheck]);
 
-  // Periodic background synchronization to detect external mobile payments and stage updates
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const interval = setInterval(() => {
-      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-        void refreshEncounters(0, true);
-      }
-    }, 4000);
-    const onFocus = () => {
-      void refreshEncounters(0, true);
-    };
-    if (typeof window !== 'undefined') {
-      window.addEventListener('focus', onFocus);
-    }
-    return () => {
-      clearInterval(interval);
-      if (typeof window !== 'undefined') {
-        window.removeEventListener('focus', onFocus);
-      }
-    };
-  }, [isAuthenticated]);
-
   const login = async (credentials: { email: string; password: string; facilityCode?: string }): Promise<{ success: boolean; error?: string }> => {
     try {
       const res = await apiClient.login(credentials);
@@ -453,13 +375,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const logout = async () => {
-    try {
-      await apiClient.logout();
-    } catch (err) {
-      console.warn('API logout notice:', err);
-    } finally {
-      clearSessionState();
-    }
+    const request=apiClient.logout();
+    apiClient.setAuthToken(null); apiClient.setDemoRole(null); clearSessionState();
+    try { await request; } catch { /* The local session is already cleared, including offline sign-out. */ }
+  };
+  const beginAccountSwitch = async (email='') => {
+    setInitialLoginEmail(email);
+    const request=logout();setSessionNotice('Sign in to the selected staff account to continue.');
+    await request;
   };
 
   // CRUD Modals State
@@ -613,7 +536,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const acceptServerEncounter = (encounterId: string, response: any, generation: number) => {
     if (generation !== sessionGeneration.current) throw new ApiError('Your session changed. Sign in again.', 0, 'SESSION_CHANGED');
     if (!response?.success || !response.encounter?.encounterNumber) throw new Error('The hospital did not confirm this update. Refresh and try again.');
-    setEncounters(prev => prev.map(enc => enc.id === encounterId || enc.encounterNumber === response.encounter.encounterNumber ? response.encounter : enc));
+    encounterRevision.current++;
+    setEncounters(prev => prev.some(enc=>enc.id===encounterId || enc.encounterNumber===response.encounter.encounterNumber)
+      ? prev.map(enc=>enc.id===encounterId || enc.encounterNumber===response.encounter.encounterNumber?response.encounter:enc) : [...prev,response.encounter]);
   };
   const confirmEncounterMutation = async (encounterId: string, label: string, mutation: () => Promise<any>) => {
     const generation = sessionGeneration.current;
@@ -625,23 +550,15 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
   const refreshServerEncounter = async (encounterId: string) => {
     const generation = sessionGeneration.current;
+    const revision=encounterRevision.current;
     const encounter = await apiClient.getEncounter(encounterId);
+    if(revision!==encounterRevision.current) return;
     acceptServerEncounter(encounterId, { success: true, encounter }, generation);
   };
   const advanceStage = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not advance discharge', () => apiClient.advanceStage(encounterId));
   const signDoctorFee = (encounterId: string, agreedFee: number) => confirmEncounterMutation(encounterId, 'Could not sign professional fee', () => apiClient.doctorQuickSign(encounterId, agreedFee));
 
-  const nudgeDoctor = (encounterId: string) => {
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        return {
-          ...enc,
-          elapsedMinutes: enc.elapsedMinutes + 1
-        };
-      })
-    );
-  };
+  const nudgeDoctor = (_encounterId: string) => setApiError('SMS delivery is not configured.');
 
   const applyAccreditedCeiling = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not apply accredited ceiling', () => apiClient.applyAccreditedCeiling(encounterId));
   const clearPharmacyRts = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not clear pharmacy audit', () => apiClient.clearPharmacyRts(encounterId));
@@ -659,9 +576,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         throw new ApiError('Your session changed. Sign in again to continue.', 0, 'SESSION_CHANGED');
       }
       if (res?.success && res.encounter?.hmo?.finalLoaStatus === 'APPROVED') {
-        setEncounters((prev) =>
-          prev.map((e) => (e.id === encounterId || e.encounterNumber === res.encounter.encounterNumber ? res.encounter : e))
-        );
+        acceptServerEncounter(encounterId, res, generation);
         setApiError(null);
         return;
       }
@@ -677,14 +592,20 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   };
 
-  const issueDigitalGatePass = (encounterId: string) => {
-    const encounter = encounters.find(enc => enc.id === encounterId);
-    if (!encounter?.dischargePass || encounter.stage !== 'CLEARED_GATE_PASS') {
-      setApiError('Complete hospital settlement before opening the discharge pass.');
-      return;
+  const issueDigitalGatePass = async (encounterId: string) => {
+    const encounter=encounters.find(enc=>enc.id===encounterId);
+    const generation=sessionGeneration.current;
+    if(encounter?.stage==='PENDING_SETTLEMENT'&&Number(encounter.remainingBalance)===0) {
+      try {
+        const res=await apiClient.patients.releaseGatePass(encounterId);
+        if(!res?.success||res.encounter?.stage!=='CLEARED_GATE_PASS'||!res.encounter.dischargePass)throw new Error('The hospital did not confirm the discharge pass.');
+        acceptServerEncounter(encounterId,res,generation);
+      } catch(error) {if(generation===sessionGeneration.current)setApiError(error instanceof Error?error.message:'Could not release the discharge pass.');throw error;}
+    } else if(!encounter?.dischargePass||encounter.stage!=='CLEARED_GATE_PASS') {
+      setApiError('Complete hospital settlement before opening the discharge pass.');return;
     }
-    setSelectedEncounterId(encounterId);
-    setIsGatePassModalOpen(true);
+    if(generation!==sessionGeneration.current)return;
+    setSelectedEncounterId(encounterId);setIsGatePassModalOpen(true);
   };
   const verifyGatePass = async (encounterId: string) => {
     const generation = sessionGeneration.current;
@@ -772,69 +693,9 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     void refreshServerEncounter(msg.encounterId).catch(() => { /* Retain confirmed state on read failure. */ });
   });
 
-  const finalizeBill = (encounterId: string) => {
-    const nowIso = new Date().toISOString();
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        return {
-          ...enc,
-          billState: 'FINALIZED',
-          billFinalizedAt: nowIso
-        };
-      })
-    );
-    broadcastBillingSync({
-      type: 'BILL_FINALIZED',
-      encounterId,
-      timestamp: nowIso
-    });
-  };
-
-  const sendBillToPatient = (encounterId: string) => {
-    const nowIso = new Date().toISOString();
-    const token = `tok_${encounterId.replace(/\D/g, '')}_${Math.random().toString(36).substring(2, 7)}`;
-    const magicLink = `https://medcore.stjude.ph/clarify/${encounterId}?token=${token}`;
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        return {
-          ...enc,
-          billState: 'SENT_TO_PATIENT',
-          billSentAt: nowIso
-        };
-      })
-    );
-    broadcastBillingSync({
-      type: 'BILL_SENT',
-      encounterId,
-      timestamp: nowIso,
-      magicToken: token
-    });
-    return { magicLink, token };
-  };
-
-  const recordPatientViewed = (encounterId: string) => {
-    const nowIso = new Date().toISOString();
-    setEncounters((prev) =>
-      prev.map((enc) => {
-        if (enc.id !== encounterId) return enc;
-        if (enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'DRAFT') {
-          return {
-            ...enc,
-            billState: 'VIEWED',
-            billFirstViewedAt: enc.billFirstViewedAt || nowIso
-          };
-        }
-        return enc;
-      })
-    );
-    broadcastBillingSync({
-      type: 'BILL_VIEWED',
-      encounterId,
-      timestamp: nowIso
-    });
-  };
+  const finalizeBill = (encounterId: string) => confirmEncounterMutation(encounterId,'Could not finalize bill',()=>apiClient.finalizeBill(encounterId));
+  const sendBillToPatient = (encounterId: string) => confirmEncounterMutation(encounterId,'Could not send bill',()=>apiClient.sendBill(encounterId));
+  const recordPatientViewed = (encounterId: string) => confirmEncounterMutation(encounterId,'Could not record bill view',()=>apiClient.recordBillViewed(encounterId));
 
   const fileBillingDispute = async (encounterId: string, itemId: string, reason: string) => {
     await freezeDisputeItem(encounterId, itemId, reason);
@@ -956,11 +817,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           receipt: canonicalReceipt
         };
 
-        if (serverRes.encounter) {
-          setEncounters((prev) =>
-            prev.map((e) => (e.id === enc.id || e.encounterNumber === serverRes.encounter.encounterNumber ? serverRes.encounter : e))
-          );
-        }
+        acceptServerEncounter(enc.id,serverRes,generation);
 
         broadcastBillingSync({
           type: 'PAYMENT_SETTLED',
@@ -989,9 +846,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteChargeItem = (encounterId: string, itemId: string) => {
     const enc = encounters.find(enc => enc.id === encounterId);
     const item = enc?.items.find(item => item.id === itemId);
-    requestConfirmation({ title: 'Delete Chargemaster Item', description: `Remove "${item?.description || 'Item'}" from this hospital bill?`,
-      confirmLabel: 'Delete Item', cancelLabel: 'Keep Item', variant: 'danger',
-      onConfirm: () => confirmEncounterMutation(encounterId, 'Could not delete charge', () => apiClient.deleteChargeItem(/^[0-9a-f-]{36}$/i.test(itemId) ? itemId : item?.code || itemId)) });
+    return confirmEncounterMutation(encounterId, 'Could not delete charge', () => apiClient.deleteChargeItem(/^[0-9a-f-]{36}$/i.test(itemId) ? itemId : item?.code || itemId));
   };
 
   // --- ENCOUNTER CRUD IMPLEMENTATION ---
@@ -1008,13 +863,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         roomBed: data.roomBed,
         roomCategory: data.roomCategory,
         dailyRoomRate: data.dailyRoomRate,
-        attendingDoctor: data.attendingDoctor,
+        attendingPhysicianId: data.attendingPhysicianId,
         primaryDiagnosis: data.primaryDiagnosis,
         hmoProvider: data.hmoProvider,
         hmoPolicyNumber: data.hmoPolicyNumber
       });
 
       if (!res?.success || !res.encounter) throw new Error('The hospital did not confirm admission.');
+      encounterRevision.current++;
       setEncounters(prev => [res.encounter, ...prev]);
       setSelectedEncounterId(res.encounter.id);
     } catch (error: unknown) {
@@ -1049,12 +905,63 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           const response = await apiClient.deleteEncounter(encounterId);
           if (generation !== sessionGeneration.current) throw new Error('Your session changed.');
           if (!response?.success) throw new Error('The hospital did not confirm encounter removal.');
+          encounterRevision.current++;
           setEncounters(prev => prev.filter(enc => enc.id !== encounterId));
           if (selectedEncounterId === encounterId) setSelectedEncounterId(encounters.find(enc => enc.id !== encounterId)?.id || '');
         } catch (error: unknown) { setApiError(error instanceof Error ? error.message : 'Could not remove encounter.'); throw error; }
       }
     });
   };
+
+  const refreshNotifications = async () => {
+    const generation=sessionGeneration.current;
+    if(!isAuthenticated || currentUser?.role==='PATIENT_GUARANTOR') return;
+    if(notificationPending.current?.generation===generation) return notificationPending.current.request;
+    const request=(async()=>{
+      try {
+        const feed=await notificationsApi.getFeed();
+        if(generation!==sessionGeneration.current) return;
+        const changed=[...new Set(feed.notifications.filter(item=>!seenNotifications.current.has(item.id)).map(item=>item.encounterId))];
+        setNotifications(feed.notifications); setUnreadNotificationCount(feed.unreadCount); setNotificationError(null);
+        for(const id of changed) {
+          await refreshServerEncounter(id);
+          if(generation!==sessionGeneration.current) return;
+        }
+        seenNotifications.current=new Set(feed.notifications.map(item=>item.id));
+      } catch(error:unknown) {
+        if(generation===sessionGeneration.current) setNotificationError(error instanceof Error?error.message:'Could not load hospital updates.');
+      }
+    })();
+    notificationPending.current={generation,request};
+    try { await request; } finally { if(notificationPending.current?.request===request) notificationPending.current=null; }
+  };
+  const markNotificationsRead = async (ids:string[]) => {
+    const generation=sessionGeneration.current;
+    try {
+      await notificationsApi.markRead(ids);
+      if(generation!==sessionGeneration.current) return;
+      // Never decrement the badge until the server confirms its persisted read state.
+      if(notificationPending.current?.generation===generation) await notificationPending.current.request;
+      await refreshNotifications();
+    } catch(error:unknown) {
+      if(generation===sessionGeneration.current) setNotificationError(error instanceof Error?error.message:'Could not mark notifications as read.');
+      throw error;
+    }
+  };
+  const pollingRef=useRef({refreshNotifications,refreshEncounters});
+  pollingRef.current={refreshNotifications,refreshEncounters};
+  useEffect(()=>{
+    if(!isAuthenticated || currentUser?.role==='PATIENT_GUARANTOR') return;
+    const poll=()=>{
+      if(document.visibilityState==='visible') {
+        void pollingRef.current.refreshNotifications();
+        void pollingRef.current.refreshEncounters(0,true);
+      }
+    };
+    poll(); const interval=setInterval(poll,10000);
+    window.addEventListener('focus',poll); document.addEventListener('visibilitychange',poll);
+    return ()=>{clearInterval(interval);window.removeEventListener('focus',poll);document.removeEventListener('visibilitychange',poll);};
+  },[isAuthenticated,currentUser?.id]);
 
   return (
     <MedCoreContext.Provider
@@ -1084,6 +991,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         sessionNotice,
         retrySession,
         currentUser,
+        initialLoginEmail, beginAccountSwitch, notifications, unreadNotificationCount,
+        notificationError, refreshNotifications, markNotificationsRead,
         login,
         logout,
         // CRUD Modal States

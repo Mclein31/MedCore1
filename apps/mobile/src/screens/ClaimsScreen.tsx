@@ -10,7 +10,7 @@ import { Card, EmptyState, ErrorState, LedgerRow, LoadingState, RefreshNotice, R
 export default function ClaimsScreen() {
   const { client } = useAuth();
   const load = useCallback(() => createClaimsApi(client).list(), [client]);
-  const { data, loading, error, refresh: loadList } = useResource(load);
+  const { data, loading, error, refresh: loadList } = useResource(load, 5000);
   const pullRefresh = usePullRefresh(loadList);
   const claims = data?.items || [];
 

@@ -11,7 +11,7 @@ export async function apiAccess(c: Context, next: Next) {
   if (user.role === 'PATIENT_GUARANTOR') {
     const ownRead = c.req.method === 'GET' && (path === '/api/v1/patient/me' || path.startsWith('/api/v1/patient/me/'));
     const ownAuth = (c.req.method === 'GET' && path === '/api/v1/auth/me') || (c.req.method === 'POST' && path === '/api/v1/auth/logout');
-    const ownMutation = c.req.method === 'POST' && /^\/api\/v1\/encounters\/[^/]+\/(payments|promissory-notes|disputes)$/.test(path);
+    const ownMutation = c.req.method === 'POST' && /^\/api\/v1\/encounters\/[^/]+\/(payments|promissory-notes|disputes|view-bill)$/.test(path);
     if (!ownRead && !ownAuth && !ownMutation) return apiError(c, 403, 'FORBIDDEN', 'Use the patient record endpoints for your account.');
   }
   await next();

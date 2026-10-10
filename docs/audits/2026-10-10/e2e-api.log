@@ -1,0 +1,226 @@
+
+> medcore-dashboard@1.0.0 test:api
+> npx tsx scripts/seedPostgres.ts && npx tsx scripts/testBackendApi.ts
+
+================================================================================
+AQROMED ENTERPRISE HOSPITAL RCM: POSTGRESQL 16+ SEEDER & PARITY AUDIT
+Database Target: postgresql://mclein@127.0.0.1:5432/medcore_payment_validation_sync
+================================================================================
+
+[1/7] Cleaning existing tables...
+[2/7] Seeding Anchor Facility (St. Jude Medical Center Manila)...
+[3/7] Seeding System Users with Web Crypto PBKDF2 hashes...
+[4/7] Seeding 200 Hospital Beds (Floors 1-6 + Units)...
+Inserting 200 operational beds...
+[5/7] Ingesting 250 Encounters & Clinical/Financial Relational Nodes...
+[6/7] Ingestion Summary:
+  - Encounters: 250
+  - Chargemaster Items: 1956
+  - Statutory Waterfalls: 250
+  - PhilHealth Claims: 250
+  - HMO Authorizations: 250
+  - Promissory Notes: 8
+  - Discharge Passes: 83
+  - Disputes: 14
+
+[7/7] Database Transaction COMMITTED successfully.
+
+================================================================================
+RUNNING MATHEMATICAL RECONCILIATION SUITE DIRECTLY ON POSTGRESQL ROWS...
+================================================================================
+Total Database Records Audited: 250
+Waterfall Exact Reconciliations: 250 / 250 (100%)
+VAT/Senior/PWD Errors: 0
+Balance Discrepancies: 0
+Promissory Notes Audited: 8
+Promissory Notes RA 9439 Valid: 8 / 8
+
+[PASS] ALL 250 POSTGRESQL PATIENT RECORDS ARE MATHEMATICALLY RECONCILED WITH 0 DRIFT.
+================================================================================
+================================================================================
+AQROMED BACKEND API SUITE: COMPREHENSIVE INTEGRATION & SECURITY TESTS
+================================================================================
+
+<-- GET /api/health
+--> GET /api/health 200 11ms
+[PASS] Healthcheck endpoint returns 200 OK
+[PASS] Healthcheck reports AQROMED system ONLINE
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 23ms
+[PASS] POST /api/v1/auth/login returns 200 on valid credentials
+[PASS] Login hydrates Elena Santos as BILLING_SPECIALIST
+[PASS] Login sets secure HTTP-Only aqromed_session cookie
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 401 15ms
+[PASS] POST /api/v1/auth/login rejects incorrect password with 401
+<-- GET /api/v1/auth/me
+--> GET /api/v1/auth/me 200 8ms
+[PASS] GET /api/v1/auth/me returns 200 with valid session cookie
+[PASS] Session cookie correctly resolves authenticated user
+<-- GET /api/v1/encounters
+--> GET /api/v1/encounters 200 68ms
+[PASS] GET /api/v1/encounters returns 200 OK
+[PASS] GET /api/v1/encounters returns all 250 hospital records
+<-- GET /api/v1/encounters/enc-8812
+--> GET /api/v1/encounters/enc-8812 200 22ms
+[PASS] GET /api/v1/encounters/enc-8812 resolves hydrated encounter
+[PASS] Encounter correctly links patient demographics
+[PASS] Encounter includes itemized chargemaster records
+[PASS] Encounter waterfall gross total is exactly ₱120,000.00
+<-- GET /api/v1/encounters/enc-8812/ledger
+--> GET /api/v1/encounters/enc-8812/ledger 200 21ms
+[PASS] GET /api/v1/encounters/:id/ledger returns 200 OK
+[PASS] Ledger item count matches encounter items
+<-- POST /api/v1/encounters/enc-8812/doctor/sign
+--> POST /api/v1/encounters/enc-8812/doctor/sign 403 6ms
+[PASS] POST /api/v1/encounters/:id/doctor/sign rejects non-physician role with 403 Forbidden
+<-- POST /api/v1/encounters/enc-8812/doctor/sign
+--> POST /api/v1/encounters/enc-8812/doctor/sign 200 24ms
+[PASS] POST /api/v1/encounters/:id/doctor/sign succeeds with X-Demo-Role: ATTENDING_PHYSICIAN
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 14ms
+<-- POST /api/v1/encounters/enc-8812/doctor/sign
+--> POST /api/v1/encounters/enc-8812/doctor/sign 200 18ms
+[PASS] POST /api/v1/encounters/:id/doctor/sign succeeds with authorized CFO/Physician role
+<-- POST /api/v1/encounters/enc-8812/pharmacy/clear-rts
+--> POST /api/v1/encounters/enc-8812/pharmacy/clear-rts 200 18ms
+[PASS] POST /api/v1/encounters/:id/pharmacy/clear-rts succeeds for Billing Specialist
+[PASS] Pharmacy RTS state cleared to true
+<-- POST /api/v1/encounters/enc-8812/hmo/final-loa
+--> POST /api/v1/encounters/enc-8812/hmo/final-loa 200 17ms
+[PASS] POST /api/v1/encounters/:id/hmo/final-loa updates approval code & approved amount
+<-- POST /api/v1/encounters/enc-8812/disputes
+--> POST /api/v1/encounters/enc-8812/disputes 200 16ms
+[PASS] POST /api/v1/encounters/:id/disputes successfully files dispute
+<-- DELETE /api/v1/charges/86754501-0b31-4e18-9b1b-f46d3e11725a
+--> DELETE /api/v1/charges/86754501-0b31-4e18-9b1b-f46d3e11725a 400 6ms
+[PASS] DELETE /api/v1/charges/:id rejects deleting disputed item with 400 Bad Request
+[PASS] Error code is ITEM_HAS_DISPUTES when deleting disputed item
+<-- POST /api/v1/disputes/8101cde5-8b71-49a9-b71f-4766d86940f3/supervisory-waive
+--> POST /api/v1/disputes/8101cde5-8b71-49a9-b71f-4766d86940f3/supervisory-waive 200 16ms
+[PASS] POST /api/v1/disputes/:id/supervisory-waive executes waiver and reconciles balance
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 400 4ms
+[PASS] POST /api/v1/encounters/:id/payments rejects Idempotency-Key > 128 characters with 400 Bad Request
+[PASS] Error code is INVALID_IDEMPOTENCY_KEY for oversized header
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 949ms
+[PASS] POST /api/v1/encounters/:id/payments records QRPH payment with alphanumeric key
+[PASS] Official Receipt generated for QRPH payment
+[PASS] Payment idempotency key matches alphanumeric QRPH string
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 32ms
+[PASS] Duplicate payment submission returns 200 OK
+[PASS] Idempotency guard caught duplicate request and returned cached payment record
+[PASS] Idempotency key matched exact previous payment ID
+[PASS] Zero duplicate debit applied to encounter remaining balance
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 937ms
+[PASS] POST /api/v1/encounters/:id/payments records GCash payment with alphanumeric key
+[PASS] Payment record persists alphanumeric TXN-DEMO-GCASH-123456 key
+[PASS] Simulated transaction exception caught as expected
+[PASS] Atomic rollback: zero payments committed
+[PASS] Atomic rollback: zero payment_receipts committed
+[PASS] Atomic rollback: zero system_audit_logs committed
+<-- POST /api/v1/encounters/enc-8812/promissory-notes
+--> POST /api/v1/encounters/enc-8812/promissory-notes 200 29ms
+[PASS] POST /api/v1/encounters/:id/promissory-notes executes promissory note
+[PASS] Promissory note enforces strictly 0.00% interest rate under RA 9439
+[PASS] Remaining balance reached ₱0.00, encounter advanced to CLEARED_GATE_PASS
+[PASS] Digital gate pass issued upon clearance
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 22ms
+<-- POST /api/v1/discharge/passes/verify
+--> POST /api/v1/discharge/passes/verify 200 9ms
+[PASS] POST /api/v1/discharge/passes/verify verifies pass at exit lobby
+[PASS] Discharge pass status updated to VERIFIED_AT_LOBBY
+<-- POST /api/v1/discharge/passes/verify
+--> POST /api/v1/discharge/passes/verify 200 7ms
+[PASS] POST /api/v1/discharge/passes/verify handles already verified pass gracefully
+[PASS] Exit pass re-verification flags passAlreadyVerified: true
+[PASS] Exit pass re-verification preserves original verifiedAt timestamp
+<-- POST /api/v1/discharge/passes/verify
+--> POST /api/v1/discharge/passes/verify 400 6ms
+[PASS] Lobby verification rejects wrong exit PIN with 400 Bad Request
+<-- GET /api/v1/claims/enc-8812/esoa-xml
+--> GET /api/v1/claims/enc-8812/esoa-xml 200 15ms
+[PASS] GET /api/v1/claims/:id/esoa-xml returns 200 OK
+[PASS] eSOA response has application/xml content-type
+[PASS] XML payload complies with PhilHealth Circular 2023-0026
+[PASS] XML payload includes itemized charge ledger
+<-- GET /api/v1/beds
+--> GET /api/v1/beds 200 8ms
+[PASS] GET /api/v1/beds returns 200 OK
+[PASS] Beds endpoint audits exactly 200 operational hospital beds
+<-- PATCH /api/v1/beds/4cbbb2e0-7113-49ab-94a0-53b3be4aabeb/status
+--> PATCH /api/v1/beds/4cbbb2e0-7113-49ab-94a0-53b3be4aabeb/status 200 7ms
+[PASS] PATCH /api/v1/beds/:id/status updates bed status to HOUSEKEEPING
+<-- GET /api/v1/analytics/rcm-metrics
+--> GET /api/v1/analytics/rcm-metrics 200 18ms
+[PASS] GET /api/v1/analytics/rcm-metrics returns 200 OK
+[PASS] Live RCM analytics aggregates gross hospital revenue
+[PASS] Executive dashboard reports >90% clean first-pass claims rate
+<-- POST /api/v1/encounters/enc-8812/charges
+--> POST /api/v1/encounters/enc-8812/charges 200 31ms
+[PASS] POST /api/v1/encounters/:id/charges adds item to patient bill
+[PASS] Charge item created with unique ID
+[PASS] Charge item quantity correctly persisted
+[PASS] Charge item unitPrice correctly persisted
+<-- PATCH /api/v1/charges/b5a466cf-acca-464c-a128-2f1a2f72d83b
+--> PATCH /api/v1/charges/b5a466cf-acca-464c-a128-2f1a2f72d83b 200 27ms
+[PASS] PATCH /api/v1/charges/:id updates charge item
+[PASS] Patched charge item quantity correctly updated
+[PASS] Patched charge item unitPrice correctly updated
+<-- DELETE /api/v1/charges/b5a466cf-acca-464c-a128-2f1a2f72d83b
+--> DELETE /api/v1/charges/b5a466cf-acca-464c-a128-2f1a2f72d83b 200 26ms
+[PASS] DELETE /api/v1/charges/:id removes charge item
+<-- POST /api/v1/encounters
+--> POST /api/v1/encounters 200 24ms
+[PASS] POST /api/v1/encounters admits new patient without fixture-number collisions
+[PASS] Encounter created with encounter number
+<-- POST /api/v1/encounters
+--> POST /api/v1/encounters 409 6ms
+[PASS] Admission rejects an already occupied bed
+<-- PATCH /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d
+--> PATCH /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d 400 6ms
+[PASS] Editing to an unknown bed rejects before metadata writes
+[PASS] Rejected bed operations preserve the current owner
+<-- PATCH /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d
+--> PATCH /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d 200 19ms
+[PASS] PATCH /api/v1/encounters/:id updates clinical diagnosis and roomBed
+[PASS] SLA status ON_TRACK is normalized to NORMAL in database
+[PASS] Encounter roomBed successfully updated to selected available bed
+<-- POST /api/v1/encounters
+--> POST /api/v1/encounters 200 22ms
+[PASS] POST /api/v1/encounters safely reuses existing patient on matching MRN without constraint crash
+<-- DELETE /api/v1/encounters/enc-2063abe7-afaf-4efc-a0f2-46e9dcdac81d
+--> DELETE /api/v1/encounters/enc-2063abe7-afaf-4efc-a0f2-46e9dcdac81d 200 11ms
+<-- POST /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d/charges
+--> POST /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d/charges 200 24ms
+[PASS] POST /charges accepts CENTRAL_SUPPLIES category
+[PASS] Inserted item has category CENTRAL_SUPPLIES
+<-- PATCH /api/v1/charges/CHG-CSR-TEST-001
+--> PATCH /api/v1/charges/CHG-CSR-TEST-001 200 29ms
+[PASS] PATCH /charges/:id matches by item code and maps MEDICAL_SUPPLIES to CENTRAL_SUPPLIES
+[PASS] Category correctly mapped to CENTRAL_SUPPLIES enum
+<-- DELETE /api/v1/charges/CHG-CSR-TEST-001
+--> DELETE /api/v1/charges/CHG-CSR-TEST-001 200 31ms
+[PASS] DELETE /charges/:id matches and deletes item by item code
+<-- POST /api/v1/auth/switch-role
+--> POST /api/v1/auth/switch-role 200 5ms
+[PASS] POST /auth/switch-role accepts { role: "HMO_COORDINATOR" }
+<-- POST /api/v1/auth/switch-role
+--> POST /api/v1/auth/switch-role 200 5ms
+[PASS] POST /auth/switch-role accepts { targetRole: "CLAIMS_ENCODER" }
+[PASS] Session cookie specifies Path=/
+<-- DELETE /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d
+--> DELETE /api/v1/encounters/enc-7c29dcaf-a65c-451c-b89f-a54b3808136d 200 12ms
+[PASS] DELETE /api/v1/encounters/:id removes encounter record
+<-- POST /api/v1/auth/logout
+--> POST /api/v1/auth/logout 200 7ms
+[PASS] POST /api/v1/auth/logout invalidates session
+
+================================================================================
+API TEST RESULTS: 88 PASSED, 0 FAILED
+================================================================================
+

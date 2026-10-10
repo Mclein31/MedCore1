@@ -1,7 +1,7 @@
 import app from '../apps/server/src/index';
 import { db } from '../apps/server/src/db';
-import { payments, paymentReceipts, systemAuditLogs } from '../apps/server/src/db/schema';
-import { eq } from 'drizzle-orm';
+import { payments, paymentReceipts, systemAuditLogs, beds } from '../apps/server/src/db/schema';
+import { eq, and, isNull } from 'drizzle-orm';
 
 async function runApiTests() {
   console.log('================================================================================');
@@ -403,7 +403,9 @@ async function runApiTests() {
   const bedsData = await bedsRes.json();
   assert(bedsData.summary.total === 200, 'Beds endpoint audits exactly 200 operational hospital beds');
 
-  const patchBedRes = await app.request('/api/v1/beds/ED-1/status', {
+  const statusBed=bedsData.items.find((bed:any)=>!bed.currentEncounterId&&bed.status==='AVAILABLE');
+  if(!statusBed)throw new Error('Bed status tests require an available bed.');
+  const patchBedRes = await app.request(`/api/v1/beds/${statusBed.id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
     body: JSON.stringify({ status: 'HOUSEKEEPING' })
@@ -460,37 +462,47 @@ async function runApiTests() {
   });
   assert(deleteChargeRes.status === 200, 'DELETE /api/v1/charges/:id removes charge item');
 
+  const availableBeds=await db.select().from(beds).where(and(eq(beds.status,'AVAILABLE'),isNull(beds.currentEncounterId))).limit(3);
+  if(availableBeds.length<3)throw new Error('Admission tests require three available fixture beds.');
   // 19. Inpatient Encounter CRUD (Admit, Edit, Delete)
+  // The previous 4-digit generator collides with seeded enc8812 at this RNG value.
+  const previousRandom=Math.random;Math.random=()=>7812/9000;
   const admitRes = await app.request('/api/v1/encounters', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
     body: JSON.stringify({
       fullName: 'Santos, Roberto G.',
       mrn: 'MRN-2026-9999',
-      roomBed: 'Bed 401',
+      roomBed: availableBeds[0].bedNumber,
       roomCategory: 'REGULAR_PRIVATE',
       primaryDiagnosis: 'Acute Appendicitis',
       dailyRoomRate: 3200
     })
-  });
-  assert(admitRes.status === 200, 'POST /api/v1/encounters admits new patient to hospital');
+  }).finally(()=>{Math.random=previousRandom;});
+  assert(admitRes.status === 200, 'POST /api/v1/encounters admits new patient without fixture-number collisions');
   const admitData = await admitRes.json();
   const newEncounterId = admitData.encounter.id;
   assert(!!newEncounterId, 'Encounter created with encounter number');
 
+  const badAdmission=await app.request('/api/v1/encounters',{method:'POST',headers:{'Content-Type':'application/json',Cookie:cookieHeader},body:JSON.stringify({fullName:'Bed Integrity Probe',mrn:'MRN-BED-REJECT',roomBed:availableBeds[0].bedNumber,primaryDiagnosis:'Test diagnosis'})});
+  assert(badAdmission.status===409,'Admission rejects an already occupied bed');
+  const badEdit=await app.request(`/api/v1/encounters/${newEncounterId}`,{method:'PATCH',headers:{'Content-Type':'application/json',Cookie:cookieHeader},body:JSON.stringify({roomBed:'NO-SUCH-BED'})});
+  assert(badEdit.status===400,'Editing to an unknown bed rejects before metadata writes');
+  const originalBed=await db.select().from(beds).where(eq(beds.id,availableBeds[0].id));
+  assert(originalBed[0].status==='OCCUPIED'&&originalBed[0].currentEncounterId===admitData.encounter.uuid,'Rejected bed operations preserve the current owner');
   const editEncRes = await app.request(`/api/v1/encounters/${newEncounterId}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', Cookie: cookieHeader },
     body: JSON.stringify({
       primaryDiagnosis: 'Acute Gangrenous Appendicitis s/p Laparoscopic Appendectomy',
       slaStatus: 'ON_TRACK',
-      roomBed: 'Bed 402'
+      roomBed: availableBeds[1].bedNumber
     })
   });
   assert(editEncRes.status === 200, 'PATCH /api/v1/encounters/:id updates clinical diagnosis and roomBed');
   const editedEncData = await editEncRes.json();
   assert(editedEncData.encounter.slaStatus === 'NORMAL', 'SLA status ON_TRACK is normalized to NORMAL in database');
-  assert(editedEncData.encounter.roomBed === 'Bed 402', 'Encounter roomBed successfully updated to Bed 402');
+  assert(editedEncData.encounter.roomBed === availableBeds[1].bedNumber, 'Encounter roomBed successfully updated to selected available bed');
 
   // 19b. Patient MRN Reuse on Readmission (Finding 6)
   const readmitRes = await app.request('/api/v1/encounters', {
@@ -499,7 +511,7 @@ async function runApiTests() {
     body: JSON.stringify({
       fullName: 'Santos, Roberto G.',
       mrn: 'MRN-2026-9999', // Reusing same MRN
-      roomBed: 'Bed 403',
+      roomBed: availableBeds[2].bedNumber,
       roomCategory: 'REGULAR_PRIVATE',
       primaryDiagnosis: 'Post-operative Evaluation',
       dailyRoomRate: 3200

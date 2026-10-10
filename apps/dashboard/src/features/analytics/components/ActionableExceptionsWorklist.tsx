@@ -13,7 +13,7 @@ import {
   Clock,
   ShieldAlert
 } from 'lucide-react';
-import { ConfirmButton, Button, IconButton, SearchInput } from '@/components/common';
+import { ConfirmButton, Button, IconButton } from '@/components/common';
 
 interface ActionableExceptionsWorklistProps {
   exceptions: ActionableExceptionItem[];
@@ -26,7 +26,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
   selectedCategory,
   onClearCategoryFilter
 }) => {
-  const {
+  const { searchQuery,
     openDossierDrawer,
     openDoctorQuickSign,
     clearPharmacyRts,
@@ -34,9 +34,9 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
     selectEncounter
   } = useMedCore();
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+  useEffect(()=>{ setCurrentPage(1); }, [searchQuery]);
 
   // Filter exceptions by search query
   const filteredExceptions = exceptions.filter((item) => {
@@ -144,16 +144,7 @@ export const ActionableExceptionsWorklist: React.FC<ActionableExceptionsWorklist
         </div>
 
         {/* Search Input */}
-        <SearchInput
-          size="sm"
-          value={searchQuery}
-          onChange={(v) => {
-            setSearchQuery(v);
-            setCurrentPage(1);
-          }}
-          placeholder="Search patient, MRN, ward..."
-          className="w-56"
-        />
+
       </div>
 
       {/* Universal Left-Aligned Table (Strict text-left on all th and td) */}

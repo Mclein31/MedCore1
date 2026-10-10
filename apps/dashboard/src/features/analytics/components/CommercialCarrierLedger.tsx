@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import { useMedCore } from '@/context/MedCoreContext';
+import React, { useState, useEffect } from 'react';
 import { CommercialCarrierMetric } from '@/types/domain';
 import { formatPhp } from '@/utils/formatters';
 import { ShieldCheck, ChevronLeft, ChevronRight, CheckCircle2, TrendingDown, ArrowDownRight } from 'lucide-react';
-import { IconButton, SearchInput } from '@/components/common';
+import { IconButton } from '@/components/common';
 
 interface CommercialCarrierLedgerProps {
   carriers: CommercialCarrierMetric[];
@@ -15,9 +16,10 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
   selectedCarrier,
   onSelectCarrier
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const { searchQuery } = useMedCore();
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 5;
+  useEffect(()=>{ setCurrentPage(1); }, [searchQuery]);
 
   const rthEliminationCategories = [
     {
@@ -55,10 +57,7 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
   const startIndex = (currentPage - 1) * pageSize;
   const visibleCarriers = filteredCarriers.slice(startIndex, startIndex + pageSize);
 
-  const handleSearchChange = (q: string) => {
-    setSearchQuery(q);
-    setCurrentPage(1);
-  };
+
 
   return (
     <div className="h-full min-w-0 bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col">
@@ -79,13 +78,7 @@ export const CommercialCarrierLedger: React.FC<CommercialCarrierLedgerProps> = (
         </div>
 
         {/* Carrier Search */}
-        <SearchInput
-          size="sm"
-          value={searchQuery}
-          onChange={handleSearchChange}
-          placeholder="Search Carrier..."
-          className="w-48"
-        />
+
       </div>
 
       {/* Enterprise Left-Aligned Table (Strict text-left on all th and td) */}

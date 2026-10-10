@@ -119,6 +119,7 @@ export interface HmoAuthorization {
 
 export interface DischargePass {
   exitPin?: string;
+  qrPayload?: string|null;
   passNumber: string;
   encounterId: string;
   patientName: string;
@@ -162,6 +163,7 @@ export interface BillingDispute {
 }
 
 export interface DoctorInfo {
+  id?: string;
   name: string;
   prcLicense: string;
   specialization: string;

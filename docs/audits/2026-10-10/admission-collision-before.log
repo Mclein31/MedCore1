@@ -1,0 +1,6 @@
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 43ms
+<-- POST /api/v1/encounters
+ADMISSION_COLLISION { code: '23505', constraint: 'encounters_encounter_number_unique' }
+--> POST /api/v1/encounters 500 15ms
+status 500

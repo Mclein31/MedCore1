@@ -20,7 +20,6 @@ export const ContextualActionDrawer: React.FC = () => {
     selectedEncounter,
     selectEncounter,
     advanceStage,
-    nudgeDoctor,
     clearPharmacyRts,
     approveHmoFinalLoa,
     settlePatientBalance,
@@ -127,11 +126,11 @@ export const ContextualActionDrawer: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
-                  onClick={() => nudgeDoctor(enc.id)}
+                  disabled title="SMS delivery is not configured"
                   className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
                   <Send className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Send SMS Nudge</span>
+                  <span>SMS Unavailable</span>
                 </button>
                 <button
                   onClick={openDoctorQuickSign}

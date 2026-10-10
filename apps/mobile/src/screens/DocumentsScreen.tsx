@@ -3,6 +3,9 @@ import { useCallback, useMemo } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { useResource } from '../hooks/useResource';
+import { readSavedPass } from '../lib/gatePassCache';
+import { paymentAccountNamespace } from '../lib/mobileAccess';
+import { ApiError } from '../lib/api';
 import { useAuth } from '../lib/auth';
 import { createDocumentsApi } from '../services/documentsApi';
 import { formatDateTime, formatPeso } from '../lib/format';
@@ -32,9 +35,17 @@ function Group({ title, docs, onOpen }: { title: string; docs: PatientDocument[]
 
 export default function DocumentsScreen({ navigation }: { navigation: any }) {
   const { encounters } = usePatient();
-  const { client } = useAuth();
-  const load = useCallback(() => createDocumentsApi(client).list(), [client]);
-  const { data, loading, error, refresh: loadList } = useResource(load);
+  const { client, user, selectedPatientId } = useAuth();
+  const load = useCallback(async () => {
+    try {return await createDocumentsApi(client).list();}
+    catch(error) {
+      if(!(error instanceof ApiError)||error.status!==0||!['NETWORK_ERROR','TIMEOUT'].includes(error.code||'')||!user)throw error;
+      const saved=await readSavedPass(user.id,paymentAccountNamespace(user,selectedPatientId||undefined));
+      if(!saved)throw error;
+      return {items:[{kind:'GATE_PASS',id:saved.pass.passNumber,title:'Saved discharge pass (offline)',encounterNumber:saved.encounterNumber,status:saved.pass.status,issuedAt:saved.pass.issuedAt}],total:1,uploadSupported:false};
+    }
+  }, [client,user,selectedPatientId]);
+  const { data, loading, error, refresh: loadList } = useResource(load, 5000);
   const pullRefresh = usePullRefresh(loadList);
   const docs = data?.items || [];
 

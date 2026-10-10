@@ -73,7 +73,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
                 Hospital RCM Financial Intelligence &amp; Statutory Audit
               </h2>
               <p className="text-xs text-slate-500">
-                St. Jude Medical Center Manila (250-Bed Tertiary Hospital) · Centavo-Exact Audit
+                St. Jude Medical Center Manila (250-Bed Tertiary Hospital) · Financial Summary
               </p>
             </div>
           </div>

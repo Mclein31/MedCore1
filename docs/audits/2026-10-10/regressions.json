@@ -1,0 +1,88 @@
+[
+  {
+    "name": "offline",
+    "command": [
+      "node",
+      "--import",
+      "./node_modules/tsx/dist/loader.mjs",
+      "docs/audits/2026-10-09/verify-offline.mjs"
+    ],
+    "log": "offline.log",
+    "exitCode": 0
+  },
+  {
+    "name": "handlers",
+    "command": [
+      "node",
+      "--import",
+      "./node_modules/tsx/dist/loader.mjs",
+      "docs/audits/2026-10-09/verify-handlers.mjs"
+    ],
+    "log": "handlers.log",
+    "exitCode": 0
+  },
+  {
+    "name": "financial",
+    "command": [
+      "npm",
+      "run",
+      "test:financial"
+    ],
+    "log": "financial.log",
+    "exitCode": 0
+  },
+  {
+    "name": "project",
+    "command": [
+      "npm",
+      "test"
+    ],
+    "log": "project.log",
+    "exitCode": 0
+  },
+  {
+    "name": "mobile",
+    "command": [
+      "npm",
+      "--prefix",
+      "apps/mobile",
+      "test"
+    ],
+    "log": "mobile.log",
+    "exitCode": 0
+  },
+  {
+    "name": "dashboard-build",
+    "command": [
+      "npm",
+      "run",
+      "build"
+    ],
+    "log": "dashboard-build.log",
+    "exitCode": 0
+  },
+  {
+    "name": "server-types",
+    "command": [
+      "npx",
+      "tsc",
+      "--project",
+      "apps/server/tsconfig.json",
+      "--noEmit"
+    ],
+    "log": "server-types.log",
+    "exitCode": 0
+  },
+  {
+    "name": "mobile-types",
+    "command": [
+      "npm",
+      "--prefix",
+      "apps/mobile",
+      "run",
+      "typecheck"
+    ],
+    "log": "mobile-types.log",
+    "exitCode": 0
+  }
+]

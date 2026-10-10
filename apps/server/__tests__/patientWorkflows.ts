@@ -4,7 +4,7 @@ import patientApp, { toPatientSafeEncounter } from '../src/routes/patient';
 import { resolveLinkedPatient } from '../src/utils/encounterAccess';
 import assert from 'node:assert/strict';
 import { Hono } from 'hono';
-import { getTableName, getTableColumns } from 'drizzle-orm';
+import { getTableName, getTableColumns, sql } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { runWithDb } from '../src/db';
 import clearanceApp from '../src/routes/clearance';
@@ -18,6 +18,7 @@ import authApp from '../src/routes/auth';
 import { encounterAccessCondition, isCentavoAmount } from '../src/utils/encounterAccess';
 import { computePromissorySchedule } from '../src/services/promissoryEngine';
 import chargesApp from '../src/routes/charges';
+import encountersApp from '../src/routes/encounters';
 import { computeStatutoryWaterfall } from '../src/services/statutoryWaterfall';
 
 // Isolated handler checks: synthetic rows only. No PostgreSQL connection or PHI.
@@ -58,7 +59,7 @@ function matches(table: any, condition: any, row: any) {
   if (!condition) return true;
   const compiled = dialect.sqlToQuery(condition);
   const names = Object.fromEntries(Object.entries(getTableColumns(table)).map(([key, col]: any) => [col.name, key]));
-  const expression = compiled.sql.replace(/"[^"]+"\."([^"]+)" = \$(\d+)/g, (_: string, column: string, index: string) => String(row[names[column]] === compiled.params[Number(index) - 1]))
+  const expression = compiled.sql.replace(/"[^"]+"\."([^"]+)" in \(([^)]+)\)/g, (_:string,column:string,parameters:string)=>String([...parameters.matchAll(/\$(\d+)/g)].some(match=>row[names[column]]===compiled.params[Number(match[1])-1]))).replace(/"[^"]+"\."([^"]+)" = \$(\d+)/g, (_: string, column: string, index: string) => String(row[names[column]] === compiled.params[Number(index) - 1]))
     .replace(/\band\b/g, '&&').replace(/\bor\b/g, '||');
   assert.match(expression, /^[\s()truefals&|]+$/, `Unsupported test predicate: ${compiled.sql}`);
   return new Function(`return (${expression});`)();
@@ -99,6 +100,11 @@ class Query {
     for (const row of items.filter(row => matches(this.table, this.condition, row))) Object.assign(row, this.data);
     return [];
   }
+  getSQL() {
+    assert.equal(this.op,'select');assert.ok(this.projection?.id,'Only facility ID subqueries are modeled');
+    const selected=(rows[getTableName(this.table)]||[]).filter(row=>matches(this.table,this.condition,row));
+    return sql`${sql.join(selected.map(row=>sql`${row.id}`),sql`, `)}`;
+  }
   then(resolve: any, reject: any) { return this.execute().then(resolve, reject); }
 }
 function mockDb(inTransaction = false): any {
@@ -123,6 +129,7 @@ const app = new Hono();
 app.use('*', async (c, next) => { c.set('user', user as any); await next(); });
 app.route('/encounters', paymentsApp);
 app.route('/encounters', clearanceApp);
+app.route('/encounters', encountersApp);
 app.route('/', promissoryApp);
 app.route('/', disputesApp);
 app.route('/auth', authApp);
@@ -544,5 +551,78 @@ await check('charge and HMO money schemas reject fractional centavos before any 
   user.role='BILLING_SPECIALIST';
   assert.equal((await request(`/encounters/${ownId}/charges`,{description:'Tiny charge',category:'LABORATORY',grossAmount:0.001})).status,400);
   assert.equal((await request(`/encounters/${ownId}/hmo/final-loa`,{approvedAmount:0.001})).status,400); assert.equal(writes,0);
+});
+await check('bill finalize and send persist state/timeline without changing the authoritative balance', async () => {
+  financialFixture('PENDING_SETTLEMENT');
+  const balance=rows.encounters[0].remainingBalance;
+  assert.equal((await request(`/encounters/${ownId}/send-bill`,{})).status,409);assert.equal(writes,0);
+  assert.equal((await request(`/encounters/${ownId}/finalize-bill`,{})).status,200);
+  assert.equal(rows.encounters[0].billState,'FINALIZED');assert.ok(rows.encounters[0].billFinalizedAt);assert.equal(rows.encounters[0].remainingBalance,balance);
+  assert.equal((await request(`/encounters/${ownId}/send-bill`,{})).status,200);assert.equal(rows.encounters[0].billState,'SENT_TO_PATIENT');assert.ok(rows.encounters[0].billSentAt);
+  const committed=writes;assert.equal((await request(`/encounters/${ownId}/send-bill`,{})).status,200);assert.equal(writes,committed);
+  user.role='PATIENT_GUARANTOR';assert.equal((await request(`/encounters/${ownId}/view-bill`,{})).status,200);assert.equal(rows.encounters[0].billState,'VIEWED');assert.ok(rows.encounters[0].billFirstViewedAt);
+});
+await check('bill lifecycle rejects early stages, foreign facilities and patient staff actions', async () => {
+  financialFixture();
+  assert.equal((await request(`/encounters/${ownId}/finalize-bill`,{})).status,409);assert.equal(writes,0);
+  user.role='PATIENT_GUARANTOR';assert.equal((await request(`/encounters/${ownId}/finalize-bill`,{})).status,403);assert.equal(writes,0);
+  user.role='HOSPITAL_CFO';assert.equal((await request(`/encounters/${foreignFacilityId}/finalize-bill`,{})).status,404);assert.equal(writes,0);
+});
+await check('bill finalization audit failure rolls back state and its delivery timeline', async () => {
+  financialFixture('PENDING_SETTLEMENT');const original=structuredClone(rows);failWriteTable='system_audit_logs';
+  assert.equal((await request(`/encounters/${ownId}/finalize-bill`,{})).status,500);
+  assert.deepEqual(rows.encounters,original.encounters);assert.equal(rows.encounter_timeline_events?.length||0,0);assert.equal(writes,0);
+});
+await check('zero-copay release creates one pass atomically and rejects early/nonzero balances',async()=>{
+  financialFixture('PENDING_SETTLEMENT');rows.encounters[0].remainingBalance='0.00';
+  assert.equal((await request(`/encounters/${ownId}/gate-pass`,{})).status,200);
+  assert.equal(rows.encounters[0].stage,'CLEARED_GATE_PASS');assert.equal(rows.discharge_passes.length,1);
+  assert.match(rows.discharge_passes[0].exitPin,/^[1-9]\d{3}$/);
+  const committed=writes;assert.equal((await request(`/encounters/${ownId}/gate-pass`,{})).status,200);assert.equal(writes,committed);
+  reset();financialFixture('DOCTOR_PF_PENDING');rows.encounters[0].remainingBalance='0.00';assert.equal((await request(`/encounters/${ownId}/gate-pass`,{})).status,409);assert.equal(writes,0);
+  reset();financialFixture('PENDING_SETTLEMENT');assert.equal((await request(`/encounters/${ownId}/gate-pass`,{})).status,409);assert.equal(writes,0);
+});
+await check('zero-copay release audit failure rolls back pass, stage and timeline',async()=>{
+  financialFixture('PENDING_SETTLEMENT');rows.encounters[0].remainingBalance='0.00';const original=structuredClone(rows);failWriteTable='system_audit_logs';
+  assert.equal((await request(`/encounters/${ownId}/gate-pass`,{})).status,500);
+  assert.deepEqual(rows.encounters,original.encounters);assert.equal(rows.discharge_passes?.length||0,0);assert.equal(rows.encounter_timeline_events?.length||0,0);assert.equal(writes,0);
+});
+await check('self-pay pharmacy clearance skips an absent HMO authorization',async()=>{
+  financialFixture('PHARMACY_RTS_AUDIT');rows.hmo_authorizations=[];
+  assert.equal((await request(`/encounters/${ownId}/pharmacy/clear-rts`,{})).status,200);
+  assert.equal(rows.encounters[0].stage,'PENDING_SETTLEMENT');
+});
+await check('encounter edit audit failure rolls back diagnosis and room metadata',async()=>{
+  financialFixture('PENDING_SETTLEMENT');const original=structuredClone(rows);failWriteTable='system_audit_logs';
+  const response=await runWithDb(mockDb(),()=>app.request(`/encounters/${ownId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({primaryDiagnosis:'Synthetic changed diagnosis',dailyRoomRate:3000})}));
+  assert.equal(response.status,500);assert.deepEqual(rows.encounters,original.encounters);assert.equal(writes,0);
+});
+await check('settlement release cannot clear a bed owned by another encounter',async()=>{
+  financialFixture('PENDING_SETTLEMENT');rows.encounters[0].bedId='bed-shared';
+  rows.beds=[{id:'bed-shared',facilityId:user.facilityId,status:'OCCUPIED',currentEncounterId:otherId}];
+  const before=structuredClone(rows.beds);
+  assert.equal((await request(`/encounters/${ownId}/payments`,payment(Number(rows.encounters[0].remainingBalance)),'bed-owner-check')).status,200);
+  assert.deepEqual(rows.beds,before);
+});
+await check('room transfer rejects unknown or unavailable destinations before any writes',async()=>{
+  financialFixture('PENDING_SETTLEMENT');rows.encounters[0].roomBed='Original';rows.encounters[0].bedId='original-bed';
+  rows.beds=[{id:'original-bed',bedNumber:'Original',facilityId:user.facilityId,status:'OCCUPIED',currentEncounterId:ownId},{id:'other-bed',bedNumber:'Other',facilityId:user.facilityId,status:'OCCUPIED',currentEncounterId:otherId}];
+  const before=structuredClone(rows);
+  for(const [roomBed,status] of [['Missing',400],['Other',409]] as const){
+    const response=await runWithDb(mockDb(),()=>app.request(`/encounters/${ownId}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomBed,primaryDiagnosis:'Rejected change'})}));
+    assert.equal(response.status,status);assert.deepEqual(rows.encounters,before.encounters);assert.deepEqual(rows.beds,before.beds);assert.equal(writes,0);
+  }
+});
+await check('quantity/price edits recompute billed gross and waterfall in exact cents',async()=>{
+  financialFixture('PENDING_SETTLEMENT');const item=rows.chargemaster_items[0];item.quantity='1.00';item.unitPrice='100.00';item.grossAmount='100.00';
+  const response=await runWithDb(mockDb(),()=>app.request('/charges/'+item.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantity:2,unitPrice:100})}));
+  assert.equal(response.status,200);assert.equal(rows.chargemaster_items[0].grossAmount,'200.00');assert.equal(rows.statutory_waterfalls[0].grossTotal,'240.00');
+});
+await check('financial edits to waived charges preserve zero item liability and excluded gross',async()=>{
+  financialFixture('PENDING_SETTLEMENT');const item=rows.chargemaster_items[0];item.status='SUPERVISORY_WAIVED';item.patientOop='0.00';
+  for(const body of [{quantity:2,unitPrice:100},{grossAmount:300}]){
+    const response=await runWithDb(mockDb(),()=>app.request('/charges/'+item.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}));
+    assert.equal(response.status,200);assert.equal(rows.chargemaster_items[0].patientOop,'0.00');assert.equal(rows.chargemaster_items[0].status,'SUPERVISORY_WAIVED');assert.equal(rows.statutory_waterfalls[0].grossTotal,'40.00');
+  }
 });
 console.log(`SERVER_HARDENING_CHECKS_DONE passed=${passed}; no database connected`);

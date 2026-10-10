@@ -345,6 +345,8 @@ const switchRoleSchema = z
   });
 
 authApp.post('/switch-role', requireAuth, zValidator('json', switchRoleSchema), async (c) => {
+  const environment=(c.env as any)?.NODE_ENV || process.env.NODE_ENV || 'production';
+  if(environment==='production') return apiError(c,403,'ACCOUNT_SWITCH_REQUIRES_LOGIN','Sign in to the other account to change staff permissions.');
   const valid = c.req.valid('json');
   const effectiveTargetRole = (valid.targetRole || valid.role)!;
   const user = c.get('user');

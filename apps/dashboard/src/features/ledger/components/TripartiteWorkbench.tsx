@@ -32,7 +32,6 @@ export const TripartiteWorkbench: React.FC = () => {
     sendBillToPatient,
     printDocument,
     setActiveRoute,
-    setActiveRole,
     openAddChargeModal,
     openEditChargeModal,
     deleteChargeItem
@@ -41,20 +40,11 @@ export const TripartiteWorkbench: React.FC = () => {
   const enc = selectedEncounter;
   const waterfall = enc.waterfall;
   const [filterCategory, setFilterCategory] = useState<string>('ALL');
-  const [patientSearchQuery, setPatientSearchQuery] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
-  const searchRef = useRef<HTMLDivElement>(null);
 
-  const handleSendEsoa = () => {
-    const { magicLink } = sendBillToPatient(enc.id);
-    if (navigator?.clipboard?.writeText) {
-      navigator.clipboard.writeText(magicLink).catch(() => {});
-    }
-    setCopiedNotification(`eSOA dispatched for ${enc.patient.fullName || enc.patient.maskedName}! Magic link copied to clipboard.`);
-    setTimeout(() => {
-      setCopiedNotification(null);
-    }, 4500);
+  const handleSendEsoa = async () => {
+    try { await sendBillToPatient(enc.id); setCopiedNotification('The bill is available in the patient’s MedCore app.'); setTimeout(()=>setCopiedNotification(null),3000); }
+    catch { /* The provider reports the failed dispatch; retain confirmed bill state. */ }
   };
 
   const renderBillBadge = (state?: BillLifecycleState) => {
@@ -119,25 +109,6 @@ export const TripartiteWorkbench: React.FC = () => {
 
   const currentIndex = encounters.findIndex((e) => e.id === enc.id);
 
-  const matchingEncounters = encounters.filter((e) => {
-    if (!patientSearchQuery.trim()) return false;
-    const q = patientSearchQuery.toLowerCase();
-    const name = (e.patient.fullName || e.patient.maskedName || '').toLowerCase();
-    const bed = (e.bedNumber || e.roomBed || '').toLowerCase();
-    const encNum = (e.encounterNumber || '').toLowerCase();
-    return name.includes(q) || bed.includes(q) || encNum.includes(q);
-  });
-
-  useEffect(() => {
-    const handleClickOutside = (ev: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(ev.target as Node)) {
-        setIsSearchOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
   const pName = enc.patient.fullName || enc.patient.maskedName;
   const rBed = enc.bedNumber || enc.roomBed;
   const rType = enc.roomType || enc.roomCategory.replace(/_/g, ' ');
@@ -196,63 +167,6 @@ export const TripartiteWorkbench: React.FC = () => {
 
         {/* Header Actions: Patient Switcher + Search Bar + Preview Patient View + Open Dossier */}
         <div className="flex items-center gap-3">
-          {/* Direct Select Switcher (Moved to right side with enlarged sizing) */}
-          <select
-            value={enc.id}
-            onChange={(e) => selectEncounter(e.target.value)}
-            className="text-sm bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-lg py-2 px-3 font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[210px] truncate shadow-2xs transition-colors cursor-pointer"
-            title="Switch to specific patient"
-          >
-            {encounters.map((e, idx) => (
-              <option key={e.id} value={e.id}>
-                #{idx + 1} {e.roomBed} · {e.patient.fullName || e.patient.maskedName}
-              </option>
-            ))}
-          </select>
-
-          {/* Search Bar (Enlarged size) */}
-          <div ref={searchRef} className="relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search patient, bed, MRN..."
-              value={patientSearchQuery}
-              onChange={(e) => {
-                setPatientSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              className="pl-9 pr-3.5 py-2 text-sm rounded-lg bg-slate-50 border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 w-60 text-slate-800 placeholder-slate-400 shadow-2xs"
-            />
-            {isSearchOpen && patientSearchQuery.trim() && (
-              <div className="absolute right-0 top-full mt-1.5 w-80 bg-white rounded-xl border border-slate-200 shadow-lg z-50 max-h-64 overflow-y-auto divide-y divide-slate-100 overscroll-contain">
-                {matchingEncounters.length === 0 ? (
-                  <div className="p-3 text-xs text-slate-400 text-center">No patients found</div>
-                ) : (
-                  matchingEncounters.slice(0, 10).map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        selectEncounter(m.id);
-                        setPatientSearchQuery('');
-                        setIsSearchOpen(false);
-                      }}
-                      className="w-full text-left p-2.5 hover:bg-slate-50 flex items-center justify-between text-xs transition-colors"
-                    >
-                      <div>
-                        <div className="font-semibold text-slate-900">{m.patient.fullName || m.patient.maskedName}</div>
-                        <div className="text-[10px] text-slate-400">{m.roomBed} · {m.encounterNumber}</div>
-                      </div>
-                      <span className="font-mono font-bold text-slate-700 text-xs">
-                        {formatPhp(m.waterfall.netPatientDue)}
-                      </span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
 
           <button
             onClick={() => openDossierDrawer(enc)}
@@ -310,7 +224,7 @@ export const TripartiteWorkbench: React.FC = () => {
           </button>
 
           {/* 2. Milestone Action: Finalize Bill */}
-          {enc.billState === 'DRAFT' ? (
+          {!enc.billFinalizedAt && enc.stage !== 'CLEARED_GATE_PASS' ? (
             <ConfirmButton
               label={
                 <span className="flex items-center gap-1.5">
@@ -319,7 +233,7 @@ export const TripartiteWorkbench: React.FC = () => {
                 </span>
               }
               modalTitle="Finalize Electronic Statement of Account (eSOA)?"
-              modalDescription={`This will lock all 6 statutory deduction stages and ${enc.items.length} chargemaster lines for ${pName}. Once finalized, changes to room upgrades or discounts require supervisor override.`}
+              modalDescription={`Confirm the final hospital statement for ${pName} before making it available in the patient app.`}
               confirmLabel="Finalize Bill"
               variant="outline"
               confirmVariant="primary"
@@ -330,8 +244,9 @@ export const TripartiteWorkbench: React.FC = () => {
                 { label: 'Total Gross Charges', value: formatPhp(waterfall.grossTotal) },
                 { label: 'Net Patient Liability', value: formatPhp(waterfall.netPatientDue) }
               ]}
+              disabled={enc.stage!=='PENDING_SETTLEMENT'}
               onConfirm={() => finalizeBill(enc.id)}
-              title="Lock hospital chargemaster lines and prepare official statement"
+              title="Confirm the final hospital statement"
             />
           ) : (
             <span className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
@@ -348,11 +263,11 @@ export const TripartiteWorkbench: React.FC = () => {
             label={
               <span className="flex items-center gap-1.5">
                 <Send className="w-3.5 h-3.5 text-slate-500" />
-                <span>{enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'VIEWED' ? 'Resend eSOA' : 'Send eSOA (SMS/Link)'}</span>
+                <span>{enc.billState === 'SENT_TO_PATIENT' || enc.billState === 'VIEWED' ? 'Bill sent to app' : 'Send bill to patient app'}</span>
               </span>
             }
             modalTitle="Dispatch Plain-Language Statement (eSOA) to Patient?"
-            modalDescription={`This will generate a secure magic token and transmit the interactive digital statement to ${pName}'s registered mobile device via encrypted SMS.`}
+            modalDescription={`Make the finalized statement available to ${pName} in the MedCore patient app.`}
             confirmLabel="Dispatch eSOA"
             variant="outline"
             confirmVariant="primary"
@@ -362,7 +277,7 @@ export const TripartiteWorkbench: React.FC = () => {
               { label: 'Net Balance Due', value: formatPhp(waterfall.netPatientDue) }
             ]}
             onConfirm={handleSendEsoa}
-            title="Dispatch plain-language eSOA magic link to patient mobile via SMS"
+            title="Make the finalized bill available in the patient app"
           />
 
           <button
@@ -388,14 +303,13 @@ export const TripartiteWorkbench: React.FC = () => {
           <button
             type="button"
             onClick={() => {
-              setActiveRole('PATIENT_GUARANTOR');
               setActiveRoute('PATIENT_PORTAL');
             }}
             className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
-            title="Switch to Patient Guarantor view in standalone portal"
+            title="Preview this patient bill without changing staff identity"
           >
             <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>Open Patient Portal</span>
+            <span>Preview Patient Bill</span>
           </button>
         </div>
       </div>
@@ -407,15 +321,14 @@ export const TripartiteWorkbench: React.FC = () => {
             <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
             <span className="font-semibold">{copiedNotification}</span>
             <span className="text-blue-600 font-mono text-[11px] hidden md:inline">
-              (magic link active)
+              (available in the patient app)
             </span>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
-                setActiveRole('PATIENT_GUARANTOR');
-                setActiveRoute('PATIENT_PORTAL');
+                  setActiveRoute('PATIENT_PORTAL');
               }}
               className="text-xs font-bold text-blue-700 underline hover:text-blue-900"
             >

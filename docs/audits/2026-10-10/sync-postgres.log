@@ -1,0 +1,96 @@
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 18ms
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 11ms
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 10ms
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 11ms
+<-- POST /api/v1/auth/login
+--> POST /api/v1/auth/login 200 11ms
+Seeded gate-pass HMAC signatures verified: 83
+<-- GET /api/v1/encounters/enc-8812
+--> GET /api/v1/encounters/enc-8812 200 17ms
+<-- POST /api/v1/encounters/enc-8812/finalize-bill
+--> POST /api/v1/encounters/enc-8812/finalize-bill 409 4ms
+<-- POST /api/v1/encounters/enc-8812/charges
+--> POST /api/v1/encounters/enc-8812/charges 200 13ms
+<-- PATCH /api/v1/charges/a08a52e9-08e2-40ff-9653-2b47eade0246
+--> PATCH /api/v1/charges/a08a52e9-08e2-40ff-9653-2b47eade0246 200 12ms
+<-- POST /api/v1/encounters/enc-8812/disputes
+--> POST /api/v1/encounters/enc-8812/disputes 200 5ms
+<-- DELETE /api/v1/charges/a08a52e9-08e2-40ff-9653-2b47eade0246
+--> DELETE /api/v1/charges/a08a52e9-08e2-40ff-9653-2b47eade0246 400 4ms
+<-- POST /api/v1/disputes/8dce4904-ec1e-4b2b-9198-2996aca6fefc/supervisory-waive
+--> POST /api/v1/disputes/8dce4904-ec1e-4b2b-9198-2996aca6fefc/supervisory-waive 200 12ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 10ms
+<-- PATCH /api/v1/charges/a08a52e9-08e2-40ff-9653-2b47eade0246
+--> PATCH /api/v1/charges/a08a52e9-08e2-40ff-9653-2b47eade0246 200 13ms
+Charge edit/disputed deletion/waiver rows and patient waterfall parity verified
+<-- POST /api/v1/encounters/enc-8812/doctor/sign
+--> POST /api/v1/encounters/enc-8812/doctor/sign 200 15ms
+<-- POST /api/v1/encounters/enc-8812/pharmacy/clear-rts
+--> POST /api/v1/encounters/enc-8812/pharmacy/clear-rts 200 12ms
+<-- POST /api/v1/encounters/enc-8812/hmo/final-loa
+--> POST /api/v1/encounters/enc-8812/hmo/final-loa 200 14ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 11ms
+<-- POST /api/v1/encounters/enc-8812/finalize-bill
+--> POST /api/v1/encounters/enc-8812/finalize-bill 200 11ms
+<-- POST /api/v1/encounters/enc-8812/send-bill
+--> POST /api/v1/encounters/enc-8812/send-bill 200 10ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 11ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 918ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 17ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 40ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 928ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 21ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 41ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 927ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 19ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 41ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 931ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 20ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 39ms
+All four simulated rails: payment/receipt persistence, replay uniqueness and patient centavo parity verified
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 26ms
+<-- POST /api/v1/encounters/enc-8812/payments
+--> POST /api/v1/encounters/enc-8812/payments 200 923ms
+<-- GET /api/v1/notifications
+--> GET /api/v1/notifications 200 31ms
+<-- GET /api/v1/notifications
+--> GET /api/v1/notifications 403 7ms
+<-- POST /api/v1/notifications/mark-read
+--> POST /api/v1/notifications/mark-read 400 31ms
+<-- POST /api/v1/notifications/mark-read
+--> POST /api/v1/notifications/mark-read 200 24ms
+<-- GET /api/v1/notifications
+--> GET /api/v1/notifications 200 23ms
+<-- GET /api/v1/notifications
+--> GET /api/v1/notifications 200 20ms
+<-- GET /api/v1/encounters
+--> GET /api/v1/encounters 200 99ms
+<-- POST /api/v1/discharge/passes/verify
+--> POST /api/v1/discharge/passes/verify 200 13ms
+<-- GET /api/v1/notifications
+--> GET /api/v1/notifications 200 23ms
+<-- GET /api/v1/patient/me/overview
+--> GET /api/v1/patient/me/overview 200 24ms
+<-- GET /api/v1/analytics/rcm-metrics
+--> GET /api/v1/analytics/rcm-metrics 200 16ms
+SYNC_NOTIFICATIONS_POSTGRES_DONE: seed250/beds200; authenticated stages, finalization/delivery, patient payment, staff feed/read isolation, gate issuance/lobby verification passed.

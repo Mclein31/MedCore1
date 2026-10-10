@@ -184,7 +184,7 @@ promissoryApp.post(
               currentEncounterId: null,
               updatedAt: now
             })
-            .where(eq(beds.id, enc.bedId));
+            .where(and(eq(beds.id, enc.bedId), eq(beds.currentEncounterId, enc.id), eq(beds.facilityId, user.facilityId)));
         }
       }
 

@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { db } from '../db';
 import {
   payments,
@@ -218,7 +218,7 @@ paymentsApp.post(
                 currentEncounterId: null,
                 updatedAt: now
               })
-              .where(eq(beds.id, enc.bedId));
+              .where(and(eq(beds.id, enc.bedId), eq(beds.currentEncounterId, enc.id), eq(beds.facilityId, user.facilityId)));
           }
         }
 

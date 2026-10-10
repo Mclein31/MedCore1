@@ -85,7 +85,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
             onClick={onRunAudit}
             title="Verify 100% statutory waterfall and centavo reconciliation across all inpatient cases"
           >
-            Run Financial Audit
+            View Financial Report
           </Button>
 
           {/* Export Executive Report Trigger */}

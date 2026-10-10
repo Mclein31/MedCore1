@@ -10,6 +10,10 @@ export interface EncounterFilters {
 export class PatientsApi {
   constructor(private client: ApiClient = defaultApiClient) {}
 
+  async releaseGatePass(id:string):Promise<{success:boolean;encounter:any}>{return this.client.request(`/encounters/${id}/gate-pass`,{method:'POST'});}
+
+  async getPhysicians():Promise<{items:Array<{id:string;name:string}>}>{return this.client.request('/encounters/physicians');}
+
   async getEncounters(filters?: EncounterFilters): Promise<{ items: any[]; total: number }> {
     const params = new URLSearchParams();
     if (filters?.search) params.set('search', filters.search);
@@ -42,6 +46,16 @@ export class PatientsApi {
 
   async deleteEncounter(id: string): Promise<{ success: boolean; deletedId: string }> {
     return this.client.request(`/encounters/${id}`, { method: 'DELETE' });
+  }
+
+  async finalizeBill(id: string): Promise<{success: boolean; encounter: any}> {
+    return this.client.request(`/encounters/${id}/finalize-bill`, {method:'POST'});
+  }
+  async sendBill(id: string): Promise<{success: boolean; encounter: any}> {
+    return this.client.request(`/encounters/${id}/send-bill`, {method:'POST'});
+  }
+  async recordBillViewed(id: string): Promise<{success: boolean; encounter?: any}> {
+    return this.client.request(`/encounters/${id}/view-bill`, {method:'POST'});
   }
 
   async advanceStage(id: string): Promise<{ success: boolean; encounter: any }> {

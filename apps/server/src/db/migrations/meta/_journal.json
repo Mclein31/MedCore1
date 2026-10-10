@@ -22,6 +22,13 @@
       "when": 1791275335789,
       "tag": "0002_rapid_the_call",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791569025763,
+      "tag": "0003_staff_notification_reads",
+      "breakpoints": true
     }
   ]
 }

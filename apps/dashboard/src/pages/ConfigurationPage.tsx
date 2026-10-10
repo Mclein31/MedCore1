@@ -1,14 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button, Select } from '@/components/common';
 
 export const ConfigurationPage: React.FC = () => {
-  const [savedSuccess, setSavedSuccess] = useState(false);
-
-  const handleSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavedSuccess(true);
-    setTimeout(() => setSavedSuccess(false), 2000);
-  };
 
   return (
     <div className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 bg-slate-50/50 w-full">
@@ -24,13 +17,9 @@ export const ConfigurationPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {savedSuccess && (
-            <div className="text-sm font-bold text-emerald-800 bg-emerald-50 px-3.5 py-1.5 rounded-lg border border-emerald-200">
-              ✓ Configurations saved successfully.
-            </div>
-          )}
+
           <Button
-            type="submit"
+            type="button" disabled title="Configuration persistence is not available"
             form="config-form"
             size="md"
             variant="primary"
@@ -40,7 +29,8 @@ export const ConfigurationPage: React.FC = () => {
         </div>
       </div>
 
-      <form id="config-form" onSubmit={handleSave} className="space-y-6 w-full">
+      <p className="text-sm text-amber-800">Configuration preview only. Editing and saving are unavailable.</p>
+      <fieldset disabled id="config-form" className="space-y-6 w-full">
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full">
           {/* 1. Database & HIS Adapters */}
           <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
@@ -291,14 +281,14 @@ export const ConfigurationPage: React.FC = () => {
             MedCore Enterprise Engine v3.2 · Philippine Hospital RCM Operating System
           </div>
           <Button
-            type="submit"
+            type="button" disabled title="Configuration persistence is not available"
             size="md"
             variant="primary"
           >
             Save All System Configurations
           </Button>
         </div>
-      </form>
+      </fieldset>
     </div>
   );
 };

@@ -140,11 +140,7 @@ for (const action of ['waiver', 'add', 'edit', 'delete', 'doctor', 'pharmacy', '
       if (action === 'waiver') await current!.supervisoryWaiveItem(before.id, before.disputes[0].itemId, 'Validation waiver');
       if (action === 'add') await current!.addChargeItem(before.id, {description:'Synthetic charge',category:'LABORATORY',grossAmount:10});
       if (action === 'edit') await current!.editChargeItem(before.id, before.items[0].id, {grossAmount:10});
-      if (action === 'delete') {
-        current!.deleteChargeItem(before.id, before.items[0].id);
-        await waitFor(() => !!current!.confirmationState, 'Delete confirmation did not open');
-        await current!.confirmationState!.onConfirm();
-      }
+      if (action === 'delete') await current!.deleteChargeItem(before.id, before.items[0].id);
       if (action === 'doctor') await current!.signDoctorFee(before.id, 15000);
       if (action === 'pharmacy') await current!.clearPharmacyRts(before.id);
       if (action === 'advance') await current!.advanceStage(before.id);

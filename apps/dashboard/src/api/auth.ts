@@ -37,11 +37,11 @@ export class AuthApi {
   }
 
   async logout(): Promise<{ success: boolean; message?: string }> {
+    const token=this.client.getAuthToken();
     try {
       return await this.client.request('/auth/logout', { method: 'POST' });
     } finally {
-      this.client.setDemoRole(null);
-      this.client.setAuthToken(null);
+      if(this.client.getAuthToken()===token) { this.client.setDemoRole(null); this.client.setAuthToken(null); }
     }
   }
 
