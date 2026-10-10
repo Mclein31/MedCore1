@@ -10,6 +10,7 @@ export const C = {
   danger: '#BE123C', dangerBg: '#FFF1F2',
   gcash: '#175CD3', maya: '#14242A', mayaAccent: '#6DE6AA', note: '#93470B',
   scrim: 'rgba(15,23,42,0.45)',
+  receiptSurround: '#CBD5E1',
   bg: '#F8FAFC', surfaceAlias: '#FFFFFF', primary: '#11806D', primaryDark: '#0F6D5F', text: '#0F172A'
 } as const;
 export const Spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, section: 28, gutter: 22 } as const;

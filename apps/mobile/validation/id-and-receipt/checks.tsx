@@ -15,7 +15,7 @@ try {
   assert.ok(!ticket.textContent!.includes('Your bill breakdown'));
   assert.ok(document.body.textContent!.includes('Itemized charges'));
   assert.ok(document.body.textContent!.includes('Your bill breakdown'));
-  assert.equal(getComputedStyle(ticket).backgroundColor, 'rgb(248, 250, 252)');
+  assert.equal(getComputedStyle(ticket).backgroundColor, 'rgb(203, 213, 225)');
   // The existing scalloped cutouts use the same contrasting surround as the ticket.
   assert.ok(Array.from(ticket.querySelectorAll<HTMLElement>('div')).filter(element => element.style.width === '8px' && element.style.height === '8px').length >= 20);
   const results = ['history payment receipt retains its visible ticket surround and cutouts', 'receipt ticket contains only actual payment data; itemized bill stays outside'];

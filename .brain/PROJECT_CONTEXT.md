@@ -2211,4 +2211,10 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 - Hosted Vercel staff dashboard (`https://med-core1.vercel.app`) and mobile client now operate on the exact same backend and database instance.
 - Verified test suites: Financial audit 250/250 (100% exact), mobile unit tests 49/49, server hardening 53/53, and QR decoding 16/16.
 
+[DECISION] Enhanced visual contrast of the mobile payment receipt (`ReceiptSheet` and `historical-payment-ticket`):
+- Added dedicated `receiptSurround: '#CBD5E1'` (Slate-300) design token to provide a defined darker gray backdrop.
+- Updated `ReceiptSheet` with card elevation (`elevation: 3`, soft drop shadow `rgba(15,23,42,0.08)`, subtle border `rgba(15,23,42,0.08)`, and rounded corners).
+- Surrounding ticket wrapper in `RecordDetailScreen` and completed payment screen in `PaymentFlowScreen` now use `C.receiptSurround` so the white paper receipt card and its top scalloped tear-away perforations stand out with high contrast.
+
+
 
