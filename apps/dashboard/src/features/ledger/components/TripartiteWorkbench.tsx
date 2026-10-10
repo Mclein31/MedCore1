@@ -13,7 +13,6 @@ import {
   Send,
   Copy,
   Check,
-  Sparkles,
   Printer,
   Plus,
   Pencil,
@@ -295,22 +294,6 @@ export const TripartiteWorkbench: React.FC = () => {
           >
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span>Print eSOA</span>
-          </button>
-
-          {/* Divider */}
-          <div className="h-4 w-px bg-slate-300 mx-0.5" />
-
-          {/* 4. Full Patient Experience Link */}
-          <button
-            type="button"
-            onClick={() => {
-              setActiveRoute('PATIENT_PORTAL');
-            }}
-            className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors flex items-center gap-1.5"
-            title="Preview this patient bill without changing staff identity"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>Preview Patient Bill</span>
           </button>
         </div>
       </div>
