@@ -11,7 +11,8 @@ import {
   dischargePasses,
   beds,
   encounterTimelineEvents,
-  systemAuditLogs
+  systemAuditLogs,
+  promissoryNotes
 } from '../db/schema';
 import { generateGatePassHmac, generateDeterministicExitPin, resolveGatePassSecret } from '../services/gatePassService';
 import { apiError } from '../middleware/error';
@@ -241,6 +242,16 @@ paymentsApp.post(
             reconciledAt: now
           })
           .where(eq(statutoryWaterfalls.encounterId, enc.id));
+
+        if (isFullySettled) {
+          await tx
+            .update(promissoryNotes)
+            .set({
+              status: 'SETTLED',
+              updatedAt: now
+            })
+            .where(and(eq(promissoryNotes.encounterId, enc.id), eq(promissoryNotes.status, 'ACTIVE')));
+        }
 
         // 5. Timeline Event
         await tx.insert(encounterTimelineEvents).values({

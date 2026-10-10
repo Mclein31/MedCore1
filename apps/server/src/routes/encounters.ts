@@ -260,8 +260,9 @@ export function formatHydratedEncounter(ctx: HydrationContext) {
           installmentMonths: promissoryNote.installmentMonths as 3 | 6 | 12,
           monthlyInstallment: Number(promissoryNote.monthlyInstallment),
           firstDueDate: promissoryNote.firstDueDate.toISOString().slice(0, 10),
-          digitalSignatureTimestamp: promissoryNote.digitalSignatureTimestamp.toISOString(),
-          status: promissoryNote.status as any
+          status: (((Number(enc.remainingBalance) <= 0 || enc.billState === 'PAID') && promissoryNote.status === 'ACTIVE')
+            ? 'SETTLED'
+            : promissoryNote.status) as any
         }
       : undefined,
     disputes: disputesList.map((d) => ({

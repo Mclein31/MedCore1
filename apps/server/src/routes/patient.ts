@@ -418,12 +418,21 @@ patientApp.get('/me/promissory-notes', requireAuth, async (c) => {
   const encRows = await getPatientEncounters(resolved.patient.id, resolved.user.facilityId);
   const items = [];
   for (const row of encRows) {
+    const isEncSettled = Number(row.remainingBalance) <= 0 || row.billState === 'PAID';
     const noteRows = await db
       .select()
       .from(promissoryNotes)
       .where(eq(promissoryNotes.encounterId, row.id))
       .orderBy(desc(promissoryNotes.createdAt));
     for (const n of noteRows) {
+      let status = n.status;
+      if (isEncSettled && status === 'ACTIVE') {
+        status = 'SETTLED';
+        await db
+          .update(promissoryNotes)
+          .set({ status: 'SETTLED', updatedAt: new Date() })
+          .where(eq(promissoryNotes.id, n.id));
+      }
       items.push({
         id: n.id,
         noteNumber: n.noteNumber,
@@ -436,7 +445,7 @@ patientApp.get('/me/promissory-notes', requireAuth, async (c) => {
         installmentMonths: n.installmentMonths,
         monthlyInstallment: Number(n.monthlyInstallment),
         firstDueDate: n.firstDueDate.toISOString().slice(0, 10),
-        status: n.status,
+        status,
         schedule: n.scheduleJson,
         executedAt: n.digitalSignatureTimestamp.toISOString()
       });

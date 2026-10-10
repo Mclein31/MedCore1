@@ -1092,7 +1092,7 @@ export function generateAdditionalEncounters(startIndex: number, totalTarget: nu
         monthlyInstallment: monthly,
         firstDueDate: '2026-10-25',
         digitalSignatureTimestamp: '2026-09-25T10:35:00+08:00',
-        status: 'ACTIVE'
+        status: stage === 'CLEARED_GATE_PASS' ? 'SETTLED' : 'ACTIVE'
       };
     }
 

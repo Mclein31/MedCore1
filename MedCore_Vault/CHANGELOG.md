@@ -4,6 +4,25 @@
 > **Knowledge Layer**: Product Intelligence Vault (`MedCore_Vault/`)  
 > **Standards Compliance**: Keep a Changelog & Semantic Versioning
 
+## [1.23.0] — 2026-10-10
+
+### Promissory Note Settlement State Machine & Native Mobile Font Typography Alignment
+
+#### Changed
+- [STATE SYNCHRONIZATION] **Promissory Note Automatic Settlement on Paid Encounters (`apps/server/src/routes/payments.ts`, `apps/server/src/routes/patient.ts`, `apps/server/src/routes/encounters.ts`, `apps/server/src/routes/promissory.ts`)**:
+  - Automatically transitions active RA 9439 promissory notes (`promissory_notes.status = 'SETTLED'`) whenever encounter balances reach ₱0.00 (`isFullySettled` / `remainingBalance <= 0`).
+  - Auto-reconciles promissory note query endpoints (`GET /api/v1/patient/me/promissory-notes` and `GET /api/v1/promissory-notes`) to ensure notes associated with paid encounters immediately reflect `SETTLED` in responses and database records.
+- [MOBILE UI REFINEMENT] **Payment Plans Settled Badge and Subtitle Presentation (`apps/mobile/src/screens/PaymentsScreen.tsx`)**:
+  - Updated patient mobile payment plans list to recognize settled encounter and note statuses, rendering `✓ Settled` badge with green tone and `X months · ₱Y/mo · Settled` subtitle rather than displaying completed plans as active.
+- [DASHBOARD TYPOGRAPHY] **Web Dashboard Font Stack Alignment with Mobile Native Typography (`apps/dashboard/tailwind.config.js`, `apps/dashboard/index.html`, `apps/dashboard/src/index.css`)**:
+  - Updated Tailwind `fontFamily.sans` to use native Apple system typography (`-apple-system`, `BlinkMacSystemFont`, `"SF Pro Text"`, `"SF Pro Display"`, `"SF Pro"`, `system-ui`) matching the iOS/macOS mobile experience.
+  - Removed Google Fonts `Inter` stylesheet dependency and Inter-specific `cv02-cv11` character variant settings from `index.css`, allowing the dashboard to render crisp, native San Francisco system typography while preserving strict financial tabular numerals.
+- [DASHBOARD PROMISSORY REGISTER] **Disputes & Discharge Radar Settled Note Representation (`apps/dashboard/src/pages/DisputesExceptionsPage.tsx`, `apps/dashboard/src/features/discharge/components/ActiveDischargeRadar.tsx`)**:
+  - Replaced hardcoded `Active Guaranteed` badge with dynamic status rendering, presenting `Settled (Paid in Full)` for fulfilled statutory notes.
+- [PHILHEALTH COVERAGE HARMONIZATION] **PhilHealth-First Statutory Claim Status Resolution (`apps/mobile/src/lib/format.ts`, `apps/mobile/src/screens/CoverageScreen.tsx`)**:
+  - Resolved status mismatch where PhilHealth showed "In review" even when benefits were verified and the HMO eLOA was approved.
+  - Aligned `describeClaimStatus` for pre-flight `CLEAN` claims to display `Verified & applied` with `ok` (green checkmark) tone and clear explanation that the statutory Case Rate benefit has been verified and deducted from the bill.
+
 ## [1.22.0] — 2026-10-09
 
 ### Harmonized Gender & Development Guidelines (HGDG 3rd Edition) Regulatory Architecture Integration

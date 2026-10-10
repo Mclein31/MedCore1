@@ -25,14 +25,20 @@ const promissoryApp = new Hono();
 // GET /api/v1/promissory-notes
 promissoryApp.get('/', requireAuth, async (c) => {
   const notes = await db
-    .select({ note: promissoryNotes })
+    .select({ note: promissoryNotes, enc: encounters })
     .from(promissoryNotes)
     .innerJoin(encounters, eq(encounters.id, promissoryNotes.encounterId))
     .where(eq(encounters.facilityId, c.get('user').facilityId))
     .orderBy(desc(promissoryNotes.createdAt));
 
   return c.json({
-    items: notes.map((row) => row.note),
+    items: notes.map((row) => {
+      const isEncSettled = Number(row.enc.remainingBalance) <= 0 || row.enc.billState === 'PAID';
+      return {
+        ...row.note,
+        status: (isEncSettled && row.note.status === 'ACTIVE') ? 'SETTLED' : row.note.status
+      };
+    }),
     total: notes.length
   });
 });

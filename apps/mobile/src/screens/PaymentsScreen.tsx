@@ -62,22 +62,25 @@ export default function PaymentsScreen({ navigation }: { navigation: any }) {
         {plans.length > 0 && (
           <View>
             <SectionHeader title={`Payment plans · ${plans.length}`} />
-            {plans.map((n) => (
-              <Expandable
-                key={n.id}
-                title={`${n.noteNumber} · ${formatPeso(n.principalAmount)}`}
-                subtitle={`${n.installmentMonths} months · ${formatPeso(n.monthlyInstallment)}/mo · ${n.status === 'ACTIVE' ? 'Active' : n.status}`}
-              >
-                <StatusBadge tone={n.status === 'ACTIVE' ? 'info' : 'ok'} text={n.status === 'ACTIVE' ? `● Active · 0% interest` : `✓ ${n.status}`} />
-                <View style={{ marginTop: 8 }}>
-                  <LedgerRow title="Total payable" value={formatPeso(n.totalRepayment)} />
-                  <LedgerRow title="First due" value={formatDate(n.firstDueDate)} />
-                  {(n.schedule || []).map((s: number, i: number) => (
-                    <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(s)} last={i === (n.schedule || []).length - 1} />
-                  ))}
-                </View>
-              </Expandable>
-            ))}
+            {plans.map((n) => {
+              const isSettled = n.status === 'SETTLED' || (settled && (n.encounterNumber === currentEncounter?.encounterNumber || plans.length === 1));
+              return (
+                <Expandable
+                  key={n.id}
+                  title={`${n.noteNumber} · ${formatPeso(n.principalAmount)}`}
+                  subtitle={`${n.installmentMonths} months · ${formatPeso(n.monthlyInstallment)}/mo · ${isSettled ? 'Settled' : n.status === 'ACTIVE' ? 'Active' : n.status}`}
+                >
+                  <StatusBadge tone={isSettled ? 'ok' : n.status === 'ACTIVE' ? 'info' : 'ok'} text={isSettled ? '✓ Settled' : n.status === 'ACTIVE' ? `● Active · 0% interest` : `✓ ${n.status}`} />
+                  <View style={{ marginTop: 8 }}>
+                    <LedgerRow title="Total payable" value={formatPeso(n.totalRepayment)} />
+                    <LedgerRow title="First due" value={formatDate(n.firstDueDate)} />
+                    {(n.schedule || []).map((s: number, i: number) => (
+                      <LedgerRow key={i} title={`Month ${i + 1}`} value={formatPeso(s)} last={i === (n.schedule || []).length - 1} />
+                    ))}
+                  </View>
+                </Expandable>
+              );
+            })}
           </View>
         )}
 
