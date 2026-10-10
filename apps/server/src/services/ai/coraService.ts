@@ -17,6 +17,7 @@ export interface CoraChatServiceOptions {
   mode?: CoraMode;
   encounterId?: string;
   facilityId?: string;
+  env?: Record<string, any>;
 }
 
 export interface CoraChatServiceResponse {
@@ -128,7 +129,8 @@ Message: ${message}
         mode,
         grossTotal: financials.grossTotal,
         remainingBalance: financials.remainingBalance
-      }
+      },
+      env: options.env
     });
 
     let coraData: any;

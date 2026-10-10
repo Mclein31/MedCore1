@@ -9,11 +9,12 @@ import {
 export interface ExtractCardOptions {
   imageBase64: string;
   cardCategory?: 'PHILHEALTH_ID' | 'SENIOR_CITIZEN_OSCA' | 'PWD_ID' | 'HMO_CARD' | 'NATIONAL_ID';
+  env?: Record<string, any>;
 }
 
 export class OcrService {
   async extractCard(options: ExtractCardOptions): Promise<CardOcrResponse> {
-    const { imageBase64, cardCategory } = options;
+    const { imageBase64, cardCategory, env } = options;
 
     if (!imageBase64) {
       throw new Error('Image base64 data is required for card credential extraction.');
@@ -34,7 +35,8 @@ export class OcrService {
       responseMimeType: 'application/json',
       temperature: 0.1,
       mockFallbackType: 'OCR',
-      mockFallbackContext: { cardCategory }
+      mockFallbackContext: { cardCategory },
+      env
     });
 
     if (response.rawJson) {

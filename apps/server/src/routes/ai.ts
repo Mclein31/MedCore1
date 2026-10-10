@@ -34,10 +34,11 @@ async function recordAiAudit(data: {
   rthRiskScore?: string;
   status: string;
   errorMessage?: string;
+  env?: Record<string, any>;
 }) {
   try {
     if (db && typeof db.insert === 'function') {
-      const config = getAiConfig();
+      const config = getAiConfig(data.env);
       await db.insert(aiAuditLogs).values({
         facilityId: isValidUuid(data.facilityId),
         encounterId: isValidUuid(data.encounterId),
@@ -79,7 +80,8 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       language: body.language,
       mode: body.mode,
       encounterId: body.encounterId,
-      facilityId: user?.facilityId
+      facilityId: user?.facilityId,
+      env: c.env as any
     });
 
     await recordAiAudit({
@@ -89,7 +91,8 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       module: 'CORA',
       action: 'PATIENT_CONCIERGE_CHAT',
       latencyMs: Date.now() - startTime,
-      status: 'SUCCESS'
+      status: 'SUCCESS',
+      env: c.env as any
     });
 
     return c.json(result);
@@ -103,7 +106,8 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       action: 'PATIENT_CONCIERGE_CHAT',
       latencyMs: Date.now() - startTime,
       status: 'ERROR',
-      errorMessage: err.message
+      errorMessage: err.message,
+      env: c.env as any
     });
     return apiError(c, 500, 'AI_INFERENCE_ERROR', 'Cora is currently unavailable. Please ask ward nursing for immediate assistance.');
   }
@@ -131,7 +135,8 @@ aiApp.post(
       const result = await claimsForensicService.runPreflightAudit({
         encounterId: body.encounterId,
         facilityId: user.facilityId,
-        forceEscalation: body.forceEscalation
+        forceEscalation: body.forceEscalation,
+        env: c.env as any
       });
 
       await recordAiAudit({
@@ -140,10 +145,11 @@ aiApp.post(
         userId: user.id,
         module: 'CLAIMS_SCRUBBER',
         action: 'PREFLIGHT_AUDIT',
-        modelUsed: body.forceEscalation ? getAiConfig().geminiProModel : undefined,
+        modelUsed: body.forceEscalation ? getAiConfig(c.env as any).geminiProModel : undefined,
         rthRiskScore: result.rthRiskScore.toFixed(4),
         latencyMs: Date.now() - startTime,
-        status: 'SUCCESS'
+        status: 'SUCCESS',
+        env: c.env as any
       });
 
       return c.json(result);
@@ -186,7 +192,8 @@ aiApp.post(
         deniedAmount: body.deniedAmount,
         hmoProviderName: body.hmoProviderName || body.hmoId,
         justificationNotes: body.justificationNotes,
-        facilityId: user.facilityId
+        facilityId: user.facilityId,
+        env: c.env as any
       });
 
       await recordAiAudit({
@@ -195,9 +202,9 @@ aiApp.post(
         userId: user.id,
         module: 'HMO_APPEAL',
         action: 'GENERATE_APPEAL_LETTER',
-
         latencyMs: Date.now() - startTime,
-        status: 'SUCCESS'
+        status: 'SUCCESS',
+        env: c.env as any
       });
 
       return c.json(result);
@@ -221,7 +228,8 @@ aiApp.post(
 
     try {
       const result = await executiveBriefingService.generateBriefing({
-        facilityId: user.facilityId
+        facilityId: user.facilityId,
+        env: c.env as any
       });
 
       await recordAiAudit({
@@ -229,9 +237,9 @@ aiApp.post(
         userId: user.id,
         module: 'EXECUTIVE_BRIEFING',
         action: 'SYNTHESIZE_TELEMETRY',
-
         latencyMs: Date.now() - startTime,
-        status: 'SUCCESS'
+        status: 'SUCCESS',
+        env: c.env as any
       });
 
       return c.json(result);
@@ -258,7 +266,8 @@ aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {
   try {
     const result = await ocrService.extractCard({
       imageBase64: body.imageBase64,
-      cardCategory: body.cardCategory
+      cardCategory: body.cardCategory,
+      env: c.env as any
     });
 
     await recordAiAudit({
@@ -267,7 +276,8 @@ aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {
       module: 'OCR',
       action: 'EXTRACT_BENEFIT_CARD',
       latencyMs: Date.now() - startTime,
-      status: 'SUCCESS'
+      status: 'SUCCESS',
+      env: c.env as any
     });
 
     return c.json(result);
