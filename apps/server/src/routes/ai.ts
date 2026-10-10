@@ -13,6 +13,15 @@ import { aiAuditLogs } from '../db/schema';
 
 const aiApp = new Hono();
 
+import { getAiConfig } from '../config/aiConfig';
+
+const isValidUuid = (val?: string): string | undefined => {
+  if (typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val)) {
+    return val;
+  }
+  return undefined;
+};
+
 // Helper to safely write audit log without throwing
 async function recordAiAudit(data: {
   facilityId?: string;
@@ -20,7 +29,7 @@ async function recordAiAudit(data: {
   userId?: string;
   module: string;
   action: string;
-  modelUsed: string;
+  modelUsed?: string;
   latencyMs?: number;
   rthRiskScore?: string;
   status: string;
@@ -28,13 +37,14 @@ async function recordAiAudit(data: {
 }) {
   try {
     if (db && typeof db.insert === 'function') {
+      const config = getAiConfig();
       await db.insert(aiAuditLogs).values({
-        facilityId: data.facilityId,
-        encounterId: data.encounterId,
-        userId: data.userId,
+        facilityId: isValidUuid(data.facilityId),
+        encounterId: isValidUuid(data.encounterId),
+        userId: isValidUuid(data.userId),
         module: data.module,
         action: data.action,
-        modelUsed: data.modelUsed,
+        modelUsed: data.modelUsed || config.geminiModel,
         latencyMs: data.latencyMs,
         rthRiskScore: data.rthRiskScore,
         status: data.status,
@@ -78,7 +88,6 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       userId: user?.id,
       module: 'CORA',
       action: 'PATIENT_CONCIERGE_CHAT',
-      modelUsed: 'gemini-2.5-flash',
       latencyMs: Date.now() - startTime,
       status: 'SUCCESS'
     });
@@ -92,7 +101,6 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       userId: user?.id,
       module: 'CORA',
       action: 'PATIENT_CONCIERGE_CHAT',
-      modelUsed: 'gemini-2.5-flash',
       latencyMs: Date.now() - startTime,
       status: 'ERROR',
       errorMessage: err.message
@@ -132,7 +140,7 @@ aiApp.post(
         userId: user.id,
         module: 'CLAIMS_SCRUBBER',
         action: 'PREFLIGHT_AUDIT',
-        modelUsed: body.forceEscalation ? 'gemini-1.5-pro-latest' : 'gemini-2.5-flash',
+        modelUsed: body.forceEscalation ? getAiConfig().geminiProModel : undefined,
         rthRiskScore: result.rthRiskScore.toFixed(4),
         latencyMs: Date.now() - startTime,
         status: 'SUCCESS'
@@ -187,7 +195,7 @@ aiApp.post(
         userId: user.id,
         module: 'HMO_APPEAL',
         action: 'GENERATE_APPEAL_LETTER',
-        modelUsed: 'gemini-2.5-flash',
+
         latencyMs: Date.now() - startTime,
         status: 'SUCCESS'
       });
@@ -221,7 +229,7 @@ aiApp.post(
         userId: user.id,
         module: 'EXECUTIVE_BRIEFING',
         action: 'SYNTHESIZE_TELEMETRY',
-        modelUsed: 'gemini-2.5-flash',
+
         latencyMs: Date.now() - startTime,
         status: 'SUCCESS'
       });
@@ -258,7 +266,6 @@ aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {
       userId: user?.id,
       module: 'OCR',
       action: 'EXTRACT_BENEFIT_CARD',
-      modelUsed: 'gemini-2.5-flash',
       latencyMs: Date.now() - startTime,
       status: 'SUCCESS'
     });

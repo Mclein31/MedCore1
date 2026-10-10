@@ -192,6 +192,13 @@ async function runAiTests() {
     pass('HTTP Route: POST /api/v1/ai/cora/chat returns structured response with suggested actions');
 
     // 4. Claims Pre-flight Scrub Route (Authenticated)
+    const encListRes = await app.request('/api/v1/encounters', {
+      method: 'GET',
+      headers: { Cookie: cookieHeader }
+    });
+    const encListData = await encListRes.json();
+    const testEncounterId = encListData?.items?.[0]?.id || 'enc-4552';
+
     const resScrub = await app.request('/api/v1/ai/claims/preflight-scrub', {
       method: 'POST',
       headers: {
@@ -199,7 +206,7 @@ async function runAiTests() {
         Cookie: cookieHeader
       },
       body: JSON.stringify({
-        encounterId: 'enc-8812',
+        encounterId: testEncounterId,
         forceEscalation: false
       })
     });
@@ -217,7 +224,7 @@ async function runAiTests() {
         Cookie: cookieHeader
       },
       body: JSON.stringify({
-        encounterId: 'enc-8812',
+        encounterId: testEncounterId,
         deniedItemDescription: 'Disposable Laparoscopic Trocar 10mm',
         deniedAmount: 3200.00,
         hmoProviderName: 'Maxicare'
