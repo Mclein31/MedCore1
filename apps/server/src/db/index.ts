@@ -49,8 +49,8 @@ export function createDbConnection(connectionString?: string, isProduction: bool
   const pool = new Pool({
     connectionString: url,
     max: isProd ? 5 : 10,
-    idleTimeoutMillis: 1000,
-    connectionTimeoutMillis: 5000
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 10000
   });
 
   // Guard against unhandled error events on idle/disconnected sockets

@@ -137,31 +137,35 @@ app.use('*', async (c, next) => {
     (typeof process !== 'undefined' ? process.env.DATABASE_URL : undefined);
 
   if (effectiveConn) {
-    const { db: activeDb, pool } = createDbConnection(effectiveConn, isProduction);
-    try {
-      return await runWithDb(activeDb, () => next());
-    } finally {
-      const executionCtx = getExecutionContext(c);
-      if (executionCtx?.waitUntil) {
+    const executionCtx = getExecutionContext(c);
+    if (executionCtx?.waitUntil) {
+      // Cloudflare Worker isolate execution - close socket upon isolate completion
+      const { db: activeDb, pool } = createDbConnection(effectiveConn, isProduction);
+      try {
+        return await runWithDb(activeDb, () => next());
+      } finally {
         executionCtx.waitUntil(pool.end().catch(() => {}));
-      } else {
-        await pool.end().catch(() => {});
       }
+    } else {
+      // Persistent Node.js / standalone runtime - reuse cached connection pool
+      const activeDb = getDb(effectiveConn, isProduction);
+      return await runWithDb(activeDb, () => next());
     }
   }
 
   // Local development fallback
   if (!isProduction) {
-    const { db: devDb, pool } = createDbConnection(undefined, false);
-    try {
-      return await runWithDb(devDb, () => next());
-    } finally {
-      const executionCtx = getExecutionContext(c);
-      if (executionCtx?.waitUntil) {
+    const executionCtx = getExecutionContext(c);
+    if (executionCtx?.waitUntil) {
+      const { db: devDb, pool } = createDbConnection(undefined, false);
+      try {
+        return await runWithDb(devDb, () => next());
+      } finally {
         executionCtx.waitUntil(pool.end().catch(() => {}));
-      } else {
-        await pool.end().catch(() => {});
       }
+    } else {
+      const devDb = getDb(undefined, false);
+      return await runWithDb(devDb, () => next());
     }
   }
 

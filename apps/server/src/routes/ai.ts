@@ -225,10 +225,12 @@ aiApp.post(
   async (c) => {
     const user = c.get('user');
     const startTime = Date.now();
+    const body = await c.req.json().catch(() => ({})) as { forceRefresh?: boolean };
 
     try {
       const result = await executiveBriefingService.generateBriefing({
         facilityId: user.facilityId,
+        forceRefresh: body?.forceRefresh === true,
         env: c.env as any
       });
 

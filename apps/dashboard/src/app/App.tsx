@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { MedCoreProvider, useMedCore } from '@/context/MedCoreContext';
 import { GlobalCommandBar } from '@/components/layout/GlobalCommandBar';
 import { SidebarNav } from '@/components/layout/SidebarNav';
@@ -16,21 +16,103 @@ import {
 } from '@/components/modals';
 import { LoginScreen } from '@/components/auth/LoginScreen';
 import { PrintDocumentContainer } from '@/components/printing';
+import { AlertCircle, X, RefreshCw, Activity } from 'lucide-react';
 
-// 8 Task-Oriented Operational Route Pages
-import {
-  CommandCenterPage,
-  DischargeClearancePage,
-  EncountersLedgerPage,
-  ApprovalsDisputesPage,
-  CoverageApprovalsPage,
-  DisputesExceptionsPage,
-  ClaimsEsoaPage,
-  RcmAnalyticsPage,
-  ConfigurationPage
-} from '@/pages';
+// Code-Split 8 Task-Oriented Operational Route Pages for optimal bundle size and startup performance
+const CommandCenterPage = lazy(() => import('@/pages/CommandCenterPage').then(m => ({ default: m.CommandCenterPage })));
+const DischargeClearancePage = lazy(() => import('@/pages/DischargeClearancePage').then(m => ({ default: m.DischargeClearancePage })));
+const EncountersLedgerPage = lazy(() => import('@/pages/EncountersLedgerPage').then(m => ({ default: m.EncountersLedgerPage })));
+const ApprovalsDisputesPage = lazy(() => import('@/pages/ApprovalsDisputesPage').then(m => ({ default: m.ApprovalsDisputesPage })));
+const ClaimsEsoaPage = lazy(() => import('@/pages/ClaimsEsoaPage').then(m => ({ default: m.ClaimsEsoaPage })));
+const RcmAnalyticsPage = lazy(() => import('@/pages/RcmAnalyticsPage').then(m => ({ default: m.RcmAnalyticsPage })));
+const ConfigurationPage = lazy(() => import('@/pages/ConfigurationPage').then(m => ({ default: m.ConfigurationPage })));
 
-import { AlertCircle, X } from 'lucide-react';
+// Page Loading Skeleton Fallback for Smooth Route Transitions
+const PageFallback: React.FC = () => (
+  <div className="flex-1 p-6 space-y-4 animate-pulse overflow-y-auto">
+    <div className="h-8 w-64 bg-slate-200 rounded-lg" />
+    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="h-24 bg-slate-200 rounded-xl" />
+      <div className="h-24 bg-slate-200 rounded-xl" />
+      <div className="h-24 bg-slate-200 rounded-xl" />
+      <div className="h-24 bg-slate-200 rounded-xl" />
+    </div>
+    <div className="h-96 bg-slate-200 rounded-2xl" />
+  </div>
+);
+
+// Resilient Error Boundary to catch uncaught component errors and provide instant recovery
+export interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+export interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('[MedCore Uncaught Runtime Exception]', error, errorInfo);
+  }
+
+  handleReload = () => {
+    window.location.reload();
+  };
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+          <div className="max-w-md w-full bg-white rounded-2xl border border-rose-200 p-8 shadow-lg text-center space-y-4">
+            <div className="w-12 h-12 mx-auto rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h1 className="text-lg font-bold text-slate-900">Application Error</h1>
+            <p className="text-xs text-slate-600">
+              A client-side error occurred while rendering the workspace.
+            </p>
+            {this.state.error?.message && (
+              <div className="text-left bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs font-mono text-slate-700 overflow-x-auto">
+                {this.state.error.message}
+              </div>
+            )}
+            <div className="flex gap-2 justify-center pt-2">
+              <button
+                type="button"
+                onClick={this.handleReset}
+                className="rounded-xl border border-slate-200 bg-white text-slate-700 px-4 py-2 text-xs font-medium hover:bg-slate-50 transition-colors"
+              >
+                Recover View
+              </button>
+              <button
+                type="button"
+                onClick={this.handleReload}
+                className="rounded-xl bg-teal-700 text-white px-5 py-2 text-xs font-medium hover:bg-teal-800 transition-colors"
+              >
+                Reload Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export const MainLayout: React.FC = () => {
   const {
@@ -43,6 +125,7 @@ export const MainLayout: React.FC = () => {
     setActiveRoute,
     selectEncounter,
     encounters,
+    isLoadingEncounters,
     confirmationState,
     closeConfirmation,
     apiError,
@@ -91,9 +174,40 @@ export const MainLayout: React.FC = () => {
     );
   };
 
-  if (isVerifyingSession || sessionError) return <div className="min-h-screen flex items-center justify-center bg-white p-6"><div className="text-center space-y-4"><h1 className="text-xl font-semibold">{sessionError ? 'Session verification unavailable' : 'Verifying your session…'}</h1>{sessionError && <><p>{sessionError}</p><button type="button" onClick={retrySession} className="rounded-xl bg-teal-700 text-white px-6 py-3">Try again</button></>}</div></div>;
+  // Graceful non-blocking session verification state
+  if (isVerifyingSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="w-10 h-10 mx-auto rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600">
+            <RefreshCw className="w-5 h-5 animate-spin" />
+          </div>
+          <h1 className="text-base font-semibold text-slate-800">Verifying session…</h1>
+          <p className="text-xs text-slate-500">Checking credentials with the hospital authentication server.</p>
+        </div>
+      </div>
+    );
+  }
 
-  if (isAuthenticated && encounters.length === 0) return <div className="min-h-screen flex items-center justify-center bg-white p-6"><div className="text-center space-y-4"><h1 className="text-xl font-semibold">No hospital records available</h1><button type="button" onClick={retrySession} className="rounded-xl bg-teal-700 text-white px-6 py-3">Refresh records</button></div></div>;
+  // Session verification error for unauthenticated visitors
+  if (sessionError && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="text-center space-y-4 max-w-sm bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+          <AlertCircle className="w-10 h-10 mx-auto text-amber-600" />
+          <h1 className="text-base font-semibold text-slate-900">Session Verification Unavailable</h1>
+          <p className="text-xs text-slate-600">{sessionError}</p>
+          <button
+            type="button"
+            onClick={retrySession}
+            className="rounded-xl bg-teal-700 text-white px-5 py-2.5 text-xs font-semibold hover:bg-teal-800 transition-colors w-full"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Cached browser flags are never proof of an authenticated session.
   if (!isAuthenticated) {
@@ -123,6 +237,24 @@ export const MainLayout: React.FC = () => {
         )}
         {renderApiErrorToast()}
       </>
+    );
+  }
+
+  // If authenticated and encounters are still loading without any cached records, display smooth synchronizing state
+  if (encounters.length === 0 && isLoadingEncounters) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 shadow-xs text-center space-y-4">
+          <div className="w-12 h-12 mx-auto rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
+            <Activity className="w-6 h-6 animate-pulse" />
+          </div>
+          <h1 className="text-base font-bold text-slate-900">Synchronizing Hospital Census</h1>
+          <p className="text-xs text-slate-500">Connecting to hospital records and verifying real-time encounter telemetry…</p>
+          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-teal-600 h-full w-2/3 animate-pulse rounded-full" />
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -201,7 +333,9 @@ export const MainLayout: React.FC = () => {
             setIsCollapsed={setIsSidebarCollapsed}
           />
           <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-            {renderActiveView()}
+            <Suspense fallback={<PageFallback />}>
+              {renderActiveView()}
+            </Suspense>
           </main>
         </div>
 
@@ -247,9 +381,11 @@ export const MainLayout: React.FC = () => {
 
 export const App: React.FC = () => {
   return (
-    <MedCoreProvider>
-      <MainLayout />
-    </MedCoreProvider>
+    <ErrorBoundary>
+      <MedCoreProvider>
+        <MainLayout />
+      </MedCoreProvider>
+    </ErrorBoundary>
   );
 };
 

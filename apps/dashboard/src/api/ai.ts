@@ -116,9 +116,10 @@ export class HmoAiApi {
 export class RcmAiApi {
   constructor(private client: ApiClient = defaultApiClient) {}
 
-  async getExecutiveBriefing(): Promise<ExecutiveBriefingResponse> {
+  async getExecutiveBriefing(forceRefresh: boolean = false): Promise<ExecutiveBriefingResponse> {
     return this.client.request<ExecutiveBriefingResponse>('/ai/executive/briefing', {
-      method: 'POST'
+      method: 'POST',
+      body: JSON.stringify({ forceRefresh })
     });
   }
 }
