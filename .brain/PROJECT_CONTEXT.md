@@ -326,7 +326,7 @@ $$\mathbf{GUIDE} \longrightarrow \mathbf{VERIFY} \longrightarrow \mathbf{REWARD}
 3. *PhilHealth Documentation Deficiency / RTH Pre-Flight*: Arthur Alcantara (`enc-5521`, Lap Chole, CF4 vitals and operative findings incomplete, RTH score 0.78, SLA breached).
 4. *Unclear OOP / 3-Driver Breakdown*: Teresa Dimaculangan, Ramon Castillo, Lourdes Villanueva with itemized splits for Room Differential, Consumables Excluded, and Excess Doctor PF.
 5. *Active Chargemaster Disputes*: Maria Clara Bautista (`disp-02`, contested ₱12,500 assistant surgeon PF); Juan Dela Cruz (`disp-01`, contested ₱1,928 catheter); Lourdes Villanueva (`disp-03`, ₱6,071 disallowed bone cement); Eduardo Garcia (`disp-05`, ₱2,400 unreturned IV sets).
-6. *Statutory Promissory Note Register under RA 9439*: Rolando Gutierrez (`enc-4552`, `PN-2026-089` for ₱24,600 stroke balance after Medicard MBL exhaustion); Ramon Castillo (`enc-6624`, `PN-2026-090` for ₱11,200 3-month repayment note).
+6. *Statutory Promissory Note Register under RA 9439*: Rolando Gutierrez (`enc-4552`, `PN-2026-089` for ₱24,600 stroke balance after Medicard MBL exhaustion); Ramon Castillo (`enc-6624`, `PN-2026-090` for ₱11,200 3-month repayment note); automatic transition to `SETTLED` lifecycle when full hospital balance is settled via payment.
 7. *Pre-Flight Claim Interception*: Teresa Dimaculangan (`enc-3419`, MDR maiden name discrepancy caught prior to transmission).
 8. *Cleared Cases with Digital HMAC Gate Passes*: Corazon Mendoza (`enc-3314`, `PASS-MC-88319`, Dialysis exit); Ferdinand Navarro (`enc-9201`, `PASS-INT-99120`, Femur ORIF cleared via QR Ph).
 

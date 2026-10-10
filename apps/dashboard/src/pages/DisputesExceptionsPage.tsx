@@ -391,10 +391,17 @@ export const DisputesExceptionsPage: React.FC = () => {
                         </td>
 
                         <td className="py-3.5 px-6 text-left">
-                          <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span>Active Guaranteed</span>
-                          </span>
+                          {note.status === 'SETTLED' ? (
+                            <span className="text-xs font-bold text-slate-600 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Settled (Paid in Full)</span>
+                            </span>
+                          ) : (
+                            <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Active Guaranteed</span>
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}

@@ -42,6 +42,7 @@ export function describeClaimStatus(status: string): { title: string; detail: st
     case 'FOR REVIEW':
       return { title: 'In preparation', detail: 'Your claim is being prepared by the hospital billing team.' };
     case 'CLEAN':
+      return { title: 'Verified & applied', detail: 'Your PhilHealth benefit has been verified and applied to your hospital bill.' };
     case 'WARNING':
     case 'INTERCEPTED':
     default:

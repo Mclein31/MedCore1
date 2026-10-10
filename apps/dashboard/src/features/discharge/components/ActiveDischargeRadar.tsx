@@ -1104,7 +1104,12 @@ export const ActiveDischargeRadar: React.FC = () => {
                             </p>
                           </div>
                           <div className="pt-2 border-t border-slate-200/80">
-                            {currentSelectedEncounter.promissoryNote && currentSelectedEncounter.promissoryNote.status === 'ACTIVE' ? (
+                            {currentSelectedEncounter.promissoryNote && currentSelectedEncounter.promissoryNote.status === 'SETTLED' ? (
+                              <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
+                                <span>Note Settled (Paid in Full)</span>
+                              </span>
+                            ) : currentSelectedEncounter.promissoryNote && currentSelectedEncounter.promissoryNote.status === 'ACTIVE' ? (
                               <span className="text-[11px] font-bold text-teal-700 flex items-center gap-1">
                                 <CheckCircle2 className="w-3.5 h-3.5 text-teal-600" />
                                 <span>Note Active ({currentSelectedEncounter.promissoryNote.installmentMonths} Mos)</span>
