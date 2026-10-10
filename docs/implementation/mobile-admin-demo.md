@@ -2,6 +2,10 @@
 
 The mobile app supports one explicitly provisioned administrator for the university presentation. This is a privileged account in the existing database, not a client-side authentication bypass. It can browse all patient records at its own hospital facility, including patients without mobile logins. It does not expose staff accounts or other hospitals.
 
+## Current seeded credentials — October 10, 2026
+
+The standard `scripts/seedPostgres.ts` now creates the reserved demo account itself. After a standard reseed, use `mobile.admin.demo@example.test` with `HospitalRCM2026!` at facility `SJMC-MNL`. Reseeding replaces the previously provisioned password. The older generated credential in `/private/tmp/medcore-mobile-admin-login.json` can therefore be stale; the provisioning utility does not reset existing passwords. On October 10 the saved generated credential no longer matched the local database, while the seeded password returned HTTP 200 and the demo directory returned 250 patients. This verification applies to the local backend; hosted credentials are separate.
+
 ## Local setup
 
 From the repository root, run:

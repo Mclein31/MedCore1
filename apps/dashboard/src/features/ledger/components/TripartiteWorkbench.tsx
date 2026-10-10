@@ -276,6 +276,7 @@ export const TripartiteWorkbench: React.FC = () => {
               { label: 'Recipient', value: pName },
               { label: 'Net Balance Due', value: formatPhp(waterfall.netPatientDue) }
             ]}
+            disabled={enc.stage!=='PENDING_SETTLEMENT'||!enc.billFinalizedAt||!!enc.billSentAt}
             onConfirm={handleSendEsoa}
             title="Make the finalized bill available in the patient app"
           />
