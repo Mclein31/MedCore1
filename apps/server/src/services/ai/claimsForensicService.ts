@@ -1,6 +1,7 @@
 import { getHydratedEncounter } from '../../routes/encounters';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
 import { geminiClient } from './geminiClient';
+import { getAiConfig } from '../../config/aiConfig';
 import {
   ClaimsAuditResult,
   ClaimsAuditResultSchema,
@@ -13,6 +14,7 @@ export interface RunPreflightAuditOptions {
   encounterId: string;
   facilityId?: string;
   forceEscalation?: boolean;
+  env?: Record<string, any>;
 }
 
 export class ClaimsForensicService {
@@ -154,7 +156,8 @@ ${medicationsBilled.join('\n')}
     );
 
     // 5. Select Model and Run LLM Call
-    const targetModel = forceEscalation ? 'gemini-1.5-pro-latest' : 'gemini-2.5-flash';
+    const aiConfig = getAiConfig(options.env);
+    const targetModel = forceEscalation ? aiConfig.geminiProModel : aiConfig.geminiModel;
     const hasMedDiscordance = enc.items.some(
       (it) => /meropenem|vancomycin|colistin|piperacillin/i.test(it.description)
     );
@@ -169,7 +172,8 @@ ${medicationsBilled.join('\n')}
       mockFallbackContext: {
         hasMedDiscordance,
         grossTotal: enc.waterfall.grossTotal
-      }
+      },
+      env: options.env
     });
 
     let auditResult: ClaimsAuditResult;

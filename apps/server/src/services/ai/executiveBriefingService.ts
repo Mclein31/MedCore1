@@ -12,6 +12,7 @@ import { moneyCents } from '../statutoryWaterfall';
 
 export interface GenerateExecutiveBriefingOptions {
   facilityId?: string;
+  env?: Record<string, any>;
 }
 
 export class ExecutiveBriefingService {
@@ -100,7 +101,8 @@ export class ExecutiveBriefingService {
       responseMimeType: 'application/json',
       temperature: 0.2,
       mockFallbackType: 'BRIEFING',
-      mockFallbackContext: telemetryMetrics
+      mockFallbackContext: telemetryMetrics,
+      env: options.env
     });
 
     if (response.rawJson) {

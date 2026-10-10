@@ -15,6 +15,7 @@ export interface GenerateHmoAppealOptions {
   hmoProviderName?: string;
   justificationNotes?: string;
   facilityId?: string;
+  env?: Record<string, any>;
 }
 
 export class HmoAppealService {
@@ -85,7 +86,8 @@ Notes: ${clinicalNotes}
         deniedItem: deniedItemDescription,
         deniedAmount,
         hmoProvider: targetHmo
-      }
+      },
+      env: options.env
     });
 
     let appealData: HmoAppealResponse;
