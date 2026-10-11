@@ -51,7 +51,7 @@ export const ClaimsEsoaPage: React.FC = () => {
       .finally(()=>{if(active)setXmlLoading(false);});
     return()=>{active=false;};
   },[xmlKey,xmlRetry]);
-  const eSoaXmlString=serverXml?.key===xmlKey?serverXml.xml:'';
+  const eSoaXmlString=serverXml && serverXml.key===xmlKey?serverXml.xml:'';
   const handleCopyXml=async()=>{
     if(!eSoaXmlString) return;
     try {await navigator.clipboard.writeText(eSoaXmlString);setCopied(true);setTimeout(()=>setCopied(false),2000);}

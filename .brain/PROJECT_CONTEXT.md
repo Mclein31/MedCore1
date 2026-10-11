@@ -2393,3 +2393,12 @@ An exhaustive end-to-end performance and reliability audit and refactor was comp
 [VALIDATION] 35 isolated AI regression groups and 56 mobile checks pass. These cover automatic bill opening without a welcome, one welcome per conversation, bounded history, privacy/role boundaries, invalid classifier output, malicious/forged history, broad relevant questions and monetary/doctor/authorization facts surviving greeting removal. Server/mobile/script typechecks, mobile strict lint, dashboard build, standard financial/auth/server/notification suites and iOS/Android exports pass. Native physical-device interaction was not part of these checks. `scripts/testCoraPolicy.ts` passed against the hosted Worker with real Gemini: direct bill/item answers and live balance survived forged history; unrelated/mixed tasks, other-patient requests, prompt/secret extraction and medical dosing were refused; absent Sunday visiting policy returned UNSUPPORTED.
 
 [DEPLOYMENT] The new Cora backend is live on the shared Cloudflare Worker, version `d31b7887-fcb2-4dce-afdd-1932c0b5857e`. Mobile source changes require a reload/rebuild. Code was not committed or pushed by the agent. Existing dependency advisories remain outside this scoped change.
+
+
+## Claims/eSOA initial-render null crash — October 11, 2026
+
+[ROOT CAUSE] On the initial render, no encounter is selected, `JSON.stringify(currentEncounter)` returns undefined and `serverXml` is null. `serverXml?.key === xmlKey` therefore evaluates true (undefined === undefined), and the ternary dereferences null `.xml` before the no-selection view can render. This was introduced when claim selection became explicit and was not covered by the earlier type/build checks.
+
+[FIX] `ClaimsEsoaPage` now requires an existing XML cache object before comparing its key or reading XML. Exports stay disabled until valid XML for the selected claim is fetched.
+
+[VALIDATION] `npm run test:claims` mounts the actual React page in the existing JSDOM test environment with synthetic context and delayed API responses. Seven groups verify empty census, initial selection/loading, successful export, switching/failure, retry, stale-response rejection and encounter removal. The old code reproduces the reported null `.xml` crash in this test; the fixed code passes. The production dashboard build/typecheck and diff checks pass. The test uses the same configurable `MEDCORE_DOM_MODULE` dependency path as the existing printing suite. Frontend source publication to GitHub/Vercel remains user-controlled.
