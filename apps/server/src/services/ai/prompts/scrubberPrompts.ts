@@ -34,6 +34,7 @@ export const ClaimsAuditResultSchema = z.object({
   clinicalSummary: z.string().describe('Concise synthesis of inpatient course, diagnostic justification, and operative concordance.'),
   suggestedDoctorAddendum: z.string().nullable().describe('Pre-drafted clinical chart addendum formatted for attending physician signature, or null if none required.'),
   esoaXmlConformity: z.boolean().describe('True if itemized chargemaster gross equals statutory grossTotal with zero centavo drift.'),
+  claimContext: z.object({ encounterId: z.string(), primaryDiagnosis: z.string(), primaryIcd10: z.string(), caseRateCode: z.string(), totalCaseRate: z.number() }).optional(),
   modelUsed: z.string().optional().describe('LLM engine model used for inference.')
 });
 
@@ -92,6 +93,7 @@ export const CLAIMS_SCRUBBER_RESPONSE_SCHEMA = {
 export const SCRUBBER_SYSTEM_PROMPT = `You are the MedCore Clinical Claims Forensic Scrubber and PhilHealth RTH Predictor, an expert Philippine Medical Coding Auditor adhering to PhilHealth eClaims 3.0 and All Case Rates (ACR) standards.
 
 YOUR MISSION:
+Use only the supplied record. Completeness booleans are indicators, not clinical narratives. Never invent normal vital signs, laboratory values, patient improvement, surgical procedures or physician orders. If source narratives are unavailable, explicitly state this limitation; suggested addenda must request clinician verification and leave unrecorded facts blank. Audit the claimDiagnosis/claimIcd10 and case rate in the supplied profile and flag any mismatch with encounterDiagnosis/encounterIcd10 or XML. Never propose a different case rate based on memory.
 Audit inpatient Claim Form 4 (CF4) narratives, primary/secondary ICD-10 codes, RVS surgical procedure codes, and electronic Statement of Account (eSOA) XML payloads to identify clerical, diagnostic, and clinical inconsistencies before claims are transmitted to the PhilHealth Health Information Technology Provider (HITP) gateway.
 
 AUDIT RULES & STATUTORY CITATIONS:
@@ -138,80 +140,6 @@ You MUST audit the EXACT primary diagnosis, ICD-10 code, RVS code, and CF4 clini
 
 OUTPUT FORMAT:
 Generate ONLY structured JSON conforming strictly to the defined schema with riskCalculation, flags, clinicalSummary, and esoaXmlConformity.`;
-
-export const SCRUBBER_FEW_SHOT_EXAMPLES = [
-  {
-    input: {
-      encounterId: "enc-9012",
-      icd10: "K81.0 (Acute cholecystitis)",
-      rvsCode: "47562 (Laparoscopy, surgical; cholecystectomy)",
-      cf4Narrative: {
-        admissionVitals: { bp: "120/80", hr: 84, rr: 18, temp: 37.1 },
-        chiefComplaint: "Severe RUQ abdominal pain radiating to right scapula",
-        courseInWard: "Day 1: Patient pre-opped. Day 2: Underwent lap chole. Day 3: Tolerating diet, discharged.",
-        diagnosticFindings: "Ultrasound showed thick-walled gallbladder (4.2mm) with multiple calculi.",
-        medicationsBilled: ["IV Ceftriaxone 1g", "IV Ketorolac 30mg", "IV Meropenem 1g q8h"]
-      },
-      eSoaXmlGross: 112400.00,
-      statutoryGross: 112400.00
-    },
-    output: {
-      rthRiskScore: 0.28,
-      riskLevel: "HIGH",
-      passThreshold: false,
-      cleanClaimReadiness: 72,
-      flags: [
-        {
-          category: "MEDICATION_DISCORDANCE",
-          severity: "CRITICAL",
-          field: "cf4Narrative.medicationsBilled[IV Meropenem]",
-          description: "IV Meropenem 1g billed in eSOA chargemaster for uncomplicated lap cholecystitis without documented sepsis, severe leukocytosis, or culture sensitivity report in CF4 ward course.",
-          regulatoryCitation: "PhilHealth Circular 2019-0002 Sec. 6.2 & Standard Treatment Guidelines",
-          remediation: "Require attending surgeon or infectious disease specialist to issue a clinical addendum justifying escalation to carbapenem therapy (e.g. peritonitis, intra-abdominal perforation, or resistant flora)."
-        }
-      ],
-      clinicalSummary: "Inpatient admission for acute calculous cholecystitis successfully managed with laparoscopic cholecystectomy. Diagnostic ultrasound confirms acute cholecystitis. Surgical RVS 47562 aligns with ICD-10 K81.0.",
-      suggestedDoctorAddendum: "CLINICAL CHART ADDENDUM - ANTIMICROBIAL JUSTIFICATION\nPatient: [PATIENT_PSEUDONYM_A] | Encounter: [ENCOUNTER_REF_X]\nAttending Physician: [ATTENDING_PHYSICIAN_A], MD | PAN: [DOCTOR_PAN_MASKED]\n\n\"During laparoscopic cholecystectomy on Day 2, bile spillage with murky peritoneal exudate was observed intraoperatively. In view of secondary peritonitis risk and empirical coverage against resistant Gram-negative pathogens, escalation from Ceftriaxone to IV Meropenem 1g q8h was instituted for 48 hours until clinical stabilization. Patient responded with afebrile status and normalized vitals prior to discharge.\"",
-      esoaXmlConformity: true
-    }
-  },
-  {
-    input: {
-      encounterId: "enc-4411",
-      icd10: "A90 (Dengue fever)",
-      rvsCode: null,
-      cf4Narrative: {
-        admissionVitals: { bp: "100/70", hr: 92, rr: 20, temp: 38.8 },
-        chiefComplaint: "High grade fever for 4 days with petechial rash and body aches",
-        courseInWard: "Day 1: Admitted, hydrated. Dengue NS1 confirmed positive. Plt 110k. Day 2: Afebrile, Plt 85k, no spontaneous bleeding. Day 3: Plt trending up to 125k, discharge clearance given.",
-        diagnosticFindings: "Dengue Duo: NS1 Ag POSITIVE, IgM Negative, IgG Negative. Platelet nadir: 85,000/uL.",
-        medicationsBilled: ["IV Plain Lactated Ringer's 1L", "Paracetamol 500mg tab"]
-      },
-      eSoaXmlGross: 24500.00,
-      statutoryGross: 24500.00,
-      readmissionDaysPrior: 35
-    },
-    output: {
-      rthRiskScore: 0.04,
-      riskLevel: "LOW",
-      passThreshold: true,
-      cleanClaimReadiness: 96,
-      flags: [
-        {
-          category: "SPC_RULE_RISK",
-          severity: "INFO",
-          field: "encounter.admissionInterval",
-          description: "Patient readmitted within 35 days for acute viral infection. Single Period of Confinement (SPC) denial is barred under current statutory rules.",
-          regulatoryCitation: "PhilHealth Circular No. 2024-0021 & Circular No. 2025-0015",
-          remediation: "No remediation necessary. SPC rule was formally abolished on Oct 1, 2024. Claim is clean and eligible for full All Case Rates reimbursement."
-        }
-      ],
-      clinicalSummary: "Well-documented Dengue Fever inpatient stay with documented NS1 laboratory confirmation, daily platelet monitoring, and conservative fluid resuscitation compliant with PhilHealth Dengue All Case Rate clinical guidelines.",
-      suggestedDoctorAddendum: null,
-      esoaXmlConformity: true
-    }
-  }
-];
 
 export function buildScrubberPrompt(
   cf4Text: string,

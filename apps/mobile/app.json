@@ -26,6 +26,16 @@
     },
     "web": {
       "favicon": "./assets/brand/MedCore_Badge_Logo.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a benefit card photo for credential extraction.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ]
   }
 }

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useMedCore } from '@/context/MedCoreContext';
 import { rcmAi, ExecutiveBriefingResponse } from '@/api/ai';
 import { formatPhp } from '@/utils/formatters';
 import {
@@ -23,36 +24,38 @@ export interface ExecutiveAiBriefingCardProps {
   defaultCollapsed?: boolean;
 }
 
-let cachedBriefing: ExecutiveBriefingResponse | null = null;
 
 export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = ({
   className = '',
   defaultCollapsed = false
 }) => {
+  const { currentUser } = useMedCore();
+  const pendingRequest = useRef<AbortController | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [briefing, setBriefing] = useState<ExecutiveBriefingResponse | null>(() => cachedBriefing);
+  const [briefing, setBriefing] = useState<ExecutiveBriefingResponse | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
-  const fetchBriefing = async (forceRefresh: boolean = false) => {
-    setLoading(true);
-    setError(null);
+  const fetchBriefing = useCallback(async (forceRefresh: boolean = false) => {
+    pendingRequest.current?.abort();
+    const controller = new AbortController();
+    pendingRequest.current = controller;
+    setLoading(true); setError(null); setBriefing(null);
     try {
-      const data = await rcmAi.getExecutiveBriefing(forceRefresh);
-      cachedBriefing = data;
-      setBriefing(data);
+      const data = await rcmAi.getExecutiveBriefing(forceRefresh, controller.signal);
+      if (!controller.signal.aborted) setBriefing(data);
     } catch (err: any) {
-      setError(err?.message || 'Failed to generate real-time executive RCM briefing.');
+      if (!controller.signal.aborted) setError(err?.message || 'Executive briefing generation failed.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  };
+  }, [currentUser?.id, currentUser?.facilityId]);
 
   useEffect(() => {
-    if (!cachedBriefing) {
-      void fetchBriefing(false);
-    }
-  }, []);
+    setBriefing(null);
+    const timer = setTimeout(() => { void fetchBriefing(false); }, 0);
+    return () => { clearTimeout(timer); pendingRequest.current?.abort(); };
+  }, [fetchBriefing]);
 
   return (
     <div
@@ -172,7 +175,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
               </div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
                 <span className="text-xl font-bold font-mono text-emerald-700 tabular-nums">
-                  +{briefing.metricsSummary.reclaimedBedHoursLast24h}h
+                  {briefing.metricsSummary.reclaimedBedHoursLast24h === null ? 'Not measured' : `+${briefing.metricsSummary.reclaimedBedHoursLast24h}h`}
                 </span>
                 <span className="text-[11px] text-slate-400">last 24h</span>
               </div>

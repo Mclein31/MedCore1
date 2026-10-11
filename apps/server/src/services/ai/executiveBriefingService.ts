@@ -1,3 +1,4 @@
+import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { encounters } from '../../db/schema';
@@ -42,7 +43,8 @@ export class ExecutiveBriefingService {
       : await allEncountersQuery;
 
     const activeInpatients = allEncounters.filter((e) => e.stage !== 'CLEARED_GATE_PASS');
-    const dischargesToday = allEncounters.filter((e) => e.stage === 'CLEARED_GATE_PASS').length;
+    const today = new Date().toISOString().slice(0, 10);
+    const dischargesToday = allEncounters.filter(e => e.stage === 'CLEARED_GATE_PASS' && e.updatedAt?.toISOString().slice(0, 10) === today).length;
 
     // Dwell times per stage
     const dwellStageMap: Record<string, { totalMins: number; count: number }> = {
@@ -62,13 +64,13 @@ export class ExecutiveBriefingService {
       }
     }
 
-    const avgTat = activeInpatients.length > 0 ? totalElapsedMins / activeInpatients.length : 42;
+    const avgTat = activeInpatients.length > 0 ? totalElapsedMins / activeInpatients.length : 0;
 
     const dwellTimes: Record<string, number> = {
-      DOCTOR_PF_PENDING: dwellStageMap.DOCTOR_PF_PENDING.count > 0 ? Math.round(dwellStageMap.DOCTOR_PF_PENDING.totalMins / dwellStageMap.DOCTOR_PF_PENDING.count) : 32,
-      PHARMACY_RTS_AUDIT: dwellStageMap.PHARMACY_RTS_AUDIT.count > 0 ? Math.round(dwellStageMap.PHARMACY_RTS_AUDIT.totalMins / dwellStageMap.PHARMACY_RTS_AUDIT.count) : 88,
-      HMO_FINAL_LOA: dwellStageMap.HMO_FINAL_LOA.count > 0 ? Math.round(dwellStageMap.HMO_FINAL_LOA.totalMins / dwellStageMap.HMO_FINAL_LOA.count) : 42,
-      PENDING_SETTLEMENT: dwellStageMap.PENDING_SETTLEMENT.count > 0 ? Math.round(dwellStageMap.PENDING_SETTLEMENT.totalMins / dwellStageMap.PENDING_SETTLEMENT.count) : 18
+      DOCTOR_PF_PENDING: dwellStageMap.DOCTOR_PF_PENDING.count > 0 ? Math.round(dwellStageMap.DOCTOR_PF_PENDING.totalMins / dwellStageMap.DOCTOR_PF_PENDING.count) : 0,
+      PHARMACY_RTS_AUDIT: dwellStageMap.PHARMACY_RTS_AUDIT.count > 0 ? Math.round(dwellStageMap.PHARMACY_RTS_AUDIT.totalMins / dwellStageMap.PHARMACY_RTS_AUDIT.count) : 0,
+      HMO_FINAL_LOA: dwellStageMap.HMO_FINAL_LOA.count > 0 ? Math.round(dwellStageMap.HMO_FINAL_LOA.totalMins / dwellStageMap.HMO_FINAL_LOA.count) : 0,
+      PENDING_SETTLEMENT: dwellStageMap.PENDING_SETTLEMENT.count > 0 ? Math.round(dwellStageMap.PENDING_SETTLEMENT.totalMins / dwellStageMap.PENDING_SETTLEMENT.count) : 0
     };
 
     // Calculate Trapped Revenue
@@ -78,16 +80,16 @@ export class ExecutiveBriefingService {
         trappedRevenueCents += moneyCents(Number(enc.remainingBalance || 0));
       }
     }
-    const trappedRevenue = trappedRevenueCents > 0 ? trappedRevenueCents / 100 : 4850000.00;
+    const trappedRevenue = trappedRevenueCents / 100;
 
-    const philhealthDarDays = 44.2;
-    const hmoDarDays = 58.7;
-    const reclaimedBedHours = Number((dischargesToday * 2.3).toFixed(1)) || 64.5;
+    const philhealthDarDays = null;
+    const hmoDarDays = null;
+    const reclaimedBedHours = null;
 
     const telemetryMetrics = {
-      activeInpatients: activeInpatients.length || 184,
-      dischargesToday: dischargesToday || 28,
-      avgTatMinutes: avgTat || 114,
+      activeInpatients: activeInpatients.length,
+      dischargesToday: dischargesToday,
+      avgTatMinutes: avgTat,
       dwellTimes,
       philhealthDarDays,
       hmoDarDays,
@@ -102,23 +104,23 @@ export class ExecutiveBriefingService {
       systemInstruction: BRIEFING_SYSTEM_PROMPT,
       prompt,
       responseMimeType: 'application/json',
+      responseJsonSchema: jsonResponseSchema(ExecutiveBriefingResponseSchema),
       temperature: 0.2,
-      mockFallbackType: 'BRIEFING',
-      mockFallbackContext: telemetryMetrics,
       env: options.env
     });
 
-    if (response.rawJson) {
-      const parsed = ExecutiveBriefingResponseSchema.safeParse(response.rawJson);
-      if (parsed.success) {
-        briefingCache.set(cacheKey, { data: parsed.data, timestamp: Date.now() });
-        return parsed.data;
-      }
-    }
-
-    const fallback = geminiClient['getBriefingMock'](telemetryMetrics);
-    briefingCache.set(cacheKey, { data: fallback, timestamp: Date.now() });
-    return fallback;
+    const briefing = parseAiResponse(response, ExecutiveBriefingResponseSchema);
+    briefing.modelUsed = response.modelUsed;
+    briefing.generatedAt = new Date().toISOString();
+    Object.assign(briefing.metricsSummary, {
+      activeInpatients: activeInpatients.length,
+      averageDischargeTatMinutes: avgTat,
+      slaTargetMinutes: 45,
+      trappedCapitalPesos: trappedRevenue,
+      reclaimedBedHoursLast24h: null
+    });
+    briefingCache.set(cacheKey, { data: briefing, timestamp: Date.now() });
+    return briefing;
   }
 }
 

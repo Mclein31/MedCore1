@@ -1,15 +1,13 @@
-import { getHydratedEncounter } from '../../routes/encounters';
+import { eq } from 'drizzle-orm';
+import { db } from '../../db';
+import { philhealthClaims } from '../../db/schema';
+import { getHydratedEncounter, invalidateEncountersCache } from '../../routes/encounters';
+import { getClaimEsoaXml } from '../../routes/claims';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
-import { geminiClient } from './geminiClient';
+import { AiInferenceError, geminiClient } from './geminiClient';
+import { parseAiResponse } from './structuredResponse';
 import { getAiConfig } from '../../config/aiConfig';
-import {
-  ClaimsAuditResult,
-  ClaimsAuditResultSchema,
-  SCRUBBER_SYSTEM_PROMPT,
-  CLAIMS_SCRUBBER_RESPONSE_SCHEMA,
-  buildScrubberPrompt
-} from './prompts/scrubberPrompts';
-import { generatePhilHealthEsoaXml } from '../xmlGenerator';
+import { ClaimsAuditResult, ClaimsAuditResultSchema, SCRUBBER_SYSTEM_PROMPT, CLAIMS_SCRUBBER_RESPONSE_SCHEMA, buildScrubberPrompt } from './prompts/scrubberPrompts';
 
 export interface RunPreflightAuditOptions {
   encounterId: string;
@@ -18,255 +16,120 @@ export interface RunPreflightAuditOptions {
   env?: Record<string, any>;
 }
 
+function canonicalField(flag: ClaimsAuditResult['flags'][number]): string {
+  const text = `${flag.field} ${flag.description}`;
+  if (flag.category === 'MISSING_CF4_FIELD') {
+    if (/vital/i.test(text)) return 'cf4VitalsRecorded';
+    if (/course|ward|progress/i.test(text)) return 'cf4CourseInWardRecorded';
+    if (/lab|diagnostic.*document/i.test(text)) return 'cf4LabsConsistent';
+    if (/filing|60.day/i.test(text)) return 'filingDeadline';
+  }
+  return flag.field;
+}
+export function normalizeAuditRisk(audit: ClaimsAuditResult): ClaimsAuditResult {
+  if (!audit.esoaXmlConformity) audit.flags.push({ category: 'DIAGNOSTIC_DISCREPANCY', severity: 'CRITICAL', field: 'esoaXmlConformity',
+    description: 'The supplied eSOA did not pass conformity review.', regulatoryCitation: 'eSOA conformity review', remediation: 'Correct and revalidate the XML before filing.' });
+  const uniqueFlags = new Map<string, ClaimsAuditResult['flags'][number]>();
+  const severityWeight = { INFO: 0, WARNING: 1, CRITICAL: 2 };
+  for (const flag of audit.flags) {
+    const field = canonicalField(flag), key = `${flag.category}:${field}`;
+    const existing = uniqueFlags.get(key);
+    if (!existing || severityWeight[flag.severity] > severityWeight[existing.severity]) uniqueFlags.set(key, { ...flag, field });
+  }
+  audit.flags = [...uniqueFlags.values()];
+  const baseRisk = 0.04;
+  const penalties = audit.flags.filter(f => f.severity !== 'INFO').map(f => ({
+    factor: f.category,
+    points: f.category === 'SPC_RULE_RISK' ? 0 : f.category === 'MEDICATION_DISCORDANCE' ? 0.30 :
+      f.category === 'DIAGNOSTIC_DISCREPANCY' ? 0.50 : /vital/i.test(f.field) ? 0.40 :
+      /course|ward/i.test(f.field) ? 0.45 : /filing|60.day/i.test(f.field) ? 0.60 : 0.25,
+    description: f.description
+  })).filter(p => p.points > 0);
+  const total = Math.round((baseRisk + penalties.reduce((sum, p) => sum + p.points, 0)) * 10000) / 10000;
+  const score = Math.min(0.99, total);
+  const pass = score <= 0.15;
+  return { ...audit, rthRiskScore: score, passThreshold: pass,
+    cleanClaimReadiness: Math.round((1 - score) * 100),
+    riskLevel: score <= 0.07 ? 'LOW' : score <= 0.15 ? 'MODERATE' : score <= 0.35 ? 'HIGH' : 'CRITICAL',
+    riskCalculation: { baseRisk, penalties,
+      formula: `4% baseline + ${(100 * (total - baseRisk)).toFixed(0)}% penalties${total > 0.99 ? ' (capped at 99%)' : ''} = ${(100 * score).toFixed(0)}% RTH risk`,
+      verdict: pass ? 'Passes configured review threshold (≤15%)' : 'Exceeds configured review threshold (15%); remediation required.' }
+  };
+}
+function auditFingerprint(enc: NonNullable<Awaited<ReturnType<typeof getHydratedEncounter>>>): string {
+  return JSON.stringify({
+    primaryDiagnosis: enc.primaryDiagnosis, primaryIcd10: enc.primaryIcd10,
+    claim: { primaryDescription: enc.philhealth.primaryDescription, primaryIcd10: enc.philhealth.primaryIcd10,
+      caseRateCode: enc.philhealth.caseRateCode, totalCaseRate: enc.philhealth.totalCaseRate,
+      cf4VitalsRecorded: enc.philhealth.cf4VitalsRecorded, cf4CourseInWardRecorded: enc.philhealth.cf4CourseInWardRecorded,
+      cf4LabsConsistent: enc.philhealth.cf4LabsConsistent },
+    items: [...enc.items].sort((a, b) => a.id.localeCompare(b.id)), waterfall: enc.waterfall
+  });
+}
 export class ClaimsForensicService {
   async runPreflightAudit(options: RunPreflightAuditOptions): Promise<ClaimsAuditResult> {
-    const { encounterId, facilityId, forceEscalation } = options;
-
-    const enc = await getHydratedEncounter(encounterId, facilityId);
-    if (!enc) {
-      throw new Error(`Encounter ${encounterId} not found for forensic claims audit.`);
-    }
-
-    // 1. Compile CF4 Clinical Summary Narrative
-    const medicationsBilled = enc.items
-      .filter((i) => i.category === 'PHARMACY' || i.category === 'CENTRAL_SUPPLIES')
-      .map((i) => `${i.description} (Qty: ${i.qty})`)
-      .slice(0, 15);
-
-    const vitalsText = enc.philhealth.cf4VitalsRecorded
-      ? 'Admission Vitals: BP 120/80 mmHg, HR 82 bpm, RR 18 cpm, Temp 37.0°C (All vital signs recorded)'
-      : 'Admission Vitals: INCOMPLETE or NOT RECORDED';
-
-    const courseInWardText = enc.philhealth.cf4CourseInWardRecorded
-      ? `Daily Course in Ward: Documented by ${enc.attendingDoctor}. Patient progressed favorably under clinical protocol. Vitals stabilized.`
-      : 'Daily Course in Ward: Incomplete daily progress notes.';
-
-    const diagnosticText = enc.philhealth.cf4LabsConsistent
-      ? `Diagnostic & Laboratory Findings: Consistent with primary diagnosis ${enc.primaryDiagnosis} (${enc.primaryIcd10}). Diagnostic investigations substantiated.`
-      : 'Diagnostic & Laboratory Findings: Minimal objective documentation on file.';
-
-    const rawCf4Text = `
-Patient Demographics: ${enc.patient.fullName}, Age: 54, Room: ${enc.roomBed}
-Admission Date: ${enc.admissionDate} | MGH Declared: ${enc.mghOrderTimestamp}
-Primary Diagnosis: ${enc.primaryDiagnosis} (${enc.primaryIcd10})
-Attending Physician: ${enc.attendingDoctor} | PAN: ${enc.doctorPan}
-${vitalsText}
-${courseInWardText}
-${diagnosticText}
-Billed Medications & Supplies:
-${medicationsBilled.join('\n')}
-    `.trim();
-
-    // 2. Generate eSOA XML Payload
-    let eSoaXml = '';
-    try {
-      eSoaXml = generatePhilHealthEsoaXml({
-        facility: {
-          pan: 'H91002341',
-          name: 'St. Jude Medical Center Manila',
-          tin: '004-982-110-000',
-          address: 'Quezon City, Philippines'
-        },
-        patient: {
-          pin: enc.patient.philhealthPin || '12-345678901-2',
-          fullName: enc.patient.fullName,
-          dob: '1970-01-01',
-          gender: 'M',
-          isSeniorOrPwd: Boolean(enc.patient.isSeniorCitizen || enc.patient.isPwd),
-          seniorPwdId: enc.patient.seniorCitizenId || enc.patient.pwdId
-        },
-        encounter: {
-          encounterNumber: enc.encounterNumber,
-          admissionDate: enc.admissionDate,
-          dischargeDate: enc.mghOrderTimestamp,
-          primaryIcd10: enc.primaryIcd10,
-          primaryDiagnosis: enc.primaryDiagnosis
-        },
-        doctor: {
-          pan: enc.doctorPan,
-          name: enc.attendingDoctor,
-          agreedFee: enc.doctorAgreedFee,
-          excessFee: enc.doctorExcessPf
-        },
-        claim: {
-          claimNumber: enc.philhealth.id,
-          caseRateCode: enc.philhealth.caseRateCode,
-          totalCaseRate: enc.philhealth.totalCaseRate,
-          hciAmount: enc.philhealth.hciAmount,
-          pfAmount: enc.philhealth.pfAmount,
-          isNbb: enc.philhealth.isNbb
-        },
-        charges: enc.items.map((it) => ({
-          code: it.code,
-          description: it.description,
-          category: it.category,
-          quantity: it.qty,
-          unitPrice: it.unitPrice,
-          grossAmount: it.grossAmount,
-          philhealthAmount: it.philhealthCovered,
-          hmoAmount: it.hmoCovered,
-          patientOop: it.patientOop
-        })),
-        waterfall: {
-          grossTotal: enc.waterfall.grossTotal,
-          vatExemption: enc.waterfall.vatExemption,
-          seniorDiscount: enc.waterfall.seniorPwdDiscount,
-          philhealthTotal: enc.waterfall.philhealthTotal,
-          hmoApprovedAmount: enc.waterfall.hmoApprovedAmount,
-          netPatientDue: enc.waterfall.netPatientDue
-        }
-      });
-    } catch {
-      eSoaXml = `<eSOA><GrossTotal>${enc.waterfall.grossTotal.toFixed(2)}</GrossTotal><Encounter>${enc.encounterNumber}</Encounter></eSOA>`;
-    }
-
-    // 3. De-Identification / PHI Scrubbing
-    const scrubResult = scrubPatientData(rawCf4Text, {
-      fullName: enc.patient.fullName,
-      mrn: enc.patient.mrn,
-      philhealthPin: enc.patient.philhealthPin,
-      contactNumber: enc.patient.contactNumber,
-      roomBed: enc.roomBed,
-      encounterNumber: enc.encounterNumber,
-      seniorCitizenId: enc.patient.seniorCitizenId,
-      pwdId: enc.patient.pwdId,
-      doctorName: enc.attendingDoctor,
-      doctorPan: enc.doctorPan,
-      claimNumber: enc.philhealth.id
-    });
-
-    const scrubbedXmlResult = scrubPatientData(eSoaXml, {
-      fullName: enc.patient.fullName,
-      philhealthPin: enc.patient.philhealthPin,
-      encounterNumber: enc.encounterNumber
-    });
-
-    // Merge token maps
-    const combinedTokenMap = new Map<string, string>([
-      ...scrubResult.tokenMap,
-      ...scrubbedXmlResult.tokenMap
-    ]);
-
-    // 4. Construct Prompt
-    const prompt = buildScrubberPrompt(
-      scrubResult.scrubbedText,
-      enc.primaryIcd10,
-      null, // Surgical RVS or null
-      scrubbedXmlResult.scrubbedText,
-      enc.waterfall.grossTotal
-    );
-
-    // 5. Select Model and Run LLM Call
-    const aiConfig = getAiConfig(options.env);
-    const targetModel = forceEscalation ? aiConfig.geminiBackupModel : aiConfig.geminiModel;
-    const hasMedDiscordance = enc.items.some(
-      (it) => /meropenem|vancomycin|colistin|piperacillin/i.test(it.description)
-    );
-
-    const fallbackContext = {
-      encounter: enc,
-      primaryDiagnosis: enc.primaryDiagnosis,
-      primaryIcd10: enc.primaryIcd10,
-      patientName: enc.patient.fullName,
-      doctorName: enc.attendingDoctor,
-      encounterNumber: enc.encounterNumber,
-      roomBed: enc.roomBed,
+    const enc = await getHydratedEncounter(options.encounterId, options.facilityId);
+    if (!enc) throw new Error('The selected encounter was not found.');
+    if (!options.facilityId) throw new Error('A facility is required to audit the selected claim.');
+    const xml = await getClaimEsoaXml(enc.philhealth.id, options.facilityId);
+    if (!xml) throw new Error('The selected encounter has no PhilHealth claim to audit.');
+    const profile = {
+      patient: enc.patient.fullName, age: enc.patient.age, gender: enc.patient.gender,
+      encounterNumber: enc.encounterNumber, admissionDate: enc.admissionDate,
+      encounterDiagnosis: enc.primaryDiagnosis, encounterIcd10: enc.primaryIcd10,
+      claimDiagnosis: enc.philhealth.primaryDescription, claimIcd10: enc.philhealth.primaryIcd10,
+      caseRateCode: enc.philhealth.caseRateCode, totalCaseRate: enc.philhealth.totalCaseRate,
       cf4VitalsRecorded: enc.philhealth.cf4VitalsRecorded,
       cf4CourseInWardRecorded: enc.philhealth.cf4CourseInWardRecorded,
       cf4LabsConsistent: enc.philhealth.cf4LabsConsistent,
-      hasMedDiscordance,
-      grossTotal: enc.waterfall.grossTotal
+      clinicalEvidence: 'Only completeness indicators are stored. Actual vital values, laboratory results, physician orders and daily progress notes are not available. Do not invent them.',
+      items: enc.items.filter(i => !['WAIVED', 'SUPERVISORY_WAIVED'].includes(i.status)).map(i => ({ description: i.description, category: i.category, quantity: i.qty }))
     };
-
-    const response = await geminiClient.generate({
-      model: targetModel,
-      systemInstruction: SCRUBBER_SYSTEM_PROMPT,
-      prompt,
-      responseMimeType: 'application/json',
-      responseSchema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA,
-      temperature: 0.1,
-      mockFallbackType: 'SCRUBBER',
-      mockFallbackContext: fallbackContext,
-      env: options.env
+    // Scrub the complete outgoing prompt once so token mappings cannot collide.
+    const scrubbed = scrubPatientData(buildScrubberPrompt(JSON.stringify(profile), enc.philhealth.primaryIcd10, null, xml, enc.waterfall.grossTotal), {
+      fullName: enc.patient.fullName, mrn: enc.patient.mrn, philhealthPin: enc.patient.philhealthPin,
+      contactNumber: enc.patient.contactNumber, roomBed: enc.roomBed, encounterNumber: enc.encounterNumber,
+      doctorName: enc.attendingDoctor, doctorPan: enc.doctorPan, claimNumber: enc.philhealth.id,
+      seniorCitizenId: enc.patient.seniorCitizenId, pwdId: enc.patient.pwdId
     });
-
-    let auditResult: ClaimsAuditResult;
-    if (response.rawJson) {
-      const parsed = ClaimsAuditResultSchema.safeParse(response.rawJson);
-      if (parsed.success) {
-        auditResult = parsed.data;
-      } else {
-        // Resilient adapter if the JSON was structured with slight key differences
-        const raw = response.rawJson;
-        const rthScore = typeof raw.rthRiskScore === 'number'
-          ? raw.rthRiskScore
-          : typeof raw.auditSummary?.rthRiskScore === 'number'
-            ? raw.auditSummary.rthRiskScore
-            : 0.05;
-        const flags = Array.isArray(raw.flags)
-          ? raw.flags
-          : Array.isArray(raw.discrepancies)
-            ? raw.discrepancies
-            : [];
-        const clinicalSummary = raw.clinicalSummary || raw.summary || raw.auditSummary?.summary || `Inpatient audit for ${enc.primaryDiagnosis} (${enc.primaryIcd10}).`;
-        const suggestedDoctorAddendum = raw.suggestedDoctorAddendum || null;
-        const esoaXmlConformity = typeof raw.esoaXmlConformity === 'boolean' ? raw.esoaXmlConformity : true;
-        const riskLevel = raw.riskLevel || (rthScore > 0.35 ? 'CRITICAL' : rthScore > 0.15 ? 'HIGH' : rthScore > 0.07 ? 'MODERATE' : 'LOW');
-        const passThreshold = typeof raw.passThreshold === 'boolean' ? raw.passThreshold : rthScore <= 0.15;
-        const cleanClaimReadiness = typeof raw.cleanClaimReadiness === 'number' ? raw.cleanClaimReadiness : Math.round((1 - rthScore) * 100);
-
-        auditResult = {
-          rthRiskScore: rthScore,
-          riskLevel,
-          passThreshold,
-          cleanClaimReadiness,
-          riskCalculation: raw.riskCalculation,
-          flags,
-          clinicalSummary,
-          suggestedDoctorAddendum,
-          esoaXmlConformity
-        };
-      }
-    } else {
-      auditResult = geminiClient['getScrubberMock'](fallbackContext);
-    }
-
-    // Ensure riskCalculation is ALWAYS present with clean mathematical breakdown
-    if (!auditResult.riskCalculation) {
-      const baseRisk = 0.04;
-      const penalties = (auditResult.flags || [])
-        .map((f: any) => ({
-          factor: f.category || 'DOCUMENTATION_GAP',
-          points: f.severity === 'CRITICAL' ? 0.35 : f.severity === 'WARNING' ? 0.20 : 0.00,
-          description: f.description || 'Statutory compliance discrepancy'
-        }))
-        .filter((p: any) => p.points > 0);
-      const pointsTotal = penalties.reduce((sum: number, p: any) => sum + p.points, 0);
-      const formula = penalties.length > 0
-        ? `Base Risk (4%) + Penalties (${Math.round(pointsTotal * 100)}%) = ${Math.round(auditResult.rthRiskScore * 100)}% RTH Risk`
-        : `Base Risk (4%) = 4% RTH Risk (Clean claim; no statutory penalties)`;
-      const verdict = auditResult.passThreshold
-        ? 'Passes gateway threshold (≤ 15.0% RTH risk)'
-        : 'Action Required: Exceeds 15.0% threshold ceiling. Chart remediation required.';
-
-      auditResult.riskCalculation = {
-        baseRisk,
-        penalties,
-        formula,
-        verdict
+    try {
+      const config = getAiConfig(options.env);
+      const response = await geminiClient.generate({
+        model: options.forceEscalation ? config.geminiProModel : config.geminiModel,
+        systemInstruction: SCRUBBER_SYSTEM_PROMPT, prompt: scrubbed.scrubbedText,
+        responseMimeType: 'application/json', responseSchema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA,
+        temperature: 0.1, env: options.env
+      });
+      const parsed = parseAiResponse(response, ClaimsAuditResultSchema);
+      const addFlag = (field: string, description: string) => {
+        const existing = parsed.flags.find(f => canonicalField(f) === field && f.category === 'MISSING_CF4_FIELD');
+        if (existing) existing.severity = 'CRITICAL';
+        else parsed.flags.push({ category: 'MISSING_CF4_FIELD', severity: 'CRITICAL', field, description,
+          regulatoryCitation: 'CF4 completeness review', remediation: 'Verify and complete the source chart before filing.' });
       };
-    }
-
-    // 6. Rehydration & Token Cleanup
-    auditResult.clinicalSummary = rehydrateText(auditResult.clinicalSummary, combinedTokenMap);
-    if (auditResult.suggestedDoctorAddendum) {
-      auditResult.suggestedDoctorAddendum = rehydrateText(auditResult.suggestedDoctorAddendum, combinedTokenMap);
-    }
-    clearTokenMap(combinedTokenMap);
-
-    auditResult.modelUsed = response.modelUsed;
-    return auditResult;
+      if (!enc.philhealth.cf4VitalsRecorded) addFlag('cf4VitalsRecorded', 'Admission vital signs are marked as not recorded.');
+      if (!enc.philhealth.cf4CourseInWardRecorded) addFlag('cf4CourseInWardRecorded', 'Course in ward is marked as not recorded.');
+      if (!enc.philhealth.cf4LabsConsistent) addFlag('cf4LabsConsistent', 'Diagnostic documentation is marked as inconsistent.');
+      if (enc.primaryIcd10 !== enc.philhealth.primaryIcd10) {
+        const existing = parsed.flags.find(f => f.category === 'DIAGNOSTIC_DISCREPANCY' && f.field === 'primaryIcd10');
+        if (existing) existing.severity = 'CRITICAL';
+        else parsed.flags.push({ category: 'DIAGNOSTIC_DISCREPANCY', severity: 'CRITICAL', field: 'primaryIcd10',
+          description: `Encounter diagnosis ${enc.primaryIcd10} differs from claim diagnosis ${enc.philhealth.primaryIcd10}.`,
+          regulatoryCitation: 'Claim and encounter diagnostic consistency review', remediation: 'Reconcile the claim code with the documented encounter diagnosis.' });
+      }
+      const audit = normalizeAuditRisk(parsed);
+      audit.clinicalSummary = rehydrateText(audit.clinicalSummary, scrubbed.tokenMap);
+      audit.flags = audit.flags.map(f => ({ ...f, description: rehydrateText(f.description, scrubbed.tokenMap), remediation: rehydrateText(f.remediation, scrubbed.tokenMap) }));
+      if (audit.suggestedDoctorAddendum) audit.suggestedDoctorAddendum = rehydrateText(audit.suggestedDoctorAddendum, scrubbed.tokenMap);
+      audit.modelUsed = response.modelUsed;
+      audit.claimContext = { encounterId: enc.uuid, primaryDiagnosis: enc.philhealth.primaryDescription, primaryIcd10: enc.philhealth.primaryIcd10, caseRateCode: enc.philhealth.caseRateCode, totalCaseRate: enc.philhealth.totalCaseRate };
+      const latest = await getHydratedEncounter(enc.uuid, options.facilityId);
+      if (!latest || auditFingerprint(latest) !== auditFingerprint(enc)) throw new AiInferenceError('AI_STALE_CONTEXT', 'The selected claim changed during generation. Run the audit again using the updated record.', 409);
+      const status = ['CLEAN', 'WARNING', 'INTERCEPTED'].includes(latest.philhealth.status) ? (audit.passThreshold ? 'CLEAN' as const : 'WARNING' as const) : latest.philhealth.status;
+      await db.update(philhealthClaims).set({ rthRiskScore: audit.rthRiskScore.toFixed(4), status, updatedAt: new Date() }).where(eq(philhealthClaims.encounterId, enc.uuid));
+      invalidateEncountersCache(options.facilityId);
+      return audit;
+    } finally { clearTokenMap(scrubbed.tokenMap); }
   }
 }
-
 export const claimsForensicService = new ClaimsForensicService();

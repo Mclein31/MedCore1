@@ -1,62 +1,76 @@
-import { getAiConfig, isAiEnabled } from '../apps/server/src/config/aiConfig';
-import { geminiClient } from '../apps/server/src/services/ai/geminiClient';
-import { coraService } from '../apps/server/src/services/ai/coraService';
+import assert from 'node:assert/strict';
+import app from '../apps/server/src/index';
+import { getAiConfig } from '../apps/server/src/config/aiConfig';
 
-async function main() {
-  console.log('================================================================================');
-  console.log('MEDCORE LIVE AI VERIFIER (Google AI Studio Gemini 3.5 Flash Lite with 3.1 Flash Lite Failover)');
-  console.log('================================================================================\n');
-
-  const config = getAiConfig();
-  const apiKey = config.geminiApiKey;
-
-  if (!apiKey || apiKey.length < 5) {
-    console.warn('⚠️  No GEMINI_API_KEY detected in .env!');
-    console.log('\nTo test with real Gemini models:');
-    console.log('1. Open .env in your editor');
-    console.log('2. Set: GEMINI_API_KEY=your_actual_gemini_api_key_here');
-    console.log('3. Run: npm run test:ai:live\n');
-    console.log('Currently falling back to deterministic offline mock.');
-  } else {
-    console.log(`✅ GEMINI_API_KEY detected: ${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`);
-    console.log(`Target Model: ${config.geminiModel}`);
-    console.log(`AI Enabled: ${isAiEnabled()}`);
-  }
-
-  console.log('\n--- Test 1: Direct Gemini API Call ---');
-  const directResponse = await geminiClient.generate({
-    model: config.geminiModel,
-    prompt: 'You are Cora, the Philippine hospital billing advocate for MedCore. Briefly greet the patient in Taglish and explain that your goal is zero out-of-pocket surprise fees.',
-    systemInstruction: 'Respond warmly in Taglish. Keep response under 3 sentences.'
-  });
-
-  console.log(`Model Used:     ${directResponse.modelUsed}`);
-  console.log(`Latency:        ${directResponse.latencyMs}ms`);
-  console.log(`Prompt Tokens:  ${directResponse.tokensPrompt}`);
-  console.log(`Output Tokens:  ${directResponse.tokensCompletion}`);
-  console.log(`Is Mock Fallback: ${directResponse.isMock}`);
-  console.log('\nResponse Output:');
-  console.log('--------------------------------------------------');
-  console.log(directResponse.text);
-  console.log('--------------------------------------------------\n');
-
-  console.log('--- Test 2: Cora Patient Concierge Service (with PHI Sanitization) ---');
-  const coraChat = await coraService.chat({
-    message: 'Bakit may natitira pa akong babayaran na ₱20,200 kung may PhilHealth naman ako?',
-    language: 'fil',
-    mode: 'WHY_DO_I_OWE'
-  });
-
-  console.log('Cora Reply:');
-  console.log('--------------------------------------------------');
-  console.log(coraChat.reply);
-  console.log('--------------------------------------------------');
-  console.log('Suggested Actions:', coraChat.suggestedActions.map(a => a.label).join(' | '));
-  console.log(`Grounded Net Due: ₱${coraChat.groundedBalance.netPatientDue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`);
-  console.log(`Grounded Remaining: ₱${coraChat.groundedBalance.remainingBalance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`);
-  console.log('\n================================================================================');
-  console.log('TEST COMPLETE');
-  console.log('================================================================================');
+// Explicit live verification: real selected encounters, real Gemini transport, no reseeding.
+// An optional base URL tests the deployed Worker/Vercel proxy instead of local routes.
+const config = getAiConfig();
+const base = process.env.MEDCORE_AI_VERIFY_BASE_URL?.replace(/\/$/, '');
+let token: string | undefined;
+async function request(path: string, body?: object) {
+  const options: RequestInit = {
+    method: body ? 'POST' : 'GET',
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(70000)
+  };
+  const response = base ? await fetch(`${base}/api/v1${path}`, options) : await app.request(`/api/v1${path}`, options, { NODE_ENV: 'development', GEMINI_API_KEY: config.geminiApiKey });
+  const data: any = await response.json();
+  assert.equal(response.status, 200, `${path}: HTTP ${response.status} (${data?.error?.code || 'unknown'})`);
+  return data;
 }
-
-main().catch(console.error);
+async function main() {
+  const login = await request('/auth/login', {
+    email: process.env.MEDCORE_AI_VERIFY_EMAIL || 'elena.santos@stjude.ph',
+    password: process.env.MEDCORE_AI_VERIFY_PASSWORD || 'HospitalRCM2026!',
+    facilityCode: 'SJMC-MNL'
+  });
+  token = login.token;
+  assert.ok(token, 'Login must return a session token');
+  const census = await request('/encounters');
+  const encounters: any[] = census.items;
+  assert.ok(encounters?.length >= 2);
+  const selected: any[] = [];
+  for (const enc of encounters) {
+    const item = enc.items.find((i: any) => i.patientOop > 0 && i.status === 'DISALLOWED_SUNDRY');
+    if (item && !selected.some(s => s.enc.primaryIcd10 === enc.primaryIcd10)) selected.push({ enc, item });
+    if (selected.length === 2) break;
+  }
+  assert.equal(selected.length, 2, 'Need two distinct diagnoses with actual denied items');
+  const letters: string[] = [];
+  for (const { enc, item } of selected) {
+    const appeal = await request('/ai/hmo/generate-appeal', { encounterId: enc.uuid, deniedItemDescription: item.description, deniedAmount: item.patientOop });
+    assert.ok(appeal.modelUsed && !appeal.modelUsed.includes('fallback'));
+    assert.ok(appeal.appealLetterMarkdown.includes(appeal.referenceNumber));
+    assert.ok(appeal.appealLetterMarkdown.toLowerCase().includes(item.description.toLowerCase()));
+    letters.push(appeal.appealLetterMarkdown);
+    const audit = await request('/ai/claims/preflight-scrub', { encounterId: enc.uuid });
+    assert.equal(audit.claimContext.primaryIcd10, enc.philhealth.primaryIcd10);
+    assert.equal(audit.claimContext.primaryDiagnosis, enc.philhealth.primaryDescription);
+    assert.equal(audit.claimContext.totalCaseRate, enc.philhealth.totalCaseRate);
+    const computed = Math.min(.99, Math.round((audit.riskCalculation.baseRisk + audit.riskCalculation.penalties.reduce((n: number, p: any) => n + p.points, 0)) * 10000) / 10000);
+    assert.equal(audit.rthRiskScore, computed);
+    assert.equal(audit.passThreshold, audit.rthRiskScore <= .15);
+    const refreshed = await request(`/encounters/${enc.uuid}`);
+    const saved = refreshed.encounter || refreshed;
+    assert.equal(saved.philhealth.rthRiskScore, audit.rthRiskScore, `Stored risk for ${enc.id} disagrees with audit response`);
+    console.log(JSON.stringify({ encounter: enc.id, primaryIcd10: audit.claimContext.primaryIcd10, caseRate: audit.claimContext.totalCaseRate, appealModel: appeal.modelUsed, scrubModel: audit.modelUsed, risk: audit.rthRiskScore, firstRequestStatus: 200, riskPersisted: true }));
+  }
+  assert.notEqual(letters[0], letters[1], 'Distinct cases cannot return the same canned letter');
+  const enc = selected[0].enc;
+  const cora = await request('/ai/cora/chat', { encounterId: enc.uuid, message: 'Explain my remaining balance using the exact current ledger values.', language: 'en' });
+  assert.ok(cora.modelUsed && !cora.modelUsed.includes('fallback'));
+  assert.equal(cora.groundedBalance.remainingBalance, enc.remainingBalance);
+  console.log(JSON.stringify({ feature: 'Cora', model: cora.modelUsed, groundedBalanceMatches: true }));
+  const briefing = await request('/ai/executive/briefing', { forceRefresh: true });
+  assert.equal(briefing.metricsSummary.activeInpatients, encounters.filter(e => e.stage !== 'CLEARED_GATE_PASS').length);
+  assert.equal(briefing.metricsSummary.reclaimedBedHoursLast24h, null);
+  console.log(JSON.stringify({ feature: 'briefing', activeInpatients: briefing.metricsSummary.activeInpatients, realCensusMatches: true }));
+  const ocr = await request('/ai/ocr/extract-card', { imageBase64: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' });
+  assert.equal(ocr.cardType, 'UNKNOWN'); assert.equal(ocr.idNumber, '');
+  console.log(JSON.stringify({ feature: 'OCR', blankImageInventedCredentials: false }));
+  console.log(`LIVE_AI_VERIFIED via ${base || 'local application'}: 2 different appeals/audits, actual diagnosis/case rate, persisted score, Cora, briefing and OCR.`);
+}
+try { await main(); }
+catch (error) { console.error(error instanceof Error ? error.message : 'Live verification failed'); process.exitCode = 1; }
+finally { if (token) await request('/auth/logout', {}).catch(() => {}); }

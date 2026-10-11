@@ -1,3 +1,4 @@
+import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
 import { geminiClient } from './geminiClient';
 import {
   CardOcrResponse,
@@ -28,7 +29,8 @@ export class OcrService {
     }
 
     // Clean image data prefix if present (e.g., data:image/png;base64,)
-    const cleanBase64 = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+    const mimeType = imageBase64.match(/^data:(image\/[a-z+.-]+);base64,/i)?.[1] || 'image/jpeg';
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-z+.-]+;base64,/i, '');
 
     const prompt = buildOcrPrompt(cardCategory);
 
@@ -37,23 +39,15 @@ export class OcrService {
       prompt,
       parts: [
         { text: prompt },
-        { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
+        { inlineData: { mimeType, data: cleanBase64 } }
       ],
       responseMimeType: 'application/json',
+      responseJsonSchema: jsonResponseSchema(CardOcrResponseSchema),
       temperature: 0.1,
-      mockFallbackType: 'OCR',
-      mockFallbackContext: { cardCategory },
       env
     });
 
-    if (response.rawJson) {
-      const parsed = CardOcrResponseSchema.safeParse(response.rawJson);
-      if (parsed.success) {
-        return parsed.data;
-      }
-    }
-
-    return geminiClient['getOcrMock']({ cardCategory });
+    return { ...parseAiResponse(response, CardOcrResponseSchema), modelUsed: response.modelUsed };
   }
 }
 

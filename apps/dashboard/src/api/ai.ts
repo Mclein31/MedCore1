@@ -10,6 +10,7 @@ export interface ClaimsAuditFlag {
 }
 
 export interface ClaimsAuditResult {
+  claimContext?: { encounterId: string; primaryDiagnosis: string; primaryIcd10: string; caseRateCode: string; totalCaseRate: number };
   rthRiskScore: number;
   riskLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
   passThreshold: boolean;
@@ -32,6 +33,7 @@ export interface ClaimsAuditResult {
 }
 
 export interface HmoAppealResponse {
+  modelUsed?: string;
   referenceNumber: string;
   appealLetterMarkdown: string;
   citationsApplied: string[];
@@ -48,7 +50,7 @@ export interface ExecutiveBriefingResponse {
     activeInpatients: number;
     averageDischargeTatMinutes: number;
     slaTargetMinutes: number;
-    reclaimedBedHoursLast24h: number;
+    reclaimedBedHoursLast24h: number | null;
     trappedCapitalPesos: number;
     criticalDepartmentBottleneck: string;
   };
@@ -93,10 +95,10 @@ export interface CoraChatResponse {
 export class ClaimsAiApi {
   constructor(private client: ApiClient = defaultApiClient) {}
 
-  async preflightScrub(encounterId: string, forceEscalation: boolean = false): Promise<ClaimsAuditResult> {
+  async preflightScrub(encounterId: string, forceEscalation: boolean = false, signal?: AbortSignal): Promise<ClaimsAuditResult> {
     return this.client.request<ClaimsAuditResult>('/ai/claims/preflight-scrub', {
       method: 'POST',
-      body: JSON.stringify({ encounterId, forceEscalation })
+      signal, body: JSON.stringify({ encounterId, forceEscalation })
     });
   }
 }
@@ -109,9 +111,11 @@ export class HmoAiApi {
     deniedItem: string,
     deniedAmount: number = 0,
     hmoProviderName?: string,
-    notes?: string
+    notes?: string,
+    signal?: AbortSignal
   ): Promise<HmoAppealResponse> {
     return this.client.request<HmoAppealResponse>('/ai/hmo/generate-appeal', {
+      signal,
       method: 'POST',
       body: JSON.stringify({
         encounterId,
@@ -127,10 +131,10 @@ export class HmoAiApi {
 export class RcmAiApi {
   constructor(private client: ApiClient = defaultApiClient) {}
 
-  async getExecutiveBriefing(forceRefresh: boolean = false): Promise<ExecutiveBriefingResponse> {
+  async getExecutiveBriefing(forceRefresh: boolean = false, signal?: AbortSignal): Promise<ExecutiveBriefingResponse> {
     return this.client.request<ExecutiveBriefingResponse>('/ai/executive/briefing', {
       method: 'POST',
-      body: JSON.stringify({ forceRefresh })
+      signal, body: JSON.stringify({ forceRefresh })
     });
   }
 }

@@ -1,13 +1,13 @@
 import { getHydratedEncounter } from '../../routes/encounters';
+import { db } from '../../db';
+import { facilities } from '../../db/schema';
+import { eq } from 'drizzle-orm';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
-import { geminiClient } from './geminiClient';
-import {
-  HmoAppealResponse,
-  HmoAppealResponseSchema,
-  APPEAL_SYSTEM_PROMPT,
-  buildHmoAppealPrompt
-} from './prompts/appealPrompts';
+import { AiInferenceError, geminiClient } from './geminiClient';
+import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
+import { HmoAppealResponse, HmoAppealResponseSchema, APPEAL_SYSTEM_PROMPT, buildHmoAppealPrompt } from './prompts/appealPrompts';
 
+export const HMO_APPEAL_RESPONSE_SCHEMA = jsonResponseSchema(HmoAppealResponseSchema);
 export interface GenerateHmoAppealOptions {
   encounterId: string;
   deniedItemDescription: string;
@@ -17,97 +17,56 @@ export interface GenerateHmoAppealOptions {
   facilityId?: string;
   env?: Record<string, any>;
 }
-
 export class HmoAppealService {
-  async generateAppeal(options: GenerateHmoAppealOptions): Promise<HmoAppealResponse> {
-    const { encounterId, deniedItemDescription, deniedAmount, hmoProviderName, justificationNotes, facilityId } = options;
-
-    const enc = await getHydratedEncounter(encounterId, facilityId);
-    if (!enc) {
-      throw new Error(`Encounter ${encounterId} not found for HMO appeal generation.`);
-    }
-
-    const targetHmo = hmoProviderName || enc.hmo?.providerName || 'Maxicare Healthcare Corporation';
-    const doctorName = enc.attendingDoctor || 'Dr. Attending Physician, MD';
-    const doctorPan = enc.doctorPan || 'PAN-1984-77123';
-    const diagnosis = enc.primaryDiagnosis || 'Acute Inpatient Confinement';
-    const denialReason = 'Routine ward supplies / excluded non-covered items';
-
-    const clinicalNotes = justificationNotes || `
-Patient admitted under ${enc.roomCategory || 'Inpatient Accommodation'} for ${diagnosis}.
-Attending physician ordered specialized consumables and sterile barrier drapes deemed medically necessary to standard-of-care clinical management.
-    `.trim();
-
-    // 1. PHI De-Identification
-    const rawContext = `
-Encounter: ${enc.encounterNumber}
-Patient: ${enc.patient.fullName}
-MRN: ${enc.patient.mrn}
-Attending: ${doctorName}
-PAN: ${doctorPan}
-Room: ${enc.roomBed}
-HMO Card: ${enc.hmo?.cardMasked || '****'}
-LOA: ${enc.hmo?.loaNumber || 'LOA-2026-PENDING'}
-Notes: ${clinicalNotes}
-    `.trim();
-
-    const scrubResult = scrubPatientData(rawContext, {
-      fullName: enc.patient.fullName,
-      mrn: enc.patient.mrn,
-      roomBed: enc.roomBed,
-      encounterNumber: enc.encounterNumber,
-      doctorName,
-      doctorPan,
-      hmoCardMasked: enc.hmo?.cardMasked,
-      loaNumber: enc.hmo?.loaNumber
-    });
-
-    const prompt = buildHmoAppealPrompt(
-      enc.encounterNumber,
-      '[PATIENT_PSEUDONYM_A]',
-      doctorName,
-      doctorPan,
-      targetHmo,
-      deniedItemDescription,
-      deniedAmount,
-      denialReason,
-      diagnosis,
-      scrubResult.scrubbedText
+  async generateAppeal(options: GenerateHmoAppealOptions): Promise<HmoAppealResponse & { modelUsed: string }> {
+    const enc = await getHydratedEncounter(options.encounterId, options.facilityId);
+    if (!enc) throw new Error('The selected encounter was not found.');
+    if (!options.deniedItemDescription.trim() || !(options.deniedAmount > 0)) throw new Error('Select an actual disputed charge and amount.');
+    const targetHmo = enc.hmo.providerName;
+    if (!targetHmo || targetHmo === 'None') throw new Error('This encounter has no HMO payer to appeal to.');
+    const [facility] = options.facilityId ? await db.select().from(facilities).where(eq(facilities.id, options.facilityId)).limit(1) : [];
+    const activeItems = enc.items.filter(i => !['WAIVED', 'SUPERVISORY_WAIVED'].includes(i.status));
+    const referenceNumber = `APL-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const reconsiderationDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const rawPrompt = buildHmoAppealPrompt(
+      enc.encounterNumber, enc.patient.fullName, enc.attendingDoctor, enc.doctorPan || 'Not recorded', targetHmo,
+      options.deniedItemDescription, options.deniedAmount,
+      'See item-specific recorded exclusions below. Any absent denial reason is not documented.',
+      `${enc.primaryDiagnosis} (${enc.primaryIcd10})`,
+      JSON.stringify({
+        facility: facility ? { name: facility.name, address: facility.address } : { name: 'Hospital' },
+        referenceNumber,
+        admissionDate: enc.admissionDate, loaNumber: enc.hmo.loaNumber || 'Not recorded',
+        reconsiderationDeadline,
+        items: activeItems.map(i => ({ description: i.description, grossAmount: i.grossAmount, patientOop: i.patientOop, status: i.status, exclusionReason: i.exclusionReasonClause, disputeReason: i.disputeReason })),
+        suppliedJustification: options.justificationNotes || 'No clinical notes or physician justification supplied.'
+      })
     );
-
-    // 2. Call Gemini
-    const response = await geminiClient.generate({
-      systemInstruction: APPEAL_SYSTEM_PROMPT,
-      prompt,
-      responseMimeType: 'application/json',
-      temperature: 0.2,
-      mockFallbackType: 'APPEAL',
-      mockFallbackContext: {
-        deniedItem: deniedItemDescription,
-        deniedAmount,
-        hmoProvider: targetHmo
-      },
-      env: options.env
+    const scrubbed = scrubPatientData(rawPrompt, {
+      fullName: enc.patient.fullName, mrn: enc.patient.mrn, roomBed: enc.roomBed,
+      encounterNumber: enc.encounterNumber, doctorName: enc.attendingDoctor,
+      doctorPan: enc.doctorPan, hmoCardMasked: enc.hmo.cardMasked, loaNumber: enc.hmo.loaNumber
     });
-
-    let appealData: HmoAppealResponse;
-    if (response.rawJson) {
-      const parsed = HmoAppealResponseSchema.safeParse(response.rawJson);
-      if (parsed.success) {
-        appealData = parsed.data;
-      } else {
-        appealData = geminiClient['getAppealMock']({});
+    try {
+      const response = await geminiClient.generate({
+        systemInstruction: APPEAL_SYSTEM_PROMPT, prompt: scrubbed.scrubbedText,
+        responseMimeType: 'application/json', responseJsonSchema: HMO_APPEAL_RESPONSE_SCHEMA,
+        temperature: 0.2, env: options.env
+      });
+      const appeal = parseAiResponse(response, HmoAppealResponseSchema);
+      if (appeal.referenceNumber !== referenceNumber || appeal.reconsiderationDeadline !== reconsiderationDeadline || !appeal.appealLetterMarkdown.includes(referenceNumber)) {
+        throw new AiInferenceError('AI_INVALID_RESPONSE', 'The generated letter did not preserve its appeal reference and requested response date. Please regenerate it.');
       }
-    } else {
-      appealData = geminiClient['getAppealMock']({});
-    }
-
-    // 3. Rehydrate Markdown & Tokens
-    appealData.appealLetterMarkdown = rehydrateText(appealData.appealLetterMarkdown, scrubResult.tokenMap);
-    clearTokenMap(scrubResult.tokenMap);
-
-    return appealData;
+      return {
+        ...appeal,
+        referenceNumber,
+        attendingPhysicianName: enc.attendingDoctor, doctorPan: enc.doctorPan || 'Not recorded',
+        reconsiderationDeadline: reconsiderationDeadline,
+        appealLetterMarkdown: rehydrateText(appeal.appealLetterMarkdown, scrubbed.tokenMap),
+        suggestedAttachments: appeal.suggestedAttachments.map(a => rehydrateText(a, scrubbed.tokenMap)),
+        modelUsed: response.modelUsed
+      };
+    } finally { clearTokenMap(scrubbed.tokenMap); }
   }
 }
-
 export const hmoAppealService = new HmoAppealService();

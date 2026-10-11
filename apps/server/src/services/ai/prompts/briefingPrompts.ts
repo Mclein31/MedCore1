@@ -1,13 +1,14 @@
 import { z } from 'zod';
 
 export const ExecutiveBriefingResponseSchema = z.object({
+  modelUsed: z.string().optional(),
   generatedAt: z.string().describe('ISO timestamp of generation.'),
   briefingMarkdown: z.string().describe('Executive-grade 3-minute briefing formatted in structured markdown.'),
   metricsSummary: z.object({
     activeInpatients: z.number().int(),
     averageDischargeTatMinutes: z.number(),
     slaTargetMinutes: z.number().default(45),
-    reclaimedBedHoursLast24h: z.number(),
+    reclaimedBedHoursLast24h: z.number().nullable(),
     trappedCapitalPesos: z.number(),
     criticalDepartmentBottleneck: z.string()
   }),
@@ -51,107 +52,15 @@ EXECUTIVE TONE & STRUCTURE:
 OUTPUT FORMAT:
 Generate valid JSON matching ExecutiveBriefingResponseSchema.`;
 
-export const BRIEFING_FEW_SHOT_EXAMPLES = [
-  {
-    input: {
-      activeInpatients: 184,
-      dischargesToday: 28,
-      avgTatMinutes: 114,
-      dwellTimes: {
-        DOCTOR_PF_PENDING: 32,
-        PHARMACY_RTS_AUDIT: 88,
-        HMO_FINAL_LOA: 42,
-        PENDING_SETTLEMENT: 18
-      },
-      philhealthDarDays: 44.2,
-      hmoDarDays: 58.7,
-      trappedRevenue: 4850000.00,
-      reclaimedBedHours: 64.5
-    },
-    output: {
-      generatedAt: "2026-10-10T08:00:00.000Z",
-      briefingMarkdown: `## ☀️ MedCore Executive RCM Briefing
-**Target Audience**: Hospital Executive Committee (CEO / CFO / COO)
-**Reporting Period**: Last 24 Hours | **Active Census**: 184 Inpatients
-
----
-
-### 1. Executive Summary & Discharge Velocity
-Overall discharge turnaround time is currently averaging **114 minutes**, exceeding the hospital's **45-minute operational target by +69 minutes**.
-
-- **Primary Bottleneck**: **Inpatient Pharmacy (RTS Audit)** is responsible for **77% of all discharge delays**, averaging an unprecedented **88 minutes per patient** across 28 discharged cases.
-- **Operational Drag**: ER inpatient boarding has surged to 12 patients in the holding area due to delayed bed turnarounds.
-- **Bright Spot**: Parallelized multi-payer settlement unblocked **64.5 reclaimed bed-hours** over the last 24 hours.
-
----
-
-### 2. Departmental Dwell Time Telemetry
-| Discharge Stage | Current Dwell | Benchmark SLA | Variance | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **Doctor PF Sign-Off** | 32 mins | 40 mins | -8 mins | 🟢 Within SLA |
-| **Pharmacy RTS Audit** | **88 mins** | **25 mins** | **+63 mins** | 🔴 CRITICAL BREACH |
-| **HMO Final LOA Code** | 42 mins | 45 mins | -3 mins | 🟡 At Risk |
-| **Cashier / Settlement** | 18 mins | 15 mins | +3 mins | 🟡 Minor Variance |
-
----
-
-### 3. Financial Exposure & Trapped Capital
-- **Trapped Revenue**: **₱4,850,000.00** across 16 pending discharge dossiers awaiting pharmacy clearance.
-- **Payor Aging**: HMO DAR has drifted to **58.7 days** (driven by Maxicare and Intellicare delayed e-LOA portals), while PhilHealth claims remain stabilized at **44.2 days**.
-
----
-
-### 4. Top 3 Strategic Interventions
-1. **Deploy Dedicated Pharmacy RTS Runner (Pharmacy Services)**:
-   - Mandate dedicated pharmacy floor runners on 3rd and 5th floors between 09:00 and 13:00 to pick up unused meds immediately upon MGH tag.
-   - *Estimated Impact*: Compresses TAT by 45 minutes; unlocks 14 ER bed admissions.
-2. **Institute Digital Promissory Notes for Balances > ₱25k (Billing/Admitting)**:
-   - Route patients with remaining out-of-pocket balances to the MedCore mobile 0% promissory note workflow under RA 9439.
-   - *Estimated Impact*: ₱1.2M in immediate unblocked discharges; eliminates cashier queues.
-3. **Escalate 48-Hour HMO Portal Delays (Managed Care)**:
-   - Trigger automated MedCore batch appeals for 9 high-balance accounts with delayed LOA codes.
-   - *Estimated Impact*: Recovers ₱2.4M in trapped receivables; compresses HMO DAR by 4.5 days.`,
-      metricsSummary: {
-        activeInpatients: 184,
-        averageDischargeTatMinutes: 114,
-        slaTargetMinutes: 45,
-        reclaimedBedHoursLast24h: 64.5,
-        trappedCapitalPesos: 4850000.00,
-        criticalDepartmentBottleneck: "PHARMACY_RTS_AUDIT"
-      },
-      topRecommendations: [
-        {
-          priority: 1,
-          department: "Pharmacy Services",
-          actionText: "Deploy dedicated morning RTS runners to expedite medication returns.",
-          financialImpactPesos: 1850000.00
-        },
-        {
-          priority: 2,
-          department: "Patient Billing",
-          actionText: "Activate in-app RA 9439 zero-interest promissory note workflows to bypass cashier queues.",
-          financialImpactPesos: 1200000.00
-        },
-        {
-          priority: 3,
-          department: "Managed Care Office",
-          actionText: "Auto-batch 48-hour HMO LOA escalations to recover trapped receivables.",
-          financialImpactPesos: 2400000.00
-        }
-      ]
-    }
-  }
-];
-
 export function buildExecutiveBriefingPrompt(metrics: {
   activeInpatients: number;
   dischargesToday: number;
   avgTatMinutes: number;
   dwellTimes: Record<string, number>;
-  philhealthDarDays: number;
-  hmoDarDays: number;
+  philhealthDarDays: number | null;
+  hmoDarDays: number | null;
   trappedRevenue: number;
-  reclaimedBedHours: number;
+  reclaimedBedHours: number | null;
 }): string {
   return `Synthesize the following 24-hour hospital RCM metrics into an executive C-suite briefing:
 
@@ -167,10 +76,10 @@ Average Discharge Turnaround Time: ${metrics.avgTatMinutes.toFixed(1)} minutes (
 - PENDING_SETTLEMENT: ${metrics.dwellTimes.PENDING_SETTLEMENT ?? 0}m
 
 === FINANCIAL AGING & CAPITAL EXPOSURE ===
-PhilHealth Days in AR: ${metrics.philhealthDarDays.toFixed(1)} days
-HMO Days in AR: ${metrics.hmoDarDays.toFixed(1)} days
+PhilHealth Days in AR: ${metrics.philhealthDarDays === null ? 'Not measured' : metrics.philhealthDarDays.toFixed(1) + ' days'}
+HMO Days in AR: ${metrics.hmoDarDays === null ? 'Not measured' : metrics.hmoDarDays.toFixed(1) + ' days'}
 Trapped Capital Awaiting Discharge Finalization: ₱${metrics.trappedRevenue.toFixed(2)}
-Reclaimed Inpatient Bed-Hours: ${metrics.reclaimedBedHours.toFixed(1)} hours
+Reclaimed Inpatient Bed-Hours: ${metrics.reclaimedBedHours === null ? 'Not measured' : metrics.reclaimedBedHours.toFixed(1) + ' hours'}
 
-Generate a concise, impactful 3-minute executive briefing JSON adhering to ExecutiveBriefingResponseSchema.`;
+Do not invent values for unmeasured metrics. Use null for reclaimedBedHoursLast24h. Generate a concise, impactful 3-minute executive briefing JSON adhering to ExecutiveBriefingResponseSchema.`;
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { hmoAi, HmoAppealResponse } from '@/api/ai';
 import { useMedCore } from '@/context/MedCoreContext';
 import {
@@ -28,8 +28,8 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
   isOpen,
   onClose,
   encounter,
-  deniedItemDescription = 'Laparoscopic Consumables, PPE & Surgical Barrier Drapes',
-  deniedAmount = 14250,
+  deniedItemDescription,
+  deniedAmount,
   hmoProviderName
 }) => {
   const { printDocument } = useMedCore();
@@ -40,31 +40,34 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'PREVIEW' | 'EDIT'>('PREVIEW');
 
-  const generateAppeal = async () => {
-    if (!encounter?.id) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await hmoAi.generateAppeal(
-        encounter.id,
-        deniedItemDescription,
-        deniedAmount,
-        hmoProviderName || encounter.hmo?.providerName || 'Maxicare Healthcare Corporation'
-      );
-      setAppealData(res);
-      setEditableMarkdown(res.appealLetterMarkdown);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to generate HMO medical necessity appeal letter.');
-    } finally {
-      setLoading(false);
+  const pendingRequest = useRef<AbortController | null>(null);
+  const generateAppeal = useCallback(async () => {
+    pendingRequest.current?.abort();
+    const controller = new AbortController();
+    pendingRequest.current = controller;
+    setAppealData(null); setEditableMarkdown(''); setCopied(false); setError(null);
+    if (!encounter?.id || !deniedItemDescription?.trim() || !deniedAmount || deniedAmount <= 0) {
+      setError('Select a disputed item with an actual amount before generating an appeal.');
+      setLoading(false); return;
     }
-  };
+    setLoading(true);
+    try {
+      const res = await hmoAi.generateAppeal(encounter.uuid || encounter.id, deniedItemDescription, deniedAmount,
+        hmoProviderName || encounter.hmo?.providerName, undefined, controller.signal);
+      if (controller.signal.aborted) return;
+      setAppealData(res); setEditableMarkdown(res.appealLetterMarkdown);
+    } catch (err: any) {
+      if (!controller.signal.aborted) setError(err?.message || 'Appeal generation failed.');
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, [encounter?.id, encounter?.uuid, deniedItemDescription, deniedAmount, hmoProviderName, encounter?.hmo?.providerName]);
 
   useEffect(() => {
-    if (isOpen && encounter?.id) {
-      void generateAppeal();
-    }
-  }, [isOpen, encounter?.id]);
+    if (!isOpen) return;
+    const timer = setTimeout(() => { void generateAppeal(); }, 0);
+    return () => { clearTimeout(timer); pendingRequest.current?.abort(); };
+  }, [isOpen, generateAppeal]);
 
   if (!isOpen || !encounter) return null;
 
@@ -110,7 +113,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
                 </h3>
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-800 border border-purple-200">
                   <Sparkles className="w-3 h-3 text-purple-600" />
-                  RA 11765 & EO 192
+                  AI Draft
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -133,9 +136,9 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
             <div className="py-16 text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-purple-600 animate-spin mx-auto" />
               <p className="text-sm font-medium text-slate-700">
-                Formulating formal medico-legal appeal letter citing RA 11765 and clinical necessity...
+                Drafting an appeal from the selected encounter and disputed charges...
               </p>
-              <p className="text-xs text-slate-500">Correlating surgical consumables and physician orders under zero PHI</p>
+              <p className="text-xs text-slate-500">Reviewing documented diagnosis, denied items and available evidence</p>
             </div>
           ) : error ? (
             <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 flex items-start gap-3">
@@ -164,7 +167,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
                 <div>
                   <span className="text-slate-500 block flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5 text-purple-600" />
-                    Reconsideration Window (48h):
+                    Requested response by (48h):
                   </span>
                   <strong className="text-slate-900">{new Date(appealData.reconsiderationDeadline).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
                 </div>
@@ -246,7 +249,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
               variant="secondary"
               icon={copied ? Check : Copy}
               onClick={() => void handleCopy()}
-              disabled={!editableMarkdown}
+              disabled={loading || !!error || !editableMarkdown}
             >
               {copied ? 'Copied' : 'Copy to Clipboard'}
             </Button>
@@ -255,7 +258,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
               variant="secondary"
               icon={Printer}
               onClick={handlePrint}
-              disabled={!editableMarkdown}
+              disabled={loading || !!error || !editableMarkdown}
             >
               Print with Letterhead
             </Button>

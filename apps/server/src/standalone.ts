@@ -1,6 +1,9 @@
 import { serve } from '@hono/node-server';
 import app from './index';
+import { getAiConfig } from './config/aiConfig';
 
+// Load local configuration before the first auth/database request.
+getAiConfig();
 process.env.NODE_ENV ||= 'development';
 
 const port = Number(process.env.PORT || 8787);

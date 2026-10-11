@@ -12,7 +12,7 @@ import {
   Platform
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sparkles, Mic, Send, X, ShieldCheck, CheckCircle2, ChevronRight, HelpCircle } from 'lucide-react-native';
+import { Sparkles, Mic, Send, X, ShieldCheck, ChevronRight } from 'lucide-react-native';
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';
 import { createAiApi, CoraChatResponse } from '../services/aiApi';
@@ -32,18 +32,13 @@ interface ChatMessage {
   sender: 'cora' | 'patient';
   text: string;
   timestamp: string;
+  isError?: boolean;
   suggestedActions?: Array<{
     label: string;
     actionType: string;
     payload?: Record<string, any>;
   }>;
 }
-
-const INITIAL_MESSAGES: Record<'fil' | 'en' | 'ilo', string> = {
-  fil: 'Mabuhay! Ako si Cora, ang inyong MedCore AI Billing Concierge. Paano kita matutulungan sa inyong hospital bill, PhilHealth, o HMO ngayong araw?',
-  en: "Hello! I'm Cora, your MedCore Patient Billing Concierge. How may I assist you with your hospital statement, PhilHealth, or insurance coverage today?",
-  ilo: 'Kablaaw! Siak ni Cora, ti MedCore Billing Concierge yo. Kasanu ka a matulongan maipapan ti hospital bill, PhilHealth, wenno HMO mo tatta?'
-};
 
 const SUGGESTED_CHIPS: Record<'fil' | 'en' | 'ilo', string[]> = {
   fil: [
@@ -84,29 +79,21 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [speechNotice, setSpeechNotice] = useState<string | null>(null);
+  const pendingRequest = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  // Initialize or reset chat when modal opens or language changes
   useEffect(() => {
-    if (visible) {
-      const greeting: ChatMessage = {
-        id: `greeting-${language}`,
-        sender: 'cora',
-        text: INITIAL_MESSAGES[language],
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
-      setMessages([greeting]);
-
-      if (initialQuery) {
-        setInput(initialQuery);
-      }
-    }
-  }, [visible, language, initialQuery]);
+    pendingRequest.current?.abort();
+    setMessages([]); setLoading(false); setInput(visible ? initialQuery || '' : '');
+    return () => { pendingRequest.current?.abort(); };
+  }, [visible, language, initialQuery, encounter?.uuid, client]);
 
   const handleSend = async (messageText?: string) => {
     const textToSend = (messageText || input).trim();
-    if (!textToSend || loading) return;
+    if (!textToSend || loading || !encounter?.uuid) return;
+    const controller = new AbortController();
+    pendingRequest.current?.abort(); pendingRequest.current = controller;
 
     const patientMsg: ChatMessage = {
       id: `patient-${Date.now()}`,
@@ -124,9 +111,12 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       const res: CoraChatResponse = await api.sendCoraMessage(
         textToSend,
         language,
-        encounter?.uuid
+        encounter.uuid,
+        undefined,
+        controller.signal
       );
 
+      if (controller.signal.aborted) return;
       const coraMsg: ChatMessage = {
         id: `cora-${Date.now()}`,
         sender: 'cora',
@@ -138,17 +128,17 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       setMessages((prev) => [...prev, coraMsg]);
       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err: any) {
+      if (controller.signal.aborted) return;
       const errorMsg: ChatMessage = {
         id: `cora-error-${Date.now()}`,
         sender: 'cora',
-        text: language === 'fil'
-          ? 'Paumanhin, nagkaroon ng pansamantalang aberya. Maaari ninyong subukan muli o magtanong sa hospital billing desk.'
-          : 'Pardon the temporary error. Please try again or consult the hospital billing desk for immediate assistance.',
+        isError: true,
+        text: err?.message || 'AI generation failed. Please try again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   };
 
@@ -308,6 +298,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
             contentContainerStyle={styles.chatContainer}
             showsVerticalScrollIndicator={false}
           >
+            {!encounter?.uuid && <Text accessibilityRole="alert" style={{ color: C.danger }}>Choose a hospital stay before asking Cora about billing.</Text>}
             {messages.map((m) => (
               <View
                 key={m.id}
@@ -333,7 +324,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
                       m.sender === 'patient' ? styles.msgTextPatient : styles.msgTextCora
                     ]}
                   >
-                    {m.text}
+                    {m.isError ? `AI response unavailable: ${m.text}` : m.text}
                   </Text>
                   <Text
                     style={[
@@ -430,10 +421,10 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
 
             <Pressable
               onPress={() => handleSend()}
-              disabled={loading || !input.trim()}
+              disabled={loading || !input.trim() || !encounter?.uuid}
               style={[
                 styles.sendButton,
-                (!input.trim() || loading) && styles.sendButtonDisabled
+                (!input.trim() || loading || !encounter?.uuid) && styles.sendButtonDisabled
               ]}
               accessibilityLabel="Send question to Cora"
             >

@@ -112,7 +112,7 @@ export function scrubPatientData(raw: string, context?: PatientScrubContext): Sc
     // Check if token is already registered for this exact value
     for (const [t, v] of tokenMap.entries()) {
       if (v.toLowerCase() === trimmed.toLowerCase()) {
-        const regex = new RegExp(escapeRegex(trimmed), 'gi');
+        const regex = new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegex(trimmed)}(?![\\p{L}\\p{N}_-])`, 'giu');
         text = text.replace(regex, t);
         return;
       }
@@ -127,7 +127,7 @@ export function scrubPatientData(raw: string, context?: PatientScrubContext): Sc
     tokenMap.set(assignedToken, trimmed);
 
     // Replace in text with word boundary or literal match
-    const regex = new RegExp(escapeRegex(trimmed), 'gi');
+    const regex = new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegex(trimmed)}(?![\\p{L}\\p{N}_-])`, 'giu');
     text = text.replace(regex, assignedToken);
   }
 

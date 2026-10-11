@@ -1,3 +1,6 @@
+import { AiInferenceError } from '../services/ai/geminiClient';
+import { encounterAccessCondition } from '../utils/encounterAccess';
+import { encounters } from '../db/schema';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -12,6 +15,11 @@ import { db } from '../db';
 import { aiAuditLogs } from '../db/schema';
 
 const aiApp = new Hono();
+const STAFF_AI_ROLES = ['BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HMO_COORDINATOR', 'HOSPITAL_CFO', 'ATTENDING_PHYSICIAN'];
+function inferenceError(c: any, err: unknown, code: string, message: string) {
+  if (err instanceof AiInferenceError) return apiError(c, err.status as any, err.code, err.message);
+  return apiError(c, 500, code, message);
+}
 
 import { getAiConfig } from '../config/aiConfig';
 
@@ -55,7 +63,7 @@ async function recordAiAudit(data: {
     }
   } catch (err) {
     // Non-blocking telemetry
-    console.warn('[recordAiAudit] Telemetry audit insert skipped:', (err as any)?.message || err);
+    console.warn('[recordAiAudit] Telemetry audit insert skipped:', (err as any)?.name || 'Error');
   }
 }
 
@@ -74,6 +82,11 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
   const user = c.get('user');
   const startTime = Date.now();
 
+  if (!user) return apiError(c, 401, 'UNAUTHORIZED', 'Authentication required.');
+  if (!body.encounterId) return apiError(c, 400, 'ENCOUNTER_REQUIRED', 'Select a patient encounter before asking Cora about billing.');
+  const [accessible] = await db.select({ id: encounters.id }).from(encounters).where(await encounterAccessCondition(user, body.encounterId)).limit(1);
+  if (!accessible) return apiError(c, 404, 'ENCOUNTER_NOT_FOUND', 'The selected encounter was not found.');
+
   try {
     const result = await coraService.chat({
       message: body.message,
@@ -90,6 +103,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       userId: user?.id,
       module: 'CORA',
       action: 'PATIENT_CONCIERGE_CHAT',
+      modelUsed: result.modelUsed,
       latencyMs: Date.now() - startTime,
       status: 'SUCCESS',
       env: c.env as any
@@ -97,7 +111,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
 
     return c.json(result);
   } catch (err: any) {
-    console.error('[Cora Chat Error]', err);
+    console.error('[Cora Chat Error]', err.name);
     await recordAiAudit({
       facilityId: user?.facilityId,
       encounterId: body.encounterId,
@@ -109,7 +123,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       errorMessage: err.message,
       env: c.env as any
     });
-    return apiError(c, 500, 'AI_INFERENCE_ERROR', 'Cora is currently unavailable. Please ask ward nursing for immediate assistance.');
+    return inferenceError(c, err, 'AI_INFERENCE_ERROR', 'Cora could not complete this request. Please retry.');
   }
 });
 
@@ -124,7 +138,7 @@ const scrubberSchema = z.object({
 aiApp.post(
   '/claims/preflight-scrub',
   requireAuth,
-  requireRole(['BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HOSPITAL_CFO', 'HMO_COORDINATOR']),
+  requireRole(STAFF_AI_ROLES),
   zValidator('json', scrubberSchema),
   async (c) => {
     const body = c.req.valid('json');
@@ -154,8 +168,8 @@ aiApp.post(
 
       return c.json(result);
     } catch (err: any) {
-      console.error('[Claims Forensic Scrubber Error]', err);
-      return apiError(c, 500, 'SCRUBBER_AUDIT_ERROR', err.message || 'Claims pre-flight audit could not be completed.');
+      console.error('[Claims Forensic Scrubber Error]', err.name);
+      return inferenceError(c, err, 'SCRUBBER_AUDIT_ERROR', 'Claims pre-flight audit could not be completed.');
     }
   }
 );
@@ -167,7 +181,7 @@ const hmoAppealSchema = z.object({
   encounterId: z.string().min(1, 'Encounter ID is required'),
   deniedItemDescription: z.string().optional(),
   deniedItem: z.string().optional(),
-  deniedAmount: z.number().optional().default(0),
+  deniedAmount: z.number().finite().nonnegative().optional().default(0),
   hmoProviderName: z.string().optional(),
   hmoId: z.string().optional(),
   justificationNotes: z.string().optional()
@@ -176,14 +190,15 @@ const hmoAppealSchema = z.object({
 aiApp.post(
   '/hmo/generate-appeal',
   requireAuth,
-  requireRole(['BILLING_SPECIALIST', 'HMO_COORDINATOR', 'HOSPITAL_CFO']),
+  requireRole(STAFF_AI_ROLES),
   zValidator('json', hmoAppealSchema),
   async (c) => {
     const body = c.req.valid('json');
     const user = c.get('user');
     const startTime = Date.now();
 
-    const deniedDescription = body.deniedItemDescription || body.deniedItem || 'Surgical Consumables & Sterile Packs';
+    const deniedDescription = body.deniedItemDescription || body.deniedItem || '';
+    if (!deniedDescription.trim() || body.deniedAmount <= 0) return apiError(c, 400, 'INVALID_DISPUTE', 'A denied item description and positive amount are required.');
 
     try {
       const result = await hmoAppealService.generateAppeal({
@@ -202,6 +217,7 @@ aiApp.post(
         userId: user.id,
         module: 'HMO_APPEAL',
         action: 'GENERATE_APPEAL_LETTER',
+        modelUsed: result.modelUsed,
         latencyMs: Date.now() - startTime,
         status: 'SUCCESS',
         env: c.env as any
@@ -209,8 +225,8 @@ aiApp.post(
 
       return c.json(result);
     } catch (err: any) {
-      console.error('[HMO Appeal Drafter Error]', err);
-      return apiError(c, 500, 'HMO_APPEAL_ERROR', err.message || 'HMO reconsideration letter generation failed.');
+      console.error('[HMO Appeal Drafter Error]', err.name);
+      return inferenceError(c, err, 'HMO_APPEAL_ERROR', 'HMO reconsideration letter generation failed.');
     }
   }
 );
@@ -221,7 +237,7 @@ aiApp.post(
 aiApp.post(
   '/executive/briefing',
   requireAuth,
-  requireRole(['HOSPITAL_CFO', 'BILLING_SPECIALIST', 'HMO_COORDINATOR']),
+  requireRole(STAFF_AI_ROLES),
   async (c) => {
     const user = c.get('user');
     const startTime = Date.now();
@@ -239,6 +255,7 @@ aiApp.post(
         userId: user.id,
         module: 'EXECUTIVE_BRIEFING',
         action: 'SYNTHESIZE_TELEMETRY',
+        modelUsed: result.modelUsed,
         latencyMs: Date.now() - startTime,
         status: 'SUCCESS',
         env: c.env as any
@@ -246,8 +263,8 @@ aiApp.post(
 
       return c.json(result);
     } catch (err: any) {
-      console.error('[Executive Briefing Error]', err);
-      return apiError(c, 500, 'BRIEFING_ERROR', err.message || 'Executive telemetry briefing generation failed.');
+      console.error('[Executive Briefing Error]', err.name);
+      return inferenceError(c, err, 'BRIEFING_ERROR', 'Executive telemetry briefing generation failed.');
     }
   }
 );
@@ -277,6 +294,7 @@ aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {
       userId: user?.id,
       module: 'OCR',
       action: 'EXTRACT_BENEFIT_CARD',
+      modelUsed: result.modelUsed,
       latencyMs: Date.now() - startTime,
       status: 'SUCCESS',
       env: c.env as any
@@ -284,8 +302,8 @@ aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {
 
     return c.json(result);
   } catch (err: any) {
-    console.error('[Card OCR Error]', err);
-    return apiError(c, 500, 'OCR_ERROR', err.message || 'Optical character recognition failed on card credential.');
+    console.error('[Card OCR Error]', err.name);
+    return inferenceError(c, err, 'OCR_ERROR', 'Optical character recognition failed on card credential.');
   }
 });
 
