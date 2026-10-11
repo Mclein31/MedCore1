@@ -15,6 +15,7 @@ export interface GeminiGenerateRequest {
   temperature?: number;
   maxOutputTokens?: number;
   topP?: number;
+  timeoutMs?: number;
   env?: Record<string, any>;
 }
 export interface GeminiGenerateResponse {
@@ -37,6 +38,7 @@ export class GeminiClient {
 
   async generate(req: GeminiGenerateRequest): Promise<GeminiGenerateResponse> {
     const started = Date.now();
+    const deadline = started + (req.timeoutMs ?? 50000);
     const env = { ...this.envOverrides, ...req.env };
     const config = getAiConfig(env);
     if (!isAiEnabled(env) || !config.geminiApiKey) {
@@ -58,10 +60,12 @@ export class GeminiClient {
     let lastError: unknown;
     for (const model of models) {
       try {
+        const remainingMs = deadline - Date.now();
+        if (remainingMs <= 0) throw new AiInferenceError('AI_UNAVAILABLE', 'AI generation timed out. Please retry.', 503);
         const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.geminiApiKey },
-          body: JSON.stringify(payload), signal: AbortSignal.timeout(25000)
+          body: JSON.stringify(payload), signal: AbortSignal.timeout(Math.min(25000, remainingMs))
         });
         if (!response.ok) {
           // Upstream bodies can contain credentials or patient input. Never log them.
