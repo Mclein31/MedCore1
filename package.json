@@ -14,7 +14,8 @@
     "test:api": "NODE_ENV=test npx tsx scripts/seedPostgres.ts && NODE_ENV=test npx tsx scripts/testBackendApi.ts",
     "test:ai": "NODE_ENV=test npx tsx apps/server/__tests__/aiServices.test.ts",
     "test:ai:live": "npx tsx scripts/testLiveAi.ts",
-    "test:financial": "node --import ./node_modules/tsx/dist/loader.mjs scripts/auditFinancials.ts"
+    "test:financial": "node --import ./node_modules/tsx/dist/loader.mjs scripts/auditFinancials.ts",
+    "test:claims": "node --import ./node_modules/tsx/dist/loader.mjs apps/dashboard/__tests__/claimsEsoa.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
