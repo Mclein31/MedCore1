@@ -196,10 +196,14 @@ export class ApiClient {
     }
 
     if (!res.ok) {
-      if (res.status === 401 && data?.error?.code === 'UNAUTHORIZED' && endpoint !== '/auth/login') {
-        this.setAuthToken(null);
-        this.setDemoRole(null);
-        this.sessionExpiredListeners.forEach(listener => listener());
+      if (res.status === 401 && data?.error?.code === 'UNAUTHORIZED') {
+        if (endpoint !== '/auth/login') {
+          this.setAuthToken(null);
+          this.setDemoRole(null);
+        }
+        if (endpoint !== '/auth/login' && endpoint !== '/auth/me') {
+          this.sessionExpiredListeners.forEach(listener => listener());
+        }
       }
       console.warn('[MedCore API Response Error]', {
         endpoint: url,

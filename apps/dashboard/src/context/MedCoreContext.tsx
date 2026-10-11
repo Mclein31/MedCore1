@@ -301,6 +301,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   function clearSessionState(reason?: 'expired') {
     const hadVerifiedSession = verifiedSession.current;
     verifiedSession.current = false;
+    setIsVerifyingSession(false);
     sessionGeneration.current++; encounterRevision.current++;
     seenNotifications.current=new Set(); setNotifications([]); setUnreadNotificationCount(0); setNotificationError(null);
     setApiError(null);
@@ -325,9 +326,18 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const generation = sessionGeneration.current;
     setIsVerifyingSession(true);
     setSessionError(null);
+
+    // Resilient fallback timeout in case server connection hangs
+    const timeoutId = setTimeout(() => {
+      if (isMounted && generation === sessionGeneration.current) {
+        setIsVerifyingSession(false);
+        setSessionError('Session verification timed out. Check your connection and try again.');
+      }
+    }, 10000);
+
     apiClient
       .getMe()
-      .then(async (res: { authenticated: boolean; user: ApiUser }) => {
+      .then(async (res: { authenticated: boolean; user: ApiUser | null }) => {
         if (!isMounted || generation !== sessionGeneration.current) return;
         if (res?.authenticated && res.user) {
           verifiedSession.current = true;
@@ -361,10 +371,17 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setSessionError('We could not verify your session. Check your connection and try again.');
         }
         if (isMounted) setIsVerifyingSession(false);
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+        if (isMounted && generation === sessionGeneration.current) {
+          setIsVerifyingSession(false);
+        }
       });
 
     return () => {
       isMounted = false;
+      clearTimeout(timeoutId);
     };
   }, [sessionCheck]);
 
