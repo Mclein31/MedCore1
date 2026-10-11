@@ -16,6 +16,7 @@ import { Sparkles, Mic, Send, X, ShieldCheck, ChevronRight } from 'lucide-react-
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';
 import { createAiApi, CoraChatResponse } from '../services/aiApi';
+import { CORA_QUESTIONS, CORA_WELCOME, CoraOpeningPolicy, coraHistory, type CoraMode } from '../lib/coraConversation';
 import type { PatientEncounter } from '../types/domain';
 import { formatPeso, remainingBalance } from '../lib/format';
 
@@ -25,6 +26,8 @@ export interface CoraAssistantModalProps {
   encounter?: PatientEncounter | null;
   navigation?: any;
   initialQuery?: string;
+  autoSendInitialQuery?: boolean;
+  initialMode?: CoraMode;
 }
 
 interface ChatMessage {
@@ -33,6 +36,8 @@ interface ChatMessage {
   text: string;
   timestamp: string;
   isError?: boolean;
+  isWelcome?: boolean;
+  isNotice?: boolean;
   suggestedActions?: Array<{
     label: string;
     actionType: string;
@@ -40,36 +45,14 @@ interface ChatMessage {
   }>;
 }
 
-const SUGGESTED_CHIPS: Record<'fil' | 'en' | 'ilo', string[]> = {
-  fil: [
-    'Bakit may bayad ang gamot?',
-    'Paano magbayad gamit ang GCash?',
-    'Ano ang PhilHealth benefit ko?',
-    'May Senior Citizen discount ba ako?',
-    'Paano mag-apply ng Promissory Note?'
-  ],
-  en: [
-    'Why is there an out-of-pocket balance?',
-    'How do I pay with GCash or Maya?',
-    'Explain my PhilHealth deduction',
-    'How is Senior / PWD discount calculated?',
-    'How does a Promissory Note work?'
-  ],
-  ilo: [
-    'Apay nga adda bayadan iti agas?',
-    'Kasanu ti agbayad iti GCash wenno Maya?',
-    'Ania ti PhilHealth benefit ko?',
-    'Adda kadi discount ti Senior Citizen?',
-    'Kasanu ti ag-apply ti Promissory Note?'
-  ]
-};
-
 export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   visible,
   onClose,
   encounter,
   navigation,
-  initialQuery
+  initialQuery,
+  autoSendInitialQuery = false,
+  initialMode = 'GENERAL'
 }) => {
   const insets = useSafeAreaInsets();
   const { client } = useAuth();
@@ -83,15 +66,41 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   const recognitionRef = useRef<any>(null);
   const scrollViewRef = useRef<ScrollView>(null);
 
-  useEffect(() => {
-    pendingRequest.current?.abort();
-    setMessages([]); setLoading(false); setInput(visible ? initialQuery || '' : '');
-    return () => { pendingRequest.current?.abort(); };
-  }, [visible, language, initialQuery, encounter?.uuid, client]);
+  const openingPolicy = useRef(new CoraOpeningPolicy());
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const sendRef = useRef<(text: string, mode?: CoraMode) => Promise<void>>(async () => {});
+  const appendMessage = (message: ChatMessage) => {
+    messagesRef.current = [...messagesRef.current, message];
+    setMessages(messagesRef.current);
+  };
 
-  const handleSend = async (messageText?: string) => {
+  useEffect(() => {
+    pendingRequest.current?.abort(); openingPolicy.current.reset();
+    messagesRef.current = []; setMessages([]); setLoading(false);
+    return () => { pendingRequest.current?.abort(); };
+  }, [client, encounter?.uuid]);
+
+  useEffect(() => {
+    pendingRequest.current?.abort(); setLoading(false);
+    if (!visible) return;
+    const timer = setTimeout(() => {
+      const opening = openingPolicy.current.open(initialQuery, autoSendInitialQuery);
+      if (opening.welcome) appendMessage({ id: 'cora-welcome', sender: 'cora', isWelcome: true,
+        text: CORA_WELCOME[language], timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      if (opening.autoQuery && encounter?.uuid) void sendRef.current(opening.autoQuery, initialMode);
+      else setInput(initialQuery || '');
+    }, 0);
+    return () => { clearTimeout(timer); pendingRequest.current?.abort(); };
+  }, [visible, client, encounter?.uuid, initialQuery, autoSendInitialQuery, initialMode]);
+
+  useEffect(() => {
+    pendingRequest.current?.abort(); setLoading(false);
+  }, [language]);
+
+  const handleSend = async (messageText?: string, mode: CoraMode = 'GENERAL') => {
     const textToSend = (messageText || input).trim();
-    if (!textToSend || loading || !encounter?.uuid) return;
+    if (!textToSend || loading || !encounter?.uuid || textToSend.length > 2000) return;
+    const conversation = coraHistory(messagesRef.current);
     const controller = new AbortController();
     pendingRequest.current?.abort(); pendingRequest.current = controller;
 
@@ -102,7 +111,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
-    setMessages((prev) => [...prev, patientMsg]);
+    appendMessage(patientMsg);
     setInput('');
     setLoading(true);
 
@@ -112,8 +121,9 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
         textToSend,
         language,
         encounter.uuid,
-        undefined,
-        controller.signal
+        mode,
+        controller.signal,
+        conversation
       );
 
       if (controller.signal.aborted) return;
@@ -121,11 +131,12 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
         id: `cora-${Date.now()}`,
         sender: 'cora',
         text: res.reply,
+        isNotice: res.scopeDecision === 'OUT_OF_SCOPE' || res.scopeDecision === 'RESTRICTED',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         suggestedActions: res.suggestedActions
       };
 
-      setMessages((prev) => [...prev, coraMsg]);
+      appendMessage(coraMsg);
       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err: any) {
       if (controller.signal.aborted) return;
@@ -136,11 +147,13 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
         text: err?.message || 'AI generation failed. Please try again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      appendMessage(errorMsg);
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
   };
+
+  sendRef.current = handleSend;
 
   const handleVoiceToggle = () => {
     if (typeof window !== 'undefined' && ((window as any).webkitSpeechRecognition || (window as any).SpeechRecognition)) {
@@ -324,7 +337,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
                       m.sender === 'patient' ? styles.msgTextPatient : styles.msgTextCora
                     ]}
                   >
-                    {m.isError ? `AI response unavailable: ${m.text}` : m.text}
+                    {m.isError ? `AI response unavailable: ${m.text}` : m.isNotice ? `Cora notice: ${m.text}` : m.text}
                   </Text>
                   <Text
                     style={[
@@ -372,7 +385,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
           {/* Quick Question Chips */}
           <View style={styles.chipsSection}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScroll}>
-              {SUGGESTED_CHIPS[language].map((chip, index) => (
+              {CORA_QUESTIONS[language].map((chip, index) => (
                 <Pressable
                   key={index}
                   onPress={() => handleSend(chip)}
@@ -416,6 +429,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               style={styles.inputField}
               onSubmitEditing={() => handleSend()}
               returnKeyType="send"
+              maxLength={2000}
               editable={!loading}
             />
 
