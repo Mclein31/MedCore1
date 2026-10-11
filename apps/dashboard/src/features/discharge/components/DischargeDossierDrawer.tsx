@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
@@ -62,12 +63,7 @@ export const DischargeDossierDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden flex justify-end">
-      {/* Backdrop */}
-      <div
-        onClick={closeDossierDrawer}
-        className="fixed inset-0 bg-slate-900/30 backdrop-blur-2xs transition-opacity"
-      />
+    <ViewportOverlay className="overflow-hidden flex justify-end" backdropClassName="bg-slate-900/30 backdrop-blur-2xs" motion="right" onDismiss={closeDossierDrawer}>
 
       {/* Drawer Panel (620px width) */}
       <div className="relative w-full max-w-[620px] bg-white border-l border-slate-200 shadow-xl flex flex-col h-full z-10">
@@ -411,6 +407,6 @@ export const DischargeDossierDrawer: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

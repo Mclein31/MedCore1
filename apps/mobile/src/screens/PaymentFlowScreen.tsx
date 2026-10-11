@@ -1,5 +1,6 @@
+import { ModalOverlay } from '../components/ModalOverlay';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, BackHandler, Image, Keyboard, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, Keyboard, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -367,16 +368,16 @@ export default function PaymentFlowScreen({ navigation, route }: NativeStackScre
     {!pending && (step === 'method' || step === 'review') && <View style={{ backgroundColor: C.surface, borderTopWidth: 1, borderTopColor: C.border, paddingBottom: 12, paddingTop: 4 }}>
       <PrimaryButton title={step === 'method' ? 'Continue' : busy ? 'Confirming…' : isNote ? 'Confirm payment plan' : `Confirm payment · ${formatPeso(amount)}`} onPress={() => step === 'method' ? (setSelectedAmount(amount), setStep('detail')) : isNote ? void submitNote() : void submitPayment()} disabled={busy || uncertain || !amountValid || !!patientError || (step === 'review' && (isNote ? !noteValid : !detailsValid))} />
     </View>}
-    <Modal visible={busy} transparent animationType="none" onRequestClose={() => {}}>
-      <View style={{ flex: 1, backgroundColor: 'rgba(20,45,42,0.6)', paddingHorizontal: 24, paddingTop: Math.max(24, insets.top), paddingBottom: Math.max(24, insets.bottom), justifyContent: 'center', alignItems: 'center' }}>
-        <ScrollView accessibilityViewIsModal style={{ width: '100%', maxWidth: 420, maxHeight: '90%', flexGrow: 0, backgroundColor: C.surface, borderRadius: 24 }} contentContainerStyle={{ padding: 28, alignItems: 'center', gap: 16 }}>
+    <ModalOverlay visible={busy} onRequestClose={() => {}} motion="fade"
+      contentStyle={{ paddingHorizontal: 24, paddingTop: Math.max(24, insets.top), paddingBottom: Math.max(24, insets.bottom), justifyContent: 'center' }}
+      panelStyle={{ width: '100%', maxWidth: 420, maxHeight: '90%', backgroundColor: C.surface, borderRadius: 24 }}>
+        <ScrollView accessibilityViewIsModal style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 28, alignItems: 'center', gap: 16 }}>
           <ActivityIndicator color={C.brand} size="large" />
           <Text accessibilityRole="header" style={[T.title, { textAlign: 'center' }]}>{isNote ? 'Recording your payment plan' : 'Confirming your payment'}</Text>
           <Text accessibilityLiveRegion="polite" style={[T.body, { color: C.secondary, textAlign: 'center' }]}>{processingPhase}</Text>
           <Text style={[T.meta, { textAlign: 'center' }]}>Keep this screen open. If confirmation is interrupted, your payment history can help you check the result.</Text>
         </ScrollView>
-      </View>
-    </Modal>
+    </ModalOverlay>
   </Screen>;
   })();
   return <View style={{ flex: 1 }}><FocusedStatusBar style="dark" />{content}</View>;

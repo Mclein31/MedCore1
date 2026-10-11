@@ -1,5 +1,5 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import {
   AlertTriangle,
   AlertCircle,
@@ -191,14 +191,10 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   const IconComponent = variantTokens.icon;
 
   const modalContent = (
-    <div
-      className="fixed inset-0 z-confirmation z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !isBusy) {
-          onCancel();
-        }
-      }}
-      role="presentation"
+    <ViewportOverlay
+      className="flex items-center justify-center p-4 overflow-y-auto" backdropClassName="bg-slate-900/60 backdrop-blur-sm" motion="rise" layer="confirmation"
+      onDismiss={() => { if (!isBusy) onCancel(); }}
+
     >
       <div
         ref={modalRef}
@@ -206,7 +202,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
         aria-modal="true"
         aria-labelledby="confirm-modal-title"
         aria-describedby="confirm-modal-desc"
-        className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-slate-900 animate-in zoom-in-95 duration-150"
+        className="relative z-10 w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col text-slate-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -334,11 +330,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 
-  if (typeof document !== 'undefined' && document.body) {
-    return createPortal(modalContent, document.body);
-  }
   return modalContent;
 };

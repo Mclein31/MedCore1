@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect } from 'react';
 import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
@@ -472,9 +473,9 @@ export const ClaimsEsoaPage: React.FC = () => {
 
       {/* PhilHealth Circular 2023-0026 XML Inspector Modal */}
       {isXmlModalOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
-          onClick={() => setIsXmlModalOpen(false)}
+        <ViewportOverlay
+          className="flex items-center justify-center p-4 sm:p-6" backdropClassName="bg-slate-900/50 backdrop-blur-xs" motion="rise" layer="modal"
+          onDismiss={() => setIsXmlModalOpen(false)}
         >
           <div
             className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
@@ -585,7 +586,7 @@ export const ClaimsEsoaPage: React.FC = () => {
               </Button>
             </div>
           </div>
-        </div>
+        </ViewportOverlay>
       )}
       {/* PhilHealth Claims Pre-Flight Forensic Scrubber AI Modal */}
       <ClaimsPreflightScrubberModal

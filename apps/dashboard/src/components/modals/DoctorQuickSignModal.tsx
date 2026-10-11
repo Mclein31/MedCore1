@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPeso } from '@/utils/formatters';
@@ -51,9 +52,9 @@ export const DoctorQuickSignModal: React.FC = () => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
-      onClick={closeDoctorQuickSign}
+    <ViewportOverlay
+      className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/40 backdrop-blur-xs" motion="rise" layer="modal"
+      onDismiss={closeDoctorQuickSign}
     >
       <div
         className="w-full max-w-lg bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
@@ -216,6 +217,6 @@ export const DoctorQuickSignModal: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

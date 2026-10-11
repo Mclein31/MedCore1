@@ -1,5 +1,6 @@
+import { ModalOverlay } from './ModalOverlay';
 import React, { useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { TextInputProps } from 'react-native';
@@ -7,7 +8,6 @@ import type { TextInputProps } from 'react-native';
 import { C, Radius } from './theme';
 export { C, Spacing, Radius } from './theme';
 import { Icon } from './icons';
-import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const T = StyleSheet.create({
   display: { fontSize: 32, fontWeight: '700', color: C.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
@@ -267,12 +267,10 @@ export function Stepper({ steps }: {
 export function ConfirmationModal({ visible, title, detail, confirmLabel, onConfirm, onCancel, busy }: {
   visible: boolean; title: string; detail: string; confirmLabel: string; onConfirm: () => void; onCancel: () => void; busy?: boolean;
 }) {
-  const reduced = useReducedMotion();
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType={reduced ? 'none' : 'slide'} onRequestClose={() => { if (!busy) onCancel(); }}>
-      <View style={s.modalWrap}>
-        <ScrollView style={s.modal} contentContainerStyle={{ padding: 22, paddingBottom: 22 + insets.bottom }} accessibilityViewIsModal>
+    <ModalOverlay visible={visible} onRequestClose={() => { if (!busy) onCancel(); }} panelStyle={s.modal}>
+        <ScrollView style={{ flexGrow: 0 }} contentContainerStyle={{ padding: 22, paddingBottom: 22 + insets.bottom }} accessibilityViewIsModal>
           <View accessible={false} style={{ width: 126, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginBottom: 20 }} />
           <Text style={[T.title, { fontSize: 20, textAlign: 'center' }]}>{title}</Text>
           <Text style={[T.body, { fontSize: 16, lineHeight: 24, color: C.secondary, textAlign: 'center', marginTop: 12 }]}>{detail}</Text>
@@ -281,8 +279,7 @@ export function ConfirmationModal({ visible, title, detail, confirmLabel, onConf
             <View style={{ flex: 1 }}><PrimaryButton title={busy ? 'Working…' : confirmLabel} onPress={onConfirm} disabled={busy} /></View>
           </View>
         </ScrollView>
-      </View>
-    </Modal>
+    </ModalOverlay>
   );
 }
 
@@ -347,7 +344,6 @@ const s = StyleSheet.create({
   inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.paper, borderColor: C.paper, borderWidth: 1, borderRadius: Radius.control },
   input: { flex: 1, minWidth: 0, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: C.ink, minHeight: 50 },
   inputFocused: { borderColor: C.brand },
-  modalWrap: { flex: 1, backgroundColor: C.scrim, alignItems: 'center', justifyContent: 'flex-end' },
   modal: { backgroundColor: C.surface, borderTopLeftRadius: Radius.sheet, borderTopRightRadius: Radius.sheet, width: '100%', maxWidth: 560, maxHeight: '85%', flexGrow: 0 },
   modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 18 },
   stepRow: { flexDirection: 'row' },

@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useEffect, useState } from 'react';
 import { Loader2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { DemoPaymentRail } from '../types/billing';
@@ -46,7 +47,7 @@ export const PaymentProcessingOverlay: React.FC<Props> = ({ rail, isOpen }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <ViewportOverlay className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-sm" motion="fade" layer="processing">
       <div className="bg-white rounded-3xl p-8 max-w-sm w-full border border-slate-200 shadow-2xl flex flex-col items-center text-center space-y-5">
         <div className="relative">
           <div className="w-16 h-16 rounded-full bg-blue-50 border border-blue-200 flex items-center justify-center">
@@ -124,6 +125,6 @@ export const PaymentProcessingOverlay: React.FC<Props> = ({ rail, isOpen }) => {
           TEST ENVIRONMENT · ZERO LIVE CHARGES
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

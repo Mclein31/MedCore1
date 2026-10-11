@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { DemoPaymentRecord } from '../types/billing';
@@ -31,8 +32,8 @@ export const OfficialReceiptModal: React.FC<Props> = ({
   if (!isOpen || !payment) return null;
 
   return (
-    <div className="fixed inset-0 z-60 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-      <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-150">
+    <ViewportOverlay className="overflow-y-auto flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="nested">
+      <div className="bg-white rounded-xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
         {/* Success Banner */}
         <div className="bg-emerald-600 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -198,6 +199,6 @@ export const OfficialReceiptModal: React.FC<Props> = ({
           </div>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

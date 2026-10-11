@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState } from 'react';
 import { ChargemasterItem } from '@/types/domain';
 import { formatPeso } from '../utils/billFormatters';
@@ -44,8 +45,8 @@ export const DisputeItemModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
-      <div className="bg-white rounded-xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <ViewportOverlay className="overflow-y-auto flex items-center justify-center p-4" backdropClassName="bg-slate-900/50 backdrop-blur-xs" motion="rise" layer="modal">
+      <div className="bg-white rounded-xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="p-5 border-b border-slate-200 bg-rose-50 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -152,6 +153,6 @@ export const DisputeItemModal: React.FC<Props> = ({
           </div>
         </form>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

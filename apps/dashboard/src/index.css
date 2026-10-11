@@ -274,3 +274,41 @@
 .duration-200 {
   animation-duration: 200ms;
 }
+
+/* Full viewport overlays: stationary scrim and independent foreground motion. */
+.viewport-overlay {
+  position: fixed;
+  inset: 0;
+  isolation: isolate;
+  overflow: hidden;
+}
+.viewport-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  animation: viewport-scrim-in 180ms ease-out;
+}
+.viewport-overlay-stage {
+  position: absolute;
+  inset: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.viewport-overlay-stage.overflow-hidden { overflow-y: hidden; }
+.viewport-overlay-stage > * {
+  position: relative;
+  animation: viewport-panel-in 260ms cubic-bezier(.16, 1, .3, 1);
+}
+.viewport-overlay-stage[data-overlay-motion="right"] > * {
+  animation-name: viewport-drawer-in;
+}
+.viewport-overlay-stage[data-overlay-motion="fade"] > * {
+  animation-name: viewport-scrim-in;
+  animation-duration: 180ms;
+}
+@keyframes viewport-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes viewport-panel-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes viewport-drawer-in { from { transform: translateX(100%); } to { transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .viewport-overlay-backdrop, .viewport-overlay-stage > * { animation: none !important; transform: none !important; }
+}
+@media print { .viewport-overlay { display: none !important; } }

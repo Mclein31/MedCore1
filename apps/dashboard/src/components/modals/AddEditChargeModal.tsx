@@ -1,5 +1,5 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { useMedCore } from '@/context/MedCoreContext';
 import { ChargemasterItem } from '@/types/domain';
 import { X, Plus, Pencil, DollarSign, Tag, FileText, Hash, Info, Layers } from 'lucide-react';
@@ -125,8 +125,8 @@ export const AddEditChargeModal: React.FC = () => {
     { label: 'Professional Fee (Attending)', value: 'PROFESSIONAL_FEE', desc: 'Attending physician & surgical fees' }
   ];
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+  return (
+    <ViewportOverlay className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="modal">
       <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -309,7 +309,6 @@ export const AddEditChargeModal: React.FC = () => {
           </div>
         </form>
       </div>
-    </div>,
-    document.body
+    </ViewportOverlay>
   );
 };

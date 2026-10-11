@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
@@ -41,9 +42,9 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
   const netPatientDue = isWaived ? 0 : Math.max(0, Number((item.grossAmount - totalDeductions).toFixed(2)));
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-2xs flex justify-end"
-      onClick={closeWhyDoIOweThis}
+    <ViewportOverlay
+      className="flex justify-end" backdropClassName="bg-slate-900/40 backdrop-blur-2xs" motion="right" layer="modal"
+      onDismiss={closeWhyDoIOweThis}
     >
       <div
         className="w-full max-w-lg bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col"
@@ -262,6 +263,6 @@ export const WhyDoIOweThisDrawer: React.FC = () => {
           )}
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

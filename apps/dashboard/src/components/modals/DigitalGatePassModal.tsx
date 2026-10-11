@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import GatePassQr from '../common/GatePassQr';
 import {gatePassPayload} from '../../../../shared/gatePassPayload';
 import React, { useState } from 'react';
@@ -30,7 +31,7 @@ export const DigitalGatePassModal: React.FC = () => {
 
   const enc = selectedEncounter;
   const pass = enc.dischargePass;
-  if (!pass) return <div className="fixed inset-0 z-50 bg-white p-6" role="dialog" aria-modal="true"><p>Discharge clearance is still being processed.</p><Button onClick={closeGatePassModal}>Close</Button></div>;
+  if (!pass) return <ViewportOverlay onDismiss={closeGatePassModal}><div className="bg-white p-6 rounded-2xl" role="dialog" aria-modal="true"><p>Discharge clearance is still being processed.</p><Button onClick={closeGatePassModal}>Close</Button></div></ViewportOverlay>;
   const isVerified = pass.status === 'VERIFIED_AT_LOBBY';
   const deterministicPin = pass.exitPin || 'Unavailable';
   const qrPayload=gatePassPayload(pass);
@@ -44,9 +45,9 @@ export const DigitalGatePassModal: React.FC = () => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
-      onClick={closeGatePassModal}
+    <ViewportOverlay
+      className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/40 backdrop-blur-xs" motion="rise" layer="modal"
+      onDismiss={closeGatePassModal}
     >
       <div
         className="w-full max-w-md bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
@@ -184,6 +185,6 @@ export const DigitalGatePassModal: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

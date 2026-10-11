@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState } from 'react';
 import { formatPeso, maskCardNumber } from '../../utils/billFormatters';
 import { validateLuhn, validateExpiry } from '../../utils/paymentSimulator';
@@ -214,8 +215,8 @@ export const CardPaymentRail: React.FC<Props> = ({ amount, onPay, isProcessing }
 
       {/* Simulated 3D-Secure Challenge Modal */}
       {is3DsModalOpen && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-2xl p-5 space-y-4 animate-in zoom-in-95">
+        <ViewportOverlay className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="nested">
+          <div className="bg-white rounded-2xl max-w-sm w-full border border-slate-200 shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs">
@@ -273,7 +274,7 @@ export const CardPaymentRail: React.FC<Props> = ({ amount, onPay, isProcessing }
               </button>
             </div>
           </div>
-        </div>
+        </ViewportOverlay>
       )}
     </div>
   );

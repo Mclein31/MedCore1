@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect, useRef } from 'react';
 import { GOVERNMENT_ID_RULES, validateGovernmentId, type GovernmentIdType } from '../../../../shared/governmentId';
 import { useMedCore } from '@/context/MedCoreContext';
@@ -75,9 +76,9 @@ export const DigitalPromissoryModal: React.FC = () => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4"
-      onClick={closePromissoryModal}
+    <ViewportOverlay
+      className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/40 backdrop-blur-xs" motion="rise" layer="modal"
+      onDismiss={closePromissoryModal}
     >
       <div
         className="w-full max-w-xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
@@ -372,6 +373,6 @@ export const DigitalPromissoryModal: React.FC = () => {
           </form>
         )}
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };
