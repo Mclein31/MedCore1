@@ -37,6 +37,17 @@ try {
     globalThis.fetch = (async () => { throw new TypeError('Offline'); }) as typeof fetch;
     await assert.rejects(client.request('/auth/me')); assert.equal(client.getAuthToken(), 'valid');
   });
+  await check('unauthenticated /auth/me resolves cleanly without firing session expired notifications', async () => {
+    const client = new ApiClient();
+    let expired = false;
+    client.onSessionExpired(() => { expired = true; });
+    globalThis.fetch = (async () => rejected(401, 'UNAUTHORIZED')) as typeof fetch;
+    const authApi = new AuthApi(client);
+    const result = await authApi.getMe();
+    assert.equal(result.authenticated, false);
+    assert.equal(result.user, null);
+    assert.equal(expired, false);
+  });
   await check('token-only logout revokes before removing bearer credentials', async () => {
     const client = new ApiClient(); client.setAuthToken('logout-token');
     globalThis.fetch = (async (_url, config) => {

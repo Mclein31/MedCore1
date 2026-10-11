@@ -1,4 +1,4 @@
-import { ApiClient, defaultApiClient, ApiUser } from './client';
+import { ApiClient, defaultApiClient, ApiUser, ApiError } from './client';
 
 export interface LoginCredentials {
   email: string;
@@ -45,8 +45,15 @@ export class AuthApi {
     }
   }
 
-  async getMe(): Promise<{ authenticated: boolean; user: ApiUser }> {
-    return this.client.request('/auth/me');
+  async getMe(): Promise<{ authenticated: boolean; user: ApiUser | null }> {
+    try {
+      return await this.client.request('/auth/me');
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 401) {
+        return { authenticated: false, user: null };
+      }
+      throw err;
+    }
   }
 
   async switchRole(role: string): Promise<{ success: boolean; user: ApiUser }> {
