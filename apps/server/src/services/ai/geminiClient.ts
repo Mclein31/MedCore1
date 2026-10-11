@@ -19,6 +19,7 @@ export interface GeminiGenerateRequest {
   prompt: string;
   parts?: GeminiContentPart[];
   responseMimeType?: 'text/plain' | 'application/json';
+  responseSchema?: any;
   temperature?: number;
   maxOutputTokens?: number;
   topP?: number;
@@ -96,6 +97,10 @@ export class GeminiClient {
 
     if (req.responseMimeType) {
       payload.generationConfig.responseMimeType = req.responseMimeType;
+    }
+
+    if (req.responseSchema) {
+      payload.generationConfig.responseSchema = req.responseSchema;
     }
 
     if (req.systemInstruction) {
@@ -332,11 +337,120 @@ export class GeminiClient {
   }
 
   private getScrubberMock(ctx: any): ClaimsAuditResult {
-    const hasMedicationDiscordance = ctx.hasMedDiscordance ?? false;
-    if (hasMedicationDiscordance) {
-      return SCRUBBER_FEW_SHOT_EXAMPLES[0].output as ClaimsAuditResult;
+    const diagnosis = ctx.primaryDiagnosis || ctx.encounter?.primaryDiagnosis || 'Inpatient Admission';
+    const icd10 = ctx.primaryIcd10 || ctx.encounter?.primaryIcd10 || 'Z00.0';
+    const patientName = ctx.patientName || ctx.encounter?.patient?.fullName || 'Patient';
+    const doctorName = ctx.doctorName || ctx.encounter?.attendingDoctor || 'Attending Physician';
+    const hasMedDiscordance = ctx.hasMedDiscordance ?? false;
+    const hasVitals = ctx.cf4VitalsRecorded ?? true;
+    const hasLabs = ctx.cf4LabsConsistent ?? true;
+    const hasCourse = ctx.cf4CourseInWardRecorded ?? true;
+
+    const flags: ClaimsAuditResult['flags'] = [];
+    let penaltiesSum = 0;
+    const penaltiesList: Array<{ factor: string; points: number; description: string }> = [];
+
+    if (!hasVitals) {
+      const penalty = 0.40;
+      penaltiesSum += penalty;
+      penaltiesList.push({ factor: 'MISSING_CF4_FIELD', points: penalty, description: 'Missing baseline admission vitals in CF4 chart.' });
+      flags.push({
+        category: 'MISSING_CF4_FIELD',
+        severity: 'CRITICAL',
+        field: 'cf4Narrative.admissionVitals',
+        description: `Baseline admission vitals (BP, HR, RR, Temperature) are incomplete or missing for ${diagnosis}.`,
+        regulatoryCitation: 'PhilHealth Circular 2019-0002 Sec. 6.1 (Mandatory CF4 Clinical Elements)',
+        remediation: `Require ${doctorName} or admitting nurse to complete vital signs record prior to transmission.`
+      });
     }
-    return SCRUBBER_FEW_SHOT_EXAMPLES[1].output as ClaimsAuditResult;
+
+    if (!hasCourse) {
+      const penalty = 0.35;
+      penaltiesSum += penalty;
+      penaltiesList.push({ factor: 'MISSING_CF4_FIELD', points: penalty, description: 'Omitted daily ward progress notes.' });
+      flags.push({
+        category: 'MISSING_CF4_FIELD',
+        severity: 'CRITICAL',
+        field: 'cf4Narrative.courseInWard',
+        description: `Day-by-day clinical evolution notes are incomplete for inpatient course (${diagnosis}).`,
+        regulatoryCitation: 'PhilHealth Circular 2019-0002 Sec. 6.3',
+        remediation: 'Append daily physician progress notes documenting therapeutic response.'
+      });
+    }
+
+    if (!hasLabs) {
+      const penalty = 0.25;
+      penaltiesSum += penalty;
+      penaltiesList.push({ factor: 'DIAGNOSTIC_DISCREPANCY', points: penalty, description: `Inconclusive or missing lab/diagnostic findings for ${icd10}.` });
+      flags.push({
+        category: 'DIAGNOSTIC_DISCREPANCY',
+        severity: 'WARNING',
+        field: 'cf4Narrative.diagnosticFindings',
+        description: `Diagnostic findings on file lack objective corroboration for primary diagnosis ${diagnosis} (${icd10}).`,
+        regulatoryCitation: 'PhilHealth Circular 2023-0026 & Clinical Guidelines',
+        remediation: 'Attach supporting imaging or diagnostic laboratory pathology report.'
+      });
+    }
+
+    if (hasMedDiscordance) {
+      const penalty = 0.30;
+      penaltiesSum += penalty;
+      penaltiesList.push({ factor: 'MEDICATION_DISCORDANCE', points: penalty, description: 'High-tier IV antimicrobial without documented culture sensitivity.' });
+      flags.push({
+        category: 'MEDICATION_DISCORDANCE',
+        severity: 'CRITICAL',
+        field: 'cf4Narrative.medicationsBilled',
+        description: `Broad-spectrum intravenous antibiotic billed in eSOA chargemaster for ${diagnosis} without documented microbiologic culture or sepsis criteria in CF4.`,
+        regulatoryCitation: 'PhilHealth Circular 2019-0002 Sec. 6.2 & Standard Antimicrobial Stewardship Guidelines',
+        remediation: `Attending physician must issue a clinical addendum justifying therapeutic antimicrobial escalation.`
+      });
+    }
+
+    // Always include statutory SPC protection audit verification
+    flags.push({
+      category: 'SPC_RULE_RISK',
+      severity: 'INFO',
+      field: 'encounter.admissionInterval',
+      description: `Readmission interval verified clean: Single Period of Confinement (SPC) 90-day denial rule was abolished under PhilHealth Circular 2024-0021.`,
+      regulatoryCitation: 'PhilHealth Circular No. 2024-0021 & Circular No. 2025-0015',
+      remediation: 'No remediation needed. Claim is legally clean for All Case Rates reimbursement.'
+    });
+
+    const baseRisk = 0.04;
+    const rthRiskScore = Math.min(0.95, Math.max(0.04, Number((baseRisk + penaltiesSum).toFixed(2))));
+    const riskLevel: ClaimsAuditResult['riskLevel'] = rthRiskScore > 0.35 ? 'CRITICAL' : rthRiskScore > 0.15 ? 'HIGH' : rthRiskScore > 0.07 ? 'MODERATE' : 'LOW';
+    const passThreshold = rthRiskScore <= 0.15;
+    const cleanClaimReadiness = Math.round((1 - rthRiskScore) * 100);
+
+    const formula = penaltiesList.length > 0
+      ? `Base Risk (4%) + Penalties (${Math.round(penaltiesSum * 100)}%) = ${Math.round(rthRiskScore * 100)}% RTH Risk`
+      : `Base Risk (4%) = 4% RTH Risk (Clean claim; no statutory penalties)`;
+
+    const verdict = passThreshold
+      ? 'Passes gateway threshold (≤ 15.0% RTH risk)'
+      : 'Action Required: Exceeds 15.0% threshold ceiling. Chart remediation required prior to transmission.';
+
+    let suggestedDoctorAddendum: string | null = null;
+    if (hasMedDiscordance || !hasVitals || !hasLabs) {
+      suggestedDoctorAddendum = `CLINICAL CHART ADDENDUM\nPatient: ${patientName} | Primary Diagnosis: ${diagnosis} (${icd10})\nAttending Physician: ${doctorName}\n\n"Patient received inpatient treatment for ${diagnosis}. Daily clinical course demonstrated therapeutic response with normalized parameters. Diagnostic and therapeutic modalities were verified medically necessary under prevailing clinical practice standards."`;
+    }
+
+    return {
+      rthRiskScore,
+      riskLevel,
+      passThreshold,
+      cleanClaimReadiness,
+      riskCalculation: {
+        baseRisk,
+        penalties: penaltiesList,
+        formula,
+        verdict
+      },
+      flags,
+      clinicalSummary: `Inpatient admission for ${diagnosis} (${icd10}) managed by ${doctorName}. ${passThreshold ? 'Clinical documentation substantiates eClaims 3.0 requirements with clean concordance.' : 'Audit identified documentation gaps requiring clinical chart addendum prior to gateway push.'}`,
+      suggestedDoctorAddendum,
+      esoaXmlConformity: true
+    };
   }
 
   private getAppealMock(ctx: any): HmoAppealResponse {

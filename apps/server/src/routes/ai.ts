@@ -145,7 +145,7 @@ aiApp.post(
         userId: user.id,
         module: 'CLAIMS_SCRUBBER',
         action: 'PREFLIGHT_AUDIT',
-        modelUsed: body.forceEscalation ? getAiConfig(c.env as any).geminiProModel : undefined,
+        modelUsed: result.modelUsed || (body.forceEscalation ? getAiConfig(c.env as any).geminiBackupModel : getAiConfig(c.env as any).geminiModel),
         rthRiskScore: result.rthRiskScore.toFixed(4),
         latencyMs: Date.now() - startTime,
         status: 'SUCCESS',

@@ -16,11 +16,18 @@
   - Replaced 250-element `inArray` queries with indexed inner joins on `encounters.facility_id` for full facility census fetches.
   - Consolidated 7 child entity queries from sequential batches into a single concurrent `Promise.all`.
   - Added a 10-second TTL facility census cache (`censusCache`) with deterministic mutation-triggered cache invalidation (`invalidateEncountersCache`). Dropped warm census latency to 234ms (>98% speedup).
-- [AI SERVICES & TIMEOUT DEADLINES] **Bounded Timeout Deadlines, Fast-Fail & Multi-Model Quota Failover (`apps/server/src/services/ai/geminiClient.ts`, `apps/server/src/config/aiConfig.ts`, `apps/server/src/services/ai/executiveBriefingService.ts`, `apps/dashboard/src/components/ai/ExecutiveAiBriefingCard.tsx`)**:
-  - Migrated primary generative model to `gemini-3.5-flash-lite` (500 RPD, 15 RPM, 250K TPM) with automatic failover to `gemini-3.1-flash-lite` (500 RPD, 15 RPM) before falling back to offline mock schemas.
+- [AI SERVICES & TIMEOUT DEADLINES] **Bounded Timeout Deadlines, Fast-Fail & Multi-Model Quota Failover (`apps/server/src/services/ai/geminiClient.ts`, `apps/server/src/config/aiConfig.ts`, `apps/server/src/services/ai/executiveBriefingService.ts`, `apps/dashboard/src/components/ai/ExecutiveAiBriefingCard.tsx`, `apps/dashboard/src/components/ai/ClaimsPreflightScrubberModal.tsx`)**:
+  - Migrated primary generative model to `gemini-3.5-flash-lite` (500 RPD, 15 RPM, 250K TPM) with automatic failover and escalation to `gemini-3.1-flash-lite` (500 RPD, 15 RPM) before falling back to offline mock schemas.
+  - Replaced hardcoded legacy model names in `ClaimsPreflightScrubberModal.tsx` with dynamic `modelUsed` rendering and updated UI badges/escalation toggles.
+  - Aligned `.env.example`, `apps/server/wrangler.jsonc`, and verification scripts with `GEMINI_MODEL=gemini-3.5-flash-lite`, `GEMINI_BACKUP_MODEL=gemini-3.1-flash-lite`, and `GEMINI_PRO_MODEL=gemini-3.1-flash-lite`.
   - Added explicit 15-second timeout deadline (`AbortSignal.timeout(15000)`) and immediate fast-fail for permanent client 4xx HTTP errors (400, 401, 403, 404).
   - Pruned unused statutory waterfalls, PhilHealth claims, and HMO authorization queries from executive briefing compilation.
   - Implemented 5-minute facility-scoped TTL cache (`briefingCache`) and dashboard card module-level caching with user force refresh support.
+- [CLAIMS PRE-FLIGHT FORENSIC SCRUBBER] **Diagnosis Context Fidelity, Structured REST Schema & RTH Risk Hover Tooltip (`apps/server/src/services/ai/geminiClient.ts`, `apps/server/src/services/ai/claimsForensicService.ts`, `apps/server/src/services/ai/prompts/scrubberPrompts.ts`, `apps/dashboard/src/components/ai/ClaimsPreflightScrubberModal.tsx`, `apps/dashboard/src/api/ai.ts`)**:
+  - Enforced `responseSchema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA` in Google AI Studio REST v1beta requests to prevent model schema deviations that triggered unneeded fallback cascades.
+  - Replaced static Dengue fever mock fixture in `geminiClient.ts` with a fully dynamic, encounter-aware clinical synthesis engine deriving clinical flags, ICD-10 findings, itemized medication/supply addenda, and risk scores from the patient's actual chart data.
+  - Enriched `ClaimsAuditResultSchema` with `riskCalculation` object detailing baseline risk weight (0.04), itemized penalties array, calculated risk percentage, and clean claim readiness.
+  - Added interactive hover tooltip popover on the RTH risk badge and expandable mathematical derivation card (`"How is risk calculated?"`) detailing the exact formula $\text{RTH Risk} = \text{Baseline (4\%)} + \sum \text{Penalties}$ alongside PhilHealth statutory filing thresholds ($\le 15.0\%$).
 - [DASHBOARD STARTUP & RESILIENCE] **Removal of Fatal First-Open Screen, Error Boundaries & Code-Splitting (`apps/dashboard/src/app/App.tsx`, `apps/dashboard/src/context/MedCoreContext.tsx`)**:
   - Replaced premature fatal screen on empty initial encounters with an animated non-blocking synchronization layout.
   - Added top-level React `ErrorBoundary` with reload and retry recovery.

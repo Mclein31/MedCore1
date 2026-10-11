@@ -2009,13 +2009,13 @@ The command hierarchy in `src/views/RcmAnalyticsView.tsx` coordinates 10 modular
 [FACT] **Strategic Context**: AQROMED / MedCore is formally designated as an "AI-driven financial reconciliation and patient engagement platform" (PGC Digital Innovation Challenge). The system currently operates via deterministic business rules, hardcoded chargemaster explainers, and static heuristic risk gauges without active machine learning or LLM reasoning.
 
 [FACT] **Google AI Studio Free Tier Technical Verification**:
-- **Target Model**: `gemini-2.5-flash` (with `gemini-1.5-flash` fallback).
+- **Target Model**: `gemini-3.5-flash-lite` (primary) with `gemini-3.1-flash-lite` (backup failover & escalation).
 - **Free Tier Capacity**:
-  - Rate Limits: **15 RPM (Requests Per Minute)** and **1,500 RPD (Requests Per Day)**.
-  - Token Limits: **1,000,000 TPM (Tokens Per Minute)** with 1,000,000+ token context window.
+  - Rate Limits: **15 RPM (Requests Per Minute)** and **500 RPD (Requests Per Day)** per model (1,000 RPD combined pool).
+  - Token Limits: **250,000 TPM (Tokens Per Minute)**.
   - Cost: **$0.00 (Zero billing required)**.
 - **Feasibility Verdict**: 100% sufficient for internal testing, team evaluation, and live competition demonstrations. Average patient billing turn or claim audit consumes ~2,000–3,000 input/output tokens. At 15 RPM, the system comfortably supports continuous conversational turns.
-- [DECISION] **Pro Tier Prohibition**: `gemini-1.5-pro` is explicitly prohibited on the free tier due to severe throttles (2 RPM, 50 RPD) that cause rapid `429 Rate Limit Exceeded` failures during multi-turn interactions.
+- [DECISION] **Pro Tier Prohibition**: `gemini-1.5-pro` is explicitly prohibited on the free tier due to severe throttles (2 RPM, 50 RPD) that cause rapid `429 Rate Limit Exceeded` failures during multi-turn interactions. Models with 20 RPD caps (e.g. `gemini-3.8-flash`) are also excluded in favor of `gemini-3.5-flash-lite` and `gemini-3.1-flash-lite`.
 
 [DECISION] **Backend Proxy & PHI Isolation Architecture (`apps/server`)**:
 - All AI queries route through dedicated Hono endpoints (`/api/v1/ai/*`) on the backend server. Neither the web dashboard nor the Expo mobile client will directly invoke Google AI Studio endpoints.
@@ -2336,5 +2336,13 @@ An exhaustive end-to-end performance and reliability audit and refactor was comp
 - Configured **`gemini-3.1-flash-lite`** (500 RPD, 15 RPM) as the automatic live failover backup model.
 - Updated `GeminiClient` (`apps/server/src/services/ai/geminiClient.ts`) to automatically detect HTTP 429 quota exhaustion or transient upstream failures on the primary model and instantly switch to the backup model before reverting to deterministic mock fallbacks.
 - Verified live round-trip latency: ~1.5s with strict JSON mode.
+
+[DECISION] **Claims Forensic Scrubber Diagnosis Fidelity & RTH Mathematical Breakdown (October 11, 2026)**:
+- **Root Cause & Model Schema Enforcement**: Previously, the pre-flight scrubber fell back to a static Dengue mock because `generationConfig.responseSchema` was omitted in Gemini REST payloads, causing `gemini-3.5-flash-lite` to produce alternative JSON schemas that failed Zod strict validation. Enforced `responseSchema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA` in Google AI Studio REST v1beta calls.
+- **Dynamic Chart-Aware Fallback Engine (`apps/server/src/services/ai/geminiClient.ts`)**: Completely replaced static mock case fixtures with dynamic synthesis keyed off `ctx.primaryDiagnosis`, `ctx.primaryIcd10`, `ctx.patientName`, and chart completeness indicators (`cf4VitalsRecorded`, `cf4LabsConsistent`, `cf4CourseInWardRecorded`, `hasMedDiscordance`). Zero hardcoded diagnoses (e.g. Dengue) are ever generated for non-Dengue charts.
+- **Explicit RTH Risk Calculation Schema & Transparency (`apps/server/src/services/ai/prompts/scrubberPrompts.ts`, `apps/dashboard/src/components/ai/ClaimsPreflightScrubberModal.tsx`)**:
+  - Structured schema includes `riskCalculation` object: `baselineRiskWeight: 0.04`, `penaltiesApplied` array (item, penaltyWeight, explanation), `calculatedRiskPercentage`, and `claimReadinessPercentage`.
+  - Added rich hover popover tooltip on the `%` risk score badge and an interactive expandable card (`"How is risk calculated?"`) displaying the exact derivation formula: $\text{RTH Risk} = \text{Baseline (4\%)} + \sum \text{Penalties}$, itemized penalty checklist, and statutory filing readiness threshold verdict ($\le 15.0\%$).
+
 
 

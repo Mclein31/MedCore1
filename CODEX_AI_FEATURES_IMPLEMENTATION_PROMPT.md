@@ -58,20 +58,20 @@ Every AI module in MedCore is mapped to a designated model based on reasoning ca
 
 | Module / Feature | Target Surface | Primary Model | Fallback Model | Modality | Key Parameters |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Cora Concierge Chatbot** | Patient Mobile App (`apps/mobile`) | **Google Gemini 2.5 Flash** (`gemini-2.5-flash`) | Gemini 1.5 Flash (`gemini-1.5-flash-latest`) | Text / Streaming | Temp: `0.3`<br>Top-P: `0.8`<br>Max Tokens: `1024` |
+| **Cora Concierge Chatbot** | Patient Mobile App (`apps/mobile`) | **Google Gemini 3.5 Flash Lite** (`gemini-3.5-flash-lite`) | **Google Gemini 3.1 Flash Lite** (`gemini-3.1-flash-lite`) | Text / Streaming | Temp: `0.3`<br>Top-P: `0.8`<br>Max Tokens: `1024` |
 | **Cora Voice Input** | Patient Mobile App (`apps/mobile`) | **OpenAI Whisper Large v3 Turbo** (`@cf/openai/whisper-large-v3-turbo` or OpenAI API) | Native Device Speech-to-Text | Audio $\rightarrow$ Text | Language: `tl`, `en`, `auto` |
-| **Clinical Claims Forensic Scrubber** | Staff Dashboard (`apps/dashboard`) | **Google Gemini 2.5 Flash** (Structured Output) | **Google Gemini 1.5 Pro** (`gemini-1.5-pro-latest`) | Text $\rightarrow$ Structured JSON | Temp: `0.1`<br>Response Schema: `Zod / JSON Schema` |
-| **HMO Appeal Letter Drafter** | Staff Dashboard (`apps/dashboard`) | **Google Gemini 2.5 Flash** | **Google Gemini 1.5 Pro** | Text $\rightarrow$ Markdown / Text | Temp: `0.2`<br>Top-P: `0.9`<br>Max Tokens: `2048` |
-| **Executive RCM Briefing** | Staff Dashboard (`apps/dashboard`) | **Google Gemini 2.5 Flash** | Gemini 1.5 Flash | Text $\rightarrow$ Markdown / JSON | Temp: `0.2`<br>Max Tokens: `1024` |
-| **Government ID & Card OCR** | Mobile & Dashboard Intake | **Google Gemini 2.5 Flash Multimodal** | Local OCR / Form Fallback | Image $\rightarrow$ Structured JSON | Temp: `0.1`<br>Response Schema: `Zod` |
+| **Clinical Claims Forensic Scrubber** | Staff Dashboard (`apps/dashboard`) | **Google Gemini 3.5 Flash Lite** (Structured Output) | **Google Gemini 3.1 Flash Lite** (`gemini-3.1-flash-lite`) | Text $\rightarrow$ Structured JSON | Temp: `0.1`<br>Response Schema: `Zod / JSON Schema` |
+| **HMO Appeal Letter Drafter** | Staff Dashboard (`apps/dashboard`) | **Google Gemini 3.5 Flash Lite** | **Google Gemini 3.1 Flash Lite** | Text $\rightarrow$ Markdown / Text | Temp: `0.2`<br>Top-P: `0.9`<br>Max Tokens: `2048` |
+| **Executive RCM Briefing** | Staff Dashboard (`apps/dashboard`) | **Google Gemini 3.5 Flash Lite** | **Google Gemini 3.1 Flash Lite** | Text $\rightarrow$ Markdown / JSON | Temp: `0.2`<br>Max Tokens: `1024` |
+| **Government ID & Card OCR** | Mobile & Dashboard Intake | **Google Gemini 3.5 Flash Lite Multimodal** | Local OCR / Form Fallback | Image $\rightarrow$ Structured JSON | Temp: `0.1`<br>Response Schema: `Zod` |
 
 ### Detailed Model Rationale
 
-1. **Google Gemini 2.5 Flash (`gemini-2.5-flash`)**:
-   - **Primary Engine**: Powers Cora, Claims Scrubbing, HMO Appeals, and Executive Briefings.
-   - **Why**: Features sub-second Time to First Token (TTFT < 800ms), 1-million-token context window, excellent native comprehension of Philippine languages (Tagalog, Taglish, Ilocano) and medical terminology, native JSON schema enforcement, and zero upfront licensing expenditure via Google AI Studio.
-2. **Google Gemini 1.5 Pro (`gemini-1.5-pro-latest`)**:
-   - **Deep Forensic Escalation**: Used for complex multi-page CF4 clinical chart audits where patients have extensive multi-week ICU courses, complex operative notes, and discordant multi-payer diagnoses requiring deep multi-hop clinical reasoning.
+1. **Google Gemini 3.5 Flash Lite (`gemini-3.5-flash-lite`)**:
+   - **Primary Engine**: Powers Cora, Claims Scrubbing, HMO Appeals, Executive Briefings, and Card OCR.
+   - **Why**: Features rapid Time to First Token, generous free tier rate limits (500 RPD, 15 RPM, 250K TPM), excellent native comprehension of Philippine languages (Tagalog, Taglish, Ilocano) and medical terminology, native JSON schema enforcement, and zero upfront licensing expenditure via Google AI Studio.
+2. **Google Gemini 3.1 Flash Lite (`gemini-3.1-flash-lite`)**:
+   - **Resilient Failover & Escalation**: Configured as automatic live failover backup and escalation model (500 RPD, 15 RPM) to absorb quota bursts or transient upstream failures before falling back to deterministic mock schemas.
 3. **OpenAI Whisper Large v3 Turbo**:
    - **Voice Engine**: Ingests spoken Taglish voice memos from elderly patients or stressed family caregivers and converts them to clean text for Cora processing. Supported natively via Cloudflare Workers AI bindings or standard REST endpoint.
 
@@ -88,8 +88,9 @@ Every AI module in MedCore is mapped to a designated model based on reasoning ca
    ```env
    # Google Gemini AI Configuration
    GEMINI_API_KEY=your_gemini_api_key_here
-   GEMINI_MODEL=gemini-2.5-flash
-   GEMINI_PRO_MODEL=gemini-1.5-pro-latest
+   GEMINI_MODEL=gemini-3.5-flash-lite
+   GEMINI_BACKUP_MODEL=gemini-3.1-flash-lite
+   GEMINI_PRO_MODEL=gemini-3.1-flash-lite
    
    # Cloudflare Workers AI / Whisper (Optional for Voice)
    CLOUDFLARE_ACCOUNT_ID=
@@ -160,7 +161,7 @@ Create `apps/server/src/services/ai/claimsForensicService.ts`:
   - eSOA XML payload (generated from `apps/server/src/services/xmlGenerator.ts`).
   - Primary & secondary ICD-10 codes, RVS surgical procedure codes.
 - **Model Call**:
-  - Target Model: `gemini-2.5-flash` (or `gemini-1.5-pro` if chart text > 30,000 characters).
+  - Target Model: `gemini-3.5-flash-lite` (or `gemini-3.1-flash-lite` on escalation).
   - Enforce Structured JSON Output conforming to this schema:
     ```typescript
     export interface ClaimsAuditResult {
@@ -226,11 +227,11 @@ Create `apps/server/src/routes/ai.ts` and mount in `apps/server/src/index.ts`:
 app.route('/api/v1/ai', aiRoutes);
 ```
 **Endpoints**:
-1. `POST /api/v1/ai/cora/chat`: Authenticated patient or demo user. Takes `{ message, language?, mode?, encounterId? }`, executes PHI scrubbing, calls Gemini 2.5 Flash, re-hydrates tokens, returns `{ reply, mode, suggestedActions }`.
-2. `POST /api/v1/ai/claims/preflight-scrub`: Authenticated staff user. Takes `{ encounterId }`, compiles clinical and eSOA records, calls Gemini 2.5 Flash with structured output, returns `ClaimsAuditResult`.
+1. `POST /api/v1/ai/cora/chat`: Authenticated patient or demo user. Takes `{ message, language?, mode?, encounterId? }`, executes PHI scrubbing, calls Gemini 3.5 Flash Lite, re-hydrates tokens, returns `{ reply, mode, suggestedActions }`.
+2. `POST /api/v1/ai/claims/preflight-scrub`: Authenticated staff user. Takes `{ encounterId }`, compiles clinical and eSOA records, calls Gemini 3.5 Flash Lite with structured output, returns `ClaimsAuditResult`.
 3. `POST /api/v1/ai/hmo/generate-appeal`: Authenticated staff user. Takes `{ encounterId, deniedItem, hmoId, justificationNotes? }`, returns `{ appealLetterMarkdown, referenceNumber }`.
 4. `POST /api/v1/ai/executive/briefing`: Authenticated staff / executive user. Returns `{ briefingMarkdown, generatedAt, metricsSummary }`.
-5. `POST /api/v1/ai/ocr/extract-card`: Accepts image data (Base64) and card category (`'GOVERNMENT_ID'` | `'HMO_CARD'`), calls Gemini 2.5 Flash Multimodal, returns parsed structured fields (`idType`, `idNumber`, `memberFullName`, `validUntil`, `providerName`).
+5. `POST /api/v1/ai/ocr/extract-card`: Accepts image data (Base64) and card category (`'GOVERNMENT_ID'` | `'HMO_CARD'`), calls Gemini 3.5 Flash Lite Multimodal, returns parsed structured fields (`idType`, `idNumber`, `memberFullName`, `validUntil`, `providerName`).
 
 ---
 
@@ -309,7 +310,7 @@ Create `apps/dashboard/src/api/ai.ts` and re-export in `apps/dashboard/src/api/i
    - Modal launched from `ClaimsEsoaPage.tsx` via a prominent **"Run AI Pre-Flight Audit"** button.
    - **Header**:
      - Title: "PhilHealth eClaims 3.0 Clinical Forensic Scrubber".
-     - Badge: Model used (`Gemini 2.5 Flash / 1.5 Pro`).
+     - Badge: Model used (`Gemini 3.5 Flash Lite / 3.1 Flash Lite`).
    - **Visual Risk Gauge**:
      - Circular / semi-circular RTH Risk Score gauge (0.00 to 1.00).
      - Color code: Green ($< 0.08$), Yellow ($0.08 - 0.15$), Red ($> 0.15$).
@@ -413,7 +414,7 @@ Follow this exact sequence to implement and verify the AI suite:
 - [ ] **Step 1: Backend Scaffolding & Configuration**
   - Add AI configuration in `apps/server/src/config/aiConfig.ts`.
   - Implement bidirectional PHI de-identifier in `apps/server/src/services/ai/phiScrubber.ts`.
-  - Implement resilient Gemini 2.5 Flash / 1.5 Pro client with offline fallback in `apps/server/src/services/ai/geminiClient.ts`.
+  - Implement resilient Gemini 3.5 Flash Lite / 3.1 Flash Lite client with offline fallback in `apps/server/src/services/ai/geminiClient.ts`.
 - [ ] **Step 2: Core AI Services Implementation**
   - Create `apps/server/src/services/ai/coraService.ts` (with English, Taglish, Ilocano localization & financial grounding).
   - Create `apps/server/src/services/ai/claimsForensicService.ts` (CF4 analysis, RTH score 0.00-1.00, SPC retro-audit).
