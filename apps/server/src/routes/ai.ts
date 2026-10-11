@@ -71,11 +71,12 @@ async function recordAiAudit(data: {
 // 1. Cora Patient Concierge Chat
 // ----------------------------------------------------------------------
 const coraChatSchema = z.object({
-  message: z.string().min(1, 'Message is required'),
+  message: z.string().trim().min(1, 'Message is required').max(2000),
+  conversation: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(2000) }).strict()).max(8).optional().default([]),
   language: z.enum(['en', 'fil', 'ilo']).optional().default('fil'),
   mode: z.enum(['GENERAL', 'WHY_DO_I_OWE', 'DISCHARGE_STATUS', 'PROMISSORY_ASSISTANCE', 'DISPUTE_DRAFT']).optional().default('GENERAL'),
-  encounterId: z.string().optional()
-});
+  encounterId: z.string().max(100).optional()
+}).refine(body => body.conversation.reduce((n, t) => n + t.content.length, 0) <= 8000, 'Conversation is too long.');
 
 aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
   const body = c.req.valid('json');
@@ -83,6 +84,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
   const startTime = Date.now();
 
   if (!user) return apiError(c, 401, 'UNAUTHORIZED', 'Authentication required.');
+  if (user.role !== 'PATIENT_GUARANTOR' && !user.mobileDemoAdmin) return apiError(c, 403, 'FORBIDDEN', 'Cora is available to patients and authorized mobile presentation accounts.');
   if (!body.encounterId) return apiError(c, 400, 'ENCOUNTER_REQUIRED', 'Select a patient encounter before asking Cora about billing.');
   const [accessible] = await db.select({ id: encounters.id }).from(encounters).where(await encounterAccessCondition(user, body.encounterId)).limit(1);
   if (!accessible) return apiError(c, 404, 'ENCOUNTER_NOT_FOUND', 'The selected encounter was not found.');
@@ -90,6 +92,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
   try {
     const result = await coraService.chat({
       message: body.message,
+      conversation: body.conversation,
       language: body.language,
       mode: body.mode,
       encounterId: body.encounterId,

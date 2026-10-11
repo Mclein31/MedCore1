@@ -1,14 +1,20 @@
+import { eq } from 'drizzle-orm';
+import { db } from '../../db';
+import { facilities } from '../../db/schema';
+import { checkCoraScope, coraPolicyNotice, obviousRestrictedRequest } from './coraScope';
 import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
 import { getHydratedEncounter } from '../../routes/encounters';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
-import { geminiClient } from './geminiClient';
+import { AiInferenceError, geminiClient } from './geminiClient';
 import {
   CoraLanguage,
   CoraMode,
   CoraResponseSchema,
   CORA_SYSTEM_PROMPTS,
   buildCoraPrompt,
+  directCoraReply,
   CoraEncounterContext,
+  CoraHistoryTurn,
   CoraFinancialContext
 } from './prompts/coraPrompts';
 
@@ -18,18 +24,16 @@ export interface CoraChatServiceOptions {
   mode?: CoraMode;
   encounterId?: string;
   facilityId?: string;
+  conversation?: CoraHistoryTurn[];
   env?: Record<string, any>;
 }
 
 export interface CoraChatServiceResponse {
+  scopeDecision: 'ANSWERED' | 'UNSUPPORTED' | 'OUT_OF_SCOPE' | 'RESTRICTED';
   reply: string;
   modelUsed: string;
   mode: string;
-  suggestedActions: Array<{
-    label: string;
-    actionType: 'NAVIGATE_BILL' | 'NAVIGATE_PAYMENT' | 'LAUNCH_PROMISSORY' | 'SUBMIT_DISPUTE' | 'CALL_NURSE';
-    payload?: Record<string, any>;
-  }>;
+  suggestedActions: Array<{ label: string; actionType: 'NAVIGATE_BILL' | 'NAVIGATE_PAYMENT' | 'NAVIGATE_COVERAGE' | 'NAVIGATE_DOCUMENTS' }>;
   groundedBalance: {
     grossTotal: number;
     vatExemption: number;
@@ -49,7 +53,7 @@ export class CoraService {
     const enc = await getHydratedEncounter(encounterId, facilityId);
     if (!enc) throw new Error('The selected encounter was not found.');
 
-    // Default grounded financial snapshot if no encounter
+    // Financial facts come only from the authorized selected encounter.
     const financials: CoraFinancialContext = {
       grossHospitalCharges: Number(enc.waterfall.grossHospitalCharges),
       grossDoctorFee: Number(enc.waterfall.grossDoctorFee),
@@ -70,10 +74,10 @@ export class CoraService {
     };
 
     const pendingChecklist: string[] = [];
-    if (enc) {
+    if (enc.stage !== 'CLEARED_GATE_PASS') {
       if (!enc.doctorSignedAt) pendingChecklist.push('Attending physician professional fee signature');
       if (!enc.pharmacyRtsCleared) pendingChecklist.push('Ward pharmacy Return-to-Stock credit');
-      if (enc.hmo?.finalLoaStatus !== 'APPROVED') pendingChecklist.push('Final HMO electronic Letter of Authorization');
+      if (enc.hmo?.providerName && enc.hmo.providerName !== 'None' && enc.hmo.finalLoaStatus !== 'APPROVED') pendingChecklist.push('Final HMO electronic Letter of Authorization');
     }
 
     const encounterContext: CoraEncounterContext = {
@@ -89,47 +93,63 @@ export class CoraService {
       pendingChecklistSteps: pendingChecklist
     };
 
-    const rawPrompt = buildCoraPrompt(encounterContext, financials, message, language, mode);
-    const scrubResult = scrubPatientData(rawPrompt, {
+    const groundedBalance = {
+      grossTotal: financials.grossTotal, vatExemption: financials.vatExemption,
+      seniorPwdDiscount: financials.seniorPwdDiscount, philhealthTotal: financials.philhealthTotal,
+      hmoApprovedAmount: financials.hmoApprovedAmount, netPatientDue: financials.netPatientDue,
+      remainingBalance: financials.remainingBalance
+    };
+    const scrubContext = {
       fullName: enc.patient.fullName, mrn: enc.patient.mrn, roomBed: enc.roomBed,
       encounterNumber: enc.encounterNumber, philhealthPin: enc.patient.philhealthPin,
-      contactNumber: enc.patient.contactNumber, hmoApprovalCode: enc.hmo.approvalCode
-    });
-    const prompt = scrubResult.scrubbedText;
-
-    // 3. Call Gemini
-    const systemPrompt = CORA_SYSTEM_PROMPTS[language] || CORA_SYSTEM_PROMPTS.fil;
-    const response = await geminiClient.generate({
-      systemInstruction: systemPrompt,
-      prompt,
-      responseMimeType: 'application/json',
-      responseJsonSchema: jsonResponseSchema(CoraResponseSchema),
-      temperature: 0.3,
-      env: options.env
-    });
-
-    const coraData = parseAiResponse(response, CoraResponseSchema);
-
-    // 4. Rehydration & Token Map Cleanup
-    const hydratedReply = rehydrateText(coraData.reply, scrubResult.tokenMap);
-    clearTokenMap(scrubResult.tokenMap);
-
-    return {
-      reply: hydratedReply,
-      modelUsed: response.modelUsed,
-      mode: coraData.mode || mode,
-      suggestedActions: coraData.suggestedActions || [],
-      groundedBalance: {
-        grossTotal: financials.grossTotal,
-        vatExemption: financials.vatExemption,
-        seniorPwdDiscount: financials.seniorPwdDiscount,
-        philhealthTotal: financials.philhealthTotal,
-        hmoApprovedAmount: financials.hmoApprovedAmount,
-        netPatientDue: financials.netPatientDue,
-        remainingBalance: financials.remainingBalance
-      }
+      contactNumber: enc.patient.contactNumber, hmoApprovalCode: enc.hmo.approvalCode,
+      doctorName: enc.attendingDoctor, doctorPan: enc.doctorPan, loaNumber: enc.hmo.loaNumber,
+      borrowerName: enc.promissoryNote?.borrowerName, borrowerIdNumber: enc.promissoryNote?.borrowerIdNumber
     };
+    const conversation = (options.conversation || []).filter(turn => !obviousRestrictedRequest(turn.content));
+    const scopeInput = scrubPatientData(JSON.stringify({message, conversation}), scrubContext);
+    let decision;
+    try {
+      const input = JSON.parse(scopeInput.scrubbedText) as { message: string; conversation: CoraHistoryTurn[] };
+      decision = obviousRestrictedRequest(message) ? 'RESTRICTED' : await checkCoraScope(input.message, input.conversation, options.env);
+    } finally { clearTokenMap(scopeInput.tokenMap); }
+    if (decision !== 'ALLOW') return { scopeDecision: decision, reply: coraPolicyNotice(decision, language), mode, suggestedActions: [], groundedBalance, modelUsed: 'policy-gate' };
+
+    const [facility] = facilityId ? await db.select().from(facilities).where(eq(facilities.id, facilityId)).limit(1) : [];
+    const evidence = {
+      hospital: facility ? { name: facility.name, address: facility.address, contactPhone: facility.contactPhone } : null,
+      attendingDoctor: enc.attendingDoctor, billState: enc.billState,
+      items: enc.items.map(i => ({ description: i.description, category: i.category, quantity: i.qty,
+        grossAmount: i.grossAmount, philhealthCovered: i.philhealthCovered, hmoCovered: i.hmoCovered,
+        patientOop: i.patientOop, status: i.status, coverageReason: i.exclusionReasonClause,
+        explanation: i.plainLanguageExplainer, disputed: i.isDisputed })),
+      philhealth: { primaryDiagnosis: enc.philhealth.primaryDescription, primaryIcd10: enc.philhealth.primaryIcd10,
+        totalCaseRate: enc.philhealth.totalCaseRate, status: enc.philhealth.status, deficiency: enc.philhealth.deficiencyReason },
+      hmo: { provider: enc.hmo.providerName, status: enc.hmo.finalLoaStatus, approvedAmount: enc.hmo.approvedAmount,
+        maximumBenefit: enc.hmo.policyMbl, remainingBenefit: enc.hmo.mblRemaining, dailyRoomAllowance: enc.hmo.dailyRoomAllowance },
+      patientBenefits: { isSeniorCitizen: enc.patient.isSeniorCitizen, isPwd: enc.patient.isPwd },
+      disputes: enc.disputes.map(d => ({ itemDescription: d.itemDescription, amount: d.contestedAmount, reason: d.reason, status: d.status, resolution: d.resolutionClause })),
+      payments: enc.paymentHistory.map(p => ({ amount: p.amount, method: p.paymentRail, status: p.status, date: p.timestamp })),
+      documents: { hasReceipts: enc.receipts.length > 0, gatePassStatus: enc.dischargePass?.status || 'Not issued' },
+      promissory: enc.promissoryNote ? { principal: enc.promissoryNote.principalAmount, months: enc.promissoryNote.installmentMonths,
+        monthlyInstallment: enc.promissoryNote.monthlyInstallment, firstDueDate: enc.promissoryNote.firstDueDate, status: enc.promissoryNote.status } : null,
+      missingInformation: ['Hospital visitor hours, department-specific phone numbers, detailed HMO contract terms and clinical treatment orders are not recorded here.']
+    };
+    const scrubResult = scrubPatientData(buildCoraPrompt(encounterContext, financials, message, language, mode, evidence, conversation), scrubContext);
+    try {
+      const response = await geminiClient.generate({
+        systemInstruction: CORA_SYSTEM_PROMPTS[language], prompt: scrubResult.scrubbedText,
+        responseMimeType: 'application/json', responseJsonSchema: jsonResponseSchema(CoraResponseSchema),
+        temperature: 0.2, maxOutputTokens: 2048, timeoutMs: 30000, env: options.env
+      });
+      const answer = parseAiResponse(response, CoraResponseSchema);
+      if (answer.scopeDecision === 'OUT_OF_SCOPE' || answer.scopeDecision === 'RESTRICTED') {
+        return { ...answer, reply: coraPolicyNotice(answer.scopeDecision, language), suggestedActions: [], groundedBalance, modelUsed: response.modelUsed };
+      }
+      const directReply = directCoraReply(answer.reply);
+      if (!directReply) throw new AiInferenceError('AI_INVALID_RESPONSE', 'Cora did not return a substantive answer. Please try again.');
+      return { ...answer, mode, reply: rehydrateText(directReply, scrubResult.tokenMap), groundedBalance, modelUsed: response.modelUsed };
+    } finally { clearTokenMap(scrubResult.tokenMap); }
   }
 }
-
 export const coraService = new CoraService();

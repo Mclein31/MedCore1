@@ -58,10 +58,20 @@ async function main() {
   }
   assert.notEqual(letters[0], letters[1], 'Distinct cases cannot return the same canned letter');
   const enc = selected[0].enc;
-  const cora = await request('/ai/cora/chat', { encounterId: enc.uuid, message: 'Explain my remaining balance using the exact current ledger values.', language: 'en' });
-  assert.ok(cora.modelUsed && !cora.modelUsed.includes('fallback'));
-  assert.equal(cora.groundedBalance.remainingBalance, enc.remainingBalance);
-  console.log(JSON.stringify({ feature: 'Cora', model: cora.modelUsed, groundedBalanceMatches: true }));
+  const staffToken = token;
+  const mobileLogin = await request('/auth/login', { email: 'mobile.admin.demo@example.test', password: 'HospitalRCM2026!', facilityCode: 'SJMC-MNL' });
+  token = mobileLogin.token;
+  try {
+    const cora = await request('/ai/cora/chat', { encounterId: enc.uuid, message: 'Explain my remaining balance using the exact current ledger values.', language: 'en' });
+    assert.ok(cora.modelUsed && !cora.modelUsed.includes('fallback'));
+    assert.equal(cora.scopeDecision, 'ANSWERED');
+    assert.equal(cora.groundedBalance.remainingBalance, enc.remainingBalance);
+    assert.doesNotMatch(cora.reply, /^(hello|hi|I['’]m Cora)/i);
+    console.log(JSON.stringify({ feature: 'Cora', model: cora.modelUsed, groundedBalanceMatches: true, directAnswer: true }));
+  } finally {
+    await request('/auth/logout', {}).catch(() => {});
+    token = staffToken;
+  }
   const briefing = await request('/ai/executive/briefing', { forceRefresh: true });
   assert.equal(briefing.metricsSummary.activeInpatients, encounters.filter(e => e.stage !== 'CLEARED_GATE_PASS').length);
   assert.equal(briefing.metricsSummary.reclaimedBedHoursLast24h, null);
