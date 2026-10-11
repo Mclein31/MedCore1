@@ -6,6 +6,7 @@ import { formatDate, formatPeso, remainingBalance } from '../lib/format';
 import { Sparkles } from 'lucide-react-native';
 import BillBreakdown from '../components/BillBreakdown';
 import QuickActions from '../components/QuickActions';
+import { EXPLAIN_MY_BILL_QUERY } from '../lib/coraConversation';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
 import { C, EmptyState, ErrorState, Hero, LoadingState, PrimaryButton, RefreshNotice, Screen, StatusBadge, T } from '../components/ui';
 export default function BillScreen({ navigation }: { navigation: any }) {
@@ -65,6 +66,9 @@ export default function BillScreen({ navigation }: { navigation: any }) {
     onClose={() => setCoraOpen(false)}
     encounter={enc}
     navigation={navigation}
+    initialQuery={EXPLAIN_MY_BILL_QUERY}
+    autoSendInitialQuery
+    initialMode="WHY_DO_I_OWE"
   />
   </Screen>;
 }

@@ -3,6 +3,7 @@
 // language, payment input guards, duplicate-submission prevention, and
 // navigation gating. Run with: npx tsx __tests__/run.ts
 import assert from 'node:assert';
+import { CoraOpeningPolicy, coraHistory, CORA_QUESTIONS, EXPLAIN_MY_BILL_QUERY } from '../src/lib/coraConversation';
 import { cardImageDataUri } from '../src/lib/benefitCardImage';
 import { createAiApi } from '../src/services/aiApi';
 import { createRequire } from 'node:module';
@@ -86,6 +87,23 @@ check('Expo Go native dependencies match the installed SDK', () => {
 });
 
 // Billing: peso formatting must be exact and identical on every screen.
+check('Explain My Bill opens with its question and no greeting', () => {
+  const opening=new CoraOpeningPolicy();
+  assert.deepEqual(opening.open(EXPLAIN_MY_BILL_QUERY,true),{welcome:false,autoQuery:EXPLAIN_MY_BILL_QUERY});
+  assert.equal(opening.open().welcome,false);
+});
+check('Cora welcomes only the first manual opening and resets for a new patient', () => {
+  const opening=new CoraOpeningPolicy();assert.equal(opening.open().welcome,true);
+  assert.equal(opening.open().welcome,false);opening.reset();assert.equal(opening.open().welcome,true);
+});
+check('Cora history omits welcome/errors/notices and is bounded to this conversation', () => {
+  const history=coraHistory([{sender:'cora',text:'welcome',isWelcome:true},{sender:'cora',text:'out of scope',isNotice:true},{sender:'cora',text:'failed',isError:true},...Array.from({length:10},(_,i)=>({sender:'patient' as const,text:'bill '+i}))]);
+  assert.equal(history.length,8);assert.equal(history[0].content,'bill 2');assert.ok(history.every(t=>t.role==='user'));
+});
+check('Cora suggestions cover a broad pool in every supported language', () => {
+  for(const pool of Object.values(CORA_QUESTIONS)){assert.ok(pool.length>=25);assert.equal(new Set(pool).size,pool.length);}
+});
+
 check('card picker sends selected image bytes and their actual MIME', () => {
   assert.equal(cardImageDataUri({base64:'iVBORw0KGgoTEST',mimeType:'image/jpeg'}),'data:image/png;base64,iVBORw0KGgoTEST');
   assert.equal(cardImageDataUri({base64:'/9j/SELECTED',mimeType:'image/png'}),'data:image/jpeg;base64,/9j/SELECTED');

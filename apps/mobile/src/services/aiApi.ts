@@ -1,7 +1,9 @@
+import type { CoraHistoryTurn, CoraMode } from '../lib/coraConversation';
 import type { ApiClient } from '../lib/api';
 
 export interface CoraChatResponse {
   modelUsed?: string;
+  scopeDecision: 'ANSWERED' | 'UNSUPPORTED' | 'OUT_OF_SCOPE' | 'RESTRICTED';
   reply: string;
   mode: string;
   suggestedActions: Array<{
@@ -38,14 +40,15 @@ export function createAiApi(client: ApiClient) {
       message: string,
       language: 'en' | 'fil' | 'ilo' = 'fil',
       encounterId?: string,
-      mode?: string,
-      signal?: AbortSignal
+      mode?: CoraMode,
+      signal?: AbortSignal,
+      conversation: CoraHistoryTurn[] = []
     ): Promise<CoraChatResponse> {
       return client.request<CoraChatResponse>('/ai/cora/chat', {
         method: 'POST',
         signal,
         timeoutMs: 65000,
-        body: JSON.stringify({ message, language, encounterId, mode })
+        body: JSON.stringify({ message, language, encounterId, mode, conversation })
       });
     },
 
