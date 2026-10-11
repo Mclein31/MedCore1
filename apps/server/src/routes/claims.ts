@@ -21,11 +21,23 @@ const claimsApp = new Hono();
 claimsApp.get(
   '/:claimId/esoa-xml',
   requireAuth,
-  requireRole(['CLAIMS_ENCODER', 'HOSPITAL_CFO', 'BILLING_SPECIALIST']),
+  requireRole(['CLAIMS_ENCODER', 'HOSPITAL_CFO', 'BILLING_SPECIALIST', 'HMO_COORDINATOR', 'ATTENDING_PHYSICIAN']),
   async (c) => {
     const claimId = c.req.param('claimId');
     if (!claimId) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
 
+    const xmlPayload = await getClaimEsoaXml(claimId, c.get('user').facilityId);
+    if (!xmlPayload) return apiError(c, 404, 'CLAIM_NOT_FOUND', 'PhilHealth claim not found.');
+
+    c.header('Content-Type', 'application/xml; charset=utf-8');
+    c.header('Content-Disposition', `inline; filename="eSOA_${claimId}.xml"`);
+    c.header('Cache-Control', 'private, no-cache');
+
+    return c.body(xmlPayload);
+  }
+);
+
+export async function getClaimEsoaXml(claimId: string, facilityId: string): Promise<string | null> {
     const claimList = await db
       .select({
         claim: philhealthClaims,
@@ -39,11 +51,11 @@ claimsApp.get(
       .innerJoin(patients, eq(encounters.patientId, patients.id))
       .innerJoin(facilities, eq(encounters.facilityId, facilities.id))
       .leftJoin(users, eq(encounters.attendingPhysicianId, users.id))
-      .where(and(matchPhilHealthClaimCondition(claimId), eq(encounters.facilityId, c.get('user').facilityId)))
+      .where(and(matchPhilHealthClaimCondition(claimId), eq(encounters.facilityId, facilityId)))
       .limit(1);
 
     if (claimList.length === 0) {
-      return apiError(c, 404, 'CLAIM_NOT_FOUND', `PhilHealth claim ${claimId} not found.`);
+      return null;
     }
 
     const { claim, encounter, patient, facility, doctor } = claimList[0];
@@ -119,12 +131,7 @@ claimsApp.get(
       }
     });
 
-    c.header('Content-Type', 'application/xml; charset=utf-8');
-    c.header('Content-Disposition', `inline; filename="eSOA_${claim.claimNumber}.xml"`);
-    c.header('Cache-Control', 'private, no-cache');
-
-    return c.body(xmlPayload);
-  }
-);
+    return xmlPayload;
+}
 
 export default claimsApp;

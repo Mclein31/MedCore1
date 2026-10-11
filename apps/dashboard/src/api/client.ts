@@ -69,6 +69,10 @@ export class ApiClient {
     if (typeof localStorage !== 'undefined') {
       try {
         this.authToken = localStorage.getItem('medcore_auth_token');
+        if (this.authToken && !this.isProduction()) {
+          const user = JSON.parse(localStorage.getItem('medcore_user') || 'null');
+          if (typeof user?.role === 'string') this.activeDemoRole = user.role;
+        }
       } catch {}
     }
   }

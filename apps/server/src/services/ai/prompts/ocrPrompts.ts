@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const CardOcrResponseSchema = z.object({
+  modelUsed: z.string().optional(),
   cardType: z.enum(['PHILHEALTH', 'SENIOR_CITIZEN', 'PWD', 'HMO', 'PHILSYS_NATIONAL_ID', 'UNKNOWN']),
   idNumber: z.string().describe('The primary extracted and normalized credential number.'),
   memberFullName: z.string().describe('Extracted full name of the member/patient.'),
@@ -44,46 +45,8 @@ NORMALIZATION & VALIDATION RULES:
    - Extract Full Legal Name, Date of Birth, and Sex.
 
 OUTPUT FORMAT:
+Extract only text visible in the supplied image. For unreadable or absent identifiers/names return an empty string; for absent dates return null. A blank or unrelated image must return UNKNOWN with confidenceScore 0 and no invented credentials.
 Generate ONLY structured JSON adhering strictly to CardOcrResponseSchema.`;
-
-export const OCR_FEW_SHOT_EXAMPLES = [
-  {
-    imageDescription: "PhilHealth laminated Member Data Card with green header and barcode",
-    output: {
-      cardType: "PHILHEALTH",
-      idNumber: "02-050412384-9",
-      memberFullName: "JUAN SANTOS DELA CRUZ",
-      dateOfBirth: "1968-08-15",
-      providerName: "Philippine Health Insurance Corporation",
-      validUntil: null,
-      confidenceScore: 0.98,
-      rawExtractedFields: {
-        PIN: "02-050412384-9",
-        Name: "JUAN SANTOS DELA CRUZ",
-        MemberType: "Formal Economy / Employed Private",
-        Sex: "Male"
-      }
-    }
-  },
-  {
-    imageDescription: "Maxicare blue plastic HMO member card with silver magnetic stripe",
-    output: {
-      cardType: "HMO",
-      idNumber: "1168-0294-8812-4011",
-      memberFullName: "MARIA CLARA DE LOS SANTOS",
-      dateOfBirth: null,
-      providerName: "Maxicare Healthcare Corporation",
-      validUntil: "2027-03-31",
-      confidenceScore: 0.96,
-      rawExtractedFields: {
-        CardNumber: "1168-0294-8812-4011",
-        Cardholder: "MARIA CLARA DE LOS SANTOS",
-        PlanType: "Corporate Platinum Plus",
-        ValidThru: "03/2027"
-      }
-    }
-  }
-];
 
 export function buildOcrPrompt(categoryHint?: string): string {
   return `Analyze this card credential image. ${categoryHint ? `Expected card category: ${categoryHint}.` : ''}

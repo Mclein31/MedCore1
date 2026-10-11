@@ -3,6 +3,8 @@
 // language, payment input guards, duplicate-submission prevention, and
 // navigation gating. Run with: npx tsx __tests__/run.ts
 import assert from 'node:assert';
+import { cardImageDataUri } from '../src/lib/benefitCardImage';
+import { createAiApi } from '../src/services/aiApi';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { validateCard } from '../src/lib/cardValidation';
@@ -77,13 +79,23 @@ check('Expo Go native dependencies match the installed SDK', () => {
   const requireMobile = createRequire(resolve('package.json'));
   const expected = requireMobile('expo/bundledNativeModules.json') as Record<string, string>;
   const { satisfies } = requireMobile('semver') as { satisfies: (version: string, range: string) => boolean };
-  for (const name of ['@react-native-async-storage/async-storage', 'react-native-safe-area-context', 'react-native-screens']) {
+  for (const name of ['@react-native-async-storage/async-storage', 'react-native-safe-area-context', 'react-native-screens', 'expo-image-picker']) {
     const actual = requireMobile(`${name}/package.json`).version as string;
     assert.ok(satisfies(actual, expected[name]), `${name}@${actual} does not match Expo Go's ${expected[name]}`);
   }
 });
 
 // Billing: peso formatting must be exact and identical on every screen.
+check('card picker sends selected image bytes and their actual MIME', () => {
+  assert.equal(cardImageDataUri({base64:'iVBORw0KGgoTEST',mimeType:'image/jpeg'}),'data:image/png;base64,iVBORw0KGgoTEST');
+  assert.equal(cardImageDataUri({base64:'/9j/SELECTED',mimeType:'image/png'}),'data:image/jpeg;base64,/9j/SELECTED');
+});
+check('card picker rejects absent, unsupported and oversized images without a sample', () => {
+  assert.throws(()=>cardImageDataUri({base64:null}));
+  assert.throws(()=>cardImageDataUri({base64:'selected',mimeType:'image/svg+xml'}));
+  assert.throws(()=>cardImageDataUri({base64:'selected',mimeType:'image/png',fileSize:11*1024*1024}));
+});
+
 check('bill loads: peso formatting is exact', () => {
   assert.strictEqual(formatPeso(18450), '₱18,450.00');
   assert.strictEqual(formatPeso('20000'), '₱20,000.00');
@@ -448,6 +460,12 @@ async function integrationChecks() {
       assert.equal(parsed, false);
     });
   } finally { globalThis.fetch = originalFetch; }
+  await asyncCheck('mobile AI exposes failed generation instead of synthesizing a reply', async () => {
+    const failure=new ApiError('Unavailable',503,'AI_UNAVAILABLE');
+    const ai=createAiApi({request:async()=>{throw failure;}} as any);
+    await assert.rejects(ai.sendCoraMessage('bill','en','encounter'),e=>e===failure);
+    await assert.rejects(ai.scanBenefitCard('selected-photo'),e=>e===failure);
+  });
   console.log(`\nMOBILE_UNIT_TESTS_DONE passed=${passed}`);
 }
 void integrationChecks();

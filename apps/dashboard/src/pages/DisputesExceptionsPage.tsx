@@ -242,12 +242,13 @@ export const DisputesExceptionsPage: React.FC = () => {
                               variant="secondary"
                               icon={Scale}
                               onClick={() => {
-                                const enc = encounters.find((e) => e.id === encounterId) || encounters[0];
+                                const enc = encounters.find((e) => e.id === encounterId);
+                                if (!enc) return;
                                 setAppealModalState({
                                   isOpen: true,
                                   encounter: enc,
                                   itemDescription: item.description,
-                                  amount: item.grossAmount
+                                  amount: item.patientOop
                                 });
                               }}
                               className="text-purple-700 hover:text-purple-800 hover:bg-purple-50 border-purple-200"

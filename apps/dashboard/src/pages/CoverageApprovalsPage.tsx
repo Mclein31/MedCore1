@@ -228,6 +228,7 @@ export const CoverageApprovalsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginatedEncounters.map((enc) => {
+                const deniedItems = enc.items.filter(i => i.patientOop > 0 && (i.status === 'DISALLOWED_SUNDRY' || !!i.exclusionReasonClause));
                 const isApproved = enc.hmo.finalLoaStatus === 'APPROVED';
                 const isAwaiting = enc.hmo.finalLoaStatus === 'AWAITING_CODE';
                 const isDisallowed = enc.hmo.finalLoaStatus === 'DISALLOWED_ITEMS';
@@ -358,10 +359,11 @@ export const CoverageApprovalsPage: React.FC = () => {
                               setAppealModalState({
                                 isOpen: true,
                                 encounter: enc,
-                                itemDescription: 'Disallowed Inpatient Consumables & Emergency Room Supplies',
-                                amount: enc.hmo.disallowedConsumables > 0 ? enc.hmo.disallowedConsumables : undefined
+                                itemDescription: deniedItems.map(i => `${i.description}${i.exclusionReasonClause ? ` (${i.exclusionReasonClause})` : ''}`).join('; '),
+                                amount: deniedItems.reduce((sum, i) => sum + i.patientOop, 0)
                               })
                             }
+                            disabled={deniedItems.length === 0}
                             title="Draft AI HMO Medical Necessity Appeal"
                           >
                             Appeal

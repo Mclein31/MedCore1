@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { claimsAi, ClaimsAuditResult } from '@/api/ai';
 import {
   ShieldAlert,
@@ -24,12 +24,14 @@ export interface ClaimsPreflightScrubberModalProps {
   isOpen: boolean;
   onClose: () => void;
   encounter: any;
+  onAuditComplete?: (result: ClaimsAuditResult) => void;
 }
 
 export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModalProps> = ({
   isOpen,
   onClose,
-  encounter
+  encounter,
+  onAuditComplete
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,26 +42,32 @@ export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModal
   const [clearedForGateway, setClearedForGateway] = useState(false);
   const [showRiskExplanation, setShowRiskExplanation] = useState(false);
 
-  const runAudit = async () => {
+  const pendingRequest = useRef<AbortController | null>(null);
+  const completed = useRef(onAuditComplete);
+  completed.current = onAuditComplete;
+  const runAudit = useCallback(async () => {
     if (!encounter?.id) return;
-    setLoading(true);
-    setError(null);
-    setClearedForGateway(false);
+    pendingRequest.current?.abort();
+    const controller = new AbortController();
+    pendingRequest.current = controller;
+    setAuditResult(null); setLoading(true); setError(null); setClearedForGateway(false);
+    setCopiedAddendum(false); setCopiedDossier(false);
     try {
-      const res = await claimsAi.preflightScrub(encounter.id, forceEscalation);
-      setAuditResult(res);
+      const res = await claimsAi.preflightScrub(encounter.uuid || encounter.id, forceEscalation, controller.signal);
+      if (controller.signal.aborted) return;
+      setAuditResult(res); completed.current?.(res);
     } catch (err: any) {
-      setError(err?.message || 'Failed to complete claims forensic pre-flight audit.');
+      if (!controller.signal.aborted) setError(err?.message || 'Claims pre-flight audit failed.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  };
+  }, [encounter?.id, encounter?.uuid, forceEscalation]);
 
   useEffect(() => {
-    if (isOpen && encounter?.id) {
-      void runAudit();
-    }
-  }, [isOpen, encounter?.id, forceEscalation]);
+    if (!isOpen) return;
+    const timer = setTimeout(() => { void runAudit(); }, 0);
+    return () => { clearTimeout(timer); pendingRequest.current?.abort(); };
+  }, [isOpen, runAudit]);
 
   if (!isOpen || !encounter) return null;
 
@@ -88,7 +96,7 @@ export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModal
     const summary = `
 === MEDCORE CLINICAL CLAIMS AUDIT DOSSIER ===
 Encounter: ${encounter.encounterNumber} | Patient: ${encounter.patient?.fullName || encounter.patient?.maskedName}
-ICD-10: ${encounter.philhealth?.primaryIcd10} (${encounter.philhealth?.primaryDescription})
+ICD-10: ${auditResult.claimContext?.primaryIcd10 || encounter.philhealth?.primaryIcd10} (${auditResult.claimContext?.primaryDiagnosis || encounter.philhealth?.primaryDescription})
 RTH Risk Score: ${(auditResult.rthRiskScore * 100).toFixed(1)}% | Risk Level: ${auditResult.riskLevel}
 Clean Claim Readiness: ${auditResult.cleanClaimReadiness}% | Threshold: ${auditResult.passThreshold ? 'PASSED' : 'ACTION REQUIRED'}
 
@@ -131,12 +139,12 @@ Remediation: ${f.remediation}`).join('\n\n')}
                   <Cpu className="w-3 h-3 text-teal-600" />
                   {auditResult?.modelUsed
                     ? auditResult.modelUsed
-                        .replace('-deterministic-fallback', ' (Offline Mock)')
+
                         .replace('gemini-3.5-flash-lite', 'Gemini 3.5 Flash Lite')
                         .replace('gemini-3.1-flash-lite', 'Gemini 3.1 Flash Lite')
                     : forceEscalation
-                      ? 'Gemini 3.1 Flash Lite'
-                      : 'Gemini 3.5 Flash Lite'}
+                      ? 'Secondary model'
+                      : 'Generating…'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -168,6 +176,11 @@ Remediation: ${f.remediation}`).join('\n\n')}
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+            <strong>{auditResult?.claimContext?.primaryDiagnosis || encounter.philhealth?.primaryDescription}</strong>
+            <span className="ml-2 font-mono">{auditResult?.claimContext?.primaryIcd10 || encounter.philhealth?.primaryIcd10}</span>
+            <div className="mt-1">Case rate: {auditResult?.claimContext?.caseRateCode || encounter.philhealth?.caseRateCode} · ₱{(auditResult?.claimContext?.totalCaseRate ?? encounter.philhealth?.totalCaseRate ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
+          </div>
           {loading ? (
             <div className="py-16 text-center space-y-3">
               <RefreshCw className="w-8 h-8 text-teal-600 animate-spin mx-auto" />
@@ -388,7 +401,7 @@ Remediation: ${f.remediation}`).join('\n\n')}
                 {auditResult.flags.length === 0 ? (
                   <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm flex items-center gap-2">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    Zero clinical or procedural discrepancies detected. Claim dossier is 100% clean.
+                    No discrepancies detected in the supplied record. Verify the source chart before filing.
                   </div>
                 ) : (
                   <div className="space-y-2.5">

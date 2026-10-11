@@ -8,9 +8,9 @@ import { Button, IconButton, SegmentedTabs } from '@/components/common';
 import { ClaimsPreflightScrubberModal } from '@/components/ai/ClaimsPreflightScrubberModal';
 
 export const ClaimsEsoaPage: React.FC = () => {
-  const { encounters, printDocument, searchQuery: claimSearch } = useMedCore();
+  const { encounters, printDocument, searchQuery: claimSearch, refreshEncounters } = useMedCore();
   const [copied, setCopied] = useState(false);
-  const [selectedClaimId, setSelectedClaimId] = useState<string>(encounters[0]?.id || 'enc-8812');
+  const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [isXmlModalOpen, setIsXmlModalOpen] = useState(false);
   const [isAiScrubberOpen, setIsAiScrubberOpen] = useState(false);
   const [filterClaimStatus, setFilterClaimStatus] = useState<string>('ALL');
@@ -23,7 +23,18 @@ export const ClaimsEsoaPage: React.FC = () => {
   const claimPageSize = 8;
   useEffect(()=>{ setClaimPage(1); }, [claimSearch]);
 
-  const currentEncounter = encounters.find((e) => e.id === selectedClaimId) || encounters[0];
+  useEffect(() => {
+    if (!encounters.some(e => e.id === selectedClaimId) && encounters.length) setSelectedClaimId(encounters[0].id);
+  }, [encounters, selectedClaimId]);
+  const currentEncounter = encounters.find(e => e.id === selectedClaimId);
+  const [auditScores, setAuditScores] = useState<Record<string, { score: number; previousScore: number }>>({});
+  useEffect(() => {
+    const completed = Object.keys(auditScores).filter(id => {
+      const enc = encounters.find(e => e.id === id), pending = auditScores[id];
+      return !enc || enc.philhealth.rthRiskScore === pending.score || enc.philhealth.rthRiskScore !== pending.previousScore;
+    });
+    if (completed.length) setAuditScores(scores => Object.fromEntries(Object.entries(scores).filter(([id]) => !completed.includes(id))));
+  }, [encounters, auditScores]);
   const claim = currentEncounter?.philhealth;
   const xmlKey=JSON.stringify(currentEncounter);
 
@@ -53,12 +64,12 @@ export const ClaimsEsoaPage: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `eSOA_${currentEncounter.encounterNumber}.xml`;
+    a.download = `eSOA_${currentEncounter?.encounterNumber}.xml`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  if(!currentEncounter)return <div className="p-6 text-sm text-slate-600">No hospital claims are available.</div>;
+  if(!currentEncounter || !claim)return <div className="p-6 text-sm text-slate-600">Select an available hospital claim.</div>;
 
   const filteredClaims = encounters.filter((enc) => {
     if (filterClaimStatus === 'CLEAN' && enc.philhealth.status !== 'CLEAN') return false;
@@ -93,7 +104,7 @@ export const ClaimsEsoaPage: React.FC = () => {
   const safeClaimPage = Math.min(claimPage, totalClaimPages);
   const paginatedClaims = filteredClaims.slice((safeClaimPage - 1) * claimPageSize, safeClaimPage * claimPageSize);
 
-  const highRiskCount = encounters.filter((e) => e.philhealth.rthRiskScore > 0.4 || e.philhealth.status === 'WARNING' || e.philhealth.status === 'INTERCEPTED').length;
+  const highRiskCount = encounters.filter((e) => (auditScores[e.id]?.score ?? e.philhealth.rthRiskScore) > 0.15 || e.philhealth.status === 'WARNING' || e.philhealth.status === 'INTERCEPTED').length;
   const cleanCount = encounters.filter((e) => e.philhealth.status === 'CLEAN').length;
 
   const claimStatusTabs = [
@@ -196,7 +207,9 @@ export const ClaimsEsoaPage: React.FC = () => {
             <tbody className="divide-y divide-slate-100">
               {paginatedClaims.map((enc) => {
                 const isSelected = enc.id === selectedClaimId;
-                const isHighRisk = enc.philhealth.rthRiskScore > 0.4 || enc.philhealth.status === 'WARNING' || enc.philhealth.status === 'INTERCEPTED';
+                const score = auditScores[enc.id]?.score ?? enc.philhealth.rthRiskScore;
+                const isHighRisk = score > 0.15;
+                const auditStatus = auditScores[enc.id] !== undefined && ['CLEAN', 'WARNING', 'INTERCEPTED'].includes(enc.philhealth.status) ? (score <= 0.15 ? 'CLEAN' : 'WARNING') : enc.philhealth.status;
                 const pName = enc.patient.fullName || enc.patient.maskedName;
 
                 return (
@@ -243,17 +256,17 @@ export const ClaimsEsoaPage: React.FC = () => {
                     <td className="py-3.5 px-4 text-left text-xs font-mono font-bold">
                       {isHighRisk ? (
                         <span className="text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
-                          {enc.philhealth.rthRiskScore.toFixed(2)} (High Risk)
+                          {(score * 100).toFixed(1)}% (High Risk)
                         </span>
                       ) : (
                         <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                          {enc.philhealth.rthRiskScore.toFixed(2)} (Clean)
+                          {(score * 100).toFixed(1)}% (Pass)
                         </span>
                       )}
                     </td>
 
                     <td className="py-3.5 px-4 text-left text-xs">
-                      {enc.philhealth.status === 'CLEAN' ? (
+                      {auditStatus === 'CLEAN' && !isHighRisk ? (
                         <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Ready</span>
@@ -261,7 +274,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                       ) : (
                         <span className="inline-flex items-center gap-1 font-bold text-rose-700">
                           <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-                          <span>{enc.philhealth.status}</span>
+                          <span>{auditStatus}</span>
                         </span>
                       )}
                     </td>
@@ -579,6 +592,10 @@ export const ClaimsEsoaPage: React.FC = () => {
         isOpen={isAiScrubberOpen}
         onClose={() => setIsAiScrubberOpen(false)}
         encounter={currentEncounter}
+        onAuditComplete={(result) => {
+          setAuditScores(scores => ({ ...scores, [currentEncounter.id]: { score: result.rthRiskScore, previousScore: currentEncounter.philhealth.rthRiskScore } }));
+          void refreshEncounters(0, true);
+        }}
       />
     </div>
   );

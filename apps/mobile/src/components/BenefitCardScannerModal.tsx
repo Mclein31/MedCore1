@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -9,8 +9,10 @@ import {
   ActivityIndicator,
   Platform
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { cardImageDataUri } from '../lib/benefitCardImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Camera, ShieldCheck, CheckCircle2, AlertCircle, X, Sparkles, Upload, FileText } from 'lucide-react-native';
+import { Camera, CheckCircle2, AlertCircle, X, Sparkles, Upload } from 'lucide-react-native';
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';
 import { createAiApi, CardOcrResponse } from '../services/aiApi';
@@ -34,51 +36,48 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<CardOcrResponse | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const pendingRequest = useRef<AbortController | null>(null);
+  const activeSelection = useRef(0);
 
-  const processImageBase64 = async (base64Data: string) => {
-    setLoading(true);
-    setError(null);
+  useEffect(() => {
+    activeSelection.current++;
+    pendingRequest.current?.abort();
+    setLoading(false); setExtractedData(null); setError(null);
+    if (visible) setSelectedCategory(preferredCategory || 'ALL');
+    return () => { activeSelection.current++; pendingRequest.current?.abort(); };
+  }, [visible, preferredCategory, client]);
+
+  const processImageBase64 = async (base64Data: string, selection: number) => {
+    pendingRequest.current?.abort();
+    const controller = new AbortController();
+    pendingRequest.current = controller;
+    setLoading(true); setError(null); setExtractedData(null);
     try {
-      const api = createAiApi(client);
-      const res = await api.scanBenefitCard(
-        base64Data,
-        selectedCategory !== 'ALL' ? selectedCategory : undefined
-      );
-      setExtractedData(res);
-      if (onCardExtracted) {
-        onCardExtracted(res);
+      const res = await createAiApi(client).scanBenefitCard(base64Data,
+        selectedCategory !== 'ALL' ? selectedCategory : undefined, controller.signal);
+      if (controller.signal.aborted || selection !== activeSelection.current) return;
+      if (res.cardType === 'UNKNOWN' || !res.idNumber?.trim() || !res.memberFullName?.trim()) {
+        throw new Error('No readable benefit card was found. Select a clear photo of the card.');
       }
+      setExtractedData(res);
     } catch (err: any) {
-      setError(err?.message || 'Failed to scan benefit card. Please ensure the card is well-lit and clear.');
+      if (!controller.signal.aborted && selection === activeSelection.current) setError(err?.message || 'Card extraction failed. Please choose a clearer photo.');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && selection === activeSelection.current) setLoading(false);
     }
   };
 
-  const handleSelectFile = () => {
-    if (typeof document !== 'undefined') {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (e: any) => {
-        const file = e.target?.files?.[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result as string;
-            const base64Content = result.includes(',') ? result.split(',')[1] : result;
-            void processImageBase64(base64Content);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-    } else {
-      // In mobile test or native mock without web file picker:
-      // Provide demo base64 card scan
-      const demoCardBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
-      void processImageBase64(demoCardBase64);
+  const handleSelectFile = async () => {
+    const selection = ++activeSelection.current;
+    setError(null);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'], base64: true, quality: 1, allowsEditing: false
+      });
+      if (result.canceled || selection !== activeSelection.current) return;
+      await processImageBase64(cardImageDataUri(result.assets[0]), selection);
+    } catch (err: any) {
+      if (selection === activeSelection.current) setError(err?.message || 'The selected photo could not be opened.');
     }
   };
 
@@ -125,7 +124,10 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
               ].map((cat) => (
                 <Pressable
                   key={cat.id}
-                  onPress={() => setSelectedCategory(cat.id)}
+                  onPress={() => {
+                    activeSelection.current++; pendingRequest.current?.abort();
+                    setSelectedCategory(cat.id); setExtractedData(null); setError(null); setLoading(false);
+                  }}
                   style={[styles.categoryChip, selectedCategory === cat.id && styles.categoryChipActive]}
                 >
                   <Text style={[styles.categoryChipText, selectedCategory === cat.id && styles.categoryChipTextActive]}>
@@ -148,7 +150,7 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
                   Supports PhilHealth Member Data Record, Senior Citizen OSCA ID, PWD ID, PhilSys National ID, or commercial HMO card.
                 </Text>
 
-                <Pressable onPress={handleSelectFile} style={styles.uploadButton}>
+                <Pressable onPress={() => void handleSelectFile()} style={styles.uploadButton}>
                   <Upload size={18} color="#FFFFFF" />
                   <Text style={styles.uploadButtonText}>Select Card Image</Text>
                 </Pressable>
@@ -180,7 +182,7 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
                 <View style={styles.resultHeader}>
                   <View style={styles.verifiedBadge}>
                     <CheckCircle2 size={15} color="#15803D" />
-                    <Text style={styles.verifiedText}>Credential Verified</Text>
+                    <Text style={styles.verifiedText}>Extracted — review details</Text>
                   </View>
                   <Text style={styles.confidenceText}>
                     {Math.round(extractedData.confidenceScore * 100)}% Confidence
@@ -220,8 +222,8 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
                   <Pressable onPress={handleReset} style={styles.secondaryAction}>
                     <Text style={styles.secondaryActionText}>Scan Another</Text>
                   </Pressable>
-                  <Pressable onPress={onClose} style={styles.primaryAction}>
-                    <Text style={styles.primaryActionText}>Apply to Profile</Text>
+                  <Pressable onPress={() => { if (extractedData) onCardExtracted?.(extractedData); onClose(); }} style={styles.primaryAction}>
+                    <Text style={styles.primaryActionText}>{onCardExtracted ? 'Use These Details' : 'Done'}</Text>
                   </Pressable>
                 </View>
               </View>
