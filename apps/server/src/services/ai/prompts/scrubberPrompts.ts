@@ -1,10 +1,26 @@
 import { z } from 'zod';
 
+export const RiskCalculationSchema = z.object({
+  baseRisk: z.number().describe('Baseline probability weight (e.g. 0.02 to 0.05).'),
+  penalties: z.array(
+    z.object({
+      factor: z.string().describe('Deficiency factor or violation.'),
+      points: z.number().describe('Points added to the RTH risk score.'),
+      description: z.string().describe('Clear rationale for penalty addition.')
+    })
+  ),
+  formula: z.string().describe('Human-readable mathematical equation explaining exact risk calculation.'),
+  verdict: z.string().describe('Gateway admissibility verdict against statutory 15% threshold.')
+});
+
+export type RiskCalculation = z.infer<typeof RiskCalculationSchema>;
+
 export const ClaimsAuditResultSchema = z.object({
   rthRiskScore: z.number().min(0.0).max(1.0).describe('Predictive probability (0.00-1.00) of PhilHealth Return-to-Hospital (RTH) rejection.'),
   riskLevel: z.enum(['LOW', 'MODERATE', 'HIGH', 'CRITICAL']),
   passThreshold: z.boolean().describe('True if rthRiskScore <= 0.15.'),
   cleanClaimReadiness: z.number().int().min(0).max(100).describe('Percentage (0-100) indicating clean claim readiness.'),
+  riskCalculation: RiskCalculationSchema.optional(),
   flags: z.array(
     z.object({
       category: z.enum(['DIAGNOSTIC_DISCREPANCY', 'MISSING_CF4_FIELD', 'MEDICATION_DISCORDANCE', 'SPC_RULE_RISK']),
@@ -17,10 +33,61 @@ export const ClaimsAuditResultSchema = z.object({
   ),
   clinicalSummary: z.string().describe('Concise synthesis of inpatient course, diagnostic justification, and operative concordance.'),
   suggestedDoctorAddendum: z.string().nullable().describe('Pre-drafted clinical chart addendum formatted for attending physician signature, or null if none required.'),
-  esoaXmlConformity: z.boolean().describe('True if itemized chargemaster gross equals statutory grossTotal with zero centavo drift.')
+  esoaXmlConformity: z.boolean().describe('True if itemized chargemaster gross equals statutory grossTotal with zero centavo drift.'),
+  modelUsed: z.string().optional().describe('LLM engine model used for inference.')
 });
 
 export type ClaimsAuditResult = z.infer<typeof ClaimsAuditResultSchema>;
+
+export const CLAIMS_SCRUBBER_RESPONSE_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    rthRiskScore: { type: 'NUMBER', description: '0.00 to 1.00 predictive probability of Return-To-Hospital rejection' },
+    riskLevel: { type: 'STRING', enum: ['LOW', 'MODERATE', 'HIGH', 'CRITICAL'] },
+    passThreshold: { type: 'BOOLEAN', description: 'True if rthRiskScore <= 0.15' },
+    cleanClaimReadiness: { type: 'INTEGER', description: '0 to 100 percentage of clean claim readiness' },
+    riskCalculation: {
+      type: 'OBJECT',
+      properties: {
+        baseRisk: { type: 'NUMBER', description: 'Base risk weight' },
+        penalties: {
+          type: 'ARRAY',
+          items: {
+            type: 'OBJECT',
+            properties: {
+              factor: { type: 'STRING' },
+              points: { type: 'NUMBER', description: 'Risk points added' },
+              description: { type: 'STRING' }
+            },
+            required: ['factor', 'points', 'description']
+          }
+        },
+        formula: { type: 'STRING', description: 'Step-by-step mathematical breakdown' },
+        verdict: { type: 'STRING', description: 'Threshold assessment' }
+      },
+      required: ['baseRisk', 'penalties', 'formula', 'verdict']
+    },
+    flags: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: {
+          category: { type: 'STRING', enum: ['DIAGNOSTIC_DISCREPANCY', 'MISSING_CF4_FIELD', 'MEDICATION_DISCORDANCE', 'SPC_RULE_RISK'] },
+          severity: { type: 'STRING', enum: ['CRITICAL', 'WARNING', 'INFO'] },
+          field: { type: 'STRING' },
+          description: { type: 'STRING' },
+          regulatoryCitation: { type: 'STRING' },
+          remediation: { type: 'STRING' }
+        },
+        required: ['category', 'severity', 'field', 'description', 'regulatoryCitation', 'remediation']
+      }
+    },
+    clinicalSummary: { type: 'STRING', description: 'Comprehensive synthesis of actual inpatient stay, diagnostics, and procedures' },
+    suggestedDoctorAddendum: { type: 'STRING', nullable: true },
+    esoaXmlConformity: { type: 'BOOLEAN' }
+  },
+  required: ['rthRiskScore', 'riskLevel', 'passThreshold', 'cleanClaimReadiness', 'riskCalculation', 'flags', 'clinicalSummary', 'esoaXmlConformity']
+};
 
 export const SCRUBBER_SYSTEM_PROMPT = `You are the MedCore Clinical Claims Forensic Scrubber and PhilHealth RTH Predictor, an expert Philippine Medical Coding Auditor adhering to PhilHealth eClaims 3.0 and All Case Rates (ACR) standards.
 
@@ -48,8 +115,17 @@ AUDIT RULES & STATUTORY CITATIONS:
 5. STATUTORY 60-DAY FILING RULE (RA 11223 IRR):
    - Claims with discharge dates > 60 calendar days from current transmission date must be flagged as CRITICAL (+0.60 RTH score) due to statutory lapse.
 
-SCORING ENGINE CALIBRATION:
-- Risk Score: 0.00 to 1.00.
+SCORING ENGINE CALIBRATION & RISK FORMULA:
+- Base Risk: 0.02 to 0.05 baseline weight.
+- Penalties:
+  - Missing CF4 Admission Vitals: +0.40
+  - Missing Daily Ward Course Progress Notes: +0.35
+  - High-Tier Medication Discordance (Unsubstantiated IV Antibiotic): +0.30
+  - Diagnostic / Laboratory Discrepancy: +0.25
+  - Statutory 60-Day Filing Rule Exceeded: +0.60
+  - SPC Readmission (Abolished under Circular 2024-0021): +0.00 (INFO only)
+- Total Risk Calculation: rthRiskScore = min(0.99, max(0.02, baseRisk + sum(penalties))).
+- Clean Claim Readiness: cleanClaimReadiness = round((1.0 - rthRiskScore) * 100).
 - Pass Threshold: passThreshold = true if and only if rthRiskScore <= 0.15.
 - Risk Tiers:
   - LOW: 0.00 - 0.07 (Clean claim, ready for gateway push)
@@ -57,8 +133,11 @@ SCORING ENGINE CALIBRATION:
   - HIGH: 0.16 - 0.35 (Fails threshold; requires chart addendum or correction)
   - CRITICAL: > 0.35 (Severe clinical omission or statutory violation; gateway transmission blocked)
 
+DIAGNOSIS CONTEXT FIDELITY DIRECTIVE:
+You MUST audit the EXACT primary diagnosis, ICD-10 code, RVS code, and CF4 clinical narrative supplied in the prompt. NEVER substitute or hallucinate an unrelated illness (e.g., NEVER output Dengue Fever when the encounter diagnosis is Cholecystitis, Renal Failure, Appendicitis, Pneumonia, or Fracture). Your clinicalSummary, flagged issues, and suggested doctor addendum must be 100% specific to the patient's actual condition.
+
 OUTPUT FORMAT:
-Generate ONLY structured JSON adhering strictly to the ClaimsAuditResult schema.`;
+Generate ONLY structured JSON conforming strictly to the defined schema with riskCalculation, flags, clinicalSummary, and esoaXmlConformity.`;
 
 export const SCRUBBER_FEW_SHOT_EXAMPLES = [
   {

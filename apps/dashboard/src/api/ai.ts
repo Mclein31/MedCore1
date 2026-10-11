@@ -14,10 +14,21 @@ export interface ClaimsAuditResult {
   riskLevel: 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
   passThreshold: boolean;
   cleanClaimReadiness: number;
+  riskCalculation?: {
+    baseRisk: number;
+    penalties: Array<{
+      factor: string;
+      points: number;
+      description: string;
+    }>;
+    formula: string;
+    verdict: string;
+  };
   flags: ClaimsAuditFlag[];
   clinicalSummary: string;
   suggestedDoctorAddendum: string | null;
   esoaXmlConformity?: boolean;
+  modelUsed?: string;
 }
 
 export interface HmoAppealResponse {

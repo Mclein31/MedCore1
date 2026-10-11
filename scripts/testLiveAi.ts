@@ -4,7 +4,7 @@ import { coraService } from '../apps/server/src/services/ai/coraService';
 
 async function main() {
   console.log('================================================================================');
-  console.log('MEDCORE LIVE AI VERIFIER (Google AI Studio Gemini 2.5 Flash)');
+  console.log('MEDCORE LIVE AI VERIFIER (Google AI Studio Gemini 3.5 Flash Lite with 3.1 Flash Lite Failover)');
   console.log('================================================================================\n');
 
   const config = getAiConfig();
