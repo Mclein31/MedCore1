@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useRef } from 'react';
 import { DemoPaymentRail, DemoPaymentRecord } from '../types/billing';
 import { formatPeso } from '../utils/billFormatters';
@@ -137,8 +138,8 @@ export const DemoPaymentModal: React.FC<Props> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-60 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-        <div className="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-150">
+      <ViewportOverlay className="overflow-y-auto flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="nested">
+        <div className="bg-white rounded-xl max-w-xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
           {/* Demo Sandbox Watermark Banner */}
           <div className="bg-amber-500 text-slate-950 px-4 py-2 text-center text-xs font-black tracking-wider uppercase flex items-center justify-center gap-2 select-none shrink-0">
             <AlertTriangle className="w-4 h-4 text-slate-950 shrink-0" />
@@ -297,7 +298,7 @@ export const DemoPaymentModal: React.FC<Props> = ({
             </div>
           </div>
         </div>
-      </div>
+      </ViewportOverlay>
 
       {/* Processing Latency Overlay */}
       <PaymentProcessingOverlay rail={activeRail} isOpen={isProcessing} />

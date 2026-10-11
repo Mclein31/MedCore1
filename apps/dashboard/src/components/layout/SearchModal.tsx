@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect, useRef } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { Search, User, Bed, Shield, CornerDownLeft, Sparkles } from 'lucide-react';
@@ -133,9 +134,9 @@ export const SearchModal: React.FC = () => {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-start justify-center pt-20 px-4"
-      onClick={closeSearchModal}
+    <ViewportOverlay
+      className="flex items-start justify-center pt-20 px-4" backdropClassName="bg-slate-900/40 backdrop-blur-xs" motion="rise" layer="modal"
+      onDismiss={closeSearchModal}
     >
       <div
         className="w-full max-w-2xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
@@ -284,6 +285,6 @@ export const SearchModal: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

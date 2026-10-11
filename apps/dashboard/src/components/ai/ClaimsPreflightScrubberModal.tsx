@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { claimsAi, ClaimsAuditResult } from '@/api/ai';
 import {
@@ -116,9 +117,9 @@ Remediation: ${f.remediation}`).join('\n\n')}
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6"
-      onClick={onClose}
+    <ViewportOverlay
+      className="flex items-center justify-center p-4 sm:p-6" backdropClassName="bg-slate-900/50 backdrop-blur-xs" motion="rise" layer="modal"
+      onDismiss={onClose}
     >
       <div
         className="w-full max-w-4xl bg-white border border-slate-200 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
@@ -483,6 +484,6 @@ Remediation: ${f.remediation}`).join('\n\n')}
           </Button>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

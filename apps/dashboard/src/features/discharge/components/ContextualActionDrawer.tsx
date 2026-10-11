@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPeso, formatDuration } from '@/utils/formatters';
@@ -40,12 +41,12 @@ export const ContextualActionDrawer: React.FC = () => {
   const hmoName = enc.hmo.hmoName || enc.hmo.providerName;
 
   return (
-    <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex justify-end"
-      onClick={closeActionDrawer}
+    <ViewportOverlay
+      className="flex justify-end" backdropClassName="bg-slate-900/40 backdrop-blur-xs" motion="right" layer="modal"
+      onDismiss={closeActionDrawer}
     >
       <div
-        className="w-full max-w-lg bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-200"
+        className="w-full max-w-lg bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -275,6 +276,6 @@ export const ContextualActionDrawer: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };

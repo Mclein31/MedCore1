@@ -156,7 +156,7 @@ export const MainLayout: React.FC = () => {
   const renderApiErrorToast = () => {
     if (!apiError || !isAuthenticated) return null;
     return (
-      <div className="fixed bottom-5 right-5 z-70 max-w-md bg-rose-50 border border-rose-300 text-rose-900 px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+      <div className="fixed bottom-5 right-5 z-[3000] max-w-md bg-rose-50 border border-rose-300 text-rose-900 px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
         <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
         <div className="flex-1 text-xs">
           <div className="font-bold text-rose-950">Backend API Sync Notice</div>

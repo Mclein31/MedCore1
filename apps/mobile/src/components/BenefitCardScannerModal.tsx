@@ -1,6 +1,6 @@
+import { ModalOverlay } from './ModalOverlay';
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Modal,
   View,
   Text,
   Pressable,
@@ -86,17 +86,10 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
     setError(null);
   };
 
-  if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <View style={styles.backdrop}>
-        <View style={[styles.modalSheet, { paddingTop: Math.max(16, insets.top), paddingBottom: Math.max(16, insets.bottom) }]}>
+    <ModalOverlay visible={visible} onRequestClose={onClose}
+      panelStyle={[styles.modalSheet, { paddingTop: Math.max(16, insets.top), paddingBottom: Math.max(16, insets.bottom) }]}>
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
@@ -229,19 +222,13 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
               </View>
             )}
           </ScrollView>
-        </View>
-      </View>
-    </Modal>
+    </ModalOverlay>
   );
 };
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: C.scrim,
-    justifyContent: 'flex-end'
-  },
   modalSheet: {
+    width: '100%',
     backgroundColor: C.surface,
     borderTopLeftRadius: Radius.sheet,
     borderTopRightRadius: Radius.sheet,

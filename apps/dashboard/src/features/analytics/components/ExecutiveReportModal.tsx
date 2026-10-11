@@ -1,3 +1,4 @@
+import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
@@ -62,7 +63,7 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 backdrop-blur-2xs flex items-center justify-center p-4 sm:p-6">
+    <ViewportOverlay className="overflow-y-auto flex items-center justify-center p-4 sm:p-6" backdropClassName="bg-slate-900/40 backdrop-blur-2xs" motion="rise" layer="modal">
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
@@ -256,6 +257,6 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
           </Button>
         </div>
       </div>
-    </div>
+    </ViewportOverlay>
   );
 };
