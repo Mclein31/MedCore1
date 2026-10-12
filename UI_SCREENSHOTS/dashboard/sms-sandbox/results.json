@@ -1,0 +1,13 @@
+{
+  "sandboxOnly": true,
+  "actualDashboardComponents": true,
+  "actualLocalApiAndPostgres": true,
+  "externalCalls": 0,
+  "checks": [
+    "Discharge card nudge, persisted API response and sandbox preview",
+    "QuickSign nudge preview appears above modal and dismisses independently",
+    "Estimator requires a real encounter and sends link-free orientation rather than procedure data",
+    "New admission forwards entered mobile number and displays its confirmed intake simulation"
+  ],
+  "pageErrors": []
+}

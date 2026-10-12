@@ -1,3 +1,4 @@
+import { notifyIssuedGatePass } from '../services/smsDispatchService';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -304,8 +305,16 @@ paymentsApp.post(
     const payment = txResult.paymentRecord;
     const receipt = txResult.receiptRecord;
     const pass = txResult.gatePassRecord;
+    const smsNotification = pass?.status === 'ACTIVE_READY_FOR_EXIT'
+      ? await notifyIssuedGatePass({ encounterId: txResult.encounterId, passNumber: pass.passNumber, user, env: c.env as any, ipAddress: getClientIp(c) })
+      : undefined;
+
     return c.json({
       success: true,
+      smsNotification: patientResponse ? smsNotification?.dispatch ? {
+        messageId: smsNotification.dispatch.messageId, simulated: smsNotification.dispatch.simulated,
+        deliveryStatus: smsNotification.dispatch.deliveryStatus
+      } : smsNotification : smsNotification,
       cached: txResult.cached,
       payment: patientResponse ? {
         id: payment.id, paymentReference: payment.paymentReference, amount: Number(payment.amount),

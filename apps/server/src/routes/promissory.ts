@@ -1,3 +1,4 @@
+import { notifyIssuedGatePass } from '../services/smsDispatchService';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -236,8 +237,16 @@ promissoryApp.post(
     const patientResponse = user.role === 'PATIENT_GUARANTOR';
     const note = txResult.promissoryNote;
     const pass = txResult.dischargePass;
+    const smsNotification = pass?.status === 'ACTIVE_READY_FOR_EXIT'
+      ? await notifyIssuedGatePass({ encounterId: txResult.encounterId, passNumber: pass.passNumber, user, env: c.env as any, ipAddress: getClientIp(c) })
+      : undefined;
+
     return c.json({
       success: true,
+      smsNotification: patientResponse ? smsNotification?.dispatch ? {
+        messageId: smsNotification.dispatch.messageId, simulated: smsNotification.dispatch.simulated,
+        deliveryStatus: smsNotification.dispatch.deliveryStatus
+      } : smsNotification : smsNotification,
       cached: txResult.cached,
       promissoryNote: patientResponse ? {
         id: note.id, noteNumber: note.noteNumber, borrowerName: note.borrowerName,

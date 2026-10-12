@@ -1,3 +1,4 @@
+import { getPersistedSmsOutbox } from '../services/smsDispatchService';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
@@ -9,6 +10,9 @@ import { getStaffNotifications } from '../services/staffNotifications';
 
 const notificationsApp = new Hono();
 notificationsApp.use('*',requireAuth,requireRole(['BILLING_SPECIALIST','HMO_COORDINATOR','CLAIMS_ENCODER','HOSPITAL_CFO','ATTENDING_PHYSICIAN','LOBBY_SECURITY']));
+notificationsApp.get('/sms-outbox',requireRole(['BILLING_SPECIALIST','HOSPITAL_CFO','ATTENDING_PHYSICIAN']),async c=>{
+  return c.json(await getPersistedSmsOutbox(c.get('user')));
+});
 const query = z.object({limit:z.coerce.number().int().min(1).max(100).default(30)});
 notificationsApp.get('/',zValidator('query',query),async c=>{
   const user=c.get('user');

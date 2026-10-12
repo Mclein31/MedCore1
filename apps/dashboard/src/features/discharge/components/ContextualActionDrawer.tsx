@@ -26,7 +26,7 @@ export const ContextualActionDrawer: React.FC = () => {
     settlePatientBalance,
     openDoctorQuickSign,
     openPromissoryModal,
-    openGatePassModal
+    openGatePassModal, nudgeDoctor, isSmsSending, activeRole
   } = useMedCore();
 
   if (!isActionDrawerOpen) return null;
@@ -127,11 +127,12 @@ export const ContextualActionDrawer: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-2.5 pt-1">
                 <button
-                  disabled title="SMS delivery is not configured"
+                  disabled={enc.stage !== 'DOCTOR_PF_PENDING' || isSmsSending(enc.id) || !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)}
+                  onClick={() => void nudgeDoctor(enc.id)} title="Preview a simulated doctor SMS"
                   className="py-2.5 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
                   <Send className="w-3.5 h-3.5 text-slate-500" />
-                  <span>SMS Unavailable</span>
+                  <span>{isSmsSending(enc.id) ? 'Simulating…' : 'Nudge Doctor (SMS)'}</span>
                 </button>
                 <button
                   onClick={openDoctorQuickSign}

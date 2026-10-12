@@ -782,3 +782,23 @@ export const aiResultCache = pgTable('ai_result_cache', {
   failure: jsonb('failure'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 }, table => ({ expiry: index('ai_result_cache_expiry_idx').on(table.updatedAt) }));
+
+// Private persistent sandbox history complements the bounded diagnostic memory outbox.
+export const smsDispatches = pgTable('sms_dispatches', {
+  id: uuid('id').primaryKey(),
+  facilityId: uuid('facility_id').notNull().references(() => facilities.id, { onDelete: 'restrict' }),
+  encounterId: uuid('encounter_id').notNull().references(() => encounters.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+  recipientDoctorId: uuid('recipient_doctor_id').references(() => users.id, { onDelete: 'set null' }),
+  requestKey: varchar('request_key', { length: 128 }).notNull(),
+  templateType: varchar('template_type', { length: 32 }).notNull(),
+  recipientPhone: varchar('recipient_phone', { length: 32 }).notNull(),
+  recipientName: varchar('recipient_name', { length: 255 }).notNull(),
+  messageBody: text('message_body').notNull(),
+  isSimulated: boolean('is_simulated').notNull(),
+  result: jsonb('result').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+}, table => ({
+  request: unique('sms_dispatches_facility_request_key').on(table.facilityId, table.requestKey),
+  facilityTime: index('sms_dispatches_facility_time').on(table.facilityId, table.createdAt)
+}));

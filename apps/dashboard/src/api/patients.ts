@@ -1,3 +1,4 @@
+import type { SmsDispatchResponse, SmsDispatchResult } from '../../../shared/sms';
 import { ApiClient, defaultApiClient } from './client';
 
 export interface EncounterFilters {
@@ -9,6 +10,16 @@ export interface EncounterFilters {
 
 export class PatientsApi {
   constructor(private client: ApiClient = defaultApiClient) {}
+
+  async nudgeDoctor(id: string, requestKey: string = crypto.randomUUID()): Promise<SmsDispatchResponse> {
+    return this.client.request(`/encounters/${id}/nudge-doctor`, { method: 'POST', headers: { 'Idempotency-Key': requestKey }, body: '{}' });
+  }
+  async notifyPatientSms(id: string, templateType: 'BILL_READY' | 'INTAKE_ORIENTATION' = 'BILL_READY', requestKey: string = crypto.randomUUID()): Promise<SmsDispatchResponse> {
+    return this.client.request(`/encounters/${id}/notify-patient-sms`, { method: 'POST', headers: { 'Idempotency-Key': requestKey }, body: JSON.stringify({ templateType }) });
+  }
+  async getSmsOutbox(): Promise<{ items: Array<SmsDispatchResult & { id: string }> }> {
+    return this.client.request('/notifications/sms-outbox');
+  }
 
   async releaseGatePass(id:string):Promise<{success:boolean;encounter:any}>{return this.client.request(`/encounters/${id}/gate-pass`,{method:'POST'});}
 
