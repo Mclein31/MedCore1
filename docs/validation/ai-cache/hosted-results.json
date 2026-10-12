@@ -1,0 +1,22 @@
+{
+  "hostedCoraVerified": true,
+  "concurrentResponsesIdentical": true,
+  "subsequentRequestUsedCachedResult": true,
+  "selectedLanguageAndBalanceVerified": true,
+  "clinicalRecordsReadOnly": true,
+  "noPatientNamesIdentifiersAmountsRepliesOrTokensSaved": true,
+  "results": [
+    {
+      "cache": "GENERATED",
+      "elapsedMs": 6953
+    },
+    {
+      "cache": "HIT",
+      "elapsedMs": 9196
+    },
+    {
+      "cache": "HIT",
+      "elapsedMs": 2150
+    }
+  ]
+}

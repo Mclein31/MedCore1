@@ -1,3 +1,4 @@
+import { cachedAiResult, AI_CACHE_TTL } from './aiResultCache';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { philhealthClaims } from '../../db/schema';
@@ -5,7 +6,7 @@ import { getHydratedEncounter, invalidateEncountersCache } from '../../routes/en
 import { getClaimEsoaXml } from '../../routes/claims';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
 import { AiInferenceError, geminiClient } from './geminiClient';
-import { parseAiResponse } from './structuredResponse';
+import { parseAiResponse, validateAiResult } from './structuredResponse';
 import { getAiConfig } from '../../config/aiConfig';
 import { ClaimsAuditResult, ClaimsAuditResultSchema, SCRUBBER_SYSTEM_PROMPT, CLAIMS_SCRUBBER_RESPONSE_SCHEMA, buildScrubberPrompt } from './prompts/scrubberPrompts';
 
@@ -13,6 +14,8 @@ export interface RunPreflightAuditOptions {
   encounterId: string;
   facilityId?: string;
   forceEscalation?: boolean;
+  userId?: string;
+  forceRefresh?: boolean;
   env?: Record<string, any>;
 }
 
@@ -86,45 +89,64 @@ export class ClaimsForensicService {
       items: enc.items.filter(i => !['WAIVED', 'SUPERVISORY_WAIVED'].includes(i.status)).map(i => ({ description: i.description, category: i.category, quantity: i.qty }))
     };
     // Scrub the complete outgoing prompt once so token mappings cannot collide.
-    const scrubbed = scrubPatientData(buildScrubberPrompt(JSON.stringify(profile), enc.philhealth.primaryIcd10, null, xml, enc.waterfall.grossTotal), {
+    const rawPrompt = buildScrubberPrompt(JSON.stringify(profile), enc.philhealth.primaryIcd10, null, xml, enc.waterfall.grossTotal);
+    const scrubbed = scrubPatientData(rawPrompt, {
       fullName: enc.patient.fullName, mrn: enc.patient.mrn, philhealthPin: enc.patient.philhealthPin,
       contactNumber: enc.patient.contactNumber, roomBed: enc.roomBed, encounterNumber: enc.encounterNumber,
       doctorName: enc.attendingDoctor, doctorPan: enc.doctorPan, claimNumber: enc.philhealth.id,
       seniorCitizenId: enc.patient.seniorCitizenId, pwdId: enc.patient.pwdId
     });
+    const checkCurrentChart = async () => {
+      const latest = await getHydratedEncounter(enc.uuid, options.facilityId);
+      if (!latest || auditFingerprint(latest) !== auditFingerprint(enc) ||
+        await getClaimEsoaXml(enc.philhealth.id, options.facilityId!) !== xml) {
+        throw new AiInferenceError('AI_STALE_CONTEXT', 'The selected claim changed during generation. Run the audit again using the updated record.', 409);
+      }
+      return latest;
+    };
     try {
       const config = getAiConfig(options.env);
-      const response = await geminiClient.generate({
-        model: options.forceEscalation ? config.geminiProModel : config.geminiModel,
-        systemInstruction: SCRUBBER_SYSTEM_PROMPT, prompt: scrubbed.scrubbedText,
-        responseMimeType: 'application/json', responseSchema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA,
-        temperature: 0.1, env: options.env
+      const cachedAudit = await cachedAiResult({
+        module: 'claims-preflight', scope: { facilityId: options.facilityId, userId: options.userId, encounterId: enc.uuid },
+        input: { prompt: rawPrompt, source: auditFingerprint(enc), system: SCRUBBER_SYSTEM_PROMPT,
+          schema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA, today: new Date().toISOString().slice(0, 10), escalated: !!options.forceEscalation },
+        ttlMs: AI_CACHE_TTL.claims, env: options.env, forceRefresh: options.forceRefresh,
+        validate: validateAiResult(ClaimsAuditResultSchema.required({ modelUsed: true })),
+        generate: async () => {
+          const response = await geminiClient.generate({
+            model: options.forceEscalation ? config.geminiProModel : config.geminiModel,
+            systemInstruction: SCRUBBER_SYSTEM_PROMPT, prompt: scrubbed.scrubbedText,
+            responseMimeType: 'application/json', responseSchema: CLAIMS_SCRUBBER_RESPONSE_SCHEMA,
+            temperature: 0.1, env: options.env
+          });
+          const parsed = parseAiResponse(response, ClaimsAuditResultSchema);
+          const addFlag = (field: string, description: string) => {
+            const existing = parsed.flags.find(f => canonicalField(f) === field && f.category === 'MISSING_CF4_FIELD');
+            if (existing) existing.severity = 'CRITICAL';
+            else parsed.flags.push({ category: 'MISSING_CF4_FIELD', severity: 'CRITICAL', field, description,
+              regulatoryCitation: 'CF4 completeness review', remediation: 'Verify and complete the source chart before filing.' });
+          };
+          if (!enc.philhealth.cf4VitalsRecorded) addFlag('cf4VitalsRecorded', 'Admission vital signs are marked as not recorded.');
+          if (!enc.philhealth.cf4CourseInWardRecorded) addFlag('cf4CourseInWardRecorded', 'Course in ward is marked as not recorded.');
+          if (!enc.philhealth.cf4LabsConsistent) addFlag('cf4LabsConsistent', 'Diagnostic documentation is marked as inconsistent.');
+          if (enc.primaryIcd10 !== enc.philhealth.primaryIcd10) {
+            const existing = parsed.flags.find(f => f.category === 'DIAGNOSTIC_DISCREPANCY' && f.field === 'primaryIcd10');
+            if (existing) existing.severity = 'CRITICAL';
+            else parsed.flags.push({ category: 'DIAGNOSTIC_DISCREPANCY', severity: 'CRITICAL', field: 'primaryIcd10',
+              description: `Encounter diagnosis ${enc.primaryIcd10} differs from claim diagnosis ${enc.philhealth.primaryIcd10}.`,
+              regulatoryCitation: 'Claim and encounter diagnostic consistency review', remediation: 'Reconcile the claim code with the documented encounter diagnosis.' });
+          }
+          await checkCurrentChart();
+          return { ...normalizeAuditRisk(parsed), modelUsed: response.modelUsed };
+        }
       });
-      const parsed = parseAiResponse(response, ClaimsAuditResultSchema);
-      const addFlag = (field: string, description: string) => {
-        const existing = parsed.flags.find(f => canonicalField(f) === field && f.category === 'MISSING_CF4_FIELD');
-        if (existing) existing.severity = 'CRITICAL';
-        else parsed.flags.push({ category: 'MISSING_CF4_FIELD', severity: 'CRITICAL', field, description,
-          regulatoryCitation: 'CF4 completeness review', remediation: 'Verify and complete the source chart before filing.' });
-      };
-      if (!enc.philhealth.cf4VitalsRecorded) addFlag('cf4VitalsRecorded', 'Admission vital signs are marked as not recorded.');
-      if (!enc.philhealth.cf4CourseInWardRecorded) addFlag('cf4CourseInWardRecorded', 'Course in ward is marked as not recorded.');
-      if (!enc.philhealth.cf4LabsConsistent) addFlag('cf4LabsConsistent', 'Diagnostic documentation is marked as inconsistent.');
-      if (enc.primaryIcd10 !== enc.philhealth.primaryIcd10) {
-        const existing = parsed.flags.find(f => f.category === 'DIAGNOSTIC_DISCREPANCY' && f.field === 'primaryIcd10');
-        if (existing) existing.severity = 'CRITICAL';
-        else parsed.flags.push({ category: 'DIAGNOSTIC_DISCREPANCY', severity: 'CRITICAL', field: 'primaryIcd10',
-          description: `Encounter diagnosis ${enc.primaryIcd10} differs from claim diagnosis ${enc.philhealth.primaryIcd10}.`,
-          regulatoryCitation: 'Claim and encounter diagnostic consistency review', remediation: 'Reconcile the claim code with the documented encounter diagnosis.' });
-      }
-      const audit = normalizeAuditRisk(parsed);
+      const audit: ClaimsAuditResult = cachedAudit;
       audit.clinicalSummary = rehydrateText(audit.clinicalSummary, scrubbed.tokenMap);
       audit.flags = audit.flags.map(f => ({ ...f, description: rehydrateText(f.description, scrubbed.tokenMap), remediation: rehydrateText(f.remediation, scrubbed.tokenMap) }));
       if (audit.suggestedDoctorAddendum) audit.suggestedDoctorAddendum = rehydrateText(audit.suggestedDoctorAddendum, scrubbed.tokenMap);
-      audit.modelUsed = response.modelUsed;
+
       audit.claimContext = { encounterId: enc.uuid, primaryDiagnosis: enc.philhealth.primaryDescription, primaryIcd10: enc.philhealth.primaryIcd10, caseRateCode: enc.philhealth.caseRateCode, totalCaseRate: enc.philhealth.totalCaseRate };
-      const latest = await getHydratedEncounter(enc.uuid, options.facilityId);
-      if (!latest || auditFingerprint(latest) !== auditFingerprint(enc)) throw new AiInferenceError('AI_STALE_CONTEXT', 'The selected claim changed during generation. Run the audit again using the updated record.', 409);
+      const latest = await checkCurrentChart();
       const status = ['CLEAN', 'WARNING', 'INTERCEPTED'].includes(latest.philhealth.status) ? (audit.passThreshold ? 'CLEAN' as const : 'WARNING' as const) : latest.philhealth.status;
       await db.update(philhealthClaims).set({ rthRiskScore: audit.rthRiskScore.toFixed(4), status, updatedAt: new Date() }).where(eq(philhealthClaims.encounterId, enc.uuid));
       invalidateEncountersCache(options.facilityId);

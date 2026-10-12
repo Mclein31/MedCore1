@@ -768,3 +768,17 @@ export const aiAuditLogs = pgTable('ai_audit_logs', {
   responseSummary: text('response_summary'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
 });
+
+// Validated, privately scoped AI results. Inputs/images are represented only by hashes.
+export const aiResultCache = pgTable('ai_result_cache', {
+  cacheKey: varchar('cache_key', { length: 64 }).primaryKey(),
+  module: varchar('module', { length: 64 }).notNull(),
+  result: jsonb('result'),
+  generationToken: uuid('generation_token'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  leaseToken: uuid('lease_token'),
+  leaseUntil: timestamp('lease_until', { withTimezone: true }),
+  failedLease: uuid('failed_lease'),
+  failure: jsonb('failure'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
+}, table => ({ expiry: index('ai_result_cache_expiry_idx').on(table.updatedAt) }));

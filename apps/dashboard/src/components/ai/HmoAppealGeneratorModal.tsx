@@ -42,7 +42,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
   const [activeTab, setActiveTab] = useState<'PREVIEW' | 'EDIT'>('PREVIEW');
 
   const pendingRequest = useRef<AbortController | null>(null);
-  const generateAppeal = useCallback(async () => {
+  const generateAppeal = useCallback(async (forceRefresh = false) => {
     pendingRequest.current?.abort();
     const controller = new AbortController();
     pendingRequest.current = controller;
@@ -54,7 +54,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
     setLoading(true);
     try {
       const res = await hmoAi.generateAppeal(encounter.uuid || encounter.id, deniedItemDescription, deniedAmount,
-        hmoProviderName || encounter.hmo?.providerName, undefined, controller.signal);
+        hmoProviderName || encounter.hmo?.providerName, undefined, controller.signal, forceRefresh);
       if (controller.signal.aborted) return;
       setAppealData(res); setEditableMarkdown(res.appealLetterMarkdown);
     } catch (err: any) {
@@ -209,7 +209,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
                   </button>
                 </div>
 
-                <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => void generateAppeal()}>
+                <Button size="sm" variant="secondary" icon={RefreshCw} onClick={() => void generateAppeal(true)}>
                   Regenerate
                 </Button>
               </div>

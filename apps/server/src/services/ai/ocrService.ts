@@ -1,4 +1,5 @@
-import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
+import { cachedAiResult, AI_CACHE_TTL, aiInputDigest } from './aiResultCache';
+import { jsonResponseSchema, parseAiResponse, validateAiResult } from './structuredResponse';
 import { geminiClient } from './geminiClient';
 import {
   CardOcrResponse,
@@ -17,6 +18,9 @@ export type AllowedCardCategory =
 export interface ExtractCardOptions {
   imageBase64: string;
   cardCategory?: AllowedCardCategory | string;
+  userId?: string;
+  facilityId?: string;
+  forceRefresh?: boolean;
   env?: Record<string, any>;
 }
 
@@ -29,25 +33,33 @@ export class OcrService {
     }
 
     // Clean image data prefix if present (e.g., data:image/png;base64,)
-    const mimeType = imageBase64.match(/^data:(image\/[a-z+.-]+);base64,/i)?.[1] || 'image/jpeg';
-    const cleanBase64 = imageBase64.replace(/^data:image\/[a-z+.-]+;base64,/i, '');
+    const mimeType = imageBase64.match(/^data:(image\/[a-z+.-]+);base64,/i)?.[1]?.toLowerCase() || 'image/jpeg';
+    const cleanBase64 = imageBase64.replace(/^data:image\/[a-z+.-]+;base64,/i, '').replace(/\s/g, '');
 
     const prompt = buildOcrPrompt(cardCategory);
 
-    const response = await geminiClient.generate({
-      systemInstruction: OCR_SYSTEM_PROMPT,
-      prompt,
-      parts: [
-        { text: prompt },
-        { inlineData: { mimeType, data: cleanBase64 } }
-      ],
-      responseMimeType: 'application/json',
-      responseJsonSchema: jsonResponseSchema(CardOcrResponseSchema),
-      temperature: 0.1,
-      env
-    });
+    return cachedAiResult({
+      module: 'card-ocr', scope: { facilityId: options.facilityId, userId: options.userId },
+      input: { image: aiInputDigest(cleanBase64), mimeType, prompt, system: OCR_SYSTEM_PROMPT, schema: jsonResponseSchema(CardOcrResponseSchema) },
+      ttlMs: AI_CACHE_TTL.ocr, env, forceRefresh: options.forceRefresh,
+      validate: validateAiResult(CardOcrResponseSchema.required({ modelUsed: true })),
+      generate: async () => {
+        const response = await geminiClient.generate({
+          systemInstruction: OCR_SYSTEM_PROMPT,
+          prompt,
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType, data: cleanBase64 } }
+          ],
+          responseMimeType: 'application/json',
+          responseJsonSchema: jsonResponseSchema(CardOcrResponseSchema),
+          temperature: 0.1,
+          env
+        });
 
-    return { ...parseAiResponse(response, CardOcrResponseSchema), modelUsed: response.modelUsed };
+        return { ...parseAiResponse(response, CardOcrResponseSchema), modelUsed: response.modelUsed };
+      }
+    });
   }
 }
 

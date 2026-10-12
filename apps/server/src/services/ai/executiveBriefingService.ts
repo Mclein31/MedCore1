@@ -1,4 +1,5 @@
-import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
+import { cachedAiResult, AI_CACHE_TTL } from './aiResultCache';
+import { jsonResponseSchema, parseAiResponse, validateAiResult } from './structuredResponse';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { encounters } from '../../db/schema';
@@ -14,29 +15,13 @@ import { moneyCents } from '../statutoryWaterfall';
 export interface GenerateExecutiveBriefingOptions {
   facilityId?: string;
   forceRefresh?: boolean;
+  userId?: string;
   env?: Record<string, any>;
 }
-
-interface CachedBriefing {
-  data: ExecutiveBriefingResponse;
-  timestamp: number;
-}
-
-const briefingCache = new Map<string, CachedBriefing>();
-const BRIEFING_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export class ExecutiveBriefingService {
   async generateBriefing(options: GenerateExecutiveBriefingOptions = {}): Promise<ExecutiveBriefingResponse> {
     const { facilityId, forceRefresh } = options;
-    const cacheKey = facilityId || 'default';
-
-    if (!forceRefresh) {
-      const cached = briefingCache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < BRIEFING_TTL_MS) {
-        return cached.data;
-      }
-    }
-
     let allEncountersQuery = db.select().from(encounters);
     const allEncounters = facilityId
       ? await allEncountersQuery.where(eq(encounters.facilityId, facilityId))
@@ -100,27 +85,34 @@ export class ExecutiveBriefingService {
     // Construct prompt
     const prompt = buildExecutiveBriefingPrompt(telemetryMetrics);
 
-    const response = await geminiClient.generate({
-      systemInstruction: BRIEFING_SYSTEM_PROMPT,
-      prompt,
-      responseMimeType: 'application/json',
-      responseJsonSchema: jsonResponseSchema(ExecutiveBriefingResponseSchema),
-      temperature: 0.2,
-      env: options.env
-    });
+    return cachedAiResult({
+      module: 'executive-briefing', scope: { facilityId, userId: options.userId },
+      input: { prompt, system: BRIEFING_SYSTEM_PROMPT, schema: jsonResponseSchema(ExecutiveBriefingResponseSchema), today },
+      ttlMs: AI_CACHE_TTL.briefing, env: options.env, forceRefresh,
+      validate: validateAiResult(ExecutiveBriefingResponseSchema.required({ modelUsed: true })),
+      generate: async () => {
+        const response = await geminiClient.generate({
+          systemInstruction: BRIEFING_SYSTEM_PROMPT,
+          prompt,
+          responseMimeType: 'application/json',
+          responseJsonSchema: jsonResponseSchema(ExecutiveBriefingResponseSchema),
+          temperature: 0.2,
+          env: options.env
+        });
 
-    const briefing = parseAiResponse(response, ExecutiveBriefingResponseSchema);
-    briefing.modelUsed = response.modelUsed;
-    briefing.generatedAt = new Date().toISOString();
-    Object.assign(briefing.metricsSummary, {
-      activeInpatients: activeInpatients.length,
-      averageDischargeTatMinutes: avgTat,
-      slaTargetMinutes: 45,
-      trappedCapitalPesos: trappedRevenue,
-      reclaimedBedHoursLast24h: null
+        const briefing = parseAiResponse(response, ExecutiveBriefingResponseSchema);
+        briefing.modelUsed = response.modelUsed;
+        briefing.generatedAt = new Date().toISOString();
+        Object.assign(briefing.metricsSummary, {
+          activeInpatients: activeInpatients.length,
+          averageDischargeTatMinutes: avgTat,
+          slaTargetMinutes: 45,
+          trappedCapitalPesos: trappedRevenue,
+          reclaimedBedHoursLast24h: null
+        });
+        return { ...briefing, modelUsed: response.modelUsed };
+      }
     });
-    briefingCache.set(cacheKey, { data: briefing, timestamp: Date.now() });
-    return briefing;
   }
 }
 

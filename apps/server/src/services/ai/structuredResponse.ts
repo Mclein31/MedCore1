@@ -13,3 +13,11 @@ export function parseAiResponse<T>(response: GeminiGenerateResponse, schema: z.Z
   }
   return parsed.data;
 }
+
+export function validateAiResult<T>(schema: z.ZodType<T>): (value: unknown) => T {
+  return value => {
+    const parsed = schema.safeParse(value);
+    if (!parsed.success) throw new AiInferenceError('AI_INVALID_RESPONSE', 'The AI response did not match the required format. No draft was accepted.');
+    return parsed.data;
+  };
+}
