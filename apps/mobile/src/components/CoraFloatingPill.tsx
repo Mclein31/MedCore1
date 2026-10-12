@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable, Text, StyleSheet, View } from 'react-native';
 import { Sparkles } from 'lucide-react-native';
 import { C, Radius } from './theme';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export interface CoraFloatingPillProps {
   onPress: () => void;
@@ -14,14 +15,17 @@ export const CoraFloatingPill: React.FC<CoraFloatingPillProps> = ({
   label = 'Ask Cora AI',
   style
 }) => {
+  const reduced = useReducedMotion();
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel="Ask Cora AI Billing Concierge"
+      accessibilityLabel={label}
+      accessibilityHint="Open your billing concierge"
       style={({ pressed }) => [
         styles.pill,
         pressed && styles.pillPressed,
+        pressed && !reduced && { transform: [{ scale: 0.98 }] },
         style
       ]}
     >
@@ -52,8 +56,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)'
   },
   pillPressed: {
-    opacity: 0.88,
-    transform: [{ scale: 0.98 }]
+    opacity: 0.88
   },
   iconCircle: {
     width: 24,

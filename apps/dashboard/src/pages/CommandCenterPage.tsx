@@ -14,14 +14,13 @@ import {
   AlertTriangle,
   UserPlus,
   Scale,
-  Bed,
-  Layers,
-  DoorOpen
+  Bed
 } from 'lucide-react';
 
 export const CommandCenterPage: React.FC = () => {
   const {
     encounters,
+    currentUser,
     setActiveRoute,
     selectEncounter,
     approveHmoFinalLoa,
@@ -57,56 +56,35 @@ export const CommandCenterPage: React.FC = () => {
   const totalHmoInFlight = encounters.reduce((sum, e) => sum + e.hmo.approvedAmount, 0);
 
   return (
-    <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-slate-50">
-      {/* Top Header Bar */}
-      <div className="h-11 px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 z-10 shadow-2xs">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-            Hospital Operations Home
-          </h1>
-          <span className="text-slate-300 hidden sm:inline">·</span>
-          <span className="text-xs font-semibold text-slate-500 hidden sm:inline">
-            St. Jude Medical Center Manila · Shift 07:00 - 15:00
-          </span>
+    <div className="operations-page flex-1 flex flex-col h-full min-h-0 overflow-hidden">
+      <div className="operations-heading">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500">Hospital operations</p>
+          <h1 className="mt-1 text-2xl sm:text-3xl font-semibold text-slate-900 tracking-tight">Overview</h1>
+          <p className="mt-2 text-sm text-slate-600">{currentUser?.facilityName || 'Your hospital'} · {encounters.length} encounters tracked</p>
         </div>
-
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Live Data Feed · 250 Inpatients Tracked</span>
-          </span>
-
-          <Button
-            size="sm"
-            variant="primary"
-            icon={UserPlus}
-            onClick={openAdmitPatientModal}
-            title="Admit new patient and allocate hospital bed"
-          >
-            + Admit Inpatient
-          </Button>
-        </div>
+        <Button size="lg" variant="primary" icon={UserPlus} onClick={openAdmitPatientModal}
+          className="rounded-full bg-brand-teal hover:bg-brand-teal-dark active:bg-brand-teal-dark"
+          title="Admit new patient and allocate hospital bed">Admit inpatient</Button>
       </div>
 
-      {/* Main 4 Quick Nav Cards */}
-      <PriorityActionStrip />
-
       {/* Main Scrollable Executive Dashboard Content */}
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 space-y-4">
+      <div className="operations-content flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <PriorityActionStrip />
         {/* Executive AI Briefing Telemetry */}
-        <ExecutiveAiBriefingCard />
+        <ExecutiveAiBriefingCard defaultCollapsed />
 
         {/* Tier 1: 3-Pillar Operational Scorecard */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           {/* Card 1: Active Inpatient Census & Bed Utilization */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="operations-card bg-white p-5 rounded-2xl border border-slate-200 space-y-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
                     <Bed className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-sm font-medium text-slate-600">
                     Census &amp; Bed Capacity
                   </span>
                 </div>
@@ -115,9 +93,9 @@ export const CommandCenterPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="mt-3 flex items-baseline justify-between">
+              <div className="mt-3 flex flex-wrap gap-3 items-baseline justify-between">
                 <div>
-                  <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+                  <div className="operations-metric font-semibold text-slate-900 tabular-nums">
                     182 / 200
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
@@ -151,14 +129,14 @@ export const CommandCenterPage: React.FC = () => {
           </div>
 
           {/* Card 2: Discharge Clearance Velocity */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="operations-card bg-white p-5 rounded-2xl border border-slate-200 space-y-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
                     <Clock className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-sm font-medium text-slate-600">
                     Discharge Velocity
                   </span>
                 </div>
@@ -167,9 +145,9 @@ export const CommandCenterPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="mt-3 flex items-baseline justify-between">
+              <div className="mt-3 flex flex-wrap gap-3 items-baseline justify-between">
                 <div>
-                  <div className="text-2xl font-bold font-mono text-emerald-700 tabular-nums">
+                  <div className="operations-metric font-semibold text-slate-900 tabular-nums">
                     34.2 mins
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
@@ -184,7 +162,7 @@ export const CommandCenterPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-600 pt-2 border-t border-slate-100 mt-2">
+              <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100 mt-2">
                 <span>Clean Claim Rate: <strong className="text-slate-900 font-mono">96.4%</strong></span>
                 <span>At Risk / Breached: <strong className="text-rose-600 font-mono">{warningCount}</strong></span>
               </div>
@@ -204,34 +182,34 @@ export const CommandCenterPage: React.FC = () => {
           </div>
 
           {/* Card 3: Payer Portfolio & Inpatient Receivables */}
-          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="operations-card bg-white p-5 rounded-2xl border border-slate-200 space-y-4 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <div className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
                     <CreditCard className="w-4 h-4" />
                   </div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <span className="text-sm font-medium text-slate-600">
                     Inpatient Receivables
                   </span>
                 </div>
-                <span className="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+                <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
                   In-Flight Portfolio
                 </span>
               </div>
 
-              <div className="mt-3 flex items-baseline justify-between">
+              <div className="mt-3 flex flex-wrap gap-3 items-baseline justify-between">
                 <div>
-                  <div className="text-2xl font-bold font-mono text-slate-900 tabular-nums">
+                  <div className="operations-metric font-semibold text-slate-900 tabular-nums">
                     {formatPhp(totalReceivables)}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    Net Patient Responsibility (250 Inpatients)
+                    Net Patient Responsibility ({encounters.length} Encounters)
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] text-slate-600 pt-2 border-t border-slate-100 mt-2">
+              <div className="flex flex-wrap gap-2 items-center justify-between text-xs text-slate-600 pt-2 border-t border-slate-100 mt-2">
                 <span>PhilHealth: <strong className="font-mono text-emerald-700">{formatPhp(totalPhilHealthInFlight)}</strong></span>
                 <span>HMO LOA: <strong className="font-mono text-blue-700">{formatPhp(totalHmoInFlight)}</strong></span>
               </div>
@@ -254,12 +232,12 @@ export const CommandCenterPage: React.FC = () => {
         {/* Tier 2: Urgent Operational Action Queues (2-column side-by-side) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Urgent HMO Approvals */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="operations-card bg-white rounded-2xl border border-slate-200 p-5 space-y-4 flex flex-col justify-between">
             <div className="space-y-2.5">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex flex-wrap gap-2 items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="w-4 h-4 text-amber-600" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <h3 className="text-sm font-semibold text-slate-800">
                     Critical HMO Coverage Authorizations
                   </h3>
                 </div>
@@ -274,13 +252,12 @@ export const CommandCenterPage: React.FC = () => {
                   return (
                     <div
                       key={enc.id}
-                      onClick={() => selectEncounter(enc.id)}
-                      className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-100/80 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                      className="queue-row p-3 rounded-xl hover:bg-slate-50 flex flex-wrap gap-3 items-center justify-between text-sm transition-colors"
                     >
                       <div className="min-w-0 pr-2">
-                        <div className="font-bold text-slate-900 truncate">
-                          {pName} · <span className="font-mono text-slate-600 font-normal">{enc.roomBed}</span>
-                        </div>
+                        <button type="button" onClick={() => selectEncounter(enc.id)} className="queue-link font-semibold text-slate-900 text-left hover:text-brand-teal-dark">
+                          {pName} · <span className="text-slate-500 font-normal">{enc.roomBed}</span>
+                        </button>
                         <div className="text-[11px] text-slate-500 mt-0.5 truncate">
                           {enc.hmo.hmoName || enc.hmo.providerName} · LOA: <strong className="font-mono text-slate-800 font-bold">{formatPhp(enc.hmo.approvedAmount)}</strong>
                         </div>
@@ -318,16 +295,16 @@ export const CommandCenterPage: React.FC = () => {
           </div>
 
           {/* Active Billing Exceptions */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div className="operations-card bg-white rounded-2xl border border-slate-200 p-5 space-y-4 flex flex-col justify-between">
             <div className="space-y-2.5">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex flex-wrap gap-2 items-center justify-between pb-2 border-b border-slate-100">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4 text-purple-600" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  <AlertTriangle className="w-4 h-4 text-slate-500" />
+                  <h3 className="text-sm font-semibold text-slate-800">
                     Contested Line Items &amp; Exceptions
                   </h3>
                 </div>
-                <span className="text-[11px] font-bold text-purple-800 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                <span className="text-[11px] font-bold text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full">
                   {allDisputedItems.length} Exceptions Active
                 </span>
               </div>
@@ -336,14 +313,12 @@ export const CommandCenterPage: React.FC = () => {
                 {allDisputedItems.slice(0, 4).map((it) => (
                   <div
                     key={`${it.encounterId}-${it.id}`}
-                    onClick={() => selectEncounter(it.encounterId)}
-                    className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-slate-100/80 flex items-center justify-between text-xs transition-colors cursor-pointer"
+                    className="queue-row p-3 rounded-xl hover:bg-slate-50 flex flex-wrap gap-3 items-center justify-between text-sm transition-colors"
                   >
                     <div className="min-w-0 pr-2">
-                      <div className="font-bold text-slate-900 truncate flex items-center gap-1.5">
-                        <span>{it.description}</span>
-                        <span className="font-mono text-slate-500 font-normal">({it.roomBed})</span>
-                      </div>
+                      <button type="button" onClick={() => selectEncounter(it.encounterId)} className="queue-link font-semibold text-slate-900 text-left hover:text-brand-teal-dark">
+                        {it.description} <span className="text-slate-500 font-normal">({it.roomBed})</span>
+                      </button>
                       <div className="text-[11px] text-slate-500 mt-0.5 truncate">
                         {it.patientName} · {it.plainLanguageExplainer || it.disputeReason || 'Awaiting adjudication rationale'}
                       </div>
@@ -386,11 +361,11 @@ export const CommandCenterPage: React.FC = () => {
         </div>
 
         {/* Tier 3: Philippine Statutory Compliance & Consumer Protections Strip */}
-        <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-2xs space-y-3">
+        <div className="operations-card p-5 rounded-2xl border border-slate-200 bg-white space-y-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
-              <Scale className="w-4 h-4 text-purple-600" />
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              <Scale className="w-4 h-4 text-slate-500" />
+              <span className="text-sm font-semibold text-slate-800">
                 Philippine Statutory Healthcare Compliance Guarantees
               </span>
             </div>

@@ -23,7 +23,7 @@ export default function MedHeader({ navigation, title = 'Home', leading, titleAc
   const branded = title === 'Home' && !leading;
   const notifications = !leading && (title === 'Home' || title === 'Bill');
   const height = Math.max(HeaderLayout.height, HeaderLayout.titleLineHeight * fontScale * 2 + 4);
-  return <View testID={focused ? 'app-header' : 'inactive-app-header'} accessibilityElementsHidden={!focused} importantForAccessibility={focused ? 'auto' : 'no-hide-descendants'} style={{ paddingTop: insets.top, backgroundColor: C.surface, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border }}>
+  return <View testID={focused ? 'app-header' : 'inactive-app-header'} accessibilityElementsHidden={!focused} importantForAccessibility={focused ? 'auto' : 'no-hide-descendants'} style={{ paddingTop: insets.top, backgroundColor: branded ? C.paper : C.surface, borderBottomWidth: branded ? 0 : StyleSheet.hairlineWidth, borderBottomColor: C.border }}>
     <FocusedStatusBar style="dark" />
     <View testID={focused ? 'app-header-row' : 'inactive-app-header-row'} style={{ minHeight: height, paddingVertical: 2, paddingLeft: Math.max(HeaderLayout.gutter, insets.left), paddingRight: Math.max(HeaderLayout.gutter, insets.right), width: '100%', maxWidth: 720, alignSelf: 'center', flexDirection: 'row', alignItems: 'center' }}>
       {branded ? <View style={{ flex: 1 }}><Brand size={30} /></View> : <>

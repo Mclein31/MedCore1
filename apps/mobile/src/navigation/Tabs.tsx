@@ -40,20 +40,30 @@ function MainTabs() {
   return (
     <Tab.Navigator
       initialRouteName="Home"
+      safeAreaInsets={{ bottom: 0 }}
       screenOptions={({ navigation, route }) => ({
         header: () => <MedHeader navigation={navigation} title={route.name} titleAccessory={route.name === 'Profile' ? <PatientSelector /> : undefined} />,
-        tabBarActiveTintColor: C.brand,
+        sceneStyle: { backgroundColor: C.paper },
+        tabBarActiveTintColor: C.brandDark,
         tabBarInactiveTintColor: C.secondary,
         tabBarLabel: ({ color, focused }) => <Text style={{ fontSize: NavigationLayout.labelSize, fontWeight: focused ? '600' : '400', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
         tabBarAllowFontScaling: true,
         tabBarLabelPosition: 'below-icon',
         tabBarStyle: {
           backgroundColor: C.surface,
-          borderTopWidth: 1,
-          borderTopColor: C.border,
-          paddingTop: 6,
-          height: 62 + Math.max(0, (fontScale - 1) * 32) + insets.bottom,
-          paddingBottom: Math.max(insets.bottom, 8)
+          borderTopWidth: 0,
+          borderRadius: 28,
+          marginHorizontal: 12,
+          marginTop: 4,
+          marginBottom: Math.max(insets.bottom, 10),
+          paddingTop: 8,
+          height: 64 + Math.max(0, (fontScale - 1) * 32),
+          paddingBottom: 8,
+          shadowColor: C.ink,
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 3
         }
       })}
     >

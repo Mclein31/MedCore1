@@ -322,7 +322,7 @@ export const MainLayout: React.FC = () => {
 
   return (
     <>
-      <div id="medcore-app-root" className="h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
+      <div id="medcore-app-root" className="workspace-shell h-screen w-full overflow-hidden bg-slate-100 text-slate-900 flex flex-col font-sans antialiased">
         {/* LEVEL 1: Global Context & Command Bar */}
         <GlobalCommandBar />
 

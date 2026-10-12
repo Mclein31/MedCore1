@@ -56,7 +56,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
   const dailyOperationsItems: NavItemConfig[] = [
     {
       route: 'COMMAND_CENTER',
-      label: 'Home',
+      label: 'Overview',
       icon: Home
     },
     {
@@ -104,7 +104,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
   const renderNavGroup = (title: string, items: NavItemConfig[]) => (
     <div className="space-y-1">
       {!isCollapsed && (
-        <div className="px-3 pt-2.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        <div className="px-3 pt-4 pb-2 text-[11px] font-medium text-slate-500">
           {title}
         </div>
       )}
@@ -119,23 +119,25 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
             key={item.route}
             onClick={() => setActiveRoute(item.route)}
             title={isCollapsed ? item.label : undefined}
-            className={`transition-all ${
+            aria-label={item.label}
+            aria-current={isActive ? 'page' : undefined}
+            className={`sidebar-link transition-colors ${
               isCollapsed
                 ? `h-10 w-10 mx-auto flex items-center justify-center rounded-lg ${
                     isActive
-                      ? 'bg-blue-600 text-white shadow-xs'
+                      ? 'bg-brand-teal-soft text-brand-teal-dark'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`
                 : `w-full h-10 flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-semibold ${
                     isActive
-                      ? 'bg-blue-600 text-white font-bold shadow-xs'
+                      ? 'bg-brand-teal-soft text-brand-teal-dark font-semibold'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`
             }`}
           >
             <Icon
               className={`w-4.5 h-4.5 shrink-0 ${
-                isActive ? 'text-white' : 'text-slate-500'
+                isActive ? 'text-brand-teal-dark' : 'text-slate-500'
               }`}
             />
 
@@ -146,7 +148,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
                   <span
                     className={`text-[10px] px-2 py-0.5 rounded-full font-bold tabular-nums ${
                       isActive
-                        ? 'bg-white/25 text-white'
+                        ? 'bg-white/80 text-brand-teal-dark'
                         : item.isAttention
                         ? 'bg-rose-100 text-rose-700'
                         : 'bg-slate-100 text-slate-700'
@@ -165,8 +167,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
 
   return (
     <aside
-      className={`h-full bg-white border-r border-slate-200 flex flex-col justify-between transition-all duration-200 z-20 shrink-0 ${
-        isCollapsed ? 'w-14' : 'w-56'
+      aria-label="Workspace navigation"
+      className={`workspace-sidebar h-full bg-white border-r border-slate-200 flex flex-col justify-between transition-[width] duration-200 z-20 shrink-0 ${
+        isCollapsed ? 'w-14' : 'w-64'
       }`}
     >
       {/* Navigation Sections */}
@@ -177,7 +180,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
       </div>
 
       {/* Clean Utility & Collapse Bar */}
-      <div className="p-2 border-t border-slate-200 bg-white shrink-0">
+      <div className="p-2 border-t border-slate-200 shrink-0">
         {!isCollapsed ? (
           <div className="flex items-center justify-between px-1 py-1">
             <span className="text-[10px] font-medium text-slate-400">
@@ -188,6 +191,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               title="Collapse sidebar"
+              aria-label="Collapse sidebar"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -199,6 +203,7 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
               title="Expand sidebar"
+              aria-label="Expand sidebar"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

@@ -47,7 +47,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         disabled={disabled || isLoading}
-        className={`inline-flex items-center justify-center ${sizeConfig.gap} ${sizeConfig.height} ${sizeConfig.px} ${sizeConfig.radius} ${sizeConfig.text} ${variantClass} ${
+        className={`apple-control inline-flex items-center justify-center ${sizeConfig.gap} ${sizeConfig.height} ${sizeConfig.px} ${sizeConfig.radius} ${sizeConfig.text} ${variantClass} ${
           fullWidth ? 'w-full' : ''
         } transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${className}`}
         {...rest}
