@@ -26,11 +26,11 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
   // Search & Pagination States
   const payerSearch = searchQuery;
   const [payerPage, setPayerPage] = useState(1);
-  const payerPageSize = 9;
+  const payerPageSize = 10;
 
   const exceptionsSearch = searchQuery;
   const [exceptionsPage, setExceptionsPage] = useState(1);
-  const exceptionsPageSize = 7;
+  const exceptionsPageSize = 8;
 
   // Selected row state for Unresolved Exceptions to dock contextual actions
   const [selectedExceptionKey, setSelectedExceptionKey] = useState<string | null>(null);
