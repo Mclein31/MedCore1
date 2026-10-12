@@ -112,7 +112,8 @@ export class HmoAiApi {
     deniedAmount: number = 0,
     hmoProviderName?: string,
     notes?: string,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    forceRefresh: boolean = false
   ): Promise<HmoAppealResponse> {
     return this.client.request<HmoAppealResponse>('/ai/hmo/generate-appeal', {
       signal,
@@ -122,7 +123,8 @@ export class HmoAiApi {
         deniedItemDescription: deniedItem,
         deniedAmount,
         hmoProviderName,
-        justificationNotes: notes
+        justificationNotes: notes,
+        forceRefresh
       })
     });
   }

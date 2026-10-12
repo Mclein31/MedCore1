@@ -1,3 +1,4 @@
+import { observeAiCache, currentAiCacheOutcome } from '../services/ai/aiResultCache';
 import { CORA_LANGUAGE_IDS } from '../../../shared/coraLanguage';
 import { AiInferenceError } from '../services/ai/geminiClient';
 import { encounterAccessCondition } from '../utils/encounterAccess';
@@ -16,6 +17,7 @@ import { db } from '../db';
 import { aiAuditLogs } from '../db/schema';
 
 const aiApp = new Hono();
+aiApp.use('*', (c, next) => observeAiCache(outcome => c.header('X-AI-Cache', outcome), next));
 const STAFF_AI_ROLES = ['BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HMO_COORDINATOR', 'HOSPITAL_CFO', 'ATTENDING_PHYSICIAN'];
 function inferenceError(c: any, err: unknown, code: string, message: string) {
   if (err instanceof AiInferenceError) return apiError(c, err.status as any, err.code, err.message);
@@ -59,7 +61,8 @@ async function recordAiAudit(data: {
         rthRiskScore: data.rthRiskScore,
         status: data.status,
         errorMessage: data.errorMessage,
-        phiScrubbed: true
+        phiScrubbed: true,
+        responseSummary: currentAiCacheOutcome() ? `AI cache: ${currentAiCacheOutcome()}` : undefined
       });
     }
   } catch (err) {
@@ -98,6 +101,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
       mode: body.mode,
       encounterId: body.encounterId,
       facilityId: user?.facilityId,
+      userId: user?.id,
       env: c.env as any
     });
 
@@ -154,6 +158,7 @@ aiApp.post(
         encounterId: body.encounterId,
         facilityId: user.facilityId,
         forceEscalation: body.forceEscalation,
+        userId: user.id,
         env: c.env as any
       });
 
@@ -188,6 +193,7 @@ const hmoAppealSchema = z.object({
   deniedAmount: z.number().finite().nonnegative().optional().default(0),
   hmoProviderName: z.string().optional(),
   hmoId: z.string().optional(),
+  forceRefresh: z.boolean().optional().default(false),
   justificationNotes: z.string().optional()
 });
 
@@ -211,7 +217,9 @@ aiApp.post(
         deniedAmount: body.deniedAmount,
         hmoProviderName: body.hmoProviderName || body.hmoId,
         justificationNotes: body.justificationNotes,
+        forceRefresh: body.forceRefresh,
         facilityId: user.facilityId,
+        userId: user.id,
         env: c.env as any
       });
 
@@ -251,6 +259,7 @@ aiApp.post(
       const result = await executiveBriefingService.generateBriefing({
         facilityId: user.facilityId,
         forceRefresh: body?.forceRefresh === true,
+        userId: user.id,
         env: c.env as any
       });
 
@@ -289,7 +298,9 @@ aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {
   try {
     const result = await ocrService.extractCard({
       imageBase64: body.imageBase64,
+      facilityId: user?.facilityId,
       cardCategory: body.cardCategory,
+      userId: user?.id,
       env: c.env as any
     });
 

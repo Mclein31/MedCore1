@@ -1,10 +1,12 @@
+import { z } from 'zod';
+import { cachedAiResult, AI_CACHE_TTL } from './aiResultCache';
 import { getHydratedEncounter } from '../../routes/encounters';
 import { db } from '../../db';
 import { facilities } from '../../db/schema';
 import { eq } from 'drizzle-orm';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
 import { AiInferenceError, geminiClient } from './geminiClient';
-import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
+import { jsonResponseSchema, parseAiResponse, validateAiResult } from './structuredResponse';
 import { HmoAppealResponse, HmoAppealResponseSchema, APPEAL_SYSTEM_PROMPT, buildHmoAppealPrompt } from './prompts/appealPrompts';
 
 export const HMO_APPEAL_RESPONSE_SCHEMA = jsonResponseSchema(HmoAppealResponseSchema);
@@ -15,6 +17,8 @@ export interface GenerateHmoAppealOptions {
   hmoProviderName?: string;
   justificationNotes?: string;
   facilityId?: string;
+  userId?: string;
+  forceRefresh?: boolean;
   env?: Record<string, any>;
 }
 export class HmoAppealService {
@@ -26,8 +30,8 @@ export class HmoAppealService {
     if (!targetHmo || targetHmo === 'None') throw new Error('This encounter has no HMO payer to appeal to.');
     const [facility] = options.facilityId ? await db.select().from(facilities).where(eq(facilities.id, options.facilityId)).limit(1) : [];
     const activeItems = enc.items.filter(i => !['WAIVED', 'SUPERVISORY_WAIVED'].includes(i.status));
-    const referenceNumber = `APL-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-    const reconsiderationDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+    const referenceNumber = 'AI_APPEAL_REFERENCE';
+    const reconsiderationDeadline = 'AI_APPEAL_DEADLINE';
     const rawPrompt = buildHmoAppealPrompt(
       enc.encounterNumber, enc.patient.fullName, enc.attendingDoctor, enc.doctorPan || 'Not recorded', targetHmo,
       options.deniedItemDescription, options.deniedAmount,
@@ -48,23 +52,31 @@ export class HmoAppealService {
       doctorPan: enc.doctorPan, hmoCardMasked: enc.hmo.cardMasked, loaNumber: enc.hmo.loaNumber
     });
     try {
-      const response = await geminiClient.generate({
-        systemInstruction: APPEAL_SYSTEM_PROMPT, prompt: scrubbed.scrubbedText,
-        responseMimeType: 'application/json', responseJsonSchema: HMO_APPEAL_RESPONSE_SCHEMA,
-        temperature: 0.2, env: options.env
+      const appeal = await cachedAiResult({
+        module: 'hmo-appeal', scope: { facilityId: options.facilityId, userId: options.userId, encounterId: enc.uuid },
+        input: { prompt: rawPrompt, system: APPEAL_SYSTEM_PROMPT, schema: HMO_APPEAL_RESPONSE_SCHEMA },
+        ttlMs: AI_CACHE_TTL.appeal, env: options.env, forceRefresh: options.forceRefresh,
+        validate: validateAiResult(HmoAppealResponseSchema.extend({ modelUsed: z.string().min(1) })),
+        generate: async () => {
+          const referenceNumber = `APL-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+          const reconsiderationDeadline = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+          const response = await geminiClient.generate({
+            systemInstruction: APPEAL_SYSTEM_PROMPT, prompt: scrubbed.scrubbedText.replaceAll('AI_APPEAL_REFERENCE', referenceNumber).replaceAll('AI_APPEAL_DEADLINE', reconsiderationDeadline),
+            responseMimeType: 'application/json', responseJsonSchema: HMO_APPEAL_RESPONSE_SCHEMA,
+            temperature: 0.2, env: options.env
+          });
+          const appeal = parseAiResponse(response, HmoAppealResponseSchema);
+          if (appeal.referenceNumber !== referenceNumber || appeal.reconsiderationDeadline !== reconsiderationDeadline || !appeal.appealLetterMarkdown.includes(referenceNumber)) {
+            throw new AiInferenceError('AI_INVALID_RESPONSE', 'The generated letter did not preserve its appeal reference and requested response date. Please regenerate it.');
+          }
+          return { ...appeal, modelUsed: response.modelUsed };
+        }
       });
-      const appeal = parseAiResponse(response, HmoAppealResponseSchema);
-      if (appeal.referenceNumber !== referenceNumber || appeal.reconsiderationDeadline !== reconsiderationDeadline || !appeal.appealLetterMarkdown.includes(referenceNumber)) {
-        throw new AiInferenceError('AI_INVALID_RESPONSE', 'The generated letter did not preserve its appeal reference and requested response date. Please regenerate it.');
-      }
       return {
         ...appeal,
-        referenceNumber,
         attendingPhysicianName: enc.attendingDoctor, doctorPan: enc.doctorPan || 'Not recorded',
-        reconsiderationDeadline: reconsiderationDeadline,
         appealLetterMarkdown: rehydrateText(appeal.appealLetterMarkdown, scrubbed.tokenMap),
         suggestedAttachments: appeal.suggestedAttachments.map(a => rehydrateText(a, scrubbed.tokenMap)),
-        modelUsed: response.modelUsed
       };
     } finally { clearTokenMap(scrubbed.tokenMap); }
   }

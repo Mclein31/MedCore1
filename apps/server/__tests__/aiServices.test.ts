@@ -1,5 +1,7 @@
 /// <reference path="../../mobile/node_modules/react-native/src/types/globals.d.ts" />
 import assert from 'node:assert/strict';
+import { runWithAiCacheStore } from '../src/services/ai/aiResultCache';
+import { MemoryAiCacheStore } from './helpers/memoryAiCache';
 import { Hono } from 'hono';
 import { getTableName } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
@@ -68,7 +70,7 @@ const router=new Hono();
 router.use('*',async(c,next)=>{if(user)c.set('user',user);await next();});
 router.use('/api/v1/*',apiAccess);router.route('/api/v1/ai',aiApp);
 const env={ NODE_ENV:'production', GEMINI_API_KEY:'synthetic-test-key', GEMINI_MODEL:'test-primary', GEMINI_BACKUP_MODEL:'test-backup' };
-const request=(path:string,body:object)=>runWithDb(database(),()=>router.request(`/api/v1/ai${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},env));
+const request=(path:string,body:object,cache=new MemoryAiCacheStore())=>runWithAiCacheStore(cache,()=>runWithDb(database(),()=>router.request(`/api/v1/ai${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},env)));
 const originalFetch=globalThis.fetch;
 let transportMode='success',calls=0;
 let gateCalls=0,answerCalls=0,languageDrafts=0,languageReviews=0;
@@ -231,5 +233,42 @@ try {
   const duplicate=normalizeAuditRisk({esoaXmlConformity:true,flags:[{category:'MISSING_CF4_FIELD',severity:'CRITICAL',field:'cf4.admissionVitals',description:'Missing vitals'},{category:'MISSING_CF4_FIELD',severity:'CRITICAL',field:'cf4VitalsRecorded',description:'Missing vitals'}]} as any);assert.equal(duplicate.rthRiskScore,.44);check('Canonical deficiency scoring prevents duplicate penalties');
   const invalidXml=normalizeAuditRisk({esoaXmlConformity:false,flags:[]} as any);assert.equal(invalidXml.passThreshold,false);check('Nonconforming XML cannot pass readiness');
   const raw='Synthetic Patient Alpha, MRN-ALPHA, Bed 101';const scrubbed=scrubPatientData(raw,{fullName:fixtures[0].name,mrn:fixtures[0].mrn,roomBed:'Bed 101'});assert.equal(rehydrateText(scrubbed.scrubbedText,scrubbed.tokenMap),raw);check('PHI tokens round-trip exactly');
+  transportMode='success'; user={id:'20000000-0000-4000-8000-000000000001',facilityId,role:'BILLING_SPECIALIST',linkedMrn:'MRN-ALPHA'};
+  const sharedCache = new MemoryAiCacheStore();
+  const cachedRequest = (path:string, body:object) => request(path,body,sharedCache);
+  const duplicateCases = [
+    ['/hmo/generate-appeal',{encounterId:fixtures[0].id,deniedItemDescription:fixtures[0].item.description,deniedAmount:800}],
+    ['/claims/preflight-scrub',{encounterId:fixtures[1].id}],
+    ['/executive/briefing',{}],
+    ['/ocr/extract-card',{imageBase64:'data:image/png;base64,aW1hZ2U='}],
+    ['/cora/chat',{encounterId:fixtures[0].id,message:'Explain my bill',language:'en'}]
+  ] as const;
+  for (const [path,body] of duplicateCases) {
+    user.role=path==='/cora/chat'?'PATIENT_GUARANTOR':'BILLING_SPECIALIST';
+    const start=calls;
+    const a=await cachedRequest(path,body);assert.equal(a.status,200,path);assert.equal(a.headers.get('X-AI-Cache'),'GENERATED');const first=await a.json();
+    const spent=calls-start;assert.ok(spent>0,path);const riskWrites=writes.length;
+    const b=await cachedRequest(path,body);assert.equal(b.status,200,path);assert.equal(b.headers.get('X-AI-Cache'),'HIT');assert.deepEqual(await b.json(),first,path);
+    assert.equal(calls-start,spent,path+' duplicated provider calls');
+    if(path==='/claims/preflight-scrub')assert.equal(writes.length,riskWrites+1,'Cached audit still persists current risk/status');
+    check(path+': validated duplicates use zero additional provider calls');
+  }
+  const savedRows=JSON.stringify([...sharedCache.rows.values()]);assert.ok(!savedRows.includes('Synthetic Patient Alpha')&&!savedRows.includes('Synthetic Physician')&&!savedRows.includes('aW1hZ2U='),'Cache must not store raw prompts, images or rehydrated identities');
+  check('Shared cache stores scrubbed drafts and hashed inputs');
+  user.role='PATIENT_GUARANTOR';let beforeChange=calls;
+  const otherLanguage=await cachedRequest('/cora/chat',{encounterId:fixtures[0].id,message:'Explain my bill',language:'tl'});assert.equal(otherLanguage.status,200);assert.ok(calls>beforeChange);
+  beforeChange=calls;const otherHistory=await cachedRequest('/cora/chat',{encounterId:fixtures[0].id,message:'Explain my bill',language:'en',conversation:[{role:'user',content:'What about this charge?'}]});assert.equal(otherHistory.status,200);assert.ok(calls>beforeChange);
+  beforeChange=calls;fixtures[0].waterfall.patientPaid='100';const paid=await cachedRequest('/cora/chat',{encounterId:fixtures[0].id,message:'Explain my bill',language:'en'});assert.equal(paid.status,200);assert.ok(calls>beforeChange);fixtures[0].waterfall.patientPaid='0';
+  check('Cora cache invalidates for language, history and ledger changes');
+  beforeChange=calls;assert.equal((await cachedRequest('/cora/chat',{encounterId:fixtures[1].id,message:'Explain my bill',language:'en'})).status,404);assert.equal(calls,beforeChange);check('Ownership is checked before cached responses');
+  user.role='BILLING_SPECIALIST';beforeChange=calls;fixtures[0].encounter.remainingBalance='900';
+  assert.equal((await cachedRequest('/executive/briefing',{})).status,200);assert.ok(calls>beforeChange);fixtures[0].encounter.remainingBalance='800';check('Briefing cache reads current telemetry before reuse');
+  beforeChange=calls;fixtures[1].claim.cf4VitalsRecorded=true;const changedAudit=await cachedRequest('/claims/preflight-scrub',{encounterId:fixtures[1].id});assert.equal(changedAudit.status,200);assert.ok(calls>beforeChange);fixtures[1].claim.cf4VitalsRecorded=false;check('Claim completeness edits invalidate prior audits');
+  const mgh=fixtures[1].encounter.mghOrderTimestamp;fixtures[1].encounter.mghOrderTimestamp=null as any;
+  beforeChange=calls;const noMgh=await cachedRequest('/claims/preflight-scrub',{encounterId:fixtures[1].id});assert.equal(noMgh.status,200);const noMghSpent=calls-beforeChange;
+  await new Promise(resolve=>setTimeout(resolve,5));assert.equal((await cachedRequest('/claims/preflight-scrub',{encounterId:fixtures[1].id})).status,200);assert.equal(calls-beforeChange,noMghSpent);
+  const noMghPrompt=[...prompts].reverse().find(p=>p.includes('DischargeTimestamp'));assert.ok(noMghPrompt);assert.ok(!/DischargeTimestamp="[^"\s]+"/.test(noMghPrompt));fixtures[1].encounter.mghOrderTimestamp=mgh;
+  check('Pre-discharge audits reuse stable XML without inventing a discharge date');
+  const originalAppeal:any=await(await cachedRequest('/hmo/generate-appeal',duplicateCases[0][1])).json();const refreshedAppeal:any=await(await cachedRequest('/hmo/generate-appeal',{...duplicateCases[0][1],forceRefresh:true})).json();assert.notEqual(refreshedAppeal.referenceNumber,originalAppeal.referenceNumber);check('Explicit appeal regeneration creates a new validated reference');
   console.log(`AI REGRESSION CHECKS DONE: ${checks} passed; isolated DB and injected provider transport; no Gemini credits used.`);
 }finally{globalThis.fetch=originalFetch;delete process.env.TEST_LIVE_AI;}

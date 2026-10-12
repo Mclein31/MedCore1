@@ -92,7 +92,7 @@ export async function getClaimEsoaXml(claimId: string, facilityId: string): Prom
       encounter: {
         encounterNumber: encounter.encounterNumber,
         admissionDate: encounter.admissionTimestamp.toISOString(),
-        dischargeDate: encounter.mghOrderTimestamp?.toISOString() || new Date().toISOString(),
+        dischargeDate: encounter.mghOrderTimestamp?.toISOString() || '',
         primaryIcd10: encounter.primaryIcd10,
         primaryDiagnosis: encounter.primaryDiagnosis
       },

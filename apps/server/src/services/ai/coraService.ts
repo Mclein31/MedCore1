@@ -1,12 +1,16 @@
+import { z } from 'zod';
+import { validateAiResult, jsonResponseSchema } from './structuredResponse';
+import { cachedAiResult, AI_CACHE_TTL } from './aiResultCache';
 import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { facilities } from '../../db/schema';
-import { checkCoraScope, coraPolicyNotice, obviousRestrictedRequest } from './coraScope';
-import { generateLocalizedCoraReply } from './coraLanguage';
+import { checkCoraScope, coraPolicyNotice, obviousRestrictedRequest, SCOPE_PROMPT, CoraScopeSchema } from './coraScope';
+import { generateLocalizedCoraReply, coraLanguageCachePolicy } from './coraLanguage';
 import { getHydratedEncounter } from '../../routes/encounters';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
 import {
   CoraLanguage,
+  CoraResponseSchema,
   CoraMode,
   buildCoraPrompt,
   CoraEncounterContext,
@@ -21,6 +25,8 @@ export interface CoraChatServiceOptions {
   encounterId?: string;
   facilityId?: string;
   conversation?: CoraHistoryTurn[];
+  userId?: string;
+  forceRefresh?: boolean;
   env?: Record<string, any>;
 }
 
@@ -104,14 +110,6 @@ export class CoraService {
       borrowerName: enc.promissoryNote?.borrowerName, borrowerIdNumber: enc.promissoryNote?.borrowerIdNumber
     };
     const conversation = (options.conversation || []).filter(turn => !obviousRestrictedRequest(turn.content));
-    const scopeInput = scrubPatientData(JSON.stringify({message, conversation}), scrubContext);
-    let decision;
-    try {
-      const input = JSON.parse(scopeInput.scrubbedText) as { message: string; conversation: CoraHistoryTurn[] };
-      decision = obviousRestrictedRequest(message) ? 'RESTRICTED' : await checkCoraScope(input.message, input.conversation, options.env);
-    } finally { clearTokenMap(scopeInput.tokenMap); }
-    if (decision !== 'ALLOW') return { language, scopeDecision: decision, reply: coraPolicyNotice(decision, language), mode, suggestedActions: [], groundedBalance, modelUsed: 'policy-gate' };
-
     const [facility] = facilityId ? await db.select().from(facilities).where(eq(facilities.id, facilityId)).limit(1) : [];
     const evidence = {
       hospital: facility ? { name: facility.name, address: facility.address, contactPhone: facility.contactPhone } : null,
@@ -134,7 +132,26 @@ export class CoraService {
     };
     const scrubResult = scrubPatientData(buildCoraPrompt(encounterContext, financials, message, language, mode, evidence, conversation), scrubContext);
     try {
-      const { answer, modelUsed } = await generateLocalizedCoraReply({ prompt: scrubResult.scrubbedText, language, env: options.env });
+      const result = await cachedAiResult({
+        module: 'cora-chat', scope: { facilityId, userId: options.userId, encounterId: enc.uuid },
+        input: { prompt: scrubResult.scrubbedText, source: scrubContext, language, mode, policy: coraLanguageCachePolicy(language),
+          scopeSystem: SCOPE_PROMPT, scopeSchema: jsonResponseSchema(CoraScopeSchema), schema: jsonResponseSchema(CoraResponseSchema) },
+        ttlMs: AI_CACHE_TTL.cora, env: options.env, forceRefresh: options.forceRefresh,
+        validate: validateAiResult(CoraResponseSchema.extend({ modelUsed: z.string().min(1) })),
+        generate: async () => {
+          const scopeInput = scrubPatientData(JSON.stringify({message, conversation}), scrubContext);
+          let decision;
+          try {
+            const input = JSON.parse(scopeInput.scrubbedText) as { message: string; conversation: CoraHistoryTurn[] };
+            decision = obviousRestrictedRequest(message) ? 'RESTRICTED' : await checkCoraScope(input.message, input.conversation, options.env);
+          } finally { clearTokenMap(scopeInput.tokenMap); }
+          if (decision !== 'ALLOW') return { scopeDecision: decision, reply: coraPolicyNotice(decision, language), mode, suggestedActions: [], modelUsed: 'policy-gate' };
+
+            const { answer, modelUsed } = await generateLocalizedCoraReply({ prompt: scrubResult.scrubbedText, language, env: options.env });
+            return { ...answer, modelUsed };
+        }
+      });
+      const { modelUsed, ...answer } = result;
       if (answer.scopeDecision === 'OUT_OF_SCOPE' || answer.scopeDecision === 'RESTRICTED') {
         return { ...answer, language, reply: coraPolicyNotice(answer.scopeDecision, language), suggestedActions: [], groundedBalance, modelUsed };
       }
