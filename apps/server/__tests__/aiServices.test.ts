@@ -9,6 +9,7 @@ import { apiAccess } from '../src/middleware/access';
 import { GeminiClient, AiInferenceError } from '../src/services/ai/geminiClient';
 import { normalizeAuditRisk } from '../src/services/ai/claimsForensicService';
 import { scrubPatientData, rehydrateText } from '../src/services/ai/phiScrubber';
+import { generateLocalizedCoraReply } from '../src/services/ai/coraLanguage';
 import { directCoraReply } from '../src/services/ai/prompts/coraPrompts';
 import { createAiApi } from '../../mobile/src/services/aiApi';
 
@@ -70,7 +71,7 @@ const env={ NODE_ENV:'production', GEMINI_API_KEY:'synthetic-test-key', GEMINI_M
 const request=(path:string,body:object)=>runWithDb(database(),()=>router.request(`/api/v1/ai${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},env));
 const originalFetch=globalThis.fetch;
 let transportMode='success',calls=0;
-let gateCalls=0,answerCalls=0;
+let gateCalls=0,answerCalls=0,languageDrafts=0,languageReviews=0;
 const prompts:string[]=[];
 globalThis.fetch=async(_url,options)=>{
   calls++;
@@ -94,6 +95,17 @@ globalThis.fetch=async(_url,options)=>{
     else if (/recipe|capital of|javascript|bitcoin/i.test(message)) result={decision:'OUT_OF_SCOPE',topic:'OTHER'};
     else if (/another patient|dosage|system prompt/i.test(message)) result={decision:'RESTRICTED',topic:'OTHER'};
     else result={decision:'ALLOW',topic:'BILL'};
+  }else if(properties.languageMatches){
+    languageReviews++;
+    assert.ok(!prompt.includes('server_record')&&!prompt.includes('financials'),'Language review must not receive the chart');
+    const input=JSON.parse(prompt);
+    const instructions=payload.systemInstruction.parts[0].text;
+    assert.ok(!instructions.includes('A Tagalog answer with only English'),'One language checker must not impose Taglish rules on other modes');
+    if(input.requestedLanguage==='fil')assert.ok(instructions.includes('Use both languages'));
+    const patterns={en:/^Your remaining balance is/,fil:/^Your remaining balance ay/,tl:/^Ang natitira/,ilo:/^Ti nabati/};
+    const actionLabels={en:'Review bill',fil:'I-review ang bill',tl:'Suriin ang bayarin',ilo:'Kitaen ti bill'};
+    result={languageMatches:patterns[input.requestedLanguage as keyof typeof patterns].test(input.reply)&&input.actionLabels.every((label:string)=>label===actionLabels[input.requestedLanguage as keyof typeof actionLabels])};
+    if(transportMode==='invalid-language-check')result={languageMatches:'yes'};
   }else if(properties.appealLetterMarkdown){
     const denied=prompt.match(/Disallowed Item \/ Fee: ([^\n]+)/)?.[1];
     const diagnosis=prompt.match(/Primary Inpatient Diagnosis: ([^\n]+)/)?.[1];
@@ -105,11 +117,17 @@ globalThis.fetch=async(_url,options)=>{
     result={ rthRiskScore:.8,riskLevel:'LOW',passThreshold:true,cleanClaimReadiness:99, flags:transportMode==='info-flags'?[{category:'MISSING_CF4_FIELD',severity:'INFO',field:'cf4.admissionVitals',description:'Missing vitals',regulatoryCitation:'CF4',remediation:'Record vitals'}]:[],clinicalSummary:`Audit ${prompt.match(/"claimDiagnosis":"([^"]+)"/)?.[1]}`,suggestedDoctorAddendum:null,esoaXmlConformity:true };
   }else if(properties.reply){
     answerCalls++;
-    const record=JSON.parse(prompt).server_record;
+    const parsed=JSON.parse(prompt), record=parsed.server_record;
+    const language=parsed.response_language?.code || parsed.user_input.language;
+    const balance=record.financials.remainingBalance.toFixed(2);
+    const replies={en:`Your remaining balance is ₱${balance}.`,fil:`Your remaining balance ay ₱${balance}, after the recorded benefits and payments.`,tl:`Ang natitira mong babayaran ay ₱${balance} matapos ang mga nakatalang bawas at pagbabayad.`,ilo:`Ti nabati a bayadam ket ₱${balance} kalpasan dagiti nakarekord a deduction ken payment.`};
+    const labels={en:'Review bill',fil:'I-review ang bill',tl:'Suriin ang bayarin',ilo:'Kitaen ti bill'};
+    languageDrafts++;
+    const wrong=transportMode==='wrong-language'||(transportMode==='wrong-once'&&languageDrafts===1);
     assert.ok(record.items.some((i:any)=>i.description==='Chest radiograph'));
     assert.ok(record.hospital.name.endsWith('Hospital'));
     assert.ok(!prompt.includes('exitPin')&&!prompt.includes('gatewayAuthCode')&&!prompt.includes('borrowerIdNumber'));
-    result={scopeDecision:'ANSWERED',reply:`Hello! I'm Cora, your hospital assistant. Your remaining balance is ₱${record.financials.remainingBalance.toFixed(2)}.`,mode:'GENERAL',suggestedActions:[]};
+    result={scopeDecision:'ANSWERED',reply:`Hello! I'm Cora, your hospital assistant. ${replies[(wrong?'en':language) as keyof typeof replies]}`,mode:'GENERAL',suggestedActions:[{label:transportMode==='wrong-action-language'?'Review bill':labels[language as keyof typeof labels],actionType:'NAVIGATE_BILL'}]};
   }
   else if(properties.briefingMarkdown){result={generatedAt:new Date().toISOString(),briefingMarkdown:'Facility review based on current census.',metricsSummary:{activeInpatients:999,averageDischargeTatMinutes:999,slaTargetMinutes:45,reclaimedBedHoursLast24h:99,trappedCapitalPesos:999,criticalDepartmentBottleneck:'HMO_FINAL_LOA'},topRecommendations:[]};}
   else if(properties.cardType){assert.equal(payload.contents[0].parts[1].inlineData.mimeType,'image/png');result={cardType:'UNKNOWN',idNumber:'',memberFullName:'',dateOfBirth:null,providerName:null,validUntil:null,confidenceScore:0,rawExtractedFields:{}};}
@@ -120,6 +138,34 @@ globalThis.fetch=async(_url,options)=>{
 let checks=0;
 const check=(name:string)=>{checks++;console.log(`[PASS] ${name}`);};
 try {
+  user.role='PATIENT_GUARANTOR';transportMode='wrong-language';
+  const mismatchedLanguage=await request('/cora/chat',{encounterId:fixtures[0].id,message:'Explain my balance.',language:'fil'});
+  assert.equal(mismatchedLanguage.status,502,'Wrong-language drafts must not be returned as successful Taglish answers');
+  assert.equal((await mismatchedLanguage.json() as any).error.code,'AI_LANGUAGE_MISMATCH');
+  transportMode='success';user.role='BILLING_SPECIALIST';check('Cora fails closed when generated replies ignore the selected language');
+
+  user.role='PATIENT_GUARANTOR';
+  for(const language of ['en','fil','tl','ilo']) {
+    const answer=await request('/cora/chat',{encounterId:fixtures[0].id,message:language==='en'?'Bakit may babayaran pa ako?':'Why do I still have a balance?',language,conversation:[{role:'user',content:'Which charge is not covered?'},{role:'assistant',content:'Ang Wrist splint ay hindi sakop. Your remaining balance is recorded in the ledger.'}]});
+    assert.equal(answer.status,200,language);const data:any=await answer.json();
+    assert.equal(data.language,language);assert.match(data.reply,/800\.00/);assert.equal(data.groundedBalance.remainingBalance,800);
+    const fullPrompt=prompts.slice(-3).find(p=>p.includes('server_record'))!;
+    assert.equal(JSON.parse(fullPrompt).response_language.code,language);
+    assert.ok(JSON.parse(fullPrompt).conversation_history.some((turn:any)=>turn.role==='assistant'&&turn.content.includes('Wrist splint')),'Cross-language follow-up context is preserved');
+  }
+  check('All four language modes override query/history language and preserve grounded amounts');
+  transportMode='wrong-once';languageDrafts=0;const reviewsBefore=languageReviews;
+  const repaired=await request('/cora/chat',{encounterId:fixtures[0].id,message:'Explain the balance',language:'fil'});
+  assert.equal(repaired.status,200);assert.match((await repaired.json() as any).reply,/remaining balance ay/);assert.equal(languageDrafts,2);assert.equal(languageReviews-reviewsBefore,2);check('A mismatched draft is regenerated once and checked before success');
+  transportMode='wrong-action-language';const wrongAction=await request('/cora/chat',{encounterId:fixtures[0].id,message:'Explain the balance',language:'tl'});assert.equal(wrongAction.status,200);assert.equal((await wrongAction.json() as any).suggestedActions[0].label,'Suriin ang bayarin');check('Navigation labels are localized deterministically without rejecting a valid answer');
+  transportMode='invalid-language-check';const invalidReview=await request('/cora/chat',{encounterId:fixtures[0].id,message:'Explain the balance',language:'en'});assert.equal(invalidReview.status,502);assert.equal((await invalidReview.json() as any).reply,undefined);check('Invalid language verification fails closed without returning a draft');
+  transportMode='success';
+  for(const language of ['en','fil','tl','ilo']) {const notice:any=await(await request('/cora/chat',{encounterId:fixtures[0].id,message:'Give me a recipe',language})).json();assert.equal(notice.language,language);assert.equal(notice.scopeDecision,'OUT_OF_SCOPE');}
+  assert.equal((await request('/cora/chat',{encounterId:fixtures[0].id,message:'Explain the balance',language:'unknown'})).status,400);check('Policy notices support each language and unsupported language codes are rejected');
+  user.role='BILLING_SPECIALIST';
+  const callsBeforeDeadline=calls;
+  await assert.rejects(generateLocalizedCoraReply({prompt:'{}',language:'en',env,deadline:Date.now()-1}),error=>error instanceof AiInferenceError&&error.code==='AI_LANGUAGE_MISMATCH');
+  assert.equal(calls,callsBeforeDeadline);check('An exhausted shared language deadline prevents more provider calls');
   const client=new GeminiClient(env);
   await assert.rejects(client.generate({prompt:'test',env:{GEMINI_API_KEY:''}}),e=>e instanceof AiInferenceError&&e.code==='AI_NOT_CONFIGURED');check('Missing key fails; no mock success');
   for(const mode of ['quota','network','invalid-json','truncated']){

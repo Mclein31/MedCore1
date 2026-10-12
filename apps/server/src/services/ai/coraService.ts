@@ -2,17 +2,13 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../db';
 import { facilities } from '../../db/schema';
 import { checkCoraScope, coraPolicyNotice, obviousRestrictedRequest } from './coraScope';
-import { jsonResponseSchema, parseAiResponse } from './structuredResponse';
+import { generateLocalizedCoraReply } from './coraLanguage';
 import { getHydratedEncounter } from '../../routes/encounters';
 import { scrubPatientData, rehydrateText, clearTokenMap } from './phiScrubber';
-import { AiInferenceError, geminiClient } from './geminiClient';
 import {
   CoraLanguage,
   CoraMode,
-  CoraResponseSchema,
-  CORA_SYSTEM_PROMPTS,
   buildCoraPrompt,
-  directCoraReply,
   CoraEncounterContext,
   CoraHistoryTurn,
   CoraFinancialContext
@@ -29,6 +25,7 @@ export interface CoraChatServiceOptions {
 }
 
 export interface CoraChatServiceResponse {
+  language: CoraLanguage;
   scopeDecision: 'ANSWERED' | 'UNSUPPORTED' | 'OUT_OF_SCOPE' | 'RESTRICTED';
   reply: string;
   modelUsed: string;
@@ -113,7 +110,7 @@ export class CoraService {
       const input = JSON.parse(scopeInput.scrubbedText) as { message: string; conversation: CoraHistoryTurn[] };
       decision = obviousRestrictedRequest(message) ? 'RESTRICTED' : await checkCoraScope(input.message, input.conversation, options.env);
     } finally { clearTokenMap(scopeInput.tokenMap); }
-    if (decision !== 'ALLOW') return { scopeDecision: decision, reply: coraPolicyNotice(decision, language), mode, suggestedActions: [], groundedBalance, modelUsed: 'policy-gate' };
+    if (decision !== 'ALLOW') return { language, scopeDecision: decision, reply: coraPolicyNotice(decision, language), mode, suggestedActions: [], groundedBalance, modelUsed: 'policy-gate' };
 
     const [facility] = facilityId ? await db.select().from(facilities).where(eq(facilities.id, facilityId)).limit(1) : [];
     const evidence = {
@@ -137,18 +134,11 @@ export class CoraService {
     };
     const scrubResult = scrubPatientData(buildCoraPrompt(encounterContext, financials, message, language, mode, evidence, conversation), scrubContext);
     try {
-      const response = await geminiClient.generate({
-        systemInstruction: CORA_SYSTEM_PROMPTS[language], prompt: scrubResult.scrubbedText,
-        responseMimeType: 'application/json', responseJsonSchema: jsonResponseSchema(CoraResponseSchema),
-        temperature: 0.2, maxOutputTokens: 2048, timeoutMs: 30000, env: options.env
-      });
-      const answer = parseAiResponse(response, CoraResponseSchema);
+      const { answer, modelUsed } = await generateLocalizedCoraReply({ prompt: scrubResult.scrubbedText, language, env: options.env });
       if (answer.scopeDecision === 'OUT_OF_SCOPE' || answer.scopeDecision === 'RESTRICTED') {
-        return { ...answer, reply: coraPolicyNotice(answer.scopeDecision, language), suggestedActions: [], groundedBalance, modelUsed: response.modelUsed };
+        return { ...answer, language, reply: coraPolicyNotice(answer.scopeDecision, language), suggestedActions: [], groundedBalance, modelUsed };
       }
-      const directReply = directCoraReply(answer.reply);
-      if (!directReply) throw new AiInferenceError('AI_INVALID_RESPONSE', 'Cora did not return a substantive answer. Please try again.');
-      return { ...answer, mode, reply: rehydrateText(directReply, scrubResult.tokenMap), groundedBalance, modelUsed: response.modelUsed };
+      return { ...answer, language, mode, reply: rehydrateText(answer.reply, scrubResult.tokenMap), groundedBalance, modelUsed };
     } finally { clearTokenMap(scrubResult.tokenMap); }
   }
 }

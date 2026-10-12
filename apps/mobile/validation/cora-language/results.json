@@ -1,0 +1,30 @@
+{
+  "syntheticUIResponsesOnly": true,
+  "results": [
+    {
+      "width": 390,
+      "reducedMotion": "no-preference",
+      "fourLanguageChoices": true,
+      "englishRequestWithTagalogQuestion": true,
+      "languageSwitchCancelsOldReply": true,
+      "historyPreserved": true,
+      "choiceSharedWithBill": true,
+      "typingDots": 3,
+      "pulseObserved": true,
+      "staticWhenReduced": false
+    },
+    {
+      "width": 320,
+      "reducedMotion": "reduce",
+      "fourLanguageChoices": true,
+      "englishRequestWithTagalogQuestion": true,
+      "languageSwitchCancelsOldReply": true,
+      "historyPreserved": true,
+      "choiceSharedWithBill": true,
+      "typingDots": 3,
+      "pulseObserved": false,
+      "staticWhenReduced": true
+    }
+  ],
+  "errors": []
+}

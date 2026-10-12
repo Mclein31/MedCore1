@@ -1,3 +1,4 @@
+import { CORA_LANGUAGE_IDS } from '../../../shared/coraLanguage';
 import { AiInferenceError } from '../services/ai/geminiClient';
 import { encounterAccessCondition } from '../utils/encounterAccess';
 import { encounters } from '../db/schema';
@@ -73,7 +74,7 @@ async function recordAiAudit(data: {
 const coraChatSchema = z.object({
   message: z.string().trim().min(1, 'Message is required').max(2000),
   conversation: z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(2000) }).strict()).max(8).optional().default([]),
-  language: z.enum(['en', 'fil', 'ilo']).optional().default('fil'),
+  language: z.enum(CORA_LANGUAGE_IDS).optional().default('fil'),
   mode: z.enum(['GENERAL', 'WHY_DO_I_OWE', 'DISCHARGE_STATUS', 'PROMISSORY_ASSISTANCE', 'DISPUTE_DRAFT']).optional().default('GENERAL'),
   encounterId: z.string().max(100).optional()
 }).refine(body => body.conversation.reduce((n, t) => n + t.content.length, 0) <= 8000, 'Conversation is too long.');
