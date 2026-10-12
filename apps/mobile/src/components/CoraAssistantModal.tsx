@@ -1,3 +1,6 @@
+import { useCoraLanguage } from '../hooks/useCoraLanguage';
+import CoraTypingDots from './CoraTypingDots';
+import { CORA_LANGUAGE_LABELS, CORA_LANGUAGE_OPTIONS, type CoraLanguage } from '../../../shared/coraLanguage';
 import { ModalOverlay } from './ModalOverlay';
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -6,8 +9,7 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  StyleSheet,
-  ActivityIndicator
+  StyleSheet
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sparkles, Mic, Send, X, ShieldCheck, ChevronRight } from 'lucide-react-native';
@@ -31,6 +33,7 @@ export interface CoraAssistantModalProps {
 interface ChatMessage {
   id: string;
   sender: 'cora' | 'patient';
+  language: CoraLanguage;
   text: string;
   timestamp: string;
   isError?: boolean;
@@ -54,7 +57,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const { client } = useAuth();
-  const [language, setLanguage] = useState<'fil' | 'en' | 'ilo'>('fil');
+  const [language, setLanguage] = useCoraLanguage();
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -63,6 +66,35 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   const pendingRequest = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+
+  const activeContext = useRef({ client, encounterId: encounter?.uuid, language, visible });
+  activeContext.current = { client, encounterId: encounter?.uuid, language, visible };
+
+  const stopSpeech = () => {
+    const recognition = recognitionRef.current;
+    recognitionRef.current = null;
+    if (recognition) {
+      recognition.onstart = recognition.onresult = recognition.onerror = recognition.onend = null;
+      try { if (recognition.abort) recognition.abort(); else recognition.stop(); } catch {}
+    }
+  };
+  const cancelPending = () => {
+    const controller = pendingRequest.current;
+    pendingRequest.current = null;
+    controller?.abort();
+    setLoading(false);
+  };
+  const changeLanguage = (next: CoraLanguage) => {
+    if (next === language) return;
+    cancelPending(); stopSpeech();
+    activeContext.current.language = next;
+    setIsListening(false); setSpeechNotice(null);
+    messagesRef.current = messagesRef.current.map(message => message.isWelcome ? { ...message, language: next, text: CORA_WELCOME[next] } : message);
+    setMessages(messagesRef.current); setLanguage(next);
+  };
+  const closeAssistant = () => {
+    cancelPending(); stopSpeech(); setIsListening(false); setSpeechNotice(null); onClose();
+  };
 
   const openingPolicy = useRef(new CoraOpeningPolicy());
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -73,38 +105,44 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   };
 
   useEffect(() => {
-    pendingRequest.current?.abort(); openingPolicy.current.reset();
+    cancelPending(); stopSpeech(); openingPolicy.current.reset();
     messagesRef.current = []; setMessages([]); setLoading(false);
-    return () => { pendingRequest.current?.abort(); };
+    return () => { pendingRequest.current?.abort(); pendingRequest.current = null; stopSpeech(); };
   }, [client, encounter?.uuid]);
 
   useEffect(() => {
-    pendingRequest.current?.abort(); setLoading(false);
+    cancelPending(); stopSpeech(); setIsListening(false); setSpeechNotice(null);
     if (!visible) return;
     const timer = setTimeout(() => {
       const opening = openingPolicy.current.open(initialQuery, autoSendInitialQuery);
-      if (opening.welcome) appendMessage({ id: 'cora-welcome', sender: 'cora', isWelcome: true,
-        text: CORA_WELCOME[language], timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      if (opening.welcome) appendMessage({ id: 'cora-welcome', sender: 'cora', language: activeContext.current.language, isWelcome: true,
+        text: CORA_WELCOME[activeContext.current.language], timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
       if (opening.autoQuery && encounter?.uuid) void sendRef.current(opening.autoQuery, initialMode);
       else setInput(initialQuery || '');
     }, 0);
-    return () => { clearTimeout(timer); pendingRequest.current?.abort(); };
+    return () => { clearTimeout(timer); pendingRequest.current?.abort(); pendingRequest.current = null; stopSpeech(); };
   }, [visible, client, encounter?.uuid, initialQuery, autoSendInitialQuery, initialMode]);
 
+  // A language change from another Cora window must also cancel this request/recognizer.
   useEffect(() => {
-    pendingRequest.current?.abort(); setLoading(false);
+    cancelPending(); stopSpeech(); setIsListening(false); setSpeechNotice(null);
+    messagesRef.current = messagesRef.current.map(message => message.isWelcome ? { ...message, language, text: CORA_WELCOME[language] } : message);
+    setMessages(messagesRef.current);
   }, [language]);
 
   const handleSend = async (messageText?: string, mode: CoraMode = 'GENERAL') => {
     const textToSend = (messageText || input).trim();
-    if (!textToSend || loading || !encounter?.uuid || textToSend.length > 2000) return;
+    if (!textToSend || pendingRequest.current || !visible || !encounter?.uuid || textToSend.length > 2000) return;
+    const requestLanguage = activeContext.current.language;
+    const requestClient = client, requestEncounterId = encounter.uuid;
     const conversation = coraHistory(messagesRef.current);
     const controller = new AbortController();
-    pendingRequest.current?.abort(); pendingRequest.current = controller;
+    pendingRequest.current = controller;
+    const isCurrent = () => !controller.signal.aborted && pendingRequest.current === controller && activeContext.current.visible && activeContext.current.language === requestLanguage && activeContext.current.client === requestClient && activeContext.current.encounterId === requestEncounterId;
 
     const patientMsg: ChatMessage = {
       id: `patient-${Date.now()}`,
-      sender: 'patient',
+      sender: 'patient', language: requestLanguage,
       text: textToSend,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
@@ -117,17 +155,18 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       const api = createAiApi(client);
       const res: CoraChatResponse = await api.sendCoraMessage(
         textToSend,
-        language,
-        encounter.uuid,
+        requestLanguage,
+        requestEncounterId,
         mode,
         controller.signal,
         conversation
       );
 
-      if (controller.signal.aborted) return;
+      if (!isCurrent()) return;
+      if (res.language && res.language !== requestLanguage) throw new Error('Cora returned a different language. Please try again.');
       const coraMsg: ChatMessage = {
         id: `cora-${Date.now()}`,
-        sender: 'cora',
+        sender: 'cora', language: requestLanguage,
         text: res.reply,
         isNotice: res.scopeDecision === 'OUT_OF_SCOPE' || res.scopeDecision === 'RESTRICTED',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -137,17 +176,17 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       appendMessage(coraMsg);
       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (err: any) {
-      if (controller.signal.aborted) return;
+      if (!isCurrent()) return;
       const errorMsg: ChatMessage = {
         id: `cora-error-${Date.now()}`,
-        sender: 'cora',
+        sender: 'cora', language: requestLanguage,
         isError: true,
         text: err?.message || 'AI generation failed. Please try again.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
       appendMessage(errorMsg);
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      if (isCurrent()) { pendingRequest.current = null; setLoading(false); }
     }
   };
 
@@ -163,16 +202,20 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
 
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       const recognition = new SpeechRecognition();
-      recognition.lang = language === 'fil' ? 'fil-PH' : language === 'ilo' ? 'ilo-PH' : 'en-PH';
+      recognition.lang = language === 'fil' || language === 'tl' ? 'fil-PH' : language === 'ilo' ? 'ilo-PH' : 'en-PH';
+      const speechContext = activeContext.current;
+      const speechCurrent = () => recognitionRef.current === recognition && activeContext.current.visible && activeContext.current.client === speechContext.client && activeContext.current.encounterId === speechContext.encounterId && activeContext.current.language === speechContext.language;
       recognition.interimResults = false;
       recognition.continuous = false;
 
       recognition.onstart = () => {
+        if (!speechCurrent()) return;
         setIsListening(true);
         setSpeechNotice('Listening… Speak now.');
       };
 
       recognition.onresult = (event: any) => {
+        if (!speechCurrent()) return;
         const transcript = event.results[0][0].transcript;
         if (transcript) {
           setInput(transcript);
@@ -181,12 +224,14 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       };
 
       recognition.onerror = () => {
+        if (!speechCurrent()) return;
         setIsListening(false);
         setSpeechNotice('Could not recognize voice. Please type your message.');
         setTimeout(() => setSpeechNotice(null), 3000);
       };
 
       recognition.onend = () => {
+        if (!speechCurrent()) return;
         setIsListening(false);
         setSpeechNotice(null);
       };
@@ -200,7 +245,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   };
 
   const handleActionClick = (action: { actionType: string; payload?: Record<string, any> }) => {
-    onClose();
+    closeAssistant();
     if (!navigation) return;
 
     if (action.actionType === 'NAVIGATE_BILL') {
@@ -223,7 +268,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   const balance = encounter ? remainingBalance(encounter) : 0;
 
   return (
-    <ModalOverlay visible={visible} onRequestClose={onClose} avoidKeyboard
+    <ModalOverlay visible={visible} onRequestClose={closeAssistant} avoidKeyboard
       panelStyle={[styles.modalSheet, { paddingTop: Math.max(16, insets.top), paddingBottom: Math.max(16, insets.bottom) }]}>
           {/* Header */}
           <View style={styles.header}>
@@ -241,7 +286,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
                 <Text style={styles.headerSub}>Multilingual Patient Billing Assistant</Text>
               </View>
               <Pressable
-                onPress={onClose}
+                onPress={closeAssistant}
                 accessibilityRole="button"
                 accessibilityLabel="Close Cora assistant"
                 style={styles.closeButton}
@@ -251,15 +296,18 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
             </View>
 
             {/* Language Selector */}
-            <View style={styles.langBar}>
-              {(['fil', 'en', 'ilo'] as const).map((lang) => (
+            <View style={styles.langBar} accessibilityRole="radiogroup" accessibilityLabel="Reply language">
+              {CORA_LANGUAGE_OPTIONS.map((lang) => (
                 <Pressable
                   key={lang}
-                  onPress={() => setLanguage(lang)}
+                  onPress={() => changeLanguage(lang)}
+                  accessibilityRole="radio"
+                  accessibilityLabel={`Reply in ${CORA_LANGUAGE_LABELS[lang]}`}
+                  accessibilityState={{ checked: language === lang }}
                   style={[styles.langChip, language === lang && styles.langChipActive]}
                 >
                   <Text style={[styles.langChipText, language === lang && styles.langChipTextActive]}>
-                    {lang === 'fil' ? 'Taglish' : lang === 'en' ? 'English' : 'Ilokano'}
+                    {CORA_LANGUAGE_LABELS[lang]}
                   </Text>
                 </Pressable>
               ))}
@@ -333,7 +381,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
                       m.sender === 'patient' ? styles.msgTimePatient : styles.msgTimeCora
                     ]}
                   >
-                    {m.timestamp}
+                    {m.sender === 'cora' && !m.isWelcome && !m.isError ? `${CORA_LANGUAGE_LABELS[m.language]} · ${m.timestamp}` : m.timestamp}
                   </Text>
 
                   {/* Render Suggested Action Buttons if present */}
@@ -361,10 +409,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
                   <Sparkles size={12} color="#FFFFFF" />
                 </View>
                 <View style={[styles.msgBubble, styles.msgBubbleCora, styles.loadingBubble]}>
-                  <ActivityIndicator size="small" color={C.brand} />
-                  <Text style={[styles.msgTextCora, { fontSize: 12, marginLeft: 8 }]}>
-                    Cora is verifying statutory rules…
-                  </Text>
+                  <CoraTypingDots language={language} />
                 </View>
               </View>
             )}
@@ -377,6 +422,8 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
                 <Pressable
                   key={index}
                   onPress={() => handleSend(chip)}
+                  accessibilityRole="button"
+                  accessibilityLabel={chip}
                   disabled={loading}
                   style={styles.chipButton}
                 >
@@ -398,6 +445,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
             <Pressable
               onPress={handleVoiceToggle}
               style={[styles.iconButton, isListening && styles.iconButtonActive]}
+              accessibilityRole="button"
               accessibilityLabel="Voice speech recognition"
             >
               <Mic size={20} color={isListening ? C.danger : C.secondary} />
@@ -409,6 +457,8 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               placeholder={
                 language === 'fil'
                   ? 'Magtanong kay Cora tungkol sa billing…'
+                  : language === 'tl'
+                  ? 'Magtanong tungkol sa iyong bayarin sa ospital…'
                   : language === 'ilo'
                   ? 'Agdamag ken Cora maipapan ti billing mo…'
                   : 'Ask Cora about your hospital bill…'
@@ -423,6 +473,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
 
             <Pressable
               onPress={() => handleSend()}
+              accessibilityRole="button"
               disabled={loading || !input.trim() || !encounter?.uuid}
               style={[
                 styles.sendButton,
@@ -496,12 +547,15 @@ const styles = StyleSheet.create({
   },
   langBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 6,
     marginTop: 10
   },
   langChip: {
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: 8,
     borderRadius: 20,
     backgroundColor: C.elevated,
     borderWidth: 1,

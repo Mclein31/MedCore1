@@ -1,7 +1,8 @@
-import type { CoraHistoryTurn, CoraMode } from '../lib/coraConversation';
+import type { CoraHistoryTurn, CoraMode, CoraLanguage } from '../lib/coraConversation';
 import type { ApiClient } from '../lib/api';
 
 export interface CoraChatResponse {
+  language?: CoraLanguage;
   modelUsed?: string;
   scopeDecision: 'ANSWERED' | 'UNSUPPORTED' | 'OUT_OF_SCOPE' | 'RESTRICTED';
   reply: string;
@@ -38,7 +39,7 @@ export function createAiApi(client: ApiClient) {
   return {
     async sendCoraMessage(
       message: string,
-      language: 'en' | 'fil' | 'ilo' = 'fil',
+      language: CoraLanguage = 'fil',
       encounterId?: string,
       mode?: CoraMode,
       signal?: AbortSignal,

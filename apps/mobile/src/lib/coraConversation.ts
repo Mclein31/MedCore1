@@ -1,10 +1,12 @@
-export type CoraLanguage = 'en' | 'fil' | 'ilo';
+import type { CoraLanguage } from '../../../shared/coraLanguage';
+export type { CoraLanguage } from '../../../shared/coraLanguage';
 export type CoraMode = 'GENERAL' | 'WHY_DO_I_OWE' | 'DISCHARGE_STATUS' | 'PROMISSORY_ASSISTANCE' | 'DISPUTE_DRAFT';
 export interface CoraHistoryTurn { role: 'user' | 'assistant'; content: string }
 export const EXPLAIN_MY_BILL_QUERY = 'Explain my bill: what are my charges, deductions, payments and remaining balance, and why do I still owe this amount?';
 export const CORA_WELCOME: Record<CoraLanguage, string> = {
   en: "Hello, I'm Cora. Ask me about your hospital stay, bill, HMO, PhilHealth, payments or discharge.",
   fil: 'Hello, ako si Cora. Magtanong tungkol sa hospital stay, bill, HMO, PhilHealth, payments o discharge ninyo.',
+  tl: 'Kumusta, ako si Cora. Maaari kang magtanong tungkol sa iyong pananatili sa ospital, bayarin, HMO, PhilHealth, mga pagbabayad o paglabas.',
   ilo: 'Kablaaw, siak ni Cora. Agdamag maipapan iti hospital stay, bill, HMO, PhilHealth, payment wenno discharge yo.'
 };
 
@@ -20,7 +22,7 @@ export class CoraOpeningPolicy {
   }
 }
 
-export function coraHistory(messages: Array<{ sender: 'patient' | 'cora'; text: string; isError?: boolean; isWelcome?: boolean; isNotice?: boolean }>): CoraHistoryTurn[] {
+export function coraHistory(messages: Array<{ sender: 'patient' | 'cora'; text: string; isError?: boolean; isWelcome?: boolean; isNotice?: boolean; language?: CoraLanguage }>): CoraHistoryTurn[] {
   return messages.filter(m => !m.isError && !m.isWelcome && !m.isNotice)
     .slice(-8).map(m => ({ role: m.sender === 'patient' ? 'user' : 'assistant', content: m.text.slice(0, 1000) }));
 }
@@ -47,6 +49,17 @@ export const CORA_QUESTIONS: Record<CoraLanguage, string[]> = {
     'Ano ang status ng dispute ko?', 'Anong discharge stage ko ngayon?', 'Anong clearance steps pa ang kulang?',
     'Dumating na ba ang final HMO authorization?', 'Saan makukuha ang discharge documents?', 'Sino ang attending doctor ko?',
     'Ano ang address at contact number ng hospital?', 'Anong visiting hours ang nakatala?'
+  ],
+  tl: [
+    'Bakit may natitira pa akong babayaran?', 'Aling mga singil ang sagot ko?', 'Ipaliwanag ang bawas mula sa PhilHealth.',
+    'Magkano ang inaprubahan ng aking HMO?', 'Aling mga singil ang hindi sakop ng HMO?', 'Ano ang hangganan ng benepisyo ng aking HMO?',
+    'Bakit may dagdag na singil sa silid?', 'Ipaliwanag ang bayad sa serbisyo ng doktor.', 'Bakit ako siningil para sa gamot na ito?',
+    'Naibawas ba ang mga hindi nagamit na gamot?', 'Anong mga bawas para sa nakatatanda o PWD ang inilapat?', 'Magkano na ang naibayad ko?',
+    'Saan ko makikita ang aking mga resibo?', 'Paano ako magbabayad sa pamamagitan ng aplikasyon?', 'Ano ang kalagayan ng aking pagbabayad?',
+    'May kasunduan ba akong hulugan?', 'Kailan ang susunod kong hulog?', 'Paano ko itatanong ang isang maling singil?',
+    'Ano ang kalagayan ng aking pagtutol sa singil?', 'Ano ang kasalukuyang hakbang para sa paglabas ko?', 'Anong mga pahintulot ang kulang pa?',
+    'Dumating na ba ang huling pahintulot mula sa HMO?', 'Saan ko makukuha ang mga dokumento sa paglabas?', 'Sino ang aking nangangasiwang doktor?',
+    'Ano ang tirahan at numero ng telepono ng ospital?', 'Ano ang nakatalang oras ng pagdalaw?'
   ],
   ilo: [
     'Apay nga adda pay nabati a balance?', 'Ania dagiti charges nga bayadak?', 'Ilawlawag ti PhilHealth deduction ko.',
