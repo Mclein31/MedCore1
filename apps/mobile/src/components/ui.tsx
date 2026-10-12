@@ -8,17 +8,18 @@ import type { TextInputProps } from 'react-native';
 import { C, Radius } from './theme';
 export { C, Spacing, Radius } from './theme';
 import { Icon } from './icons';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 export const T = StyleSheet.create({
-  display: { fontSize: 32, fontWeight: '700', color: C.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
+  display: { fontSize: 34, fontWeight: '700', color: C.ink, fontVariant: ['tabular-nums'], letterSpacing: -0.8 },
   heroFigure: { fontSize: 32, fontWeight: '700', color: '#FFFFFF', fontVariant: ['tabular-nums'], letterSpacing: -0.5 },
   heroEyebrow: { fontSize: 14, fontWeight: '600', color: C.heroSub },
   heroSub: { fontSize: 14, color: C.heroSub, marginTop: 4 },
   title: { fontSize: 20, lineHeight: 26, fontWeight: '600', color: C.ink, letterSpacing: -0.2 },
   section: { fontSize: 18, lineHeight: 24, fontWeight: '600', color: C.ink },
   cardTitle: { fontSize: 16, lineHeight: 22, fontWeight: '600', color: C.ink },
-  body: { fontSize: 14, color: C.ink, lineHeight: 21 },
-  meta: { fontSize: 12, color: C.secondary, lineHeight: 18 },
+  body: { fontSize: 16, color: C.ink, lineHeight: 23 },
+  meta: { fontSize: 13, color: C.secondary, lineHeight: 19 },
   eyebrow: { fontSize: 12, fontWeight: '500', color: C.secondary },
   numeral: { fontVariant: ['tabular-nums'] }
 });
@@ -115,9 +116,10 @@ export function ErrorState({ message, onRetry }: { message: string; onRetry?: ()
 }
 
 export function PrimaryButton({ title, onPress, disabled, a11y, compact = false, minHeight = 50 }: { title: string; onPress: () => void; disabled?: boolean; a11y?: string; compact?: boolean; minHeight?: number }) {
+  const reduced = useReducedMotion();
   return (
     <Pressable
-      style={({ pressed }) => [s.primaryBtn, { minHeight }, compact && { borderRadius: Radius.control }, (disabled || pressed) && s.dimmed]}
+      style={({ pressed }) => [s.primaryBtn, { minHeight }, compact && { borderRadius: Radius.control }, (disabled || pressed) && s.dimmed, pressed && !reduced && { transform: [{ scale: 0.98 }] }]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
@@ -130,8 +132,9 @@ export function PrimaryButton({ title, onPress, disabled, a11y, compact = false,
 }
 
 export function SecondaryButton({ title, onPress, disabled }: { title: string; onPress: () => void; disabled?: boolean }) {
+  const reduced = useReducedMotion();
   return (
-    <Pressable style={({ pressed }) => [s.secondaryBtn, (disabled || pressed) && s.dimmed]} disabled={disabled} accessibilityState={{ disabled: !!disabled }} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
+    <Pressable style={({ pressed }) => [s.secondaryBtn, (disabled || pressed) && s.dimmed, pressed && !reduced && { transform: [{ scale: 0.98 }] }]} disabled={disabled} accessibilityState={{ disabled: !!disabled }} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
       <Text style={s.secondaryBtnText}>{title}</Text>
     </Pressable>
   );
@@ -316,14 +319,14 @@ const s = StyleSheet.create({
   emptyGlyph: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' },
   emptyGlyphText: { fontSize: 26, color: C.brand },
   sectionHeader: { marginTop: 24, marginBottom: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: Radius.surface, padding: 16, marginBottom: 12 },
+  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: Radius.surface, padding: 16, marginBottom: 12 },
   cardFlush: { padding: 0, borderWidth: 0, borderRadius: Radius.surface },
   row: { minHeight: 44, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, gap: 12 },
   rowLabel: { fontSize: 14, color: C.secondary, flex: 1, minWidth: 0 },
   rowValue: { flexShrink: 1, maxWidth: '55%', textAlign: 'right', fontSize: 15, color: C.ink, fontVariant: ['tabular-nums'] },
   rowBold: { fontWeight: '800', fontSize: 16 },
-  ledger: { minHeight: 52, flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: 12, gap: 2 },
-  ledgerDiv: { borderBottomWidth: 1, borderBottomColor: C.border },
+  ledger: { minHeight: 56, flexDirection: 'row', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 16, gap: 2 },
+  ledgerDiv: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
   ledgerMain: { flex: 1, paddingRight: 10 },
   ledgerTitle: { fontSize: 14, fontWeight: '400', color: C.ink },
   ledgerValue: { flexShrink: 1, maxWidth: '48%', textAlign: 'right', fontSize: 14, fontWeight: '500', fontVariant: ['tabular-nums'] },
@@ -331,9 +334,9 @@ const s = StyleSheet.create({
   badge: { borderRadius: Radius.badge, maxWidth: '100%', paddingHorizontal: 13, paddingVertical: 7, alignSelf: 'flex-start' },
   badgeText: { fontSize: 13, fontWeight: '700' },
   primaryBtn: { backgroundColor: C.brand, borderRadius: Radius.pill, paddingVertical: 13, paddingHorizontal: 18, alignItems: 'center', marginTop: 12, minHeight: 50, justifyContent: 'center' },
-  primaryBtnText: { textAlign: 'center', color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  primaryBtnText: { textAlign: 'center', color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   secondaryBtn: { borderColor: C.border, borderWidth: 1, backgroundColor: C.surface, borderRadius: Radius.pill, paddingVertical: 13, paddingHorizontal: 18, alignItems: 'center', marginTop: 12, minHeight: 50, justifyContent: 'center' },
-  secondaryBtnText: { textAlign: 'center', color: C.ink, fontSize: 15, fontWeight: '600' },
+  secondaryBtnText: { textAlign: 'center', color: C.ink, fontSize: 17, fontWeight: '600' },
   seg: { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: Radius.control, padding: 4, marginBottom: 18 },
   segOpt: { minHeight: 48, justifyContent: 'center', flex: 1, borderRadius: 11, paddingVertical: 11, alignItems: 'center' },
   segOptActive: { backgroundColor: C.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },

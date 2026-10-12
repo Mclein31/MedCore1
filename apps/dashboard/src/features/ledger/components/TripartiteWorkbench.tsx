@@ -30,7 +30,6 @@ export const TripartiteWorkbench: React.FC = () => {
     finalizeBill,
     sendBillToPatient,
     printDocument,
-    setActiveRoute,
     openAddChargeModal,
     openEditChargeModal,
     deleteChargeItem
@@ -164,7 +163,7 @@ export const TripartiteWorkbench: React.FC = () => {
           </div>
         </div>
 
-        {/* Header Actions: Patient Switcher + Search Bar + Preview Patient View + Open Dossier */}
+        {/* Header Actions: Open Dossier */}
         <div className="flex items-center gap-3">
 
           <button
@@ -309,15 +308,6 @@ export const TripartiteWorkbench: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                  setActiveRoute('PATIENT_PORTAL');
-              }}
-              className="text-xs font-bold text-blue-700 underline hover:text-blue-900"
-            >
-              Test Patient Experience &rarr;
-            </button>
             <button
               type="button"
               onClick={() => setCopiedNotification(null)}

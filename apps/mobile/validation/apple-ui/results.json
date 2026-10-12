@@ -1,0 +1,14 @@
+{
+  "checks": [
+    "Dashboard 1440px: layout, keyboard priority route, collapsed navigation and selection",
+    "Dashboard 1024px: layout, keyboard priority route, collapsed navigation and selection",
+    "Dashboard 768px: layout, keyboard priority route, collapsed navigation and selection",
+    "Mobile 320px: five 44px tabs, balance, payment entry/back, main routes, Cora open/close and reachable CTA at 150% content text",
+    "Mobile 390px: five 44px tabs, balance, payment entry/back, main routes, Cora open/close and reachable CTA at 150% content text",
+    "Mobile 430px: five 44px tabs, balance, payment entry/back, main routes, Cora open/close and reachable CTA at 150% content text",
+    "Empty mobile account shows no current statement and has no payment action"
+  ],
+  "errors": [],
+  "dashboardMutations": [],
+  "fixture": "Loopback synthetic data; no hospital transactions or AI generation."
+}

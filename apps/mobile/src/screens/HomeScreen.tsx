@@ -10,7 +10,7 @@ import QuickActions from '../components/QuickActions';
 import { Icon } from '../components/icons';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
 import { CoraFloatingPill } from '../components/CoraFloatingPill';
-import { C, Card, EmptyState, ErrorState, Expandable, Hero, LedgerRow, LoadingState, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
+import { C, Card, EmptyState, ErrorState, Expandable, LedgerRow, LoadingState, PrimaryButton, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
 
 function firstName(full: string | undefined): string {
   if (!full) return 'there';
@@ -34,19 +34,27 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const actions = [
     { label: 'Bill', icon: 'bill', onPress: () => navigation.navigate('Bill') },
     { label: 'Coverage', icon: 'coverage', onPress: () => navigation.navigate('Coverage') },
-    { label: readyToPay ? 'Pay' : 'Payments', icon: 'payments', disabled: readyToPay && (!!error || !net.connected || loading), onPress: () => readyToPay ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid }) : navigation.navigate('Payments') },
+    { label: 'Payments', icon: 'payments', onPress: () => navigation.navigate('Payments') },
     { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
   ];
   return <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
-    <View style={{ backgroundColor: C.hero, minHeight: 237, paddingHorizontal: 25, paddingTop: 28, paddingBottom: 126 }}>
-      <Text style={{ color: C.heroSub, fontSize: 13 }}>Good day,</Text>
-      <Text accessibilityRole="header" style={{ color: C.surface, fontSize: 22, fontWeight: '600', marginTop: 4 }}>{patient?.fullName || firstName(patient?.fullName)}</Text>
-      <Text style={{ color: C.heroSub, fontSize: 12, marginTop: 8 }}>{facility}</Text>
+    <View style={{ paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20 }}>
+      <Text style={T.meta}>Good day,</Text>
+      <Text accessibilityRole="header" style={[T.display, { marginTop: 4, lineHeight: 41 }]}>{patient?.fullName || firstName(patient?.fullName)}</Text>
+      <Text style={[T.meta, { marginTop: 6 }]}>{facility}</Text>
     </View>
-    <View style={{ backgroundColor: C.paper, borderTopLeftRadius: 24, borderTopRightRadius: 24, marginTop: -24, paddingHorizontal: 22, paddingBottom: 28, minHeight: 560 }}>
-      <View style={{ marginTop: -100, marginBottom: 20 }}><Hero eyebrow={cleared ? 'Discharge status' : currentEncounter ? 'Remaining hospital balance' : 'Your hospital account'} figure={cleared ? 'Cleared to leave' : currentEncounter ? formatPeso(owe) : 'No current statement'} trailing={<Icon name="chevron" size={20} color={C.surface} />} onPress={() => navigation.navigate(cleared ? 'Documents' : 'Bill')} a11y={cleared ? 'View discharge pass' : currentEncounter ? 'Review hospital balance' : 'View hospital bills'} minHeight={224}>
-        <QuickActions actions={actions} integrated />
-      </Hero></View>
+    <View style={{ paddingHorizontal: 22, paddingBottom: 28 }}>
+      <View testID="financial-summary" style={{ backgroundColor: C.surface, borderRadius: 22, padding: 22, marginBottom: 12 }}>
+        <Text style={[T.meta, { fontWeight: '500' }]}>{cleared ? 'Discharge status' : currentEncounter ? 'Remaining hospital balance' : 'Your hospital account'}</Text>
+        <Text accessibilityRole="header" style={[T.display, { marginTop: 8, lineHeight: 42 }]}>{cleared ? 'Cleared to leave' : currentEncounter ? formatPeso(owe) : 'No current statement'}</Text>
+        {currentEncounter && <Text style={[T.meta, { marginTop: 8 }]}>{cleared ? 'Your discharge pass is ready.' : 'After coverage, discounts and recorded payments.'}</Text>}
+        <PrimaryButton
+          title={cleared ? 'View discharge pass' : readyToPay ? 'Pay balance' : 'Review bill'}
+          disabled={readyToPay && (!!error || !net.connected || loading)}
+          onPress={() => cleared ? navigation.navigate('Documents') : readyToPay ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid }) : navigation.navigate('Bill')}
+        />
+      </View>
+      <QuickActions actions={actions} />
       <RefreshNotice error={error} onRetry={refresh} />
       {!net.connected && <Text style={[T.meta, { color: C.warning }]} accessibilityRole="alert">You’re offline. Information may be out of date.</Text>}
       {currentEncounter ? <>
@@ -63,8 +71,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       </Card>
       {steps.length > 0 && (
         <>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 14 }}>
-            <SectionHeader title="Your discharge journey" />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 12 }}>
+            <Text accessibilityRole="header" style={T.section}>Your discharge journey</Text>
             <Pressable
               onPress={() => {
                 setCoraQuery('What does this discharge stage mean and what is needed next?');
@@ -76,16 +84,15 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 4,
-                paddingVertical: 4,
-                paddingHorizontal: 8,
-                backgroundColor: '#F0FDF4',
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: '#BBF7D0'
+                minHeight: 44,
+                paddingVertical: 8,
+                paddingHorizontal: 12,
+                backgroundColor: C.brandSoft,
+                borderRadius: 22
               }}
             >
               <Sparkles size={13} color={C.brand} />
-              <Text style={{ fontSize: 11, fontWeight: '700', color: C.brandDark }}>Ask Cora</Text>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: C.brandDark }}>Ask Cora</Text>
             </Pressable>
           </View>
           <View style={{ paddingVertical: 8 }}><Stepper steps={steps} /></View>
@@ -108,13 +115,14 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     </View>
   </ScrollView>
   {currentEncounter && (
-    <CoraFloatingPill
-      onPress={() => {
-        setCoraQuery(undefined);
-        setCoraOpen(true);
-      }}
-      style={{ position: 'absolute', bottom: 20, right: 18, zIndex: 100 }}
-    />
+    <View testID="cora-dock" style={{ paddingHorizontal: 22, paddingVertical: 8, alignItems: 'flex-end', backgroundColor: C.paper }}>
+      <CoraFloatingPill
+        onPress={() => {
+          setCoraQuery(undefined);
+          setCoraOpen(true);
+        }}
+      />
+    </View>
   )}
   <CoraAssistantModal
     visible={coraOpen}

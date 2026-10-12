@@ -59,12 +59,12 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
 
   return (
     <div
-      className={`rounded-2xl border border-purple-200 bg-linear-to-b from-purple-50/40 via-white to-white shadow-xs overflow-hidden transition-all ${className}`}
+      className={`rounded-2xl border border-slate-200 bg-white overflow-hidden transition-colors ${className}`}
     >
       {/* Header Bar */}
-      <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-purple-100 bg-purple-50/60">
+      <div className="px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-slate-50/60">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-linear-to-br from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-brand-teal flex items-center justify-center text-white shadow-xs shrink-0">
             <Sparkles className="w-4 h-4" />
           </div>
           <div>
@@ -72,7 +72,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
               <h2 className="text-sm font-bold text-slate-900 tracking-tight">
                 Executive RCM &amp; Operational Telemetry Briefing
               </h2>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-teal-soft text-brand-teal-dark border border-transparent uppercase tracking-wider">
                 <Sparkles className="w-2.5 h-2.5" />
                 AI Synthesized
               </span>
