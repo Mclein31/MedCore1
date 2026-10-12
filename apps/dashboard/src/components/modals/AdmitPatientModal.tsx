@@ -13,6 +13,7 @@ export const AdmitPatientModal: React.FC = () => {
   } = useMedCore();
 
   const [fullName, setFullName] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
   const [mrn, setMrn] = useState(`MRN-2026-${Math.floor(1000 + Math.random() * 9000)}`);
   const [gender, setGender] = useState<'M' | 'F'>('M');
   const [age, setAge] = useState<number>(45);
@@ -54,7 +55,7 @@ export const AdmitPatientModal: React.FC = () => {
     try {
       await admitPatient({
         fullName: fullName.trim(),
-        mrn,
+        mrn, contactNumber: contactNumber.trim() || undefined,
         gender,
         age,
         isSeniorCitizen,
@@ -139,6 +140,11 @@ export const AdmitPatientModal: React.FC = () => {
               </div>
             </div>
 
+            <div className="mt-3">
+              <label htmlFor="admission-contact" className="block text-xs font-semibold text-slate-700 mb-1">Patient mobile number (optional)</label>
+              <input id="admission-contact" type="tel" autoComplete="tel" value={contactNumber} onChange={event => setContactNumber(event.target.value)} placeholder="09171234567"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-blue-600 focus:outline-none" />
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>

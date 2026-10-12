@@ -18,7 +18,7 @@ export const DoctorQuickSignModal: React.FC = () => {
     closeDoctorQuickSign,
     selectedEncounter,
     applyAccreditedCeiling,
-    signDoctorFee
+    signDoctorFee, nudgeDoctor, isSmsSending, activeRole
   } = useMedCore();
 
   const [signedSuccess, setSignedSuccess] = useState(false);
@@ -208,9 +208,10 @@ export const DoctorQuickSignModal: React.FC = () => {
                   size="md"
                   variant="secondary"
                   icon={Send}
-                  disabled title="SMS delivery is not configured" className="!h-14 w-full px-3 justify-center !whitespace-normal leading-5"
+                  disabled={isSmsSending(selectedEncounter.id) || selectedEncounter.stage !== 'DOCTOR_PF_PENDING' || !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)}
+                  onClick={() => void nudgeDoctor(selectedEncounter.id)} title="Preview a simulated doctor SMS" className="!h-14 w-full px-3 justify-center !whitespace-normal leading-5"
                 >
-                  SMS Delivery Unavailable
+                  {isSmsSending(selectedEncounter.id) ? 'Simulating…' : 'Nudge Doctor (SMS)'}
                 </Button>
               </div>
             </div>

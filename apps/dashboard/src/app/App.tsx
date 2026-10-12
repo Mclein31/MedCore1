@@ -16,6 +16,7 @@ import {
 } from '@/components/modals';
 import { LoginScreen } from '@/components/auth/LoginScreen';
 import { PrintDocumentContainer } from '@/components/printing';
+import { SmsDeliveryToast } from '@/components/notifications/SmsDeliveryToast';
 import { AlertCircle, X, RefreshCw, Activity } from 'lucide-react';
 
 // Code-Split 8 Task-Oriented Operational Route Pages for optimal bundle size and startup performance
@@ -374,6 +375,7 @@ export const MainLayout: React.FC = () => {
         />
       )}
       <PrintDocumentContainer />
+      <SmsDeliveryToast />
       {renderApiErrorToast()}
     </>
   );

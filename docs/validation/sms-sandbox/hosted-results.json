@@ -1,0 +1,8 @@
+{
+  "hostedAuthenticatedSmsOutboxVerified": true,
+  "anonymousAccessRejected": true,
+  "sandboxOnlyRows": true,
+  "noSmsDispatchedDuringHostedCheck": true,
+  "noAiFeaturesCalled": true,
+  "noPatientNamesIdentifiersPhonesBodiesCredentialsOrTokensSaved": true
+}

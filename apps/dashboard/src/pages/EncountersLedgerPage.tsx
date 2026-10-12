@@ -6,10 +6,12 @@ import { UserPlus } from 'lucide-react';
 import { SegmentedTabs, Button, Select } from '@/components/common';
 
 export const EncountersLedgerPage: React.FC = () => {
-  const { encounters, selectEncounter, openAdmitPatientModal } = useMedCore();
+  const { encounters, selectEncounter, openAdmitPatientModal, notifyPatientSms, isSmsSending, activeRole } = useMedCore();
   const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>('INPATIENT_LEDGER');
 
   // Estimator State
+  const [smsEncounterId, setSmsEncounterId] = useState('');
+  const smsEncounter = encounters.find(enc => enc.id === smsEncounterId);
   const [selectedProcedure, setSelectedProcedure] = useState('LAP_CHOLE');
 
   const tabs = [
@@ -159,13 +161,19 @@ export const EncountersLedgerPage: React.FC = () => {
                 </div>
               </div>
 
-              <Button
-                fullWidth
-                size="md"
-                variant="primary"
-                disabled title="SMS delivery is not configured"
-              >
-                SMS Delivery Unavailable
+              <div>
+                <label htmlFor="intake-sms-recipient" className="block text-xs font-semibold text-slate-700 mb-1.5">SMS recipient</label>
+                <select id="intake-sms-recipient" value={smsEncounterId} onChange={event => setSmsEncounterId(event.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                  <option value="">Choose a registered patient encounter</option>
+                  {encounters.map(enc => <option key={enc.id} value={enc.id}>{enc.patient.fullName || enc.patient.maskedName} · {enc.encounterNumber}</option>)}
+                </select>
+                <p className="text-xs text-slate-500 mt-2">The simulated reminder includes the admission reference and IDs to prepare.</p>
+              </div>
+              <Button fullWidth size="md" variant="primary"
+                disabled={!smsEncounter || isSmsSending(smsEncounter.id) || !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)}
+                onClick={() => { if (smsEncounter) void notifyPatientSms(smsEncounter.id, 'INTAKE_ORIENTATION'); }}>
+                {smsEncounter && isSmsSending(smsEncounter.id) ? 'Simulating…' : 'Send Intake Orientation (SMS)'}
               </Button>
             </div>
 

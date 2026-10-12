@@ -11,7 +11,7 @@
     "preview": "vite preview --config apps/dashboard/vite.config.ts",
     "seed": "npx tsx scripts/seedPostgres.ts",
     "test": "node --import ./node_modules/tsx/dist/loader.mjs scripts/testProject.ts",
-    "test:api": "NODE_ENV=test npx tsx scripts/seedPostgres.ts && NODE_ENV=test npx tsx scripts/testBackendApi.ts",
+    "test:api": "node --import ./node_modules/tsx/dist/loader.mjs scripts/runApiTests.ts",
     "test:ai": "NODE_ENV=test npx tsx apps/server/__tests__/aiServices.test.ts",
     "test:ai:live": "npx tsx scripts/testLiveAi.ts",
     "test:financial": "node --import ./node_modules/tsx/dist/loader.mjs scripts/auditFinancials.ts",
@@ -20,7 +20,10 @@
     "test:cora": "node --import ./node_modules/tsx/dist/loader.mjs apps/mobile/__tests__/coraLanguage.mts",
     "test:ai:cache": "node --import ./node_modules/tsx/dist/loader.mjs apps/server/__tests__/aiCache.test.ts",
     "test:ai:cache:postgres": "node --import ./node_modules/tsx/dist/loader.mjs scripts/testAiCachePostgres.ts",
-    "db:ai-cache": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiCacheMigration.ts"
+    "db:ai-cache": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiCacheMigration.ts",
+    "test:sms": "node --import ./node_modules/tsx/dist/loader.mjs apps/server/test/smsService.test.ts",
+    "db:sms": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applySmsMigration.ts",
+    "test:sms:ui": "node --import ./node_modules/tsx/dist/loader.mjs scripts/verifySmsUi.mts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",

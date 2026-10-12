@@ -1,3 +1,5 @@
+import { dispatchEncounterSms, notifyIssuedGatePass } from '../services/smsDispatchService';
+import { SmsError, normalizePhPhoneNumber } from '../services/smsService';
 import {gatePassPayload} from '../../../shared/gatePassPayload';
 import {generateGatePassHmac,generateDeterministicExitPin,resolveGatePassSecret} from '../services/gatePassService';
 import { moneyCents } from '../services/statutoryWaterfall';
@@ -798,6 +800,32 @@ const handleStatement = async (c: any) => {
 encountersApp.get('/:id/statement', handleStatement);
 encountersApp.get('/:id/invoice', handleStatement);
 
+// Recipients and template variables are resolved from authorized records, never request text.
+const smsBodySchema = z.object({
+  language: z.enum(['en', 'tl']).default('en'),
+  templateType: z.enum(['BILL_READY', 'INTAKE_ORIENTATION']).default('BILL_READY')
+}).strict();
+for (const action of ['nudge-doctor', 'notify-patient-sms'] as const) {
+  encountersApp.post(`/:id/${action}`, requireAuth, requireRole(['BILLING_SPECIALIST', 'HOSPITAL_CFO']), async c => {
+    let body: unknown;
+    try { const text = await c.req.text(); body = text.trim() ? JSON.parse(text) : {}; }
+    catch { return apiError(c,400,'SMS_REQUEST_INVALID','Send a valid JSON notification request.'); }
+    const input = smsBodySchema.safeParse(body);
+    if (!input.success) return apiError(c, 400, 'SMS_REQUEST_INVALID', 'Choose a supported SMS language and notification template.');
+    try {
+      const response = await dispatchEncounterSms({ encounterId: c.req.param('id')!, user: c.get('user'),
+        templateType: action === 'nudge-doctor' ? 'DOCTOR_PF_NUDGE' : input.data.templateType,
+        language: input.data.language, requestKey: c.req.header('Idempotency-Key') || `manual:${crypto.randomUUID()}`,
+        env: c.env as any, ipAddress: getClientIp(c) });
+      invalidateEncountersCache(c.get('user').facilityId);
+      return c.json(response);
+    } catch (error) {
+      if (error instanceof SmsError) return apiError(c, error.status, error.code, error.message);
+      return apiError(c, 503, 'SMS_TRACKING_UNAVAILABLE', 'SMS tracking is unavailable. Check the outbox before retrying.');
+    }
+  });
+}
+
 // Persist bill lifecycle transitions; settlement readiness remains authoritative.
 for (const action of ['finalize-bill', 'send-bill', 'view-bill'] as const) {
   encountersApp.post(`/:id/${action}`, requireAuth,
@@ -829,8 +857,13 @@ for (const action of ['finalize-bill', 'send-bill', 'view-bill'] as const) {
         return {id:enc.id};
       });
       if(result instanceof Response) return result;
+      let smsNotification;
+      if (action === 'finalize-bill' || action === 'send-bill') {
+        try { smsNotification = { dispatch: (await dispatchEncounterSms({encounterId:result.id,user,templateType:'BILL_READY',requestKey:`bill-ready:${result.id}`,env:c.env as any,ipAddress:getClientIp(c)})).dispatch }; }
+        catch(error) { smsNotification = {errorCode:error instanceof SmsError?error.code:'SMS_TRACKING_UNAVAILABLE'}; }
+      }
       invalidateEncountersCache();
-      return c.json({success:true,encounter:user.role==='PATIENT_GUARANTOR'?undefined:await getHydratedEncounter(result.id)});
+      return c.json({success:true,smsNotification,encounter:user.role==='PATIENT_GUARANTOR'?undefined:await getHydratedEncounter(result.id)});
     });
 }
 
@@ -842,7 +875,7 @@ encountersApp.post('/:id/gate-pass',requireAuth,requireRole(['BILLING_SPECIALIST
     const [enc]=await tx.select().from(encounters).where(and(matchEncounterCondition(id),eq(encounters.facilityId,user.facilityId))).limit(1).for('update');
     if(!enc)return apiError(c,404,'NOT_FOUND','Encounter not found.');
     const [existing]=await tx.select().from(dischargePasses).where(and(eq(dischargePasses.encounterId,enc.id),inArray(dischargePasses.status,['ACTIVE_READY_FOR_EXIT','VERIFIED_AT_LOBBY']))).limit(1);
-    if(enc.stage==='CLEARED_GATE_PASS'&&existing)return {id:enc.id};
+    if(enc.stage==='CLEARED_GATE_PASS'&&existing)return {id:enc.id,passNumber:existing.passNumber};
     if(enc.stage!=='PENDING_SETTLEMENT'||moneyCents(Number(enc.remainingBalance))!==0)return apiError(c,409,'STAGE_NOT_READY','Complete discharge checks and settle the patient balance before releasing a pass.');
     const [patient]=await tx.select().from(patients).where(and(eq(patients.id,enc.patientId),eq(patients.facilityId,user.facilityId))).limit(1);
     if(!patient)return apiError(c,404,'NOT_FOUND','Patient not found.');
@@ -856,10 +889,11 @@ encountersApp.post('/:id/gate-pass',requireAuth,requireRole(['BILLING_SPECIALIST
     if(enc.bedId)await tx.update(beds).set({status:'HOUSEKEEPING',currentEncounterId:null,updatedAt:now}).where(and(eq(beds.id,enc.bedId),eq(beds.currentEncounterId,enc.id),eq(beds.facilityId,user.facilityId)));
     await tx.insert(encounterTimelineEvents).values({encounterId:enc.id,eventType:'DISCHARGE',title:'Digital Gate Pass Issued',description:'No outstanding patient balance; hospital clearance confirmed.',actorId:user.id,actorName:user.fullName,status:'COMPLETED'});
     await tx.insert(systemAuditLogs).values({facilityId:user.facilityId,userId:user.id,actorRole:user.role,action:'GATE_PASS_ISSUED',resourceType:'encounters',resourceId:enc.id,newState:{passNumber,stage:'CLEARED_GATE_PASS'},ipAddress:getClientIp(c)});
-    return {id:enc.id};
+    return {id:enc.id,passNumber};
   });
   if(result instanceof Response)return result;
-  invalidateEncountersCache();return c.json({success:true,encounter:await getHydratedEncounter(result.id)});
+  const smsNotification = await notifyIssuedGatePass({encounterId:result.id,passNumber:result.passNumber,user,env:c.env as any,ipAddress:getClientIp(c)});
+  invalidateEncountersCache();return c.json({success:true,smsNotification,encounter:await getHydratedEncounter(result.id)});
 });
 
 // POST /api/v1/encounters/:id/advance-stage
@@ -953,6 +987,10 @@ const createEncounterSchema = z.object({
   isSeniorCitizen: z.boolean().default(false),
   isPwd: z.boolean().default(false),
   philhealthPin: z.string().optional(),
+  contactNumber: z.string().max(32).optional().refine(value => {
+    if (!value?.trim()) return true;
+    try { normalizePhPhoneNumber(value); return true; } catch { return false; }
+  }, 'Enter a valid Philippine mobile number.'),
   roomBed: z.string().min(2).max(32),
   roomCategory: z.enum(['REGULAR_PRIVATE', 'SEMI_PRIVATE', 'WARD', 'SUITE', 'ICU', 'NICU']).default('REGULAR_PRIVATE'),
   dailyRoomRate: roomRateSchema.default(2500),
@@ -983,10 +1021,18 @@ encountersApp.post(
         .select()
         .from(patients)
         .where(and(eq(patients.facilityId, user.facilityId), eq(patients.mrn, data.mrn)))
-        .limit(1);
+        .limit(1).for('update');
 
       if (existingPatient.length > 0) {
         patientId = existingPatient[0].id;
+        if (data.contactNumber?.trim()) {
+          const proposed = normalizePhPhoneNumber(data.contactNumber);
+          let registered = '';
+          try { registered = normalizePhPhoneNumber(existingPatient[0].contactNumber); } catch { /* Missing legacy contact. */ }
+          if (registered && registered !== '+639170000000' && registered !== proposed) return apiError(c,400,'PATIENT_CONTACT_MISMATCH','This MRN already has a different registered mobile number. Use its registered contact for notifications.');
+          await tx.update(patients).set({contactNumber:proposed,updatedAt:new Date()}).where(eq(patients.id,patientId));
+          await tx.insert(systemAuditLogs).values({facilityId:user.facilityId,userId:user.id,actorRole:user.role,action:'PATIENT_CONTACT_UPDATED',resourceType:'patients',resourceId:patientId,newState:{contactNumber:proposed},ipAddress:getClientIp(c)});
+        }
       } else {
         const dob = data.dateOfBirth
           ? new Date(data.dateOfBirth)
@@ -999,7 +1045,7 @@ encountersApp.post(
             fullName: data.fullName,
             dateOfBirth: dob,
             gender: data.gender,
-            contactNumber: '0917-000-0000',
+            contactNumber: data.contactNumber?.trim() ? normalizePhPhoneNumber(data.contactNumber) : '',
             philhealthPin: data.philhealthPin || null,
             isSeniorCitizen: data.isSeniorCitizen,
             isPwd: data.isPwd
@@ -1125,7 +1171,10 @@ encountersApp.post(
     if(createdEncounterId instanceof Response)return createdEncounterId;
     invalidateEncountersCache();
     const hydrated = await getHydratedEncounter(createdEncounterId);
-    return c.json({ success: true, encounter: hydrated });
+    let smsNotification;
+    try { smsNotification = {dispatch:(await dispatchEncounterSms({encounterId:createdEncounterId,user,templateType:'INTAKE_ORIENTATION',requestKey:`intake:${createdEncounterId}`,env:c.env as any,ipAddress:getClientIp(c)})).dispatch}; }
+    catch(error) {smsNotification={errorCode:error instanceof SmsError?error.code:'SMS_TRACKING_UNAVAILABLE'};}
+    return c.json({ success: true, smsNotification, encounter: await getHydratedEncounter(createdEncounterId, user.facilityId) });
   }
 );
 

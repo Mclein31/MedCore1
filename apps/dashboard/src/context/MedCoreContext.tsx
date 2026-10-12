@@ -1,3 +1,4 @@
+import type { SmsDispatchResult, SmsDispatchResponse } from '../../../shared/sms';
 import { validateGovernmentId, type GovernmentIdType } from '../../../shared/governmentId';
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Encounter, ChargemasterItem, DischargeStage, PromissoryNote, DischargePass, PaymentReceipt } from '@/types/domain';
@@ -84,7 +85,11 @@ interface MedCoreContextType {
 
   // Operational Transitions
   advanceStage: (encounterId: string) => Promise<void>;
-  nudgeDoctor: (encounterId: string) => void;
+  nudgeDoctor: (encounterId: string) => Promise<void>;
+  notifyPatientSms: (encounterId: string, templateType?: 'BILL_READY' | 'INTAKE_ORIENTATION') => Promise<void>;
+  lastSmsDispatch: SmsDispatchResult | null;
+  clearLastSmsDispatch: () => void;
+  isSmsSending: (encounterId: string) => boolean;
   applyAccreditedCeiling: (encounterId: string) => Promise<void>;
   clearPharmacyRts: (encounterId: string) => Promise<void>;
   approveHmoFinalLoa: (encounterId: string) => Promise<void>;
@@ -201,6 +206,13 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [apiError, setApiError] = useState<string | null>(null);
 
   const clearApiError = () => setApiError(null);
+  const [lastSmsDispatch, setLastSmsDispatch] = useState<SmsDispatchResult | null>(null);
+  const [smsSending, setSmsSending] = useState<string[]>([]);
+  const smsPending = useRef(new Map<string, Promise<void>>());
+  const smsRetryKeys = useRef(new Map<string, string>());
+  const smsIdentity = useRef('');
+  const clearLastSmsDispatch = () => setLastSmsDispatch(null);
+  const isSmsSending = (id: string) => smsSending.includes(id);
 
   const encounterRevision=useRef(0);
   const censusPending=useRef<{generation:number;request:Promise<boolean>} | null>(null);
@@ -284,6 +296,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Auth & Session State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  smsIdentity.current = `${currentUser?.id || ''}:${currentUser?.facilityId || ''}:${currentUser?.role || ''}`;
+  useEffect(() => { setLastSmsDispatch(null); }, [currentUser?.id, currentUser?.facilityId, currentUser?.role]);
   const [isVerifyingSession, setIsVerifyingSession] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [sessionNotice, setSessionNotice] = useState<string | null>(null);
@@ -304,7 +318,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsVerifyingSession(false);
     sessionGeneration.current++; encounterRevision.current++;
     seenNotifications.current=new Set(); setNotifications([]); setUnreadNotificationCount(0); setNotificationError(null);
-    setApiError(null);
+    setApiError(null); setLastSmsDispatch(null); setSmsSending([]); smsPending.current.clear(); smsRetryKeys.current.clear();
     setSessionNotice(previous => reason === 'expired'
       ? hadVerifiedSession ? 'Your session expired. Sign in again to continue.' : previous
       : null);
@@ -576,6 +590,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const acceptServerEncounter = (encounterId: string, response: any, generation: number) => {
     if (generation !== sessionGeneration.current) throw new ApiError('Your session changed. Sign in again.', 0, 'SESSION_CHANGED');
     if (!response?.success || !response.encounter?.encounterNumber) throw new Error('The hospital did not confirm this update. Refresh and try again.');
+    if (response.smsNotification?.dispatch) setLastSmsDispatch(response.smsNotification.dispatch);
     encounterRevision.current++;
     setEncounters(prev => prev.some(enc=>enc.id===encounterId || enc.encounterNumber===response.encounter.encounterNumber)
       ? prev.map(enc=>enc.id===encounterId || enc.encounterNumber===response.encounter.encounterNumber?response.encounter:enc) : [...prev,response.encounter]);
@@ -598,7 +613,42 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const advanceStage = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not advance discharge', () => apiClient.advanceStage(encounterId));
   const signDoctorFee = (encounterId: string, agreedFee: number) => confirmEncounterMutation(encounterId, 'Could not sign professional fee', () => apiClient.doctorQuickSign(encounterId, agreedFee));
 
-  const nudgeDoctor = (_encounterId: string) => setApiError('SMS delivery is not configured.');
+  const dispatchSms = (encounterId: string, type: string, mutation: (requestKey: string) => Promise<SmsDispatchResponse>): Promise<void> => {
+    const operation = `${type}:${encounterId}`;
+    const pending = smsPending.current.get(operation);
+    if (pending) return pending;
+    const generation = sessionGeneration.current;
+    const identity = smsIdentity.current;
+    const requestKey = smsRetryKeys.current.get(operation) || crypto.randomUUID();
+    smsRetryKeys.current.set(operation, requestKey);
+    setSmsSending(previous => [...new Set([...previous, encounterId])]);
+    setApiError(null); setLastSmsDispatch(null);
+    const request = (async () => {
+      try {
+        const response = await mutation(requestKey);
+        if (generation !== sessionGeneration.current || identity !== smsIdentity.current) return;
+        if (!response.success || !response.dispatch?.isSimulated || response.dispatch.provider !== 'SIMULATOR') throw new Error('The server did not confirm a sandbox SMS.');
+        setLastSmsDispatch(response.dispatch);
+        smsRetryKeys.current.delete(operation);
+        // Delivery has already succeeded. A read refresh failure must not encourage a resend.
+        await refreshServerEncounter(encounterId).catch(() => {});
+      } catch (error) {
+        if (generation === sessionGeneration.current) {
+          setApiError(error instanceof Error ? error.message : 'Could not simulate this SMS.');
+          if (error instanceof ApiError && error.status >= 400 && error.status < 500) smsRetryKeys.current.delete(operation);
+        }
+      } finally {
+        if (generation === sessionGeneration.current) {
+          smsPending.current.delete(operation);
+          if (![...smsPending.current.keys()].some(key => key.endsWith(`:${encounterId}`))) setSmsSending(previous => previous.filter(id => id !== encounterId));
+        }
+      }
+    })();
+    smsPending.current.set(operation, request);
+    return request;
+  };
+  const nudgeDoctor = (id: string) => dispatchSms(id, 'DOCTOR_PF_NUDGE', key => apiClient.nudgeDoctor(id, key));
+  const notifyPatientSms = (id: string, type: 'BILL_READY' | 'INTAKE_ORIENTATION' = 'BILL_READY') => dispatchSms(id, type, key => apiClient.notifyPatientSms(id, type, key));
 
   const applyAccreditedCeiling = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not apply accredited ceiling', () => apiClient.applyAccreditedCeiling(encounterId));
   const clearPharmacyRts = (encounterId: string) => confirmEncounterMutation(encounterId, 'Could not clear pharmacy audit', () => apiClient.clearPharmacyRts(encounterId));
@@ -891,10 +941,14 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // --- ENCOUNTER CRUD IMPLEMENTATION ---
   const admitPatient = async (data: any) => {
+    const generation = sessionGeneration.current;
+    const identity = smsIdentity.current;
+    setApiError(null);
     try {
       const res = await apiClient.createEncounter({
         fullName: data.fullName,
         mrn: data.mrn,
+        contactNumber: data.contactNumber,
         gender: data.gender,
         age: data.age,
         isSeniorCitizen: data.isSeniorCitizen,
@@ -909,12 +963,12 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         hmoPolicyNumber: data.hmoPolicyNumber
       });
 
+      if (identity !== smsIdentity.current) throw new ApiError('Your session changed. Sign in again.', 0, 'SESSION_CHANGED');
       if (!res?.success || !res.encounter) throw new Error('The hospital did not confirm admission.');
-      encounterRevision.current++;
-      setEncounters(prev => [res.encounter, ...prev]);
+      acceptServerEncounter(res.encounter.id, res, generation);
       setSelectedEncounterId(res.encounter.id);
     } catch (error: unknown) {
-      setApiError(error instanceof Error ? error.message : 'Could not admit the patient.');
+      if (generation === sessionGeneration.current && identity === smsIdentity.current) setApiError(error instanceof Error ? error.message : 'Could not admit the patient.');
       throw error;
     }
   };
@@ -1087,7 +1141,7 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         closeDossierDrawer,
         advanceStage,
         signDoctorFee,
-        nudgeDoctor,
+        nudgeDoctor, notifyPatientSms, lastSmsDispatch, clearLastSmsDispatch, isSmsSending,
         applyAccreditedCeiling,
         clearPharmacyRts,
         approveHmoFinalLoa,

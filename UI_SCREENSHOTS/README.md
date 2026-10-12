@@ -29,6 +29,15 @@ Long screens include numbered scroll captures. Mobile images are browser renders
 - [07-settings-rules.png](dashboard/07-settings-rules.png)
 - [08-patient-portal.png](dashboard/08-patient-portal.png)
 
+### SMS sandbox previews
+
+All previews use the dedicated local synthetic fixture and deliver no cellular SMS.
+
+- [Doctor nudge](dashboard/sms-sandbox/01-doctor-nudge.png)
+- [QuickSign preview](dashboard/sms-sandbox/02-quicksign-preview.png)
+- [Intake orientation](dashboard/sms-sandbox/03-intake-preview.png)
+- [Admission preview](dashboard/sms-sandbox/04-admission-preview.png)
+
 ## Mobile
 
 - [00-launch.png](mobile/00-launch.png)

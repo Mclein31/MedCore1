@@ -90,6 +90,10 @@ class UnifiedMedCoreApiClient {
     return this.patients.getEncounter(id);
   }
 
+  public nudgeDoctor(id: string, requestKey?: string) { return this.patients.nudgeDoctor(id, requestKey); }
+  public notifyPatientSms(id: string, templateType: 'BILL_READY' | 'INTAKE_ORIENTATION' = 'BILL_READY', requestKey?: string) { return this.patients.notifyPatientSms(id, templateType, requestKey); }
+  public getSmsOutbox() { return this.patients.getSmsOutbox(); }
+
   public finalizeBill(id: string) { return this.patients.finalizeBill(id); }
   public sendBill(id: string) { return this.patients.sendBill(id); }
   public recordBillViewed(id: string) { return this.patients.recordBillViewed(id); }
