@@ -4,9 +4,11 @@ You are a product-film director, motion designer, editor, screen-capture artist,
 
 ## 1. The assignment
 
-Produce **“MedCore — Clear the Way for Care”**, a **4 minute 30 second** product film. The source storyboard is `story-board-v1.pdf`, a four-page, eight-scene plan for a hopeful, inspirational, all-English prototype presentation. Follow its narrative order. The user's latest direction replaces human voice-over and on-camera speaking with **AI narration**. Show both real interfaces prominently, with clean, enjoyable animation and enough time to understand the interactions.
+Produce **“MedCore — Clear the Way for Care”**, a **4 minute 30 second** product film. The source storyboard is `story-board-v1.pdf`, a four-page, eight-scene plan for a hopeful, inspirational, all-English prototype presentation. Follow its narrative order, with the user's latest direction replacing the original team introduction in Scene 7 with a product-and-story payoff. Use **AI narration throughout**. Show both real interfaces prominently, with clean, enjoyable animation and enough time to understand the interactions.
 
-Target viewers: innovation judges, hospital administrators, CFOs, billing personnel, potential pilot partners, and Filipino patients and families. Make the film understandable to someone who has never heard of revenue-cycle management. Explain the problem through people’s experience, demonstrate the solution through real screens, and close with the team and the proposed Cagayan Valley pilot.
+Target viewers: innovation judges, hospital administrators, CFOs, billing personnel, potential pilot partners, and Filipino patients and families. Make the film understandable to someone who has never heard of revenue-cycle management. Explain the problem through people’s experience, demonstrate the solution through real screens, and close with the product’s value and the proposed Cagayan Valley pilot.
+
+**Keep the entire film focused on the product and the story, with no faces or team segment.** Use real UI, motion graphics, abstract faceless illustrations, and text. Do not include team photographs, portraits, interviews, on-camera presenters, generated human faces, or lip-sync footage. No team introductions or personal-name credits are needed in the film. This direction overrides the original PDF’s team scene even if team photos or clips are supplied; do not request them.
 
 The tone is warm, credible, optimistic, clear, and lightly playful. Create enjoyment through rhythm, satisfying progress, precise visual transformations, and small moments of relief. Treat hospital costs and patient anxiety with respect.
 
@@ -106,11 +108,11 @@ Hold key figures and actions for **3–5 seconds**. Vary composition about every
 
 Keep one clear focal point per shot. Use short callouts, usually **2–6 words**. Show no more than two callouts at once. The cursor should move deliberately and pause before a click. A subtle tap ripple is fine; random cursor travel is not.
 
-Render editorial titles and figures as native vector/text layers, not generated text pixels. Spell **PhilHealth, GCash, Maya, QR Ph, eLOA, eSOA, ClaimReady, MedCore**, and team names correctly.
+Render editorial titles and figures as native vector/text layers, not generated text pixels. Spell **PhilHealth, GCash, Maya, QR Ph, eLOA, eSOA, ClaimReady, MedCore** correctly.
 
 ## 5. AI voice-over and sound
 
-Use **one AI narrator for the entire film**, including the team introduction. Choose a warm, articulate adult voice with natural Filipino English or clear international English, gentle confidence, and conversational phrasing. A warm female voice is the default; a similarly natural male voice is acceptable if the tool’s female options sound artificial. No cloned celebrity voice, impersonation, robot monotone, exaggerated sales delivery, or artificial emotional distress.
+Use **one AI narrator for the entire film**. Choose a warm, articulate adult voice with natural Filipino English or clear international English, gentle confidence, and conversational phrasing. A warm female voice is the default; a similarly natural male voice is acceptable if the tool’s female options sound artificial. No cloned celebrity voice, impersonation, robot monotone, exaggerated sales delivery, or artificial emotional distress.
 
 All narration is English. The real Cora UI may display its supported language choices: **English, Taglish, Tagalog, and Ilokano**. For the main demonstration select English where an authentic capture is available.
 
@@ -126,7 +128,7 @@ Pronunciation guidance:
 - DAR: say “days in accounts receivable.”
 - POS: say “point-of-service collections.”
 - ₱: say “pesos”; read currency amounts naturally, with figures preserved in the written graphics.
-- Audition Cagayan Valley, Calabarzon, Cebu, and team names before final synthesis. Use a pronunciation dictionary or phoneme override when needed; do not invent confident pronunciations for unfamiliar names.
+- Audition Cagayan Valley, Calabarzon, and Cebu before final synthesis. Use a pronunciation dictionary or phoneme override when needed; do not invent confident pronunciations for unfamiliar names.
 
 Music: a licensed or original instrumental with a soft pulse, warm keys, light percussion, and an optimistic melodic lift. Start restrained, brighten when the solution appears, and give the payment/pass sequence a small musical payoff. Keep narration clearly above the music. Use subtle clicks, taps, a gentle processing pulse, and one soft clearance chime. Leave the two-second problem-to-solution pause mostly quiet.
 
@@ -150,7 +152,7 @@ Use the narration below as the production script. Minor pronunciation, breathing
 - 00:04–00:10: large real dashboard crop with a real mobile Home screen arriving beside it. An editorial “8 hours” resolves to “Under 45 minutes,” with a readable **“Discharge target”** label.
 - 00:10–00:15: settle into a clean two-platform hero. Callout: “Clarity for staff. Confidence for families.”
 
-No team faces here. Music establishes a pulse and ducks under the first line.
+Use only the product screens, logo, and motion graphics. Music establishes a pulse and ducks under the first line.
 
 ### Scene 2 — Problem with emotion | 00:15–00:55 | 40 seconds
 
@@ -248,25 +250,21 @@ Throughout Scene 5 keep a discreet lower-third: **“LIVE PROTOTYPE — med-core
 
 Preserve these storyboard figures, but do not present them as independently verified research, current revenue, signed customers, or a deployed network. The vault’s larger billing-volume market estimates describe another market definition; do not mix those values with this card. Avoid dismissive competitor comparisons and unauthorized partner logos.
 
-### Scene 7 — Team near the ending | 03:55–04:15 | 20 seconds
+### Scene 7 — Product and story payoff | 03:55–04:15 | 20 seconds
 
-**Purpose:** introduce the real people behind the prototype while keeping AI narration.
+**Purpose:** return to the family’s uncertainty from Scene 2 and show how the two interfaces support a clearer financial experience. This replaces the PDF’s team introduction.
 
 **AI voice-over — speak verbatim:**
 
-> Created by Marc, McLein, and Micoh, with Professor Fernando Jaminola. A student team building for Filipino families, and for the hospital staff who help them. Our work brings product thinking, financial clarity, and patient dignity together.
+> For the family, a bill they can understand. For the hospital, a clearer path through approvals and discharge. MedCore connects those moments with one shared financial picture. Less confusion. Clearer next steps. More attention for care.
 
 **Shots:**
 
-- 03:55–04:03: one real supplied team photograph or silent real team clip; subtle slow push. This is the first point where identifiable people may appear.
-- 04:03–04:11: beautifully spaced credits, preferably two balanced columns or two sequential cards, with full exact names:
-  - **Marc Andre Nicolas M. Callueng — Student**
-  - **McLein Jei G. Onza — Student**
-  - **Micoh Jeremy C. Montenegro — Student**
-  - **Prof. Fernando M. Jaminola Jr., MIT — Coach**
-- 04:11–04:15: return to the real dashboard/phone pair or a real hands-on-laptop team cutaway.
+- 03:55–04:02: real mobile Bill screen, focusing on the recorded breakdown and clear next action. Echo the opening question through an external text callout: **“A bill you can understand.”** Let the actual UI answer visually; do not change financial values to create a dramatic result.
+- 04:02–04:09: match cut to the real staff ledger or clearance workflow. Highlight one genuine recorded approval or next stage, with **“A clearer path forward.”** Keep the dashboard large and readable.
+- 04:09–04:15: settle into a dashboard-and-phone composition connected by one clean animated line. Reveal **“Less confusion. Clearer next steps.”** The line represents shared financial information, not an unverified live integration.
 
-If no real team images are supplied, use a polished typographic team card with abstract shapes and the two product screens. Do not synthesize their faces, fabricate team footage, animate lips, or use human-recorded narration. The full names belong on screen even if the narrator uses shortened names for natural timing.
+Keep this sequence entirely on the product and its human purpose, expressed through the screens and graphics. Do not introduce a team photo, name card, portrait, or human presenter. The emotional payoff is clarity after uncertainty, not a founder introduction or an invented patient testimonial.
 
 ### Scene 8 — Traction + close | 04:15–04:30 | 15 seconds
 
@@ -278,7 +276,7 @@ If no real team images are supplied, use a polished typographic team card with a
 
 **Shots:**
 
-- 04:15–04:20: supplied award photograph/document if available; otherwise an elegant text card reading **“DTI Youth Entrepreneurship Program — Be Your Own Boss / Best Pitch (Pitch Perfect).”** Use the storyboard’s founder-reported recognition; do not fabricate a certificate, event photo, seal, endorsement, or award logo.
+- 04:15–04:20: an elegant text card reading **“DTI Youth Entrepreneurship Program — Be Your Own Boss / Best Pitch (Pitch Perfect).”** Use the storyboard’s founder-reported recognition; do not include people or fabricate a certificate, event photo, seal, endorsement, or award logo. Keep the product screens visible behind or beside the card.
 - 04:20–04:26: clean product pair and **“Cagayan Valley pilot-ready prototype.”** Supporting text: **“Proposed pilot • Validate discharge time, billing clarity, and claim readiness.”** This is a pilot proposition, not a production certification or proof of deployment. Narration ends by 04:26.
 - 04:26–04:30: hold an unchanging navy end card for four full seconds:
   - Original MedCore badge and wordmark
@@ -352,18 +350,18 @@ These are part of the production brief because older product plans and some on-s
 - **Promissory/payment plans:** show supported approved arrangements and 0% interest as implemented. Do not claim loan approval, instant legal entitlement for every accommodation, guaranteed recovery, or that financed principal is collected cash.
 - **Discharge pass:** use a genuine synthetic pass and recorded clearance status. Do not manufacture the QR payload/PIN, show a real usable credential, or equate financial settlement with medical permission to leave.
 - **Market figures:** use the storyboard’s estimates with their label and source. They are neither measured revenue nor current customer counts.
-- **Traction/team:** preserve the storyboard’s names and reported award. Use real supplied evidence or text. Do not invent endorsements or replace the people with AI-generated portraits.
+- **Traction:** preserve the storyboard’s reported award as text. Do not invent endorsements. The latest user direction removes the team introduction and personal-name credits; the original PDF does not require them in this revised film.
 
 Maintain a discreet **SAMPLE DATA** tag on all UI shots. Keep simulation/target labels legible, close to the relevant scene, and out of the actual screenshot pixels. There is no need for a large disclaimer slate; use concise, integrated wording that viewers can read.
 
 ## 9. Production workflow
 
-1. Inventory the storyboard, logos, screenshots, recordings, team/award assets, and tool capabilities. Verify filenames and identify missing shots.
+1. Inventory the storyboard, logos, screenshots, recordings, any award evidence, and tool capabilities. Verify filenames and identify missing shots. No team images or footage are required.
 2. Assemble the 04:30 timeline above. Decide where authentic recordings are available and where intact screenshot animation is required.
 3. Synthesize the narration scene by scene, audition pronunciation, and measure actual durations. Keep all spoken lines inside their scene windows, the problem pause intact, and Scene 8 silent from 04:26 onward except music.
 4. Build the real-UI edit first. Layer callouts, progress ribbons, diagrams, and device frames around it. Use generative imagery only for appropriate supporting visuals.
 5. Add the music, subtle effects, captions, and honest prototype labels. Check the full film with sound and again with captions only.
-6. Inspect at full resolution and at a typical laptop presentation size. Check financial continuity, typography, cropped controls, safe margins, intelligibility, animation pacing, and the closing hold.
+6. Inspect at full resolution and at a typical laptop presentation size. Check financial continuity, typography, cropped controls, safe margins, intelligibility, animation pacing, and the closing hold. Confirm that every scene is free of faces, team footage, and personal introductions.
 7. Export, then play the exported file end to end. Confirm audio/video duration and synchronization. Do not report success based only on preview rendering.
 
 Do not redesign the applications or change production code to make footage look better. Any synthetic capture setup should remain separate from application data. If this is implemented with an animation framework, deterministic compositing is preferable to generative redrawing of screens; the tool choice is yours.
@@ -376,18 +374,19 @@ Deliver:
 - An editable project/timeline or reproducible render source containing the eight scenes, all UI assets, editorial text, and animation settings.
 - Final narration transcript, generated narrator WAV, and separate music/effects tracks where the tool supports them.
 - Accurate English `.srt` subtitles. Provide a captioned viewing export as well as the clean master when possible.
-- A concise asset/source manifest stating which visuals are real captures, still animations, generated supporting graphics, and supplied team/award material.
+- A concise asset/source manifest stating which visuals are real captures, still animations, generated supporting graphics, and source-backed award text.
 - A short completion note with actual runtime, export settings, any missing authentic shot, and any substituted capture. Do not call an unrendered package a completed MP4.
 
 The film passes only when it:
 
-- Follows all eight storyboard scenes in order, ending with four seconds of a stable URL card.
+- Follows the revised eight-scene structure, with the product-and-story payoff replacing the PDF’s team scene, and ends with four seconds of a stable URL card.
 - Gives substantial, readable attention to both the dashboard and mobile app.
 - Includes GUIDE, VERIFY, REWARD, REPORT, IMPROVE, ClaimReady, estimator, coverage/authorization, mobile bill/coverage/Cora, payment review/receipt, arrangement option, discharge pass, staff clearance, claims, and analytics.
 - Uses AI narration throughout, with no required human speaking segment.
+- Shows no faces, team photos, interviews, founder introductions, or personal-name credits. The product and patient/billing story carry the film.
 - Looks clean, lively, and polished without rushing the UI or trivializing the patient story.
 - Keeps actual UI artwork and financial facts accurate, with coherent account/balance continuity or clearly separated example flows.
-- Preserves the storyboard’s important figures and founder details with the qualifications specified above.
+- Preserves the storyboard’s important figures and reported recognition with the qualifications specified above, while honoring the latest direction to remove the team segment.
 - Contains no fabricated UI, illegible generated text, false live payment/SMS claims, invented integrations, or unqualified outcome guarantees.
 
 Make the final experience feel like a thoughtful product launch: viewers understand the pain, see the real product doing meaningful work, and leave with a clear reason to explore MedCore.
