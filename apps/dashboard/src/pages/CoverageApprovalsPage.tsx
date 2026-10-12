@@ -18,7 +18,7 @@ export const CoverageApprovalsPage: React.FC = () => {
     itemDescription?: string;
     amount?: number;
   }>({ isOpen: false, encounter: null });
-  const pageSize = 12;
+  const pageSize = 8;
   useEffect(()=>{ setCurrentPage(1); }, [searchQuery]);
   const tableContainerRef = useRef<HTMLDivElement>(null);
 

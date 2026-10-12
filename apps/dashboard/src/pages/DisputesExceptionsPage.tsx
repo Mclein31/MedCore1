@@ -23,7 +23,7 @@ export const DisputesExceptionsPage: React.FC = () => {
     itemDescription?: string;
     amount?: number;
   }>({ isOpen: false, encounter: null });
-  const pageSize = 11;
+  const pageSize = 7;
   useEffect(()=>{ setItemsPage(1); setNotesPage(1); }, [searchQuery]);
 
   // Collect all contested items (excluding waived items)
