@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState } from 'react';
 import { ChargemasterItem } from '@/types/domain';
 import { formatPeso } from '../utils/billFormatters';
-import { AlertTriangle, X, Check, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, X, Check, ShieldAlert } from '@/components/common/SolarIcons';
 import { Button, IconButton } from '@/components/common';
 
 interface Props {

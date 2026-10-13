@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '@/api';
 import { useMedCore } from '@/context/MedCoreContext';
-import { X, UserPlus, Building2, Stethoscope, Shield, CreditCard, BedDouble } from 'lucide-react';
+import { X, UserPlus, Building2, Stethoscope, Shield, CreditCard, BedDouble } from '@/components/common/SolarIcons';
 import { Button, IconButton } from '@/components/common';
 
 export const AdmitPatientModal: React.FC = () => {
@@ -77,7 +77,7 @@ export const AdmitPatientModal: React.FC = () => {
 
 
   return (
-    <ViewportOverlay className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="modal">
+    <ViewportOverlay dialogLabel="Inpatient admission registration" onDismiss={() => { if (!isSubmitting) closeAdmitPatientModal(); }} className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="modal">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50 shrink-0">
@@ -113,10 +113,10 @@ export const AdmitPatientModal: React.FC = () => {
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="admitpatientmodal-field-1" className="block text-xs font-semibold text-slate-700 mb-1">
                   Full Legal Name (Last, First M.)
                 </label>
-                <input
+                <input id="admitpatientmodal-field-1"
                   type="text"
                   required
                   placeholder="e.g. Santos, Maria Clara E."
@@ -127,10 +127,10 @@ export const AdmitPatientModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label htmlFor="admitpatientmodal-field-2" className="block text-xs font-semibold text-slate-700 mb-1">
                   Medical Record No. (MRN)
                 </label>
-                <input
+                <input id="admitpatientmodal-field-2"
                   type="text"
                   required
                   value={mrn}
@@ -147,8 +147,8 @@ export const AdmitPatientModal: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
-                <select
+                <label htmlFor="admitpatientmodal-field-3" className="block text-xs font-semibold text-slate-700 mb-1">Gender</label>
+                <select id="admitpatientmodal-field-3"
                   value={gender}
                   onChange={(e) => setGender(e.target.value as any)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
@@ -159,8 +159,8 @@ export const AdmitPatientModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Age</label>
-                <input
+                <label htmlFor="admitpatientmodal-field-4" className="block text-xs font-semibold text-slate-700 mb-1">Age</label>
+                <input id="admitpatientmodal-field-4"
                   type="number"
                   min="0"
                   max="120"
@@ -171,8 +171,8 @@ export const AdmitPatientModal: React.FC = () => {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 mb-1">PhilHealth PIN</label>
-                <input
+                <label htmlFor="admitpatientmodal-field-5" className="block text-xs font-semibold text-slate-700 mb-1">PhilHealth PIN</label>
+                <input id="admitpatientmodal-field-5"
                   type="text"
                   value={philhealthPin}
                   onChange={(e) => setPhilhealthPin(e.target.value)}
@@ -213,11 +213,11 @@ export const AdmitPatientModal: React.FC = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <label htmlFor="admitpatientmodal-field-6" className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                   <BedDouble className="w-3.5 h-3.5 text-blue-600" />
                   <span>Bed Assignment (200-Bed Inventory)</span>
                 </label>
-                <select
+                <select id="admitpatientmodal-field-6"
                   required
                   value={roomBed}
                   onChange={(e) => {
@@ -242,11 +242,11 @@ export const AdmitPatientModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <label htmlFor="admitpatientmodal-field-7" className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                   <Stethoscope className="w-3.5 h-3.5 text-blue-600" />
                   <span>Attending Physician</span>
                 </label>
-                <select
+                <select id="admitpatientmodal-field-7"
                   required
                   value={attendingDoctor}
                   onChange={(e) => setAttendingDoctor(e.target.value)}
@@ -259,10 +259,10 @@ export const AdmitPatientModal: React.FC = () => {
             </div>
 
             <div className="mt-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label htmlFor="admitpatientmodal-field-8" className="block text-xs font-semibold text-slate-700 mb-1">
                 Primary Admitting Diagnosis &amp; Clinical Indication
               </label>
-              <input
+              <input id="admitpatientmodal-field-8"
                 type="text"
                 required
                 placeholder="e.g. Acute Appendicitis / Community Acquired Pneumonia Moderate Risk"
@@ -280,11 +280,11 @@ export const AdmitPatientModal: React.FC = () => {
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <label htmlFor="admitpatientmodal-field-9" className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5 text-blue-600" />
                   <span>HMO Carrier</span>
                 </label>
-                <select
+                <select id="admitpatientmodal-field-9"
                   value={hmoProvider}
                   onChange={(e) => setHmoProvider(e.target.value)}
                   className="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-blue-600 focus:outline-none"
@@ -299,11 +299,11 @@ export const AdmitPatientModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                <label htmlFor="admitpatientmodal-field-10" className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
                   <CreditCard className="w-3.5 h-3.5 text-blue-600" />
                   <span>Card / Policy Number</span>
                 </label>
-                <input
+                <input id="admitpatientmodal-field-10"
                   type="text"
                   disabled={hmoProvider === 'None'}
                   value={hmoPolicyNumber}

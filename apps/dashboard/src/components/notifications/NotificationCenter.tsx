@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, Bell, CheckCheck, CreditCard, ShieldCheck, TriangleAlert, X } from 'lucide-react';
+import { ArrowUpRight, Bell, CheckCheck, CreditCard, ShieldCheck, TriangleAlert, X } from '@/components/common/SolarIcons';
 import { useMedCore } from '@/context/MedCoreContext';
 import type { StaffNotification } from '../../../../shared/notifications';
 

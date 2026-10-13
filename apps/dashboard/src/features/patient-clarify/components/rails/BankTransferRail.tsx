@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { formatPeso } from '../../utils/billFormatters';
-import { Building, Copy, Check, Zap, ArrowRight } from 'lucide-react';
+import { Building, Copy, Check, Zap, ArrowRight } from '@/components/common/SolarIcons';
 
 interface Props {
   amount: number;

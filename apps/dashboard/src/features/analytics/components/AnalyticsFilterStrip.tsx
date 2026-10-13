@@ -1,5 +1,5 @@
 import React from 'react';
-import { Filter, RotateCcw, FileText, CheckCircle2, ChevronDown, X } from 'lucide-react';
+import { Filter, RotateCcw, FileText, CheckCircle2, ChevronDown, X } from '@/components/common/SolarIcons';
 import { CLINICAL_WARDS, ALL_HMO_CARRIERS } from '@/utils/rcmAnalyticsCalculations';
 import { Button, Select, SegmentedTabs, SegmentedTabItem } from '@/components/common';
 
@@ -61,12 +61,12 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
       {/* Top Row: Title, Facility Subtitle, and Primary Actions */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
               RCM Analytics &amp; Hospital Financial Intelligence
             </h1>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
               Circular 2024-0037 (+50% ACR) Active
             </span>
           </div>
@@ -117,6 +117,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {/* Clinical Department Dropdown */}
           <Select
             size="sm"
+            aria-label="Ward"
             value={filters.department}
             onChange={(e) => onFilterChange({ department: e.target.value })}
             className="text-xs"
@@ -131,6 +132,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {/* Payer & Commercial Carrier Dropdown */}
           <Select
             size="sm"
+            aria-label="Payer"
             value={filters.payer}
             onChange={(e) => onFilterChange({ payer: e.target.value })}
             className="text-xs"
@@ -148,6 +150,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {/* Claim Status Dropdown */}
           <Select
             size="sm"
+            aria-label="Claim status"
             value={filters.claimStatus}
             onChange={(e) => onFilterChange({ claimStatus: e.target.value })}
             className="text-xs"
@@ -200,7 +203,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {filters.timeframe !== '30D' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">
               Timeframe: {filters.timeframe === 'ALL' ? 'All 250 Cases' : filters.timeframe}
-              <button type="button" onClick={() => onFilterChange({ timeframe: '30D' })}>
+              <button type="button" aria-label={`Remove timeframe filter: ${filters.timeframe}`} className="inline-flex w-6 h-6 items-center justify-center rounded" onClick={() => onFilterChange({ timeframe: '30D' })}>
                 <X className="w-3 h-3 hover:text-blue-900" />
               </button>
             </span>
@@ -209,7 +212,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {filters.department !== 'All Wards' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">
               Ward: {filters.department}
-              <button type="button" onClick={() => onFilterChange({ department: 'All Wards' })}>
+              <button type="button" aria-label={`Remove ward filter: ${filters.department}`} className="inline-flex w-6 h-6 items-center justify-center rounded" onClick={() => onFilterChange({ department: 'All Wards' })}>
                 <X className="w-3 h-3 hover:text-blue-900" />
               </button>
             </span>
@@ -218,7 +221,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {filters.payer !== 'All Payers' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">
               Payer: {filters.payer}
-              <button type="button" onClick={() => onFilterChange({ payer: 'All Payers' })}>
+              <button type="button" aria-label={`Remove payer filter: ${filters.payer}`} className="inline-flex w-6 h-6 items-center justify-center rounded" onClick={() => onFilterChange({ payer: 'All Payers' })}>
                 <X className="w-3 h-3 hover:text-blue-900" />
               </button>
             </span>
@@ -227,7 +230,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {filters.claimStatus !== 'All Statuses' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">
               Claim: {filters.claimStatus}
-              <button type="button" onClick={() => onFilterChange({ claimStatus: 'All Statuses' })}>
+              <button type="button" aria-label={`Remove claim status filter: ${filters.claimStatus}`} className="inline-flex w-6 h-6 items-center justify-center rounded" onClick={() => onFilterChange({ claimStatus: 'All Statuses' })}>
                 <X className="w-3 h-3 hover:text-blue-900" />
               </button>
             </span>
@@ -236,7 +239,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
           {filters.severity !== 'ALL' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">
               Severity: {filters.severity}
-              <button type="button" onClick={() => onFilterChange({ severity: 'ALL' })}>
+              <button type="button" aria-label={`Remove severity filter: ${filters.severity}`} className="inline-flex w-6 h-6 items-center justify-center rounded" onClick={() => onFilterChange({ severity: 'ALL' })}>
                 <X className="w-3 h-3 hover:text-blue-900" />
               </button>
             </span>

@@ -1,0 +1,702 @@
+{
+  "phase": "after",
+  "results": [
+    {
+      "name": "dashboard-overview-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "name": "dashboard-discharge-clearance-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "name": "dashboard-encounters-ledgers-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "name": "dashboard-approvals-disputes-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "name": "dashboard-claims-esoa-xml-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "name": "dashboard-rcm-analytics-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "name": "dashboard-settings-rules-1440",
+      "viewport": 1440,
+      "document": 1440
+    },
+    {
+      "screen": "admission-1440",
+      "keyboard": "label association, focus containment, Escape and trigger restoration"
+    },
+    {
+      "name": "dashboard-overview-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "name": "dashboard-discharge-clearance-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "name": "dashboard-encounters-ledgers-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "name": "dashboard-approvals-disputes-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "name": "dashboard-claims-esoa-xml-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "name": "dashboard-rcm-analytics-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "name": "dashboard-settings-rules-1024",
+      "viewport": 1024,
+      "document": 1024
+    },
+    {
+      "screen": "admission-1024",
+      "keyboard": "label association, focus containment, Escape and trigger restoration"
+    },
+    {
+      "name": "dashboard-overview-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "dashboard-discharge-clearance-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "dashboard-encounters-ledgers-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "dashboard-approvals-disputes-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "dashboard-claims-esoa-xml-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "dashboard-rcm-analytics-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "dashboard-settings-rules-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "screen": "admission-768",
+      "keyboard": "label association, focus containment, Escape and trigger restoration"
+    },
+    {
+      "name": "dashboard-overview-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "name": "dashboard-discharge-clearance-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "name": "dashboard-encounters-ledgers-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "phone-ledger",
+      "verified": "Rows and labelled edit action reachable through local scrolling"
+    },
+    {
+      "name": "dashboard-approvals-disputes-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "name": "dashboard-claims-esoa-xml-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "name": "dashboard-rcm-analytics-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "name": "dashboard-settings-rules-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "admission-390",
+      "keyboard": "label association, focus containment, Escape and trigger restoration"
+    },
+    {
+      "screen": "Home-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Home-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "screen": "Bill-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Bill-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "screen": "Coverage-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Coverage-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "screen": "Payments-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Payments-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "screen": "Profile-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Profile-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "expanded-bill-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "screen": "documents-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "record-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "claims-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "updates-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-amount-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-methods-320",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "text-150-320",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "screen": "Home-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Home-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "Bill-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Bill-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "Coverage-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Coverage-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "Payments-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Payments-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "Profile-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Profile-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "name": "expanded-bill-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "documents-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "record-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "claims-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "updates-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-amount-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-methods-390",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "text-150-390",
+      "viewport": 390,
+      "document": 390
+    },
+    {
+      "screen": "Home-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Home-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "screen": "Bill-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Bill-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "screen": "Coverage-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Coverage-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "screen": "Payments-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Payments-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "screen": "Profile-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Profile-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "name": "expanded-bill-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "screen": "documents-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "record-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "claims-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "updates-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-amount-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-methods-430",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "text-150-430",
+      "viewport": 430,
+      "document": 430
+    },
+    {
+      "screen": "Home-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Home-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "screen": "Bill-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Bill-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "screen": "Coverage-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Coverage-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "screen": "Payments-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Payments-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "screen": "Profile-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "Profile-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "expanded-bill-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "screen": "documents-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "record-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "claims-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "updates-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-amount-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "screen": "payment-methods-768",
+      "header": {
+        "border": "1px",
+        "color": "rgb(211, 220, 229)"
+      },
+      "height": 56
+    },
+    {
+      "name": "text-150-768",
+      "viewport": 768,
+      "document": 768
+    },
+    {
+      "name": "early-stage",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "pharmacy-pending",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "hmo-pending",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "empty",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "long-text",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "error",
+      "viewport": 320,
+      "document": 320
+    },
+    {
+      "name": "loading",
+      "viewport": 320,
+      "document": 320
+    }
+  ],
+  "errors": [],
+  "mutations": [],
+  "blocked": [
+    "https://fonts.googleapis.com",
+    "https://fonts.googleapis.com",
+    "https://fonts.googleapis.com",
+    "https://fonts.googleapis.com",
+    "https://fonts.googleapis.com"
+  ],
+  "fixture": "250 sanitized staff records and loopback-only patient fixture; no external AI or hospital writes."
+}

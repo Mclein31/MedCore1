@@ -9,7 +9,7 @@ import {
   CheckCircle2,
   Send,
   AlertTriangle
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton, Button, IconButton } from '@/components/common';
 
 export const DoctorQuickSignModal: React.FC = () => {

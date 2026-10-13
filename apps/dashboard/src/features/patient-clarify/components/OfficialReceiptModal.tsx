@@ -3,7 +3,7 @@ import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { DemoPaymentRecord } from '../types/billing';
 import { formatPeso, formatPstDateTime } from '../utils/billFormatters';
-import { CheckCircle2, X, Printer, QrCode, ShieldCheck, Download } from 'lucide-react';
+import { CheckCircle2, X, Printer, QrCode, ShieldCheck, Download } from '@/components/common/SolarIcons';
 import { Button, IconButton } from '@/components/common';
 
 interface Props {

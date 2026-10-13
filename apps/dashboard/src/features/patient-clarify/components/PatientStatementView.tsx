@@ -17,7 +17,7 @@ import {
   HelpCircle,
   FileCheck,
   Printer
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 interface Props {
   bill: PatientBillStatement;

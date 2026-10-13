@@ -5,15 +5,15 @@ export default {
     extend: {
       colors: {
         brand: {
-          navy: '#0F2A4A',
+          navy: 'var(--brand-navy)',
           'navy-light': '#18385E',
           'navy-dark': '#0A1D33',
-          blue: '#0284C7',
-          'blue-light': '#38BDF8',
-          'blue-dark': '#0369A1',
-          teal: '#11806D',
-          'teal-dark': '#0F6D5F',
-          'teal-soft': '#E7F4F0'
+          blue: 'var(--brand-blue)',
+          'blue-light': 'var(--brand-blue-light)',
+          'blue-dark': 'var(--brand-blue-dark)',
+          teal: 'var(--brand-teal)',
+          'teal-dark': 'var(--brand-teal-dark)',
+          'teal-soft': 'var(--brand-teal-soft)'
         },
         surface: {
           app: 'var(--bg-app)',
@@ -22,6 +22,11 @@ export default {
           border: 'var(--border-neutral)'
         }
       },
+      borderColor: {
+        slate: { 100: 'rgb(var(--border-subtle-rgb) / <alpha-value>)', 200: 'rgb(var(--border-neutral-rgb) / <alpha-value>)', 300: 'rgb(var(--border-strong-rgb) / <alpha-value>)' },
+        control: 'var(--border-control)'
+      },
+      spacing: { '4.5': '1.125rem' },
       fontFamily: {
         sans: [
           '-apple-system',

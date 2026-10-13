@@ -1,7 +1,7 @@
 import React from 'react';
 import { PatientOopDrivers } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp } from '@/utils/formatters';
-import { CreditCard, QrCode, Smartphone, Building, ShieldCheck } from 'lucide-react';
+import { CreditCard, QrCode, Smartphone, Building, ShieldCheck } from '@/components/common/SolarIcons';
 
 interface PatientOopDriverCardProps {
   oopData: PatientOopDrivers;

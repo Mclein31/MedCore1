@@ -12,7 +12,7 @@ import {
   FileText,
   Clock,
   ShieldAlert
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton, Button, IconButton } from '@/components/common';
 
 interface ActionableExceptionsWorklistProps {

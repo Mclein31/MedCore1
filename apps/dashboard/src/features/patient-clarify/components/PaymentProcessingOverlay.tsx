@@ -1,6 +1,6 @@
 import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Loader2, ShieldCheck, CheckCircle2 } from '@/components/common/SolarIcons';
 import { DemoPaymentRail } from '../types/billing';
 
 interface Props {

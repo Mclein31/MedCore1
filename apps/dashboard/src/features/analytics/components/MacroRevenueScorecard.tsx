@@ -10,7 +10,7 @@ import {
   Lock,
   Users,
   CheckCircle2
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 interface MacroRevenueScorecardProps {
   metrics: MacroKpiMetrics;

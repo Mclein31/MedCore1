@@ -21,7 +21,7 @@ import {
   Sparkles,
   ShieldCheck,
   CheckCircle2
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 export const PatientPortalStandalone: React.FC = () => {
   const {
@@ -144,7 +144,7 @@ export const PatientPortalStandalone: React.FC = () => {
               <span className="font-extrabold text-sm sm:text-base text-slate-900 leading-none truncate">
                 MedCore Patient Clarify
               </span>
-              <span className="text-[9px] sm:text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">
+              <span className="hidden sm:inline text-[9px] sm:text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 sm:px-2 py-0.5 rounded-full shrink-0">
                 Demo Portal
               </span>
             </div>
@@ -177,6 +177,7 @@ export const PatientPortalStandalone: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsMasked(!isMasked)}
+            aria-label={isMasked ? 'Reveal full name' : 'Mask name for privacy'}
             className="p-1.5 sm:p-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-colors shadow-2xs"
             title={isMasked ? 'Reveal full name' : 'Mask name for privacy'}
           >

@@ -19,7 +19,7 @@ import {
   AlertTriangle,
   Zap,
   CheckCircle2
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { Button, IconButton, SegmentedTabs, SegmentedTabItem } from '@/components/common';
 
 const PAYMENT_MODE_TABS: SegmentedTabItem<'FULL' | 'PARTIAL'>[] = [

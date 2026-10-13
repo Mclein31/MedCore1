@@ -1,6 +1,6 @@
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@/components/common/SolarIcons';
 import type { ConfirmationModalVariant, ConfirmationContextInfo } from '@/components/modals';
 
 export type ConfirmButtonVariant = 'primary' | 'success' | 'warning' | 'danger' | 'outline' | 'subtle';
@@ -98,8 +98,8 @@ export const ConfirmButton: React.FC<ConfirmButtonProps> = ({
   // Button surface variants
   const variantClasses: Record<ConfirmButtonVariant, string> = {
     primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-2xs focus:ring-2 focus:ring-blue-500',
-    success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs focus:ring-2 focus:ring-emerald-500',
-    warning: 'bg-amber-600 hover:bg-amber-700 text-white shadow-2xs focus:ring-2 focus:ring-amber-500',
+    success: 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-2xs focus:ring-2 focus:ring-emerald-500',
+    warning: 'bg-amber-700 hover:bg-amber-800 text-white shadow-2xs focus:ring-2 focus:ring-amber-500',
     danger: 'bg-rose-600 hover:bg-rose-700 text-white shadow-2xs focus:ring-2 focus:ring-rose-500',
     outline: 'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 shadow-2xs focus:ring-2 focus:ring-slate-400',
     subtle: 'border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 focus:ring-2 focus:ring-blue-400'

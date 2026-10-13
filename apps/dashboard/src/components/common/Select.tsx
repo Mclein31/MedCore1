@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '@/components/common/SolarIcons';
 import { CONTROL_SIZES, type ControlSize } from './controlTokens';
 
 export interface SelectOption {
@@ -39,7 +39,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
         <select
           ref={ref}
           disabled={disabled}
-          className={`${sizeConfig.height} ${paddingClass} ${sizeConfig.text} ${sizeConfig.radius} bg-white border border-slate-200 hover:border-slate-300 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-800 font-medium appearance-none cursor-pointer shadow-2xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+          className={`${sizeConfig.height} ${paddingClass} ${sizeConfig.text} ${sizeConfig.radius} min-w-0 bg-white border border-control focus:border-brand-teal focus:ring-1 focus:ring-brand-teal text-slate-800 font-medium appearance-none cursor-pointer shadow-2xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
           {...rest}
         >
           {options

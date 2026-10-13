@@ -1,0 +1,18 @@
+
+> medcore-dashboard@1.0.0 test:overlays
+> node --import ./node_modules/tsx/dist/loader.mjs apps/dashboard/__tests__/overlays.ts && node --import ./node_modules/tsx/dist/loader.mjs apps/mobile/__tests__/overlays.mts
+
+[PASS] Body-portaled overlays escape transformed/clipped pages and cover the header
+[PASS] Stationary sibling scrim, drawer-only transform, reduced motion and print exclusion
+[PASS] Nested dialog clicks/backdrop never dismiss the underlying dialog
+[PASS] Busy processing backdrops remain nondismissable
+[PASS] Confirmation stays above other overlays
+[PASS] Unmount removes portal surfaces
+DASHBOARD_OVERLAY_CHECKS_DONE passed=6
+[PASS] Native window stays still/full-screen; scrim fades independently of sheet translation
+[PASS] Closing retains the visible panel until both independent exit animations finish
+[PASS] Rapid reopening cancels the old close instead of hiding the new modal
+[PASS] Sheet trajectory adapts to the current viewport without moving the backdrop
+[PASS] Busy/fade overlays remain nondismissable and do not translate
+[PASS] Reduced motion shows/hides immediately without animated movement
+MOBILE_OVERLAY_CHECKS_DONE passed=6; actual component lifecycle, controlled native driver; no device UI claimed.

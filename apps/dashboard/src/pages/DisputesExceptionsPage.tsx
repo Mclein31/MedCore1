@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/utils/formatters';
-import { CheckCircle2, ShieldAlert, HelpCircle, FileText, Scale } from 'lucide-react';
+import { CheckCircle2, ShieldAlert, HelpCircle, FileText, Scale } from '@/components/common/SolarIcons';
 import { ConfirmButton, SegmentedTabs, Button } from '@/components/common';
 import { HmoAppealGeneratorModal } from '@/components/ai/HmoAppealGeneratorModal';
 

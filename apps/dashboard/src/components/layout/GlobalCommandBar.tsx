@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronDown, Building2, LogOut, UserRoundCog } from 'lucide-react';
+import { ChevronDown, Building2, LogOut, UserRoundCog } from '@/components/common/SolarIcons';
 import { useMedCore } from '@/context/MedCoreContext';
 import { UniversalSearch } from './UniversalSearch';
 import { NotificationCenter } from '../notifications/NotificationCenter';

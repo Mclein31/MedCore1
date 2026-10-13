@@ -5,7 +5,7 @@ import {
   DischargeTatPoint
 } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp } from '@/utils/formatters';
-import { TrendingDown, Activity, Calendar } from 'lucide-react';
+import { TrendingDown, Activity, Calendar } from '@/components/common/SolarIcons';
 import { SegmentedTabs, SegmentedTabItem } from '@/components/common';
 
 const MODE_TABS: SegmentedTabItem<'TAT_DESCENT' | 'INFLOW_RESOLUTION'>[] = [

@@ -1,7 +1,7 @@
 import React from 'react';
 import { StatutoryWaterfall } from '@/types/domain';
 import { formatPeso } from '../utils/billFormatters';
-import { ShieldCheck, Sparkles, Building, Info } from 'lucide-react';
+import { ShieldCheck, Sparkles, Building, Info } from '@/components/common/SolarIcons';
 
 interface Props {
   waterfall: StatutoryWaterfall;

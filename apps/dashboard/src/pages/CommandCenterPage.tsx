@@ -15,7 +15,7 @@ import {
   UserPlus,
   Scale,
   Bed
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 export const CommandCenterPage: React.FC = () => {
   const {

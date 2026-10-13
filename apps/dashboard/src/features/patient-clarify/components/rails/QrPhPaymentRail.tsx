@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatPeso } from '../../utils/billFormatters';
-import { QrCode, Zap, Clock, ShieldCheck } from 'lucide-react';
+import { QrCode, Zap, Clock, ShieldCheck } from '@/components/common/SolarIcons';
 
 interface Props {
   amount: number;

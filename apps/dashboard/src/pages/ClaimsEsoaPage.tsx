@@ -4,7 +4,7 @@ import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
 import { claimsApi } from '@/api';
 import { formatPhp } from '@/utils/formatters';
-import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer, Sparkles } from 'lucide-react';
+import { Copy, Check, Download, AlertTriangle, CheckCircle2, ShieldAlert, FileText, X, Printer, Sparkles } from '@/components/common/SolarIcons';
 import { Button, IconButton, SegmentedTabs } from '@/components/common';
 import { ClaimsPreflightScrubberModal } from '@/components/ai/ClaimsPreflightScrubberModal';
 
@@ -136,7 +136,7 @@ export const ClaimsEsoaPage: React.FC = () => {
       </div>
 
       {/* Summary KPI Strip */}
-      <div className="p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-2xs grid grid-cols-2 md:grid-cols-4 gap-4 text-sm divide-y md:divide-y-0 md:divide-x divide-slate-200">
+      <div className="claims-summary p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200 shadow-2xs grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
         <div>
           <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">First-Pass Clean Rate</div>
           <div className="text-xl font-bold text-slate-900 mt-0.5">93.3%</div>
@@ -202,7 +202,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                 <th className="py-3.5 px-4 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">CF4 Clinical Integrity</th>
                 <th className="py-3.5 px-4 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">RTH Risk Score</th>
                 <th className="py-3.5 px-4 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">Audit Status</th>
-                <th className="py-3.5 px-6 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">Action</th>
+                <th className="min-w-[180px] py-3.5 px-6 text-left sticky top-0 bg-slate-50 z-20 border-b border-slate-200">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -280,8 +280,8 @@ export const ClaimsEsoaPage: React.FC = () => {
                       )}
                     </td>
 
-                    <td className="py-3.5 px-6 text-left">
-                      <div className="flex items-center gap-1.5">
+                    <td className="min-w-[180px] py-3.5 px-6 text-left">
+                      <div className="flex items-center gap-1.5 whitespace-nowrap">
                         <Button
                           size="sm"
                           variant="ghost"

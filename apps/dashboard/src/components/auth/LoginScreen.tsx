@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
-import { Building2, ShieldCheck, Lock, Mail, ArrowRight, UserCheck, Check, Sparkles } from 'lucide-react';
+import { Building2, ShieldCheck, Lock, Mail, ArrowRight, UserCheck, Check, Sparkles } from '@/components/common/SolarIcons';
 
 export const LoginScreen: React.FC = () => {
   const { login, sessionNotice, initialLoginEmail } = useMedCore();
@@ -200,14 +200,14 @@ export const LoginScreen: React.FC = () => {
                 <div className="p-3 rounded-md bg-white/5 border border-white/10 backdrop-blur-xs">
                   <div className="text-left text-xs min-w-0">
                     <div className="font-bold text-white truncate">Cryptographic Workstation Vault</div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5">PBKDF2 SHA-256 session isolation</div>
+                    <div className="text-[10px] text-slate-300 truncate mt-0.5">PBKDF2 SHA-256 session isolation</div>
                   </div>
                 </div>
 
                 <div className="p-3 rounded-md bg-white/5 border border-white/10 backdrop-blur-xs">
                   <div className="text-left text-xs min-w-0">
                     <div className="font-bold text-white truncate">SJMC-MNL Operational Scope</div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5">Single-facility hospital context (SJMC-MNL)</div>
+                    <div className="text-[10px] text-slate-300 truncate mt-0.5">Single-facility hospital context (SJMC-MNL)</div>
                   </div>
                 </div>
               </div>
@@ -255,7 +255,7 @@ export const LoginScreen: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@stjude.ph"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-slate-900 text-sm font-medium placeholder:text-slate-400 hover:bg-slate-50 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#11806D] focus:ring-4 focus:ring-[#11806D]/10 transition-all duration-150"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-slate-900 text-sm font-medium placeholder:text-slate-500 hover:bg-slate-50 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#11806D] focus:ring-4 focus:ring-[#11806D]/10 transition-all duration-150"
                   />
                 </div>
               </div>
@@ -272,7 +272,7 @@ export const LoginScreen: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••••••"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-slate-900 text-sm font-medium placeholder:text-slate-400 hover:bg-slate-50 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#11806D] focus:ring-4 focus:ring-[#11806D]/10 transition-all duration-150"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-md border border-slate-200 bg-slate-50/70 text-slate-900 text-sm font-medium placeholder:text-slate-500 hover:bg-slate-50 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-[#11806D] focus:ring-4 focus:ring-[#11806D]/10 transition-all duration-150"
                   />
                 </div>
               </div>
@@ -384,8 +384,8 @@ export const LoginScreen: React.FC = () => {
       </div>
 
       {/* System Status Footer */}
-      <div className="mt-6 flex items-center gap-2 text-slate-400 text-xs tracking-wide">
-        <span className="font-medium text-[11px] text-slate-400">
+      <div className="mt-6 flex items-center gap-2 text-slate-300 text-xs tracking-wide">
+        <span className="font-medium text-[11px] text-slate-300">
           MedCore Enterprise Healthcare Station • St. Jude Medical Center Manila (SJMC-MNL)
         </span>
       </div>

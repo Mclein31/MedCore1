@@ -8,7 +8,7 @@ import {
   AlertTriangle,
   ShieldCheck,
   CheckCircle2
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 interface Props {
   item: ChargemasterItem;

@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { usePullRefresh } from '../hooks/usePullRefresh';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { describeClaimStatus, describeHmoStatus, formatPeso, hasHmo, remainingBalance } from '../lib/format';
-import { Camera } from 'lucide-react-native';
+import { Camera } from '../components/SolarIcons';
 import { CoraAvatar } from '../components/CoraAvatar';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
 import { BenefitCardScannerModal } from '../components/BenefitCardScannerModal';
-import { C, EmptyState, ErrorState, LoadingState, RefreshNotice, Row, Screen, SectionHeader, StatusBadge, T } from '../components/ui';
+import { ActionButton, C, EmptyState, ErrorState, LoadingState, RefreshNotice, Row, Screen, SectionHeader, StatusBadge, T } from '../components/ui';
 export default function CoverageScreen({ navigation }: { navigation?: any }) {
   const { currentEncounter: enc, loading, error, refresh } = usePatient();
   const pullRefresh = usePullRefresh(refresh);
@@ -21,49 +21,8 @@ export default function CoverageScreen({ navigation }: { navigation?: any }) {
   return <Screen safeBottom={false}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: 32 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />} showsVerticalScrollIndicator={false}>
     <RefreshNotice error={error} onRetry={refresh} />
     <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
-      <Pressable
-        onPress={() => setCoraOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Ask Cora about my coverage"
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          backgroundColor: '#F0FDF4',
-          borderWidth: 1,
-          borderColor: '#BBF7D0',
-          paddingVertical: 10,
-          paddingHorizontal: 12,
-          borderRadius: 12
-        }}
-      >
-        <CoraAvatar size={22} />
-        <Text style={{ fontSize: 12, fontWeight: '700', color: C.brandDark }}>Ask Cora AI</Text>
-      </Pressable>
-
-      <Pressable
-        onPress={() => setScannerOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel="Scan Benefit Card or Gov ID with AI"
-        style={{
-          flex: 1,
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          backgroundColor: '#EFF6FF',
-          borderWidth: 1,
-          borderColor: '#BFDBFE',
-          paddingVertical: 10,
-          paddingHorizontal: 12,
-          borderRadius: 12
-        }}
-      >
-        <Camera size={15} color={C.blue} />
-        <Text style={{ fontSize: 12, fontWeight: '700', color: C.blueDark }}>Scan Card OCR</Text>
-      </Pressable>
+      <ActionButton stretch title="Ask Cora AI" a11y="Ask Cora AI about my coverage" onPress={() => setCoraOpen(true)} icon={<CoraAvatar size={22} />} />
+      <ActionButton stretch tone="blue" title="Scan Card OCR" a11y="Scan Card OCR, benefit card or government ID" onPress={() => setScannerOpen(true)} icon={<Camera size={15} color={C.blue} />} />
     </View>
 
     <SectionHeader title="Benefits applied" /><View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.border }}><Row label="PhilHealth" value={formatPeso(w.philhealthTotal)} /><Row label="HMO" value={formatPeso(w.hmoApprovedAmount)} /><Row label="Statutory discounts" value={formatPeso(w.vatExemption + w.seniorPwdDiscount)} /><Row label="Your responsibility" value={formatPeso(w.netPatientDue)} /><Row label="Remaining balance" value={formatPeso(remainingBalance(enc))} bold /></View>

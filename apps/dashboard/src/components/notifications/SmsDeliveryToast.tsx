@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X } from '@/components/common/SolarIcons';
 import { useMedCore } from '@/context/MedCoreContext';
 
 export function SmsDeliveryToast() {

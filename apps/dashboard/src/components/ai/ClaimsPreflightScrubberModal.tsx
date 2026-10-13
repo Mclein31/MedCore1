@@ -18,7 +18,7 @@ import {
   HelpCircle,
   ChevronDown,
   ChevronUp
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { Button } from '@/components/common';
 
 export interface ClaimsPreflightScrubberModalProps {

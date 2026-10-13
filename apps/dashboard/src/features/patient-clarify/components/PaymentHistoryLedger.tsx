@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { DemoPaymentRecord } from '../types/billing';
 import { formatPeso, formatPstDateTime } from '../utils/billFormatters';
-import { Receipt, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Receipt, CheckCircle2, AlertCircle, ExternalLink } from '@/components/common/SolarIcons';
 
 interface Props {
   history: DemoPaymentRecord[];

@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X } from '@/components/common/SolarIcons';
 import { CONTROL_SIZES, type ControlSize } from './controlTokens';
 
 export interface SearchInputProps
@@ -29,13 +29,13 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
     const sizeConfig = CONTROL_SIZES[size];
 
     const paddingClass =
-      size === 'sm' ? 'pl-8 pr-7' : 'pl-9 pr-8';
+      size === 'sm' ? 'pl-8 pr-9' : 'pl-9 pr-10';
 
     const iconClass =
       size === 'sm' ? 'left-2.5 w-3.5 h-3.5' : 'left-3 w-4 h-4';
 
     const clearButtonClass =
-      size === 'sm' ? 'right-2 w-3 h-3' : 'right-2.5 w-3.5 h-3.5';
+      size === 'sm' ? 'right-1.5' : 'right-2';
 
     const handleClear = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -55,18 +55,18 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={disabled}
-          className={`${sizeConfig.height} ${paddingClass} ${sizeConfig.text} ${sizeConfig.radius} bg-slate-50 border border-slate-200 hover:border-slate-300 focus:bg-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-slate-800 placeholder-slate-400 shadow-2xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed leading-normal ${className}`}
+          className={`${sizeConfig.height} ${paddingClass} ${sizeConfig.text} ${sizeConfig.radius} min-w-0 bg-slate-50 border border-control focus:bg-white focus:border-brand-teal focus:ring-1 focus:ring-brand-teal text-slate-800 placeholder-slate-400 shadow-2xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed leading-normal ${className}`}
           {...rest}
         />
         {value && !disabled && (
           <button
             type="button"
             onClick={handleClear}
-            className={`absolute ${clearButtonClass} text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer`}
+            className={`absolute ${clearButtonClass} w-6 h-6 flex items-center justify-center rounded text-slate-500 hover:text-slate-900 cursor-pointer`}
             title="Clear search"
             aria-label="Clear search"
           >
-            <X className="w-full h-full" />
+            <X className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         )}
       </div>

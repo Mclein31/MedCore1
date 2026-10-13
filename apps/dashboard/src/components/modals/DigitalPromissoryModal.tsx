@@ -12,7 +12,7 @@ import {
   Scale,
   Calendar,
   AlertCircle
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { Button, IconButton, Select } from '@/components/common';
 
 export const DigitalPromissoryModal: React.FC = () => {
@@ -77,8 +77,9 @@ export const DigitalPromissoryModal: React.FC = () => {
 
   return (
     <ViewportOverlay
+      dialogLabel="Digital promissory note"
       className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/40 backdrop-blur-xs" motion="rise" layer="modal"
-      onDismiss={closePromissoryModal}
+      onDismiss={() => { if (!busy) closePromissoryModal(); }}
     >
       <div
         className="w-full max-w-xl bg-white border border-slate-200 rounded-xl shadow-2xl overflow-hidden"
@@ -140,10 +141,10 @@ export const DigitalPromissoryModal: React.FC = () => {
 
             {eligibleEncounters.length > 0 && (
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-left max-w-md mx-auto space-y-2">
-                <label className="block text-xs font-bold text-slate-700">
+                <label htmlFor="digitalpromissorymodal-field-1" className="block text-xs font-bold text-slate-700">
                   Select Patient with Outstanding Balance:
                 </label>
-                <Select
+                <Select id="digitalpromissorymodal-field-1"
                   size="sm"
                   value=""
                   onChange={(e) => {
@@ -227,10 +228,10 @@ export const DigitalPromissoryModal: React.FC = () => {
             {/* Note Details */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="digitalpromissorymodal-field-2" className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Guarantor / Borrower Name
                 </label>
-                <input
+                <input id="digitalpromissorymodal-field-2"
                   type="text"
                   value={borrowerName}
                   onChange={(e) => setBorrowerName(e.target.value)}
@@ -240,10 +241,10 @@ export const DigitalPromissoryModal: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="digitalpromissorymodal-field-3" className="block text-xs font-semibold text-slate-700 mb-1.5">
                   Government ID Type
                 </label>
-                <Select
+                <Select id="digitalpromissorymodal-field-3"
                   size="md"
                   value={idType}
                   onChange={(e) => { setIdType(e.target.value as GovernmentIdType); setIdNumber(''); }}
@@ -260,10 +261,10 @@ export const DigitalPromissoryModal: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="digitalpromissorymodal-field-4" className="block text-xs font-semibold text-slate-700 mb-1.5">
                   ID Reference Number
                 </label>
-                <input
+                <input id="digitalpromissorymodal-field-4"
                   type="text"
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}

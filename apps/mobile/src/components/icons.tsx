@@ -3,15 +3,14 @@ import { Image, StyleSheet, View } from 'react-native';
 import {
   ArrowLeft, Eye, EyeOff, Mail, Phone, LogOut, LockKeyhole, Info, Bell, Building2, Check, ChevronRight, CircleCheck, Clock, CreditCard,
   ChevronDown, FileText, Home, QrCode, Receipt, Scale, Search, ShieldCheck, Smartphone, TriangleAlert, User
-} from 'lucide-react-native';
+} from './SolarIcons';
 import { ASSETS } from '../lib/assets';
 import { C, NavigationLayout } from './theme';
 
-// Central icon system. Generic interface icons come from lucide (matching
-// the dashboard's lucide-react usage); only brand/provider artwork lives in
-// PNG files via the asset registry.
+// Solar Linear for controls; Bold indicates selected navigation on both apps.
+// Original brand/provider artwork stays in the asset registry.
 
-const LUCIDE: Record<string, React.ComponentType<{ size?: number | string; color?: string; strokeWidth?: number | string }>> = {
+const SOLAR: Record<string, React.ComponentType<{ size?: number | string; color?: string; strokeWidth?: number | string; weight?: 'Linear' | 'Bold' }>> = {
   back: ArrowLeft, eye: Eye, eyeOff: EyeOff, mail: Mail, contact: Phone, logout: LogOut, lock: LockKeyhole, info: Info, search: Search,
   home: Home,
   bill: Receipt,
@@ -32,15 +31,15 @@ const LUCIDE: Record<string, React.ComponentType<{ size?: number | string; color
   chevronDown: ChevronDown
 };
 
-export function Icon({ name, size = 22, color = C.secondary }: { name: keyof typeof LUCIDE | string; size?: number; color?: string }) {
-  const Cmp = LUCIDE[name] || FileText;
-  return <Cmp size={size} color={color} strokeWidth={1.7} />;
+export function Icon({ name, size = 22, color = C.secondary, weight = 'Linear' }: { name: keyof typeof SOLAR | string; size?: number; color?: string; weight?: 'Linear' | 'Bold' }) {
+  const Cmp = SOLAR[name] || FileText;
+  return <Cmp size={size} color={color} strokeWidth={1.7} weight={weight} />;
 }
 
 export function TabGlyph({ name, focused }: { name: string; focused: boolean }) {
   return (
     <View style={[glyph.pill, focused && glyph.pillActive]}>
-      <Icon name={name} size={NavigationLayout.iconSize} color={focused ? C.brand : C.secondary} />
+      <Icon name={name} size={NavigationLayout.iconSize} color={focused ? C.brand : C.secondary} weight={focused ? 'Bold' : 'Linear'} />
       {focused && <View style={glyph.dot} />}
     </View>
   );

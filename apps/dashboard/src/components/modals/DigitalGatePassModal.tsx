@@ -12,7 +12,7 @@ import {
   Copy,
   Building2,
   Check
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton, Button, IconButton } from '@/components/common';
 
 export const DigitalGatePassModal: React.FC = () => {

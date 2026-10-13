@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArAgingSummary } from '@/types/domain';
 import { formatPhp } from '@/utils/formatters';
-import { Clock, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Clock, AlertTriangle, ShieldCheck } from '@/components/common/SolarIcons';
 
 interface ArAgingProfileCardProps {
   agingBuckets: ArAgingSummary[];

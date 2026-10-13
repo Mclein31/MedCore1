@@ -29,7 +29,7 @@ import {
   PanelLeftOpen,
   Scale,
   ArrowRight
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton, Button, IconButton, SegmentedTabs } from '@/components/common';
 
 export const ActiveDischargeRadar: React.FC = () => {
@@ -211,7 +211,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           isDangerous: true,
           variant: 'warning' as const,
           confirmVariant: 'warning' as const,
-          buttonColor: 'bg-amber-600 hover:bg-amber-700 text-white',
+          buttonColor: 'bg-amber-700 hover:bg-amber-800 text-white',
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
@@ -282,7 +282,7 @@ export const ActiveDischargeRadar: React.FC = () => {
             isDangerous: false,
             variant: 'outline' as const,
             confirmVariant: 'outline' as const,
-            buttonColor: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+            buttonColor: 'bg-emerald-700 hover:bg-emerald-800 text-white',
             onAction: (e?: React.MouseEvent) => {
               if (e) e.stopPropagation();
               selectEncounter(enc.id);
@@ -306,7 +306,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           isDangerous: true,
           variant: 'success' as const,
           confirmVariant: 'success' as const,
-          buttonColor: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+          buttonColor: 'bg-emerald-700 hover:bg-emerald-800 text-white',
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
@@ -327,7 +327,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           isDangerous: false,
           variant: 'outline' as const,
           confirmVariant: 'outline' as const,
-          buttonColor: 'bg-emerald-600 hover:bg-emerald-700 text-white',
+          buttonColor: 'bg-emerald-700 hover:bg-emerald-800 text-white',
           onAction: (e?: React.MouseEvent) => {
             if (e) e.stopPropagation();
             selectEncounter(enc.id);
@@ -447,7 +447,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           variant="success"
           confirmVariant="success"
           size="sm"
-          className="w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs shadow-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="w-full sm:w-auto px-4 py-2 rounded-lg font-bold text-xs shadow-xs bg-emerald-700 hover:bg-emerald-800 text-white"
           onConfirm={() => {
             selectEncounter(enc.id);
             return settlePatientBalance(enc.id, 'QR_PH');

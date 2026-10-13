@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from '@/components/common/SolarIcons';
 import {
   CONTROL_SIZES,
   BUTTON_VARIANTS,
@@ -53,7 +53,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {...rest}
       >
         {iconPosition === 'left' && iconElement}
-        {children && <span>{children}</span>}
+        {children && <span className="inline-flex min-w-0 items-center">{children}</span>}
         {iconPosition === 'right' && iconElement}
       </button>
     );

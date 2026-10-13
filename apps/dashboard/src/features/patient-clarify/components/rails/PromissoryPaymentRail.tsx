@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { GOVERNMENT_ID_RULES, validateGovernmentId, type GovernmentIdType } from '../../../../../../shared/governmentId';
 import { formatPeso } from '../../utils/billFormatters';
 import { calculateInstallmentPlan } from '@/utils/financing';
-import { ShieldCheck, Scale, Check, FileText } from 'lucide-react';
+import { ShieldCheck, Scale, Check, FileText } from '@/components/common/SolarIcons';
 
 interface Props {
   amount: number;
@@ -188,7 +188,7 @@ export const PromissoryPaymentRail: React.FC<Props> = ({
       <button
         type="submit"
         disabled={isProcessing || !identity.valid || !signed}
-        className={`w-full py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 ${
+        className={`w-full py-3 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-sm shadow-md transition-colors flex items-center justify-center gap-2 ${
           isProcessing || !identity.valid || !signed ? 'opacity-50 cursor-not-allowed' : ''
         }`}
       >

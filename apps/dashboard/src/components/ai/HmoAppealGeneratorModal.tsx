@@ -13,7 +13,7 @@ import {
   Scale,
   Calendar,
   AlertCircle
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { Button, MarkdownNarrative } from '@/components/common';
 
 export interface HmoAppealGeneratorModalProps {

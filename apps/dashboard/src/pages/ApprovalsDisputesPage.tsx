@@ -4,7 +4,7 @@ import { DualOperationalPipelines } from '@/features/command-center/components/D
 import { CoverageApprovalsView } from './CoverageApprovalsPage';
 import { DisputesExceptionsView } from './DisputesExceptionsPage';
 import { VelocityRecoveryPulse } from '@/features/command-center/components/VelocityRecoveryPulse';
-import { Columns, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Columns, ShieldCheck, AlertTriangle } from '@/components/common/SolarIcons';
 import { SegmentedTabs, SegmentedTabItem } from '@/components/common';
 
 export const ApprovalsDisputesPage: React.FC = () => {
@@ -56,9 +56,9 @@ export const ApprovalsDisputesPage: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-slate-50">
       {/* Sub-navigation Switcher Bar */}
-      <div className="h-11 px-4 sm:px-6 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 z-10 shadow-2xs">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+      <div className="min-h-11 py-2 px-4 sm:px-6 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 z-10 shadow-2xs">
+        <div className="min-w-0 max-w-full flex flex-wrap items-center gap-3">
+          <div className="min-w-0 flex flex-wrap items-center gap-2">
             <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
               Payer Approvals &amp; Billing Disputes
             </h1>

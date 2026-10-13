@@ -5,7 +5,7 @@ import { useResource } from '../hooks/useResource';
 import { useAuth } from '../lib/auth';
 import { createClaimsApi } from '../services/claimsApi';
 import { describeClaimStatus, formatDateTime, formatPeso } from '../lib/format';
-import { Card, EmptyState, ErrorState, LedgerRow, LoadingState, RefreshNotice, Row, Screen, StatusBadge, T } from '../components/ui';
+import { C, Card, EmptyState, ErrorState, LedgerRow, LoadingState, RefreshNotice, Row, Screen, StatusBadge, T } from '../components/ui';
 
 export default function ClaimsScreen() {
   const { client } = useAuth();
@@ -31,7 +31,7 @@ export default function ClaimsScreen() {
                 <Text style={T.section}>{c.kind === 'PHILHEALTH' ? 'PhilHealth claim' : 'Insurance claim'}</Text>
                 <StatusBadge tone={c.status === 'DENIED' ? 'bad' : c.needsAttention ? 'warn' : c.status === 'APPROVED' || c.status === 'PAID' ? 'ok' : 'info'} text={info.title} />
               </View>
-              <Text style={[T.body, { color: '#5C6C84', marginTop: 8 }]}>{info.detail}</Text>
+              <Text style={[T.body, { color: C.secondary, marginTop: 8 }]}>{info.detail}</Text>
               <View style={{ marginTop: 12 }}>
                 <LedgerRow title="Reference" value={c.reference} />
                 {c.totalCaseRate != null && <LedgerRow title="Case benefit" value={formatPeso(c.totalCaseRate)} />}
