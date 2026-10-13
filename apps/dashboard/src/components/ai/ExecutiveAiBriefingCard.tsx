@@ -45,7 +45,14 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
       const data = await rcmAi.getExecutiveBriefing(forceRefresh, controller.signal);
       if (!controller.signal.aborted) setBriefing(data);
     } catch (err: any) {
-      if (!controller.signal.aborted) setError(err?.message || 'Executive briefing generation failed.');
+      if (!controller.signal.aborted) {
+        const message = err?.code === 'AI_NOT_CONFIGURED'
+          ? 'AI insights are not configured for this environment. Contact your MedCore administrator.'
+          : err?.status >= 500
+            ? 'AI insights are temporarily unavailable. Please try again shortly.'
+            : err?.message || 'Executive briefing generation failed.';
+        setError(message);
+      }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }

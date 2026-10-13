@@ -20,7 +20,11 @@ const aiApp = new Hono();
 aiApp.use('*', (c, next) => observeAiCache(outcome => c.header('X-AI-Cache', outcome), next));
 const STAFF_AI_ROLES = ['BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HMO_COORDINATOR', 'HOSPITAL_CFO', 'ATTENDING_PHYSICIAN'];
 function inferenceError(c: any, err: unknown, code: string, message: string) {
-  if (err instanceof AiInferenceError) return apiError(c, err.status as any, err.code, err.message);
+  if (err instanceof AiInferenceError) {
+    // Keep operational diagnostics useful without logging prompts, patient data, or provider response bodies.
+    console.warn('[AI generation unavailable]', { operation: code, errorCode: err.code, status: err.status });
+    return apiError(c, err.status as any, err.code, err.message);
+  }
   return apiError(c, 500, code, message);
 }
 
