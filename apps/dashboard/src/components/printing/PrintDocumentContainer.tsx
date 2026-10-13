@@ -570,7 +570,7 @@ export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ confi
 
         <div className="mb-4">
           <table className="w-full text-left text-xs border border-slate-300 border-collapse">
-            <colgroup>{(getPrintOrientation(config) === 'portrait' ? [18, 8, 13, 11, 12, 13, 13, 12] : [20, 8, 12, 12, 13, 12, 11, 12]).map((width, i) => <col key={i} style={{ width: `${width}%` }} />)}</colgroup>
+            <colgroup>{(getPrintOrientation(config) === 'portrait' ? [18, 9, 11, 10, 9, 14, 15, 14] : [19, 7, 11, 10, 9, 15, 15, 14]).map((width, i) => <col key={i} style={{ width: `${width}%` }} />)}</colgroup>
             <thead className="bg-slate-100 border-b border-slate-300 font-bold uppercase text-[9px]">
               <tr>
                 <th className="py-2 px-3 border-r border-slate-300">Patient &amp; MRN</th>
@@ -592,17 +592,17 @@ export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ confi
                   </td>
                   <td className="py-1.5 px-2.5 border-r border-slate-200">{enc.roomBed}</td>
                   <td className="py-1.5 px-3 border-r border-slate-200 font-sans">
-                    <span className="font-mono font-bold text-slate-900 block">{formatPhp(enc.philhealth.totalCaseRate)}</span>
+                    <span className="font-mono font-bold text-slate-900 block print-no-wrap">{formatPhp(enc.philhealth.totalCaseRate)}</span>
                     <span className="text-[10px] text-slate-500">{enc.philhealth.caseRateCode}</span>
                   </td>
                   <td className="py-1.5 px-3 font-sans font-medium text-slate-800 border-r border-slate-200">
                     {enc.hmo.providerName}
                   </td>
                   <td className="py-1.5 px-2.5 border-r border-slate-200 text-slate-700">{enc.hmo.approvalCode || 'Pending'}</td>
-                  <td className="py-1.5 px-2.5 border-r border-slate-200 text-right font-bold text-slate-900">{formatPhp(enc.hmo.approvedAmount)}</td>
-                  <td className="py-1.5 px-2.5 border-r border-slate-200 text-right text-rose-800 font-bold">{formatPhp(enc.hmo.disallowedConsumables)}</td>
+                  <td className="py-1.5 px-2.5 border-r border-slate-200 text-right font-bold text-slate-900 print-no-wrap">{formatPhp(enc.hmo.approvedAmount)}</td>
+                  <td className="py-1.5 px-2.5 border-r border-slate-200 text-right text-rose-800 font-bold print-no-wrap">{formatPhp(enc.hmo.disallowedConsumables)}</td>
                   <td className="py-1.5 px-2.5 text-center font-sans text-[10px] font-bold">
-                    {enc.hmo.finalLoaStatus}
+                    <span className="print-no-wrap">{enc.hmo.finalLoaStatus.replace(/_/g, ' ')}</span>
                   </td>
                 </tr>
               ))}
