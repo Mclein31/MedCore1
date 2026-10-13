@@ -1,0 +1,24 @@
+{
+  "actualComponent": true,
+  "syntheticContext": true,
+  "backendMutations": 0,
+  "checks": [
+    {
+      "width": 1440,
+      "notificationVisible": true,
+      "messagePreserved": true,
+      "noticeTextAbsent": true,
+      "withinViewport": true,
+      "dismissed": true
+    },
+    {
+      "width": 320,
+      "notificationVisible": true,
+      "messagePreserved": true,
+      "noticeTextAbsent": true,
+      "withinViewport": true,
+      "dismissed": true
+    }
+  ],
+  "pageErrors": []
+}

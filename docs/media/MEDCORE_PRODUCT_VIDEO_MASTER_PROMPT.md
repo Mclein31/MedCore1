@@ -1,4 +1,6 @@
-# MedCore — masterclass product-film production prompt, V2
+# MedCore — masterclass product-film production prompt, V3
+
+**Motion, device, AI, pronunciation, clean presentation, and SMS revision — October 13, 2026.** This version replaces V2. Existing files using the V2 filename carry this same current text for compatibility. The 04:50 runtime and eight-scene structure remain locked.
 
 ## 1. Your assignment and standard of execution
 
@@ -13,8 +15,20 @@ The target is a credible product launch film with an emotionally intelligible st
 - Generate consistent fictional characters for the personal-experience sequence so the story is conveyed through action, expression, and staging.
 - Use the supplied, correctly named real portraits for a concise team-composition section near the end. These are still photographs, not talking heads. Do not generate or animate the team’s faces.
 - Keep the dashboard graphics **close or identical to the actual dashboard UI**, and the mobile graphics **close or identical to the actual mobile UI**. Their identity is locked. Do not redesign either application to fit a generic video template.
-- Use AI narration, background music, environmental sound where appropriate, purposeful sound effects, motion graphics, and clean animation.
+- Use AI narration, a layered original/licensed score, immersive quiet environmental sound, synchronized click/tap effects, and more expressive but purposeful motion.
+- Establish the dashboard inside a clean desktop-monitor frame and the mobile app inside a consistent iPhone frame. Use directed zoom-ins, zoom-outs, and pans to take viewers from context to action to readable result.
+- Show a visible mouse-arrow pointer throughout **all dashboard interaction footage**, not only SMS: navigation, tabs, filters, row selection, estimator controls, AI actions, claims, clearance, analytics, and SMS. Pair every actual dashboard click with a restrained ripple and synchronized click sound. **Never show a mouse pointer on mobile footage.**
+- Make MedCore’s implemented AI features visible through real controls and authentic outputs, especially Cora and staff-side AI review.
+- Pronounce Ilokano as one spoken word with stress on its third syllable. Never speak a pronunciation guide or spell its syllables letter by letter.
 - Follow the original storyboard’s emotional order while satisfying the provided competition guideline and the current PDF presentation.
+
+### Clean presentation — latest user direction
+
+The film is already understood to be a prototype demonstration. **Do not add notice banners, disclaimer pills, caveat footers, sample-data badges, simulation notices, research-status labels, fictional-character labels, or prototype/live-status watermarks anywhere in the video. Do not narrate payment simulation or SMS environment details.** This supersedes earlier requirements for those overlays. Keep the screen focused on the story, actual product, emotional rhythm, and useful feature labels. GUIDE/VERIFY/REWARD/REPORT/IMPROVE chapter titles, names/roles, amounts, captions, AI feature names, and the closing URL remain useful content.
+
+Keep source provenance, implementation limits, estimate methodology, fictional-illustration origins, and capture gaps in the separate editor’s manifest/completion notes. Those production notes are not spoken or rendered into the film. Explain aspirations through normal product wording when needed—the narration already says “discharge target” and “proposed pilot”—rather than adding warnings over the image.
+
+The demonstration must still match what is shown: real app actions/results, coherent amounts, and authentic AI answers. Where a required result is unavailable, capture it, choose another genuine feature, or adjust the spoken sentence to the actual visible action; do not replace missing functionality with a fabricated success. The SMS beat shows a prepared message in a notification preview, without claiming external cellular delivery.
 
 ## 2. Duration, competition requirements, and proof of compliance
 
@@ -73,7 +87,7 @@ The current PDF, `MedCore_CagHaxx-2.pdf`, page 2, gives:
 - **₱8,300 initially stated personal share**.
 - The central idea: a bill is transparent only when the patient understands what they are paying for.
 
-The older storyboard gives **₱38,000** for the procedure and a later adjusted balance of **₱1,300**. Use **₱36,500**, from the current deck, as the quoted-bill figure in this revision. Retain **₱1,300** only as the founder-reported later review outcome from the older account. Label the sequence **“Illustrated founder-reported experience”**; it is not a verified clinical case study. Do not show the app as having performed that historical adjustment. Do not invent a medical diagnosis, policy entitlement, or missing invoice details.
+The older storyboard gives **₱38,000** for the procedure and a later adjusted balance of **₱1,300**. Use **₱36,500**, from the current deck, as the quoted-bill figure in this revision. Retain **₱1,300** only as the founder-reported later review outcome from the older account. Keep the source attribution and fictional-character provenance in the editor’s manifest; display the story without a notice overlay. Do not show the app as having performed that historical adjustment. Do not invent a medical diagnosis, policy entitlement, or missing invoice details.
 
 The origin story may involve an outpatient procedure, while the prototype demonstrates broader hospital billing/discharge coordination. Do not pretend the historic outpatient case and the synthetic inpatient demo are the same encounter. Connect them through the common problem of financial clarity.
 
@@ -105,22 +119,33 @@ Original inspiration clips:
 
 - `product video inspo/ScreenRecording_10-13-2026 08-56-13_1.mov` — approximately 47.67 seconds; vertical screen recording of a filmed motion-graphics demo.
 - `product video inspo/v1c044g50000db56tbnog65qn3crcb1g.MP4` — approximately 64.03 seconds; horizontal UI-led product demo.
+- `product video inspo/4f3c9ad208b25464c6dae075f0ffb153.MP4` — approximately 18.46 seconds; newer short filmed motion showcase. Use only relevant reveal/settle rhythm; do not import its abstract effects.
 
 Their visual contact sheets are in `docs/media/assets/references/`. These are private style references, not footage to insert into the MedCore film. Review the actual clips when available. Do not reproduce another product’s logo, text, numbers, characters, claim, music, social interface, watermark, or literal shot sequence.
 
-## 5. What to borrow from the references
+## 5. Selective inspiration: only motion that serves MedCore
 
-Borrow design principles, not another product’s skin.
+**Latest user clarification:** use the references to understand the desired polish and engagement, then select only treatments necessary for MedCore’s product and story. Do not reproduce every motion-graphics edit, typography treatment, or effect in the inspiration folder. The list below is a menu of appropriate uses, not a requirement to animate every shot.
 
-**Reference 1, motion-graphics demo:** the visible sequences transform financial cards into large number-bearing objects; use playful changes of scale; arrange multiple scattered tabs before consolidating into one clearer overview; mix large typography with simple figures and quieter product proof. MedCore can borrow the rhythm of “fragmented information → organized clarity,” a short number reveal, and an object that changes form to carry the story into the next shot.
+Three local clips were inspected through freshly decoded timed frames, with denser sequence checks around key transitions:
 
-Adapt this to MedCore with a paper bill that becomes a ledger panel, coverage chips that align into a deduction sequence, and a restrained focus ring that moves from a confusing amount to its explanation. Do not adopt the reference’s orange financial bubbles, cartoon mascot, loud palette, or comedic treatment of money. A family’s unexpected bill is not a punchline.
+- **Financial motion demo** — `ScreenRecording_10-13-2026 08-56-13_1.mov`: around 00:19–00:26, a clock gives way to scattered tab cards and a short typographic phrase; the scattered composition then resolves into a product overview with selected panels brought forward. Relevant MedCore principle: show the difficulty of scattered information, then its clearer organization. Use this once at the story-to-solution transition, with generic bill/coverage props becoming the genuine ledger. Do not copy the orange theme, tab counts, money circles, mascot, or reference wording.
+- **UI-led demo** — `v1c044g50000db56tbnog65qn3crcb1g.MP4`: around 00:39–00:47, a visible pointer leads the question/action, the view moves between the input and result, and a brief companion phrase explains the benefit. Relevant MedCore principle: make the actual input and result spatially understandable. Apply it to authentic Cora/claims interaction, estimator/ledger selection, and the SMS popup; use the mouse arrow on dashboard only. Keep enough of the source UI visible to orient the viewer. Do not copy its search interface, yellow highlight skin, feature claims, or result counts.
+- **Short motion showcase** — `4f3c9ad208b25464c6dae075f0ffb153.MP4`: approximately 18.46 seconds; short type reveals alternate with geometric/grid motion and an animated chart. For MedCore, only its brief reveal-and-settle rhythm is relevant. Its abstract grids, 3D surfaces, rotating forms, repeated outline words, and unrelated percentage animation are not necessary and should not be introduced into the film.
 
-**Reference 2, UI demo:** the product remains large and central. A deliberate cursor drives understandable actions. View changes and close crops show the feature in context. The closing composition pairs a product view with short benefits, then resolves to a simple branded card.
+### Treatments worth using
 
-Adapt this with real MedCore recordings, a full-view orientation before each close crop, a cursor that leads to an actual control, and short UI-matching callouts around a stable screen. Do not film a laptop, show an operating-system dock, preserve TikTok/social overlays, or shrink the actual product inside a huge decorative device.
+1. **One paper-to-ledger transition:** the statement’s rectangle becomes the real dashboard screen inside the monitor. Coverage props align around it, then leave the authentic product in focus. This connects the family’s uncertainty to the solution.
+2. **A purposeful camera move for a meaningful task:** establish the device/screen, move toward the real amount/control, show the real action, hold the readable result. Pull back or pan only when another part of that workflow needs context. Static holds are essential when reading an AI answer, claim finding, payment amount, SMS message, or team name.
+3. **Dashboard action feedback:** a clear pointer travels to the actual control, pauses, clicks with one small ripple and dry click sound, then lets the real result appear. This applies throughout dashboard footage. No pointer on mobile; the actual mobile transition usually supplies sufficient feedback, with an optional understated touch cue.
+4. **A few useful words outside the UI:** allow short phrases to support the story rather than create a second presentation over the product. Suitable choices are **“Coverage existed.” → “Clarity was missing.”** during the matching origin-story beat, **“What do I owe?” → “Why?”** beside the genuine bill/explanation, and **“Clear the Way for Care.”** at the close. Use only where the phrase adds understanding. Native captions remain normal readable sentence captions. Do not animate every word, turn numbers into bouncing objects, or add unrelated slogans.
+5. **Sound that identifies the action:** paper when the bill moves, a dry click for a real dashboard click, a soft tap for a real mobile action, one understated arrival tone for a genuine response/modal, and restrained musical transitions. Add a pan/zoom swish only when it improves the transition; a camera move does not automatically need a sound effect. Keep the origin-story ambience quiet and purposeful.
 
-The resulting film should alternate **narrative motion** with **legible product proof**. Fast expressive moments can introduce an idea; slower functional holds must prove it. Visual inspection of the references establishes these principles; the original sound score below is the production direction, not a claim that the reference audio has been transcribed or cleared for reuse.
+**Selection test for every effect:** does it help the viewer feel the problem, locate the real action, read the result, or understand the next step? If it does not, omit it. Avoid stacking a camera move, animated headline, pointer pulse, moving device, particles, and multiple sounds around one action. One primary focus, one clear result, enough rest to understand it.
+
+The final tone is engaging and polished with the actual product as the center of attention. The motion/sound specifications in Sections 8–9 provide implementation ranges only; select the smallest useful set for each shot. The device frames, interface fidelity, dashboard-only pointer rule, clean presentation, AI proof, corrected portraits, and 04:50 timeline remain controlling requirements.
+
+Reference audio tracks were decoded/extracted and their signal levels inspected, but were not directly auditioned in this environment. Do not claim the sound direction is a transcription of the reference soundtrack. Use original/licensed music and effects specified for MedCore; obtain a direct listening pass before claiming a close sonic reference match.
 
 ## 6. Non-negotiable interface fidelity
 
@@ -158,7 +183,7 @@ Use current source/captures as the visual authority, including these observed to
 
 Do not flatten the entire dashboard into one teal theme. Do not copy mobile buttons into desktop tables. Preserve the product’s real page-to-page differences.
 
-Editorial cards beside dashboard footage must look like companions to the dashboard: same text hierarchy, soft neutral background, corresponding card geometry, line-icon family, thin borders, and restrained colors. Financial graphs should use the real chart’s colors, legends, typography, and meaningful values. If animating an extracted real chart, animate its authentic parts without changing what it represents. An illustrative target card belongs outside the UI with its own label.
+Editorial cards beside dashboard footage must look like companions to the dashboard: same text hierarchy, soft neutral background, corresponding card geometry, line-icon family, thin borders, and restrained colors. Financial graphs should use the real chart’s colors, legends, typography, and meaningful values. If animating an extracted real chart, animate its authentic parts without changing what it represents. An impact-goal card belongs outside the UI as a normal product ambition, with source/model details kept in the editor’s manifest.
 
 ### Mobile style lock
 
@@ -176,11 +201,37 @@ Do not replace this with a generic bright-blue mobile banking app, dark glass ph
 
 ### Typography, safe areas, and screen scale
 
-Use the product’s actual font families wherever possible. For editorial typography, match the corresponding app’s system sans. Keep big campaign titles outside the application rather than altering the page heading. At 1080p, use approximately 44–64 px editorial headings, 26–34 px explanations, and at least 20–24 px important qualifiers. Preserve the original UI typography; improve legibility with a sharp capture/crop, not fake enlarged UI labels.
+Use the product’s actual font families wherever possible. For editorial typography, match the corresponding app’s system sans. Keep big campaign titles outside the application rather than altering the page heading. At 1080p, use approximately 44–64 px editorial headings, 26–34 px explanations, and 20–24 px supporting feature text. Preserve the original UI typography; improve legibility with a sharp capture/crop, not fake enlarged UI labels.
 
 Respect a safe margin of about 64 px horizontally and 48 px vertically, with additional bottom clearance for captions. Keep captions off the payment amount, the bottom tabs, and the focal action. Maintain device aspect ratios and do not stretch a phone to fill a desktop rectangle.
 
-Use a plain mobile frame only if useful. A full desktop capture or large selected region is usually clearer than a rendered laptop. Let the product occupy 70–90% of the composition during a focused demo. Use one focal action per shot.
+### Desktop-monitor and iPhone framing — required
+
+Use a tasteful, high-resolution **desktop monitor** as the dashboard’s establishing device: a slim dark or neutral bezel, subtle stand, restrained contact shadow, and a stable front-on screen plane. Use a licensed frame or deterministic vector/3D geometry. The actual dashboard recording is a separate screen layer mapped inside the display; never generate the UI as part of the monitor image. Establish the whole monitor for roughly 1–2 seconds, then push toward the real screen region until the relevant content is large. Zoom back out when a workflow finishes or when context changes. During detail shots, the bezel may leave the frame. A monitor should support the product, not make tables tiny.
+
+Use one consistent modern **iPhone frame** for the mobile app: slim dark/neutral casing, credible corner geometry, light contact shadow, and a front-on display. Keep it upright and stable during interactions. Respect the source screen ratio with a fitted display mask; do not stretch the app to match a different device. Choose compatible safe-area framing, or leave an honest neutral inset. A notch/Dynamic Island must not cover the MedCore heading, account details, or tappable controls. Preserve the actual app’s status bar; avoid a duplicate invented time/battery row. Device presentation does not imply App Store publication or Apple endorsement.
+
+Use a paired monitor/iPhone composition to establish staff and patient context, then bring one forward for the relevant task. When the records differ, identify them as separate synthetic examples. Use limited device movement at reveals and handoffs: a short slide, slight settle, or restrained 2–4 degree establishing tilt that returns front-on before reading. Keep reflection/glare off the screen. No spinning devices or continuous orbit.
+
+For focused demo shots, the active screen/content should dominate roughly 70–90% of the usable visual field; a full device does not have to remain visible in close-up. Use one focal action per shot. Keep labels, QR codes, totals, native modals, and captions readable at normal laptop size. If a frame compromises legibility, enlarge the source recording/crop inside the composition rather than inventing larger controls.
+
+### AI features — prove the help, show human review
+
+The current implementation contains five AI features, verified against `apps/server/src/routes/ai.ts` and the actual client components. Highlight their concrete purpose rather than using abstract floating brains or a generic “AI-powered” splash:
+
+| AI feature | Real screen/action to capture | Viewer takeaway and honest boundary |
+|---|---|---|
+| **Cora AI billing assistant** | Open the actual mobile Cora sheet, select a real language, ask a recorded-account question, show the genuine answer | Explains authorized recorded billing information in English, Taglish, Tagalog, or Ilokano. It does not diagnose or change the bill. |
+| **AI-assisted claims pre-flight audit** | Claims & eSOA XML → actual AI Scrub / Run AI Audit → authentic result/modal → one readable flag/remediation | Helps staff review issues before submission. A risk/readiness figure is an assessment, not guaranteed insurer acceptance or a measured model-accuracy claim. |
+| **HMO appeal drafting** | Actual Appeal control for an eligible disputed item → genuine draft → review/copy controls | A draft for staff review. Generating text is not sending an appeal or overturning a denial. |
+| **Executive AI briefing/report** | Actual Executive AI Briefing card → expand/refresh → authentic returned summary and source telemetry | Summarizes recorded financial patterns for staff review. Do not invent savings, add fake recommendations, or show a default placeholder as a returned answer. |
+| **AI-assisted benefit/ID-card scanning** | Actual supported card-scanner/upload view → synthetic/redacted test card → authentic extracted fields → human verification | Assists data capture; the person checks the fields. Do not use real credentials, perfect-accuracy claims, or an invented successful OCR overlay. |
+
+**Mandatory AI hero beats:** the Cora question/answer and the claims AI audit. **Supporting AI beats:** executive briefing and, where authentic footage is available, appeal drafting/card scanning. Give each shown output enough time to read. Reallocate time within the existing 160-second product block; do not extend the total or replace real workflows with standalone AI advertising. The beat map in Section 8 provides candidate placements. Where a capability is not captured, mention it only as an implemented supporting capability and do not claim the film demonstrated it.
+
+For each AI hero: real input → real trigger → authentic processing → real output → visible human review. Use a quiet external “AI explains” / “AI assists review” label or a thin teal focus stroke around the source panel. Keep native output, loading indicators, and errors unchanged. An external animated connector can lead from an actual source field to the actual explanation without suggesting that the model changed the underlying amount. Financial calculations remain the recorded ledger’s authoritative arithmetic.
+
+A synthetic capture fixture that returns AI-unavailable errors or canned QA replies cannot supply a genuine inference demonstration. Obtain an authorized synthetic capture through the actual configured service, use an explicitly identified earlier authentic recording, or show only the actual controls with narration that describes those controls. For that fallback, change narration to describe available controls rather than an answer that is absent. Do not paint in an explanation, conceal an error under a fake success panel, or count a conceptual AI diagram as functional footage.
 
 ## 7. Character design and story continuity
 
@@ -208,32 +259,67 @@ Use held key poses, a small hand movement, a glance to a bill, a restrained inha
 
 Visual continuity rules: the same clothing/hair in every shot; stable screen direction; the family on one side of the billing desk and officer on the other; one consistent folder/bill; no sudden new person; no disappearing objects; no medical diagnosis or procedure animation. Every keyframe must leave enough room for the same typography system.
 
-## 8. Motion design system: specificity over random animation
+## 8. Motion direction: emotional engagement, camera moves, and readable proof
 
-Use a restrained family of motions rather than a different transition on every cut.
+**Apply selectively:** these are timing/technique options, not a checklist to add every effect. Use motion only where the specific product action or story beat benefits. Prefer a stable readable result over another camera move. Typography stays restrained; no extra effect showcase.
 
-**Narrative motif:** scattered information becomes one organized financial picture. A paper rectangle becomes the ledger rectangle; a small line connecting coverage chips becomes a deduction line; a teal emphasis mark becomes the product’s active state; a progress indicator resolves into the real cleared state. Each transformation has a semantic connection.
+**The goal is an immersive product film with a deliberate rhythm:** feel the family’s uncertainty, follow an action, see its result, understand the relief. Motion should guide the audience through that experience. Use visibly more motion than a narrated presentation while allowing the product’s key information to settle.
 
-**Hierarchy:** the content moves before the frame. Bring a relevant panel into focus; then move the camera only if necessary. A transition must not make the viewer relearn where the cursor, amount, and action are located.
+**Narrative motif:** scattered information becomes one organized financial picture. A paper rectangle becomes the monitor’s ledger; coverage chips align into the real deduction sequence; a pointer finds the relevant explanation; the monitor-to-iPhone handoff carries the idea of access. Use spatial continuity and matched shapes, not unrelated transition presets.
 
-Suggested motion specifications at 30 fps:
+### Camera grammar: establish → move → action → hold → pull back
 
-- Editorial label reveal: 8–12 frames, 12–20 px upward motion, opacity 0→1.
-- Focus outline: 6–9 frames to appear; hold; fade over 6 frames. Use a soft teal/blue outline that does not recolor the control.
-- Section transition: 15–24 frames, 24–48 px translation or a clean opacity/spatial match cut.
-- Large narrative transformation: 24–36 frames with a clear endpoint and a readable hold.
-- Cursor approach: 12–24 frames; pause 6–12 frames; click only the actual target; then let the product render its real response.
-- Mobile tap emphasis: one subtle ring over 8–12 frames. Do not add a glowing fingertip or giant cursor that obscures the control.
-- Chart/number emphasis: 18–30 frames to reveal an editorial figure, then hold at least 3–5 seconds. Never animate the source amount as though the app itself is recalculating unless that is the actual captured behavior.
-- Real app success animation: preserve it. Add at most one restrained editorial emphasis; do not stack multiple celebration effects.
+For a typical 8–12 second feature shot, establish the monitor/iPhone for about 1–1.5 seconds; push toward the relevant screen region over 0.6–1 second; move the pointer/tap and perform the actual action; hold the rendered result for 2–4 seconds; then pan or pull back over 0.6–1 second to prepare the next task. Adapt to the action rather than mechanically applying five moves to every shot. A Cora answer or long audit finding needs a longer stationary reading hold.
 
-Default easing for editorial moves: smooth ease-out such as cubic-bezier `(0.22, 1, 0.36, 1)`. Use at most a small 1–3% settle for major card reveals, without bouncing financial figures. Product interactions keep their real native motion. Respect the actual sheet/scrim separation: the backdrop is stationary while the foreground panel moves.
+- **Zoom-in:** use roughly 100%→115–135% of the established screen composition over 18–30 frames. For small tables or AI paragraphs, cut/match to a newly cropped high-resolution source region for a stronger 140–175% detail; do not upscale a low-resolution source until it blurs. Anchor the zoom on the actual clicked control/result, not the geometric center of the device.
+- **Zoom-out:** return from the detail to the same screen/device over 18–30 frames. Preserve where the chosen row, cursor, and amount were. Pull out after comprehension, not while a figure is being spoken.
+- **Pan:** move between connected regions—charge to deduction, question to answer, selected claim to flag—over 18–36 frames with a restrained 80–220 px screen-space travel. Hold 2–4 seconds at the destination. Avoid random drifting that makes the viewer chase a table.
+- **Lateral device handoff:** monitor moves 40–100 px to make room; iPhone enters 40–80 px with a 12–24 frame ease-out; both settle before the patient action. Maintain the app’s own UI styling and recorded data.
+- **Focus:** an external 2–3 px teal/blue outline appears over 6–9 frames around the native target, holds, then fades. A restrained background dim of 8–15% may isolate an AI answer, but the source screen pixels/labels remain intact and nothing relevant disappears.
+- **Editorial cards:** 8–12 frame opacity/12–24 px entrance; stagger related chips 3–5 frames. Major story transformations use 24–36 frames and a readable endpoint. A small 1–3% settle is enough; monetary figures do not bounce.
+- **Character motion:** layer the illustrated background, characters, and bill where possible. Use modest 8–24 px parallax on a motivated push-in, a held gesture, a glance toward the bill, and a subtle shoulder release after review. Do not deform faces or substitute continuous unstable generative motion for acting. The family’s emotions are in posture and attention.
 
-Use normal framing near 100–110% scale; use a newly cropped source region for detail views rather than endlessly enlarging a blurry full screenshot. A crop move can reach a larger readable detail, but pause the camera while the viewer reads. Place a detail view near its original screen location and retain enough surrounding UI to orient the audience.
+Use smooth editorial ease-out, such as cubic-bezier `(0.22, 1, 0.36, 1)`. Record the app’s actual native transitions. For a real sheet/modal, preserve its stationary scrim and moving foreground layer. Camera motion belongs to the composite, not a redesigned in-app animation.
 
-Vary composition roughly every 5–9 seconds when it serves the story. Keep action chains for 8–15 seconds where needed. Cut on the action/result, not just on an arbitrary beat. Alternate desktop focus, phone focus, and brief paired views. A paired view must still be readable; if not, make one platform dominant.
+### Dashboard pointer arrows and click effects — required
 
-Prohibited treatments: spinning phones, constant orbital camera, neon circuit backgrounds, generic glass dashboards, explosive logos, stock holograms, unnecessary glitch effects, giant money coins over bills, every line bouncing, random panning, or three simultaneous moving focal points. “Fun” means satisfying cause and effect, not visual noise.
+Show a clear, familiar **mouse-arrow cursor** throughout every dashboard interaction sequence, including navigation, tab changes, filters, selections, estimator inputs, AI triggers, claims review, clearance, analytics, and SMS. This applies across the full video, not only the SMS shot. Keep it visible during recorded pointer movement/scrolling and give each real click one synchronized ripple/click effect. **The mobile/iPhone layer must contain no mouse arrow, hand cursor, or desktop pointer, including during split-screen shots; any cursor stays clipped to the dashboard screen.** Use a 26–34 px arrow at 1080p, white/near-white fill, thin dark outline, and a soft shadow for visibility. Keep it near the real native cursor scale; enlarge only for a short focus moment. Avoid an oversized mascot pointer. If the capture already includes a usable cursor, retain it and do not add a second one.
+
+Animate an editorial cursor only from recorded input coordinates/event timing. Keep a shared transform for the recording, cursor, focus ring, and click ripple so they remain aligned through device framing, zooms, and pans. The arrow tip must land inside the real clicked hit area. During scrolls, the cursor rests in a plausible location and the content moves through the actual recorded scrolling behavior.
+
+Move toward the control over 12–24 frames, decelerate, pause 6–10 frames, then click at the real input timestamp. Add **one** 8–12 frame ripple expanding about 10→30 px with opacity fading to zero, plus a very small 95%→100% cursor press/return over 4–6 frames. Use a restrained teal ring; do not flash the whole screen or make decorative particles obscure the control. A hover highlight is allowed only if it is the real app hover state.
+
+Place a short dry mouse down/up sound at that click, within roughly one frame of the visible event. If audio from the recording already contains a clear click, do not duplicate it. The pointer travels while the result is pending only when that was a real interaction; do not pretend its movement caused an AI response or payer approval. For an iPhone, use a modest touch ring instead of a desktop arrow, with a soft tap sound synchronized to the real tap.
+
+Record input events alongside takes, with clip, action, timestamp, screen coordinate, resulting state, and sound-cue ID. If those coordinates are unavailable, recapture or annotate the real interaction accurately; do not create fictitious clicks over static screenshots and claim interactivity.
+
+### Shot-specific motion and AI emphasis within the locked timeline
+
+| Time | Directed visual/action beat | Camera, pointer, and sound |
+|---|---|---|
+| 00:00–00:12 | Bill/clock → monitor ledger and iPhone → time ambition | A short push toward the unclear bill; clean match reveal; product pair settles. Light ticks become a warm tonal alignment. |
+| 00:12–00:26 | Family waiting; folder and coverage cards | Gentle move toward the family, restrained foreground/background parallax; pan to the folder, hold coverage labels. Quiet room and paper detail. |
+| 00:26–00:37 | Statement arrives; personal-share uncertainty | Bill slides from helpful officer; slow motivated push toward family/bill. Amount reveals once. Reduce music density so the question lands. |
+| 00:37–00:54 | Review brings understanding; bill becomes ledger | Pan between relevant documents, then pull back to calmer posture. Small alignment effect; preserve the two-second near-silent breath. |
+| 00:54–01:14 | Monitor overview → deduction detail → iPhone handoff | Push into the real ledger, pan along relevant amounts, pull back and hand off to the iPhone. Two interfaces imply shared data only with matching capture records. |
+| 01:14–01:25 | GUIDE estimator; optional genuine card-scan insert | Establish monitor; arrow selects procedure; push toward estimate; hold. Optional OCR can use up to 4 seconds only if its authentic output is readable and estimator action/result still fits. Otherwise keep the full estimator beat. |
+| 01:25–01:36 | VERIFY recorded coverage; optional real AI appeal draft | Pointer selects the relevant item; pan to authorization/exclusion. Up to 5 seconds may show a genuine existing appeal draft and review controls; otherwise retain the coverage worklist. Never stage a submitted/approved appeal. |
+| 01:36–01:47 | Ledger item and explanation | Push toward the real waterfall; arrow selects item; pan to its explanation; hold the actual remaining share. |
+| 01:47–02:02 | iPhone Home → Bill → Coverage | Phone reveal/brief pull-out, then push toward total and pan to real deductions/coverage; actual tap rings. Keep the primary phone legible. |
+| 02:02–02:14 | **Cora AI hero:** language, question, genuine answer | Push into the real sheet; language tap; keep question and answer spatially connected; pan after real response arrives and hold one useful passage. Gentle response cue once, not per word. |
+| 02:14–02:56 | iPhone amount, methods, QR/review, recorded result, receipt/history | Move from context to chosen method to amount; synchronized tap; stationary processing; short push to real receipt, then pull back to history. Keep the app and action in focus; no notice overlay. |
+| 02:56–03:17 | Separate arrangement branch; genuine pass where available | Small labeled lateral handoff; focus on real schedule. Push to actual QR/PIN only when an active pass is genuinely captured. Missing pass stays an explicit capture limitation, not invented clearance. |
+| 03:17–03:28 | Staff clearance stages → SMS action → message notification modal | Monitor re-establishes; pan to the real SMS action; tracked arrow clicks once, with ripple/dry click; actual prepared message opens in a product-matching modal; push toward message and hold. |
+| 03:28–03:41 | **Claims AI hero:** real AI Scrub/audit → flag → review | Arrow clicks actual AI action; preserve real loading; push into returned result; pan to one finding/remediation; pull out to checklist. No insurer-approval fanfare. |
+| 03:41–03:48 | **Executive AI briefing**, where genuinely captured, with real telemetry context | Focus on actual expanded briefing/source figures; readable stationary summary. If only analytics is captured, describe analytics and identify missing AI output. |
+| 03:48–03:54 | Actual analytics + external impact-goal card | Ease out to chart context; target card enters beside the chart and stays readable; source/model details stay in the editor’s notes. |
+| 03:54–04:14 | Users, estimates, existing-system context | Paired monitor/iPhone reappears; gently pan the group of audience labels; estimate cards settle for eight seconds; restrained ecosystem connector. |
+| 04:14–04:34 | Two team card groups | Whole-card entrances only; original portraits remain unaltered and still. Camera holds for reading full names/roles. |
+| 04:34–04:50 | Reported recognition → proposed pilot → product end card | A small final pull-out resolves to the monitor/iPhone/product identity before 04:44, then **no camera/device/text movement for the final six-second hold**. Warm musical resolve. |
+
+Vary compositions roughly every 5–9 seconds when it serves comprehension. Use some direct action cuts between feature steps; not every transition needs a pan or whoosh. Keep at most one primary moving focal point at a time. The result should feel active, attentive, and satisfying—not like a slow slideshow or a camera permanently searching for something.
+
+Prohibited treatments: invented UI, continuous random panning/orbits, spinning phones, motion while reading long AI output or key amounts, neon circuits, glitch effects without story purpose, huge coins over bills, repeated particle celebrations, fake click-to-success causality, and screen glare that hides the product.
 
 ## 9. Original sound score, effects, and AI narration
 
@@ -257,7 +343,9 @@ Use one coherent score with distinct sections, not unrelated tracks pasted toget
 
 ### Sound-effects vocabulary
 
-Use a small set of related sounds: dry paper movement, a quiet tick, soft click/tap, small sliding-card texture, a restrained data-alignment tone, subtle processing pulse, one warm two-note success/clearance chime, and a gentle final tonal resolve. They should sound like one production, not a random downloadable SFX pack.
+Build a richer, coherent sound palette: close paper/folder foley; very quiet room/air texture; a soft waiting-clock tick; a dry mouse down/up pair; a light touchscreen tap; short airy zoom/pan swishes with soft low-frequency body; a warm data-alignment motif; a restrained AI-processing texture; a small two-note response/result motif; and a gentle final resolved chord. Create or license each element; do not reuse the inspiration clips’ music/audio. Variation comes from material and purpose, not louder volume or random effect packs.
+
+Give the audience a sense of space: room tone in the illustrated billing area, paper near the family, the subtle desk contact of a document. Spatialize quiet foley toward the visible prop while narration stays centered. A pointer click is dry and immediate, a camera pan has a short airy movement, and an actual result has a warmer sustained tone. Keep the main product action and financial amounts intelligible on laptop speakers.
 
 | Cue | Purpose and treatment |
 |---|---|
@@ -265,16 +353,26 @@ Use a small set of related sounds: dry paper movement, a quiet tick, soft click/
 | Story paper/folder | Quiet, close, natural; grounds the fictional bill scene |
 | Unexpected amount | Brief low soft accent, no alarm or horror sting |
 | Organized ledger | A short, airy alignment sound; communicates order |
-| Real click/tap | Small and synchronized to visible input; avoid duplicate click plus exaggerated whoosh |
+| Dashboard mouse click | Dry short down/up pair, synchronized to the arrow/ripple and real click; one click per actual event, no duplication |
+| iPhone tap | Softer transient synchronized to the real touch ring; no desktop mouse arrow on the phone |
+| Camera zoom / pan | Short airy swish, 120–350 ms, low level; optional low soft body; avoid a whoosh on every cut |
 | Recorded approval | Subtle tonal confirmation only after the actual state changes |
-| Cora typing | Usually silent; at most a very quiet texture, never a chime for every dot |
+| Cora / AI processing | Native typing/loading remains visible; a faint soft texture can support a genuine wait, then one warm arrival cue when authentic output appears; never a chime per dot/word |
 | Simulated payment processing | Soft rhythmic texture, low level; no cash register or bank-transfer sound |
 | Receipt / valid pass | One gentle warm confirmation; do not imply money moved through a real gateway |
 | Claim pre-flight result | Clean, understated cue; no guaranteed-approval fanfare |
 | Team cards | Quiet card-entry texture or no effect; keep names readable |
 | End card | Warm resolved tone, naturally decaying |
 
-Use environmental sound only in the illustrated story: a subtle room tone, paper, and a muted wall-clock presence. No identifiable real hospital recording, monitor alarm, patient cries, or continuous phone ringing. The product demo should be sonically clean.
+### Immersive ambience / background noise
+
+Use quiet, designed **background ambience** to make the personal story feel inhabited: soft room air, distant indistinct movement, gentle footsteps if someone actually moves on screen, folder handling, paper contact, and an occasional muted clock tick. Avoid intelligible background conversations, identifiable hospital recordings, medical alarms, distress sounds, or a busy loop that distracts from the family. Background noise should be felt as space rather than heard as a separate subject.
+
+Give the story an emotional progression: ordinary neutral room tone at 00:12; paper comes forward as the bill arrives; music/ambience gently narrow during the puzzled question; clarity brings a warmer harmonic opening rather than an exaggerated celebration. Fade ambience to near silence at 00:52–00:54.
+
+During product demonstrations, use an almost imperceptible neutral workstation/air bed only where it adds continuity, plus synchronized inputs and restrained motion/AI textures. No hospital hubbub beneath every interface shot. Start ambience roughly 28–36 dB below narration and adjust by ear; the required word pronunciation and spoken figures must remain unmistakable. Crossfade beds over 0.5–1.5 seconds across scenes, avoiding abrupt noise-floor jumps. No continuous broadband hiss used as decoration.
+
+For engagement, contrast sound density: lighter under a question or long AI answer, a small lift during navigation, a single clear transient for action, then a readable quieter result. A result tone may signify the recorded prototype result; it must never imply external payment, insurer acceptance, or clearance that is absent.
 
 ### Mix and timing
 
@@ -291,6 +389,16 @@ Use one natural AI adult voice throughout: warm Filipino English or clear intern
 The narrator should sound attentive rather than like an exaggerated presenter. No cloned team voice, celebrity impersonation, cartoon character voice, pitch-shifted robot, or forced dramatic whisper. The fictional characters do not speak or lip-sync. The team portraits do not speak.
 
 Pronounce MedCore “med-core,” PhilHealth “fil-health,” HMO letter by letter, QR Ph naturally, and eSOA as “electronic statement of account.” Say “pesos” rather than reading the currency symbol. Say “days in accounts receivable” rather than DAR in the voice-over. Audition Cagayan Valley, Calabarzon, and Cebu. Names are on screen in full; the narrator need not rush through all six names.
+
+### Ilokano pronunciation lock — do not speak the guide
+
+**The spoken script and captions contain the ordinary word `Ilokano`.** Pronunciation instructions belong in the voice tool’s direction/lexicon field, never in the narration body. Do not substitute an uppercase isolated syllable, append spelled letters, or read this production section aloud.
+
+Use four syllables with stress on the third: **ee-loh-kah-noh** (direction only). The word is a continuous natural utterance, not four isolated words, and **the third syllable must never be voiced as the letters K–A–H**. Prefer Filipino-English vowels for this production. Diksiyonaryo.ph marks third-syllable stress in its Filipino entry; Dictionary.com’s English entry gives `/ˌi loʊˈkɑ noʊ/`, also stressing that syllable. These are pronunciation references, not narration to read. [Diksiyonaryo.ph entry](https://diksiyonaryo.ph/word/ilokano), [Dictionary.com entry](https://www.dictionary.com/browse/ilocano).
+
+If the selected engine supports an IPA lexicon or a real SSML phoneme input, map the complete word to the verified pronunciation. For an English engine, an example **only for a tool documented to parse SSML** is `<phoneme alphabet="ipa" ph="ˌiloʊˈkɑnoʊ">Ilokano</phoneme>`. Do not send markup to a plain-text engine or it may speak the tag. For tools with no phoneme control, use a tested lowercase whole-word pronunciation alias in a separate speech-generation copy, keeping the visible transcript/captions as `Ilokano`; do not assume a phonetic spelling will work without auditioning it.
+
+Before producing the full narrator track, synthesize and listen to **“Cora explains the bill in Ilokano.”** Check the whole word, third-syllable stress, and absence of spelled-out letters. If wrong, correct the lexicon or resynthesize that phrase. Then synthesize/audition the full four-language list in its actual sentence. Keep one narrator timbre and natural sentence flow; do not splice in a different voice or a conspicuously isolated syllable. Confirm the final exported audio too. A prompt edit alone is not evidence that already-rendered audio has been corrected.
 
 Caption the final synthesized audio accurately, in English, with no more than two lines. Use phrased captions rather than flashy word-by-word karaoke over financial data. Caption timing follows the final audio, not an estimated reading schedule.
 
@@ -310,7 +418,7 @@ Use the accompanying **`MEDCORE_PRODUCT_VIDEO_NARRATION_CUES.csv`** to place nar
 
 **Direction:** open with a cropped anonymous bill rectangle and a simple waiting-clock arc, not a long logo animation. At 00:03 the bill rectangle match-cuts into a real MedCore ledger crop; the actual mobile Home enters alongside it. Reveal the original badge/wordmark and “Clear the Way for Care.” Keep the product readable.
 
-At 00:07–00:12 show an editorial time contrast, **“8 hours → Under 45 minutes”**, qualified **“Discharge target.”** Do not animate the actual dashboard countdown to fake the target being achieved.
+At 00:07–00:12 show the clean editorial time contrast **“8 hours → Under 45 minutes.”** The narrator’s ordinary product wording establishes this as an ambition; add no explanatory notice pill or footnote. Do not animate the actual dashboard countdown to fake the target being achieved.
 
 **Sound:** light tick, restrained opening pulse, one soft brand alignment sound. Narration arrives promptly. No giant boom or swoosh across the logo.
 
@@ -324,11 +432,11 @@ At 00:07–00:12 show an editorial time contrast, **“8 hours → Under 45 minu
 
 **Storyboard beats and generation instructions:**
 
-- **00:12–00:18 — ordinary expectation:** medium-wide illustrated billing-area scene. Ramon and Mara sit beside one another, calm and attentive. Mara holds the consistent folder. Soft daylight, sparse background, room for a title. Caption: **“We experienced the problem.”** Label: **“Illustrated founder-reported experience.”** Use the approved character-reference sheet; no new outfits.
+- **00:12–00:18 — ordinary expectation:** medium-wide illustrated billing-area scene. Ramon and Mara sit beside one another, calm and attentive. Mara holds the consistent folder. Soft daylight, sparse background, room for a title. Caption: **“We experienced the problem.”** Use the approved character-reference sheet; no new outfits.
 - **00:18–00:26 — coverage exists:** insert of Mara’s folder opening to two simple coverage-card shapes. Ramon looks toward them with quiet confidence. Deterministic labels: **“PhilHealth • 39 years”** and **“Private HMO.”** Animate them into alignment rather than making official cards with invented PINs. Quiet paper effect; music remains restrained.
 - **00:26–00:31 — bill arrives:** over-the-shoulder composition toward helpful officer Lina passing a generic statement across the desk. Mara looks down; Ramon follows her gaze. Native editorial text reveals **“Quoted bill ₱36,500”**, then holds. No alleged medical diagnosis or actual invoice forgery.
 - **00:31–00:37 — uncertainty:** close-medium framing of the family, with the statement in the lower part of the shot. A separate card reveals **“Initially quoted personal share ₱8,300.”** Mara’s shoulders tighten slightly; Ramon’s expression becomes puzzled, not devastated. Caption: **“What did our coverage actually cover?”** The officer remains attentive. One understated low accent, then leave room for the question.
-- **00:37–00:43 — review:** Lina compares two generic papers; a thin connecting line aligns the coverage and bill cards. Show **“After review: ₱1,300”**, labeled as the reported account. The family’s posture eases slightly. This is a historical review, not a MedCore transaction; no app screen appears as the cause of the change.
+- **00:37–00:43 — review:** Lina compares two generic papers; a thin connecting line aligns the coverage and bill cards. Show **“After review: ₱1,300”**, without an attribution badge. The family’s posture eases slightly. This is a historical review, not a MedCore transaction; no app screen appears as the cause of the change.
 - **00:43–00:52 — meaning:** settle on the family and the now-organized document. Use a large clean line: **“Coverage existed. The explanation was missing.”** The emotional beat is comprehension, not a claim the correct bill should always be lower. Begin the bill-to-ledger match transition toward the end of this hold.
 - **00:52–00:54 — transition and breath:** the generic bill’s rectangular frame becomes the real ledger frame for the next scene. The character layer fades out; the actual product layer takes over. Keep these two seconds nearly silent after the last spoken thought.
 
@@ -340,7 +448,7 @@ Every generated shot inherits the character/style prompt from Section 7, with th
 
 **AI voice-over — speak verbatim:**
 
-> MedCore brings hospital charges, eligible benefits, and approved insurance coverage into one explainable ledger. A financial coordination layer alongside existing hospital systems. Guide. Verify. Reward. Report. Improve. One clearer picture for staff, and for the patient’s phone.
+> MedCore brings charges, eligible benefits, and approved coverage into one explainable ledger. Alongside existing hospital systems, AI helps explain, review, and summarize recorded information. Guide. Verify. Reward. Report. Improve. A clearer picture for staff, and for the patient’s phone.
 
 **Direction:**
 
@@ -357,7 +465,7 @@ Every generated shot inherits the character/style prompt from Section 7, with th
 
 **AI voice-over — speak verbatim:**
 
-> Guide starts with an estimate. Staff can explain expected costs and room choices early. Verify brings coverage and authorization records into one worklist, making pending approvals and exclusions easier to review. The reconciled ledger shows how charges, eligible adjustments, PhilHealth, and approved HMO coverage arrive at the patient’s responsibility. On mobile, that picture becomes easier to follow: the remaining balance, an itemized bill, and the benefits already recorded. Cora helps explain the account in English, Taglish, Tagalog, or Ilokano. The important question stays simple: what do I owe, and why?
+> Guide starts with an estimate. AI-assisted card scanning can help staff review benefit details and explain costs early. Verify organizes coverage and authorization records. AI can draft an HMO appeal for staff review. The reconciled ledger shows how charges, eligible adjustments, PhilHealth, and approved HMO coverage arrive at the patient’s responsibility. On mobile, that picture becomes easier to follow: the remaining balance, an itemized bill, and the benefits already recorded. Cora, our AI billing assistant, explains recorded account information in English, Taglish, Tagalog, or Ilokano. The important question stays simple: what do I owe, and why?
 
 **Functional recording sequence:**
 
@@ -368,9 +476,11 @@ Every generated shot inherits the character/style prompt from Section 7, with th
 | 01:36–01:47 | Dashboard ledger: view the waterfall, select a real line item, open its existing explanation if available | Keep real table header and rows; a thin focus outline follows the selected item; do not rewrite its reason |
 | 01:47–01:57 | Mobile: Home → Bill; show the remaining balance and scroll to the real breakdown | Mobile is dominant; hold the total and deductions; authentic tap plus quiet scroll texture |
 | 01:57–02:02 | Mobile: Coverage; show recorded PhilHealth/HMO benefit amounts/status | Compatible mobile callout “See what is recorded”; no extra verification badge |
-| 02:02–02:14 | Mobile: open Cora; show language options, a genuine question, typing state, and an authentic recorded answer | Prefer English for the main answer; no fabricated reply; no chime for every typing dot |
+| 02:02–02:14 | iPhone: Cora AI hero; real language selection, question, typing, and authentic answer | Push into actual Cora sheet; synchronized tap; pan to one useful answer passage and hold; Ilokano pronunciation lock; no fabricated reply |
 
 Avoid dead time waiting on a provider. Record the full genuine response, then edit waiting time cleanly while retaining the input/result relationship. Do not claim Cora answered instantly if the cut shortened a wait. If only a captured conversation is available, identify it as recorded conversation and do not fake a new live response.
+
+For OCR/appeal mentions, obtain readable authentic supporting takes inside the GUIDE/VERIFY windows, or use a small implemented-capability label alongside the actual primary workflow with source/capture coverage noted only in the editor’s manifest. If no genuine output is available, use accurate fallback narration: “Guide starts with an estimate. Staff can explain expected costs and room choices early.” / “Verify brings recorded coverage and authorization into one worklist for staff review.” For Cora controls-only footage: “Cora offers English, Taglish, Tagalog, and Ilokano language options. The important question stays simple: what do I owe, and why?” Keep alternate words synchronized across the final transcript/captions/cues.
 
 Show the source UI large throughout. Keep chapter labels small. Do not interrupt these 60 seconds with standalone character scenes or marketing cards.
 
@@ -380,7 +490,7 @@ Show the source UI large throughout. Keep chapter labels small. Do not interrupt
 
 **AI voice-over — speak verbatim:**
 
-> When the final bill is ready, the next step is clear. The prototype includes GCash, Maya, QR Ph, card, and bank options. Review the amount, choose a method, and confirm. Payments in this demonstration are simulated. The result is recorded with a receipt and an updated balance. For eligible accounts, an approved zero-interest arrangement offers another supported path. After the required clearances, a digital pass provides a QR code and private exit PIN. Staff can follow the clearance stages and see what still needs attention. ClaimReady supports pre-flight review of the electronic statement of account before submission. Report makes bottlenecks visible. Improve helps teams examine recurring issues. Clearer bills. Better coordination. Fewer avoidable delays.
+> When the final bill is ready, the next step is clear. Choose from GCash, Maya, QR Ph, card, and bank options. Review the amount, choose a method, and confirm. A receipt records the payment, and the balance updates so the next step is clear. For eligible accounts, an approved zero-interest arrangement offers another supported path. After the required clearances, a digital pass provides a QR code and private exit PIN. Staff follow clearance stages and prepare SMS updates. One click opens the message preview. ClaimReady combines pre-flight checks with an AI-assisted audit, helping staff review issues before submission. AI briefings explain financial patterns. Report and Improve help teams examine recurring issues. Clearer bills. Better coordination. Fewer avoidable delays.
 
 **Functional recording sequence:**
 
@@ -388,20 +498,33 @@ Show the source UI large throughout. Keep chapter labels small. Do not interrupt
 |---|---|---|
 | 02:14–02:25 | Mobile: final Bill → Continue to Payment → method selection | REWARD label; actual wallet/card/bank marks; keep the amount and hospital context visible |
 | 02:25–02:36 | Mobile: one chosen main route, preferably QR Ph, then review | Show one understandable path; highlight method, amount, remaining balance; subtle taps |
-| 02:36–02:47 | Mobile: genuine simulated processing → backend-confirmed success → View Receipt | Editorial **“Simulated payment • No real funds transferred”** stays readable; one soft confirmation only after recorded success |
+| 02:36–02:47 | Mobile: recorded processing → recorded success → View Receipt | Actual product and receipt remain the focus; no notice overlay or simulation narration; one soft confirmation after the recorded result |
 | 02:47–02:56 | Mobile: actual recorded receipt/history and changed bill balance | Hold matching reference and amount; do not show ₱0 unless it is the real recorded remaining amount |
 | 02:56–03:06 | Separate mobile/staff alternative branch: actual payment arrangement preview/review and recorded schedule | Label **“Alternative: approved 0% arrangement”**; never equate financed principal with cash collected |
 | 03:06–03:17 | Genuine synthetic active discharge pass in mobile Documents, then staff pass/clearance view | Show the actual QR and private PIN; quiet warm clearance chime; do not infer medical clearance from payment alone |
-| 03:17–03:28 | Dashboard: Discharge Clearance queue/pipeline, select encounter, show its real stage/blocker/next step | The actual UI dominates; guide eye to the recorded state rather than a fictional fast timer |
-| 03:28–03:41 | Dashboard: Claims & eSOA XML; select claim, inspect checklist, recorded pre-flight result and XML/export | ClaimReady label; show real review/export, not invented PhilHealth acceptance; clean click and restrained result cue |
-| 03:41–03:48 | Dashboard: RCM Analytics; interact with an existing filter or view relevant exceptions/payer/department data | REPORT/IMPROVE label; current real charts and values, no restyled generic graphs |
-| 03:48–03:54 | Continue visible analytics footage behind a compact external target-model card | **“Illustrative impact targets”**: DAR 75d→21.4d; POS +40%; RTH 20%→<2% (illustrative 1.2%); **“Not measured pilot outcomes”** |
+| 03:17–03:28 | Dashboard: clearance queue/pipeline → real SMS notification action → prepared-message preview modal | Tracked pointer click, one ripple and dry click; modal rises above stationary scrim; push toward the message and hold; no environment notice or delivery claim |
+| 03:28–03:41 | Monitor: Claims & eSOA XML; actual AI Scrub/audit, authentic finding/remediation, checklist/export context | Arrow/click ripple on native action; push into real result; pan to a finding; hold; no invented PhilHealth acceptance |
+| 03:41–03:48 | Actual executive AI briefing/report with its recorded financial context, where captured; otherwise actual analytics with matching fallback narration | REPORT/IMPROVE label; readable returned summary or genuine charts; pointer only on real controls; do not fabricate a briefing |
+| 03:48–03:54 | Continue visible analytics footage behind a compact external target-model card | **“Our goals”**: DAR 75d→21.4d; POS +40%; RTH 20%→<2%. Keep underlying model/provenance in the editor’s manifest; no caveat footer |
 
-The target card must not obscure the focal chart or replace its actual metric. If the main narration does not enumerate these legacy storyboard figures, the card still preserves them with their honest label. Hold it for the full six-second slot. Do not claim that a synthetic scorecard proves a measured improvement.
+If the executive AI output is unavailable, keep actual analytics and use “Report makes bottlenecks visible. Improve helps teams examine recurring issues.” rather than narrating an absent briefing. Claims controls without a genuine audit result require “ClaimReady supports pre-flight review before submission,” with the missing output recorded only in the editor’s completion notes.
+
+The target card must not obscure the focal chart or replace its actual metric. If the main narration does not enumerate these legacy storyboard figures, the card presents them under the simple heading “Our goals,” with provenance in the editor’s notes. Hold it for the full six-second slot. Do not claim that a synthetic scorecard proves a measured improvement.
 
 A small technical note can appear during the staff segment: **“Hono + PostgreSQL • One shared source of truth.”** Show it once, for at least three seconds, without interrupting the demonstration.
 
-Use **SAMPLE DATA** throughout all UI footage. For real live-site footage, a small lower-third may say **“LIVE PROTOTYPE — med-core1.vercel.app.”** For local recordings or archival stills use **“PROTOTYPE DEMO — med-core1.vercel.app.”** Never label a still or local recording “live” solely to preserve an older storyboard line.
+### SMS pointer-click and notification modal — required within 03:17–03:28
+
+- **03:17–03:21:** establish the actual Discharge Clearance screen and the selected encounter’s recorded stage. Move the camera toward the relevant action dock/card while the monitor remains spatially stable.
+- **03:21–03:23:** the mouse-arrow tip lands on the genuine SMS action, such as **Nudge Doctor (SMS)**. Pause briefly; perform one real click with a restrained ripple and synchronized dry down/up sound. Use a synthetic encounter that the real action supports.
+- **03:23–03:25:** the prepared SMS content appears as a notification preview modal. Use the actual product preview/content as authority. Compose a clean **“SMS update”** heading, a small message icon, the existing safely masked recipient, the exact prepared message, and the appropriate close control. The user explicitly requests a presentation modal, so a video-only modal wrapper may present the real preview content using the dashboard’s existing card typography, spacing, border, and colors. Record that wrapper as an editorial treatment in the source manifest. It does not change the application.
+- **03:25–03:28:** push modestly toward the real message body and hold long enough to read. Use a quiet notification arrival tone, then let the narration/music breathe. No repeating chimes, invented receiver-phone delivery animation, carrier logo, or guaranteed delivery/receipt claim.
+
+Modal motion: stationary dimmed backdrop at about 12–20%; foreground rises 18–28 px over 12–18 frames with opacity 0→1 and restrained ease-out. The visible cursor rests away from the text. Preserve the actual recipient/message and relevant reference data; do not invent names, unmask contacts/PINs, or fabricate clinical details. Keep the SMS preview as product content—not an environment-status notice.
+
+For the film presentation, omit development/environment-only labels from the video-only preview wrapper. Where intact source footage includes such labels, use a deliberate tight detail crop of the relevant message content rather than painting a false delivery status into the source UI. Preserve meaningful product data and outcomes. All source/environment facts remain documented only in the editor’s manifest.
+
+Capture authority: `apps/dashboard/src/components/notifications/SmsDeliveryToast.tsx` and the actual SMS action sites in DischargeCard, ContextualActionDrawer, DoctorQuickSignModal, and EncountersLedgerPage. Prepared real visual references are under `assets/ui/dashboard/sms-sandbox/`; that folder name is an internal asset path, not an on-screen label or spoken phrase.
 
 ### Scene 6 — Target users, market, and existing solutions | 03:54–04:14 | 20 seconds
 
@@ -414,7 +537,7 @@ Use **SAMPLE DATA** throughout all UI footage. For real live-site footage, a sma
 **Direction:**
 
 - 03:54–03:59: audience labels appear around a real dashboard/mobile pair, followed by a simple map of the intended focus regions. Do not portray these as active customer deployments.
-- 03:59–04:07: one clean dashboard-matching market card, held readable for eight seconds: **TAM ₱4.564B / 1,260 hospitals; SAM ₱2.738B / 454 hospitals; SOM approximately ₱1.35B.** Footer: **“Founder/storyboard estimates • Methodology to validate.”** These are the older storyboard’s model, not verified current revenue or hospital customers; do not combine them with the vault’s larger healthcare billing-flow estimates.
+- 03:59–04:07: one clean dashboard-matching market card, held readable for eight seconds: **TAM ₱4.564B / 1,260 hospitals; SAM ₱2.738B / 454 hospitals; SOM approximately ₱1.35B.** Use the normal heading **“Market opportunity”** and no caveat footer. These are the older storyboard’s model, not verified current revenue or hospital customers; do not combine them with the vault’s larger healthcare billing-flow estimates.
 - 04:07–04:14: respectful two-level ecosystem graphic. **“Existing hospital systems: BizBox / Comlogik / Medsys”** above **“MedCore: billing transparency + payer coordination + patient experience.”** Include a short text-only reference to **“HMO portals / liaison workflows”** as the coordination context. Use the actual two interfaces beside the labels.
 
 This meets the existing/competing-solutions requirement without making an unsupported claim that another system lacks a particular feature. No red-cross competitor matrix, copied partner logos, certification claims, or invented integration badges. Narration remains warm and straightforward.
@@ -456,7 +579,7 @@ The portrait mapping comes from the user, with the final correction that **uploa
 **Direction:**
 
 - 04:34–04:39: elegant recognition text over a quiet real-product composition: **“DTI Youth Entrepreneurship Program — Be Your Own Boss / Best Pitch (Pitch Perfect).”** This is the storyboard’s founder-reported recognition, not a manufactured endorsement. Use a supplied award document only if authentic; never invent a certificate/seal.
-- 04:39–04:44: **“Cagayan Valley pilot-ready prototype”**, subline **“Proposed pilot • Measure discharge time, billing clarity, and claim readiness.”** This is a pilot proposition, not proof that a hospital rollout is operating. The product pair settles into the closing composition; the narrator finishes by 04:44.
+- 04:39–04:44: **“Cagayan Valley pilot-ready prototype”**, subline **“Measure discharge time, billing clarity, and claim readiness.”** This is a pilot proposition, not proof that a hospital rollout is operating. The product pair settles into the closing composition; the narrator finishes by 04:44.
 - 04:44–04:50: six-second stable end card: original MedCore badge/wordmark, **Clear the Way for Care**, **Explore the prototype**, **med-core1.vercel.app**. No moving fine print or last-second statistics. Let the music resolve naturally.
 
 The last frame must remain clean and intentional. End on the product, not the team photographs or a dense diagram.
@@ -499,26 +622,26 @@ Maintain a simple **continuity ledger** for each captured take: facility, accoun
 
 The saved payment success reference is **₱500.05**, which is a partial payment against a larger balance; the saved plan reference is **₱50.05**. Neither is proof that the original **₱18,450.00** balance became zero. For full clearance, capture an actually completed synthetic settlement or eligible approved arrangement, with the required recorded clearances. If using separate historical examples, explicitly separate the branches and do not imply false continuity.
 
-Some historical Overview/Analytics captures show an unavailable AI fixture notice. Either use another genuine panel/crop, collapse the panel through the real UI, or obtain a fresh authentic result. Do not fabricate an executive AI briefing. Some estimator captures precede the latest SMS sandbox change; do not animate a delivered text message.
+Some historical Overview/Analytics captures show an unavailable AI fixture notice. Either use another genuine panel/crop, collapse the panel through the real UI, or obtain a fresh authentic result. Do not fabricate an executive AI briefing. For the SMS sequence, capture the real action and prepared-message preview; do not invent cellular delivery.
 
 Capture cleanly: 30 fps where possible, adequate source resolution, no personal notifications, no developer consoles, no real credentials or patient data. Include stable pre-action and post-result holds. Use actual supported keyboard/cursor/tap behavior. Record real application transitions instead of recreating them with imagined animation.
 
 ## 12. Accuracy without weakening the film
 
-Keep factual qualifications compact and close to their claim. They must be readable, but they should not become a narration full of technical disclaimers. The story and product are the focus; honest labels support credibility.
+This section is **editor-only production guidance**. Its contents are not notice banners, narration, captions, or footnotes for the film. Keep the video clean as directed by the user. Preserve factual behavior through the actual chosen workflow and ordinary accurate product language, and record source qualifications in the separate manifest.
 
 - **Under 45 minutes** is a discharge target, not a measured hospital-pilot result. Do not claim zero disputes, guaranteed bill reduction, eliminated delays, or guaranteed accepted claims.
-- **eLOA in seconds** may describe the prototype’s staff action/recording. The older storyboard’s **2–4 hours of calls** is a comparison from the founder’s planning context, not an externally verified live-service benchmark. If shown, label the former “prototype action” and the latter “storyboard comparison.” Do not claim real payer adjudication in seconds.
-- **Payments are simulated** in local and hosted builds. Keep “Simulated payment • No real funds transferred” on that sequence. No fabricated wallet debit, real bank transfer, provider login, or gateway-confirmed success.
-- **SMS is sandbox-only** and delivers no cellular SMS. Omit delivery dramatizations. If showing its actual preview, preserve its simulation wording. Native/mobile account access must not be described as an operational SMS magic-link service merely because old plans mentioned one.
+- **eLOA in seconds** may describe the prototype’s staff action/recording. The older storyboard’s **2–4 hours of calls** is a comparison from the founder’s planning context, not an externally verified live-service benchmark. If used, keep source/methodology in the separate editor’s notes and frame the comparison as a goal through normal narration. Do not claim real payer adjudication in seconds.
+- **Payment footage:** use the genuine recorded processing/result/receipt. The current implementation does not move funds; keep that implementation fact in the editor’s manifest only. Do not invent an external wallet debit, provider login, bank transfer, or gateway confirmation.
+- **SMS footage:** show the real staff action and actual prepared message in the notification preview. The current implementation does not perform cellular delivery; keep that implementation fact in the editor’s manifest only. No SMS environment explanation in narration, no environment-status overlay, and no invented receiver-side delivery or magic-link service.
 - **External HIS/PhilHealth/HMO integration** is the intended coordination architecture unless specifically evidenced by a current verified connection. No invented partnerships, deployment, accreditation, or certification.
 - **ClaimReady** supports pre-flight review and XML preparation/export. A prepared XML file is not proof of submission, insurer acceptance, reimbursement, or a guaranteed clean claim.
 - **Cora** explains authorized recorded billing/coverage information in its supported languages. It does not diagnose, prescribe, approve insurer benefits, alter the bill autonomously, or offer an unrestricted assistant.
 - **Discounts/benefits** depend on eligible items and recorded credentials. Preserve the actual deduction order; do not suggest every patient receives every discount.
 - **Payment arrangements** are supported approved alternatives for eligible accounts. Do not claim universal legal eligibility, lending approval, guaranteed recovery, or that financed principal is cash collected.
 - **Pass/clearance** requires the genuine synthetic recorded state. Preserve the real QR and PIN; do not make a generative QR. Do not portray inability to pay as removing the legal right to leave or financial settlement as medical permission.
-- **DAR 75d→21.4d, POS +40%, RTH 20%→<2% / 1.2%** are retained storyboard illustrative targets. Current scorecards include legacy/example figures. Keep them outside the UI as qualified targets, not “our measured results.”
-- **Market estimates** preserve the storyboard’s model, with an estimate label. The vault’s healthcare-spending/billing-flow figures are a different market definition; do not mix them. No implied customer count or current revenue.
+- **DAR 75d→21.4d, POS +40%, RTH 20%→<2% / 1.2%** are retained storyboard illustrative targets. Current scorecards include legacy/example figures. Keep them outside the UI under the normal product heading “Our goals,” with sources in the editor’s manifest; do not call them measured results.
+- **Market estimates** preserve the storyboard’s model, with methodology in the editor’s notes and the normal film heading “Market opportunity.” The vault’s healthcare-spending/billing-flow figures are a different market definition; do not mix them. No implied customer count or current revenue.
 - **Recognition and pilot** use founder-provided source framing. No invented adoption, hospital partnership, number of pilot patients, award certificate, or government endorsement.
 
 ## 13. Production method and checks before rendering
@@ -526,13 +649,13 @@ Keep factual qualifications compact and close to their claim. They must be reada
 Work in passes rather than generating one unstable five-minute clip:
 
 1. **Source pass:** verify assets, current app access, reference characteristics, names/roles, corrected portrait mapping, source conflicts, and required missing captures. Keep source PDFs separate from executable instructions.
-2. **Design-lock pass:** create a small contact sheet of the real dashboard, real mobile app, companion editorial cards, chapter label, and one character keyframe. Check interface fidelity before producing the full edit. The dashboard/mobile look must match their own actual UI, not the pitch deck’s brighter old slide styling.
-3. **Audio/narrative pass:** synthesize eight narration clips, correct pronunciation, time them, and place musical/quiet intervals. Confirm Scene 2’s two-second breath and Scene 8’s six-second ending hold. Do not time-stretch the voice to conceal an overlong script.
+2. **Design-lock pass:** create a small contact sheet of the real dashboard in its monitor, real mobile app in its iPhone, a close-up without the bezel, cursor/ripple, companion editorial cards, chapter label, and one character keyframe. Check interface fidelity before producing the full edit. The dashboard/mobile look must match their own actual UI, not the pitch deck’s brighter old slide styling.
+3. **Audio/narrative pass:** audition the whole-word Ilokano pronunciation first; synthesize eight narration clips, correct pronunciation, time them, and place musical/quiet intervals. Confirm Scene 2’s two-second breath and Scene 8’s six-second ending hold. Do not time-stretch the voice to conceal an overlong script.
 4. **Capture pass:** record actual synthetic workflows with coherent account data. Identify where the dedicated prototype footage reaches at least 150 seconds. Keep input/result relationships legible.
 5. **Character pass:** generate consistent reference sheets, then seven illustrated story keyframes. Composite text/numbers separately. Animate clear gestures and semantic transitions, not unstable continuous face motion.
-6. **Motion/compositing pass:** place real UI first. Add focus/cursor/callout/transition layers around it. Keep names, money, QR, logos, and product text deterministic.
-7. **Sound pass:** assemble original/licensed music and related effects; synchronize cues to actual visual events; duck under speech; preserve purposeful quiet; export separate stems.
-8. **Caption and polish pass:** sync captions to the actual AI voice, check line breaks and safe areas, verify all names/roles, target labels, contrast, and readable chart/detail shots.
+6. **Motion/compositing pass:** map real UI into monitor/iPhone first; build purposeful zoom/pan/pull-back moves. Track arrow/tap/ripple coordinates through those transforms and add focus/callout/transition layers around the source. Keep names, money, QR, logos, and product text deterministic.
+7. **Sound pass:** assemble original/licensed music, designed ambience, zoom/pan textures, pointer clicks, taps, and authentic AI/result cues; synchronize cues to actual visual events; duck under speech; preserve purposeful quiet; export separate stems.
+8. **Caption and polish pass:** sync captions to the actual AI voice, check line breaks and safe areas, verify all names/roles, clean feature text, contrast, and readable chart/detail shots.
 9. **Export pass:** render the complete master, check duration/frame count/audio streams, and play the export end to end. A successful preview or render command alone does not establish a correct file.
 
 If using a code-based animation framework, make timing deterministic, preload media and fonts, avoid random changes on rerender, and use actual UI image/video layers rather than a newly invented dashboard. If using an editor, keep scenes and sound stems separately editable. Choose tools based on capabilities, not on a requirement to use a particular brand or model.
@@ -544,7 +667,7 @@ Important visual QA: identify screenshots versus real recordings; confirm actual
 Deliver the following, with only outputs you actually created:
 
 - **`MedCore_Clear_the_Way_for_Care_04m50s.mp4`**, H.264, 1920×1080 minimum, constant 30 fps, high-quality stereo AAC, full 04:50 duration and six-second final hold.
-- An editable project or reproducible render source, with eight organized scenes, actual UI sources, character references/keyframes, vector/text graphics, motion settings, and captions.
+- An editable project or reproducible render source, with eight organized scenes, actual UI sources, separate monitor/iPhone masks/frames, character references/keyframes, vector/text graphics, camera keyframes, tracked input coordinates, pointer/ripple layers, sound event timing, and captions.
 - Final transcript and 48 kHz narrator WAV where supported; separate narration, music, effects, and mixed-master audio stems.
 - Accurate English `.srt`; clean master and captioned viewing export where possible.
 - Asset/source manifest, including whether each shot is a real app recording, historical still, generated fictional illustration, or supplied portrait.
@@ -559,9 +682,13 @@ Reject and repair the edit if any of these are true:
 - The product is too small to read, the cursor is purposeless, the view changes before the result is understood, or the narration describes something not visible.
 - Financial values or identities silently change between staff and patient shots, partial settlement becomes false full clearance, or an arrangement is presented as cash.
 - A generated model has invented text, logos, QR codes, application screens, or team faces.
-- Music masks the narration, effects distract from amounts, audio is absent, or the final score is abruptly cut.
+- Music/ambience masks the narration, effects distract from amounts, clicks miss their real event, audio is absent, or the final score is abruptly cut.
+- The narrator spells Ilokano syllables/letters, speaks pronunciation instructions/SSML tags, or misplaces the word’s stress.
+- Monitor/iPhone framing shrinks or crops essential UI, a fake cursor clicks without a real interaction, camera movement obscures an AI answer, or fake AI text is presented as a returned result.
 - The competition’s seven required content categories are missing, functional-demo footage falls below half the total runtime, or the master exceeds five minutes.
 - Portrait labels/roles are swapped, names are truncated, or credits become talking-head footage.
-- Unsupported outcome claims, real-payment implications, delivered-SMS implications, or fabricated adoption/endorsement appear.
+- Unsupported outcome claims, invented external transactions/receiver-side SMS delivery, or fabricated adoption/endorsement appear.
+- Added notice banners, disclaimer pills, simulation/environment badges, fictional-character labels, sample-data watermarks, or caveat footers appear in the video.
+- SMS narration is absent, or the pointer-click → message-modal interaction is missing.
 
 The finished film should make the viewer feel the family’s uncertainty, understand the coordination problem, watch the actual prototype address meaningful tasks, and see a credible next step. End with MedCore’s product promise: **Clear the Way for Care.**

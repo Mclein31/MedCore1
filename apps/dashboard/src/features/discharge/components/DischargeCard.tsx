@@ -85,10 +85,10 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
               disabled={isSmsSending(encounter.id) || !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)}
               onClick={event => { event.stopPropagation(); void nudgeDoctor(encounter.id); }}
               className="flex-1 py-2 px-2.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-xs font-medium text-slate-700 flex items-center justify-center gap-1 transition-colors"
-              title="Preview a simulated SMS to the attending physician"
+              title="Prepare an SMS update for the attending physician"
             >
               <Send className="w-3 h-3 text-slate-500" />
-              <span>{isSmsSending(encounter.id) ? 'Simulating…' : 'Nudge Doctor (SMS)'}</span>
+              <span>{isSmsSending(encounter.id) ? 'Preparing…' : 'Nudge Doctor (SMS)'}</span>
             </button>
             <button
               onClick={(e) => {

@@ -1,0 +1,126 @@
+{
+  "complete": false,
+  "clips": [
+    {
+      "file": "guide.mp4",
+      "duration": 11,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{const select=dp.locator('select').first();const opts=await select.locator('option').evaluateAll(a=>a.map(e=>e.value));if(opts.length>1)await select.selectOption(opts[1]);await pause(2500);await scroll(dp,220);}"
+    },
+    {
+      "file": "verify.mp4",
+      "duration": 11,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(dp,240);await pause(2000);await scroll(dp,-240);}"
+    },
+    {
+      "file": "ledger.mp4",
+      "duration": 11,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(dp,370);await pause(1800);await scroll(dp,-370);}"
+    },
+    {
+      "file": "clearance.mp4",
+      "duration": 11,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await dp.getByRole('tab',{name:'6-Stage Pipeline',exact:true}).click();await pause(3500);await scroll(dp,220);}"
+    },
+    {
+      "file": "claims.mp4",
+      "duration": 13,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(dp,460);await pause(2200);await scroll(dp,280);}"
+    },
+    {
+      "file": "analytics.mp4",
+      "duration": 13,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(dp,410);await pause(2300);await scroll(dp,360);}"
+    },
+    {
+      "file": "mobile-bill.mp4",
+      "duration": 10,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await pause(1500);await mt('Bill');await pause(2000);await scroll(p,230);}"
+    },
+    {
+      "file": "coverage.mp4",
+      "duration": 5,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(p,240);}"
+    },
+    {
+      "file": "cora.mp4",
+      "duration": 12,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await p.getByRole('radio',{name:'Reply in Tagalog',exact:true}).click();await pause(2000);await p.getByRole('radio',{name:'Reply in English',exact:true}).click();await p.getByPlaceholder('Ask Cora about your hospital bill…').fill('What is my remaining balance?');}"
+    },
+    {
+      "file": "payment-methods.mp4",
+      "duration": 11,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await mb('Continue to payment method');await pause(2600);await scroll(p,200);}"
+    },
+    {
+      "file": "qr-review.mp4",
+      "duration": 11,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await pause(2900);await mb('Review payment');}"
+    },
+    {
+      "file": "receipt.mp4",
+      "duration": 11,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await p.getByRole('button',{name:/^Confirm payment ·/}).click();await p.getByRole('button',{name:'View Receipt',exact:true}).waitFor();await pause(1700);await mb('View Receipt');}"
+    },
+    {
+      "file": "history.mp4",
+      "duration": 9,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(p,220);}"
+    },
+    {
+      "file": "arrangement.mp4",
+      "duration": 10,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await scroll(p,260);}"
+    }
+  ],
+  "limitations": [
+    "Synthetic in-memory API; no production patient data",
+    "Staff and patient demonstrations use separate synthetic records",
+    "Cora controls only; no live AI answer",
+    "No discharge pass exists in fixture; documents slot shows actual documents",
+    "Payment simulated; no transfer",
+    "Dashboard mutations blocked; no live insurer verification",
+    "XML sample is fixture data, not submitted claim"
+  ]
+}

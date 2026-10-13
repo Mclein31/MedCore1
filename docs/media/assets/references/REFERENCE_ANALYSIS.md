@@ -1,26 +1,27 @@
-# Product-video reference observations
+# Product-video reference observations — focused review, October 13, 2026
 
-Visual references inspected October 13, 2026 by extracting timed frames from both supplied clips with AVFoundation and reviewing the contact sheets. This records observed visual principles, not an audio transcription or a promise that particular music can be reused.
+All three current inspiration clips were decoded again. Whole-clip visual sequences were inspected at one-second sampling, with additional three-frames-per-second sequence inspection for the selected transition ranges below. This is timed-frame visual review, not a claim of continuous playback or direct audio listening. Audio tracks were decoded/extracted and RMS levels inspected; no reference soundtrack was directly auditioned or licensed for use.
 
-## Reference 1
+## Financial motion demo
 
-`product video inspo/ScreenRecording_10-13-2026 08-56-13_1.mov`
+`product video inspo/ScreenRecording_10-13-2026 08-56-13_1.mov` — about 47.69 seconds, 1284×2778, filmed laptop inside social screen recording.
 
-- Duration approximately 47.67 seconds; 1284×2778 recording; one audio track.
-- A vertical social screen recording includes a filmed laptop displaying a motion-graphics product demo.
-- Visible ideas: a financial dashboard/card transitions to large number-bearing circles; differently sized values and a coin-like stack visualize money; scattered tabs consolidate into a clearer overview; large short phrases and simple objects vary the composition; quieter product views support the more expressive moments.
-- Useful MedCore adaptation: fragmented bills/coverage become an organized ledger; a rectangle changes from paper to real product; limited scale changes and short editorial text help carry ideas between shots.
-- Do not copy the social interface, laptop filming, other product's numbers, orange palette, financial mascot, branding, or literal sequences. Keep the patient's unexpected bill dignified.
+At about 19–22 seconds, a clock/late-night phrase transitions to scattered tab cards and a changing tab-count headline. Around 22–26 seconds the composition moves into a light product overview and layered focused panels. The relevant MedCore idea is scattered information → organized ledger, used once as a paper-to-product transition. The filmed laptop/social chrome, orange skin, mascot, inflated circles, literal tab count, and other product copy are not appropriate imports.
 
-## Reference 2
+## UI-led product demo
 
-`product video inspo/v1c044g50000db56tbnog65qn3crcb1g.MP4`
+`product video inspo/v1c044g50000db56tbnog65qn3crcb1g.MP4` — about 64.03 seconds, 1024×576, 30 fps.
 
-- Duration approximately 64.03 seconds; 1024×576; 30 fps; one audio track.
-- A yellow-accented UI-led product presentation establishes the application, uses large product views and cursor-led actions, changes to details/filter views, pairs product and short benefit cards, and resolves to a simple branded close.
-- Useful MedCore adaptation: legible full product orientation → deliberate action → close detail/result → short companion benefit → branded resolve.
-- Do not copy another product's yellow design, logo, feature text, user-photo gallery, or watermark. MedCore dashboard and mobile appearance are locked to their own actual UI.
+Around 39–47 seconds the camera/crop moves between an actual input and results; a cursor leads the action; concise benefit text reveals and settles. The MedCore adaptation is genuine input → pointer click → real result → readable hold, with restrained camera movement and a short benefit phrase only where useful. Do not copy the yellow product skin, search features, claims or numeric results. Dashboard has a cursor; mobile does not.
 
-## Adopted direction
+## New short motion showcase
 
-V2 combines restrained narrative transformations with actual functional UI proof. Original music/foley is specified separately in the master prompt. No reference footage or reference soundtrack is included in the production edit by default.
+`product video inspo/4f3c9ad208b25464c6dae075f0ffb153.MP4` — about 18.46 seconds, 576×1024, 30 fps.
+
+The opening roughly 0–8 seconds moves from grid/pulse to a title reveal, dimensional grid imagery, short kinetic words and a changing percentage/chart. For MedCore, borrow only brief reveal-and-settle timing if it helps a title. Abstract grids, rotating forms, outline-word repetitions, unrelated figures, and 3D geometry do not serve the billing story and are excluded.
+
+## Latest user selection rule
+
+Do not add all reference animation/typography. Choose the necessary MedCore treatments: one paper-to-ledger transition; purposeful zoom/pan around a real task; tracked dashboard pointer/click feedback; sparse meaningful keyword emphasis; and action-specific original sound. Keep genuine results still long enough to read. No additional animation or sound solely because a reference uses it.
+
+The reference soundtrack remains unverified by direct audition. Sound choices in the prompt are original creative directions for MedCore, not claims about the references' specific click/whoosh/music cues.

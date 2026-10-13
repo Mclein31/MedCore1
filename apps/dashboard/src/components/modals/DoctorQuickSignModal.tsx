@@ -209,9 +209,9 @@ export const DoctorQuickSignModal: React.FC = () => {
                   variant="secondary"
                   icon={Send}
                   disabled={isSmsSending(selectedEncounter.id) || selectedEncounter.stage !== 'DOCTOR_PF_PENDING' || !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)}
-                  onClick={() => void nudgeDoctor(selectedEncounter.id)} title="Preview a simulated doctor SMS" className="!h-14 w-full px-3 justify-center !whitespace-normal leading-5"
+                  onClick={() => void nudgeDoctor(selectedEncounter.id)} title="Prepare an SMS update for the doctor" className="!h-14 w-full px-3 justify-center !whitespace-normal leading-5"
                 >
-                  {isSmsSending(selectedEncounter.id) ? 'Simulating…' : 'Nudge Doctor (SMS)'}
+                  {isSmsSending(selectedEncounter.id) ? 'Preparing…' : 'Nudge Doctor (SMS)'}
                 </Button>
               </div>
             </div>

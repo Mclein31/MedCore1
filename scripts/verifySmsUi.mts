@@ -39,10 +39,11 @@ try {
  await page.getByRole('button',{name:'Discharge Clearance',exact:true}).click();
  await page.getByRole('tab',{name:'6-Stage Pipeline',exact:true}).click();
  const nudge=page.getByRole('button',{name:'Nudge Doctor (SMS)',exact:true}).first();await nudge.waitFor();await nudge.click();
- const toast=page.getByRole('status',{name:'Simulated SMS preview'});await toast.waitFor();
- await toast.getByText('[SIMULATED SMS SENT]',{exact:true}).waitFor();await toast.getByText('Sandbox preview only. No cellular SMS was delivered.',{exact:true}).waitFor();
- assert.match(await toast.innerText(),/SMS-SIM-[A-Z0-9]{6}/);assert.ok((await toast.innerText()).includes('Professional Fee'));
- await page.screenshot({path:resolve(output,'01-doctor-nudge.png')});checks.push('Discharge card nudge, persisted API response and sandbox preview');
+ const toast=page.getByRole('status',{name:'SMS notification'});await toast.waitFor();
+ await toast.getByText('SMS update',{exact:true}).waitFor();
+ assert.doesNotMatch(await toast.innerText(),/sandbox|simulat|no cellular SMS|NTC:|RA 10173:/i);
+ assert.ok((await toast.innerText()).includes('Professional Fee'));
+ await page.screenshot({path:resolve(output,'01-doctor-nudge.png')});checks.push('Discharge card nudge, persisted API response and clean SMS notification');
  await toast.getByRole('button',{name:'Dismiss SMS preview'}).click();assert.equal(await toast.count(),0);
  const card=nudge.locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
  // The card's explicit review action opens the actual Doctor QuickSign modal.
