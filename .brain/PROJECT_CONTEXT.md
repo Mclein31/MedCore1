@@ -2506,3 +2506,17 @@ An exhaustive end-to-end performance and reliability audit and refactor was comp
 [FIX] Open/closed-eye PNG frames fade independently of occasional five-degree head tilts, using native-driver transforms/opacity and noninteraction loops. Motion pauses for reduced motion, inactive Home, open chat and background AppState, and stops on unmount. Explicit image dimensions are required: React Native Web otherwise used the 1254px source size despite the 72px parent, causing the initially missing mascot. User subsequently requested a slight reduction to 64px.
 
 [VALIDATION] Six mascot lifecycle groups, eight Cora UI groups, 56 mobile unit checks, strict mobile lint/types and iOS/Android Metro exports pass. The current local synthetic browser preview visibly renders the final size, live sampling observed both blink/tilt, and tapping opens Cora. Evidence: [mascot verification](../docs/validation/cora-mascot/README.md). Physical-device animation/VoiceOver remains unverified. No backend/dependency changes or agent commit/push; unrelated existing UI work was preserved.
+
+
+## Refreshed UI screenshot set — October 14, 2026
+
+[FACT] `UI_SCREENSHOTS/` was recaptured from current dashboard and mobile web UI using the read-only synthetic fixture: 70 images (22 dashboard, 48 mobile), zero page errors, and zero dashboard mutations. The dashboard set excludes the standalone patient portal route. Standard dashboard captures are 1440×1000; the full six-stage pipeline capture is 1920×1000 so all stages fit; mobile captures are 390×900 browser renders, not physical-device footage. `UI_SCREENSHOTS/README.md` and `manifest.json` record the set and reproduction details.
+
+
+## Product-led demo-video refresh — October 14, 2026
+
+[DECISION] Keep the existing competition-video structure: the family’s unclear bill and discharge delay establish the problem; the MedCore dashboard and mobile app show reconciliation, coverage, patient balance, payment, documents, and coordinated discharge; the product resolves that operational gap. Show all five implemented AI features inside those workflows without letting them displace the problem, product, or solution. Preserve the 4:50 runtime and the 160-second product block.
+
+[FACT] The V3 production brief, narration cue sheet, recording guide, screenshots, and source footage were updated together. Actual app UI captures include genuine Gemini outputs for Cora, benefit-card OCR, HMO appeal drafting, claims preflight, and executive briefing, generated from synthetic-only source inputs. The claims example is encounter `ENC-2026-6021` with explicit false ward-course and diagnostic-documentation markers; its complete findings and clinical-synthesis views are captured separately. No local database-backed AI route was called. The appeal remains an unsubmitted staff draft; card OCR is a clearly invalid synthetic card requiring review; payment and clearance remain fixture demonstrations.
+
+[VALIDATION] The refreshed source-recording set contains 18 clips / 196 seconds (source takes, not a finished 4:50 film). `UI_SCREENSHOTS/` contains 70 standard dashboard/mobile images plus six AI result views; `docs/media/assets/ui/` mirrors the current set. The portable handoff ZIP now contains matching prompt aliases, narration/cues, current UI assets, response evidence, and the synthetic OCR card. ZIP integrity, cue timeline, and source clips must be checked before future handoff; no final edited film is included.

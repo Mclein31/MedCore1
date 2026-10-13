@@ -1,8 +1,9 @@
 {
   "complete": true,
-  "capturedAt": "2026-10-12T01:23:21.096Z",
-  "dashboardViewport": "1440\u00d71000",
-  "mobileViewport": "390\u00d7900",
+  "capturedAt": "2026-10-13T20:32:59.656Z",
+  "dashboardViewport": "1440×1000",
+  "dashboardPipelineViewport": "1920×1000",
+  "mobileViewport": "390×900",
   "files": [
     "dashboard/00-login.png",
     "dashboard/01-overview.png",
@@ -25,7 +26,7 @@
     "dashboard/06-rcm-analytics-scroll-03.png",
     "dashboard/06-rcm-analytics-scroll-04.png",
     "dashboard/07-settings-rules.png",
-    "dashboard/08-patient-portal.png",
+    "dashboard/07-settings-rules-scroll-01.png",
     "mobile/00-launch.png",
     "mobile/01-onboarding-bill.png",
     "mobile/02-onboarding-coverage.png",
@@ -73,27 +74,25 @@
     "mobile/13b-documents-with-receipt.png",
     "mobile/17-historical-receipt.png",
     "mobile/17-historical-receipt-scroll-01.png",
-    "mobile/17-historical-receipt-scroll-02.png"
+    "mobile/17-historical-receipt-scroll-02.png",
+    "ai/dashboard-executive-briefing.png",
+    "ai/dashboard-hmo-appeal.png",
+    "ai/dashboard-claims-ai-audit.png",
+    "ai/mobile-cora-answer.png",
+    "ai/mobile-benefit-card-ocr.png",
+    "ai/dashboard-claims-ai-findings.png"
   ],
   "pageErrors": [],
   "dashboardMutations": [],
   "data": "Synthetic local fixture. One local simulated payment and note for completion/receipt screenshots. No hospital or real gateway access.",
-  "supplementalCaptureSets": [
-    {
-      "name": "sms-sandbox",
-      "files": [
-        "dashboard/sms-sandbox/01-doctor-nudge.png",
-        "dashboard/sms-sandbox/02-quicksign-preview.png",
-        "dashboard/sms-sandbox/03-intake-preview.png",
-        "dashboard/sms-sandbox/04-admission-preview.png"
-      ],
-      "viewport": {
-        "width": 1440,
-        "height": 1000
-      },
-      "syntheticLocalFixture": true,
-      "externalSmsOrModelCalls": 0,
-      "results": "dashboard/sms-sandbox/results.json"
-    }
-  ]
+  "aiDemonstrations": {
+    "source": "Actual app UI; authentic Gemini responses from purpose-made synthetic inputs; local DB-backed AI endpoints bypassed.",
+    "features": [
+      "Cora billing assistant",
+      "Benefit card OCR",
+      "HMO appeal drafting (unsubmitted draft)",
+      "Claims pre-flight audit",
+      "Executive RCM briefing"
+    ]
+  }
 }
