@@ -167,8 +167,8 @@ export const ConfigurationPage: React.FC = () => {
             </div>
 
             <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden text-sm">
-              <div className="p-4 flex items-center justify-between bg-slate-50/50">
-                <div>
+              <div className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 bg-slate-50/50">
+                <div className="min-w-0 flex-1">
                   <div className="font-bold text-slate-900">
                     RA 9994 / RA 10754 (Senior Citizen &amp; PWD Waterfall)
                   </div>
@@ -176,13 +176,13 @@ export const ConfigurationPage: React.FC = () => {
                     12% VAT exemption on base + 20% statutory discount before PhilHealth and HMO.
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="shrink-0 self-start whitespace-nowrap text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 sm:self-center">
                   ✓ Active (Strict)
                 </span>
               </div>
 
-              <div className="p-4 flex items-center justify-between">
-                <div>
+              <div className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0 flex-1">
                   <div className="font-bold text-slate-900">
                     Republic Act No. 9439 (Anti-Hospital Detention Law)
                   </div>
@@ -190,13 +190,13 @@ export const ConfigurationPage: React.FC = () => {
                     Prohibits patient detention for non-payment; mandates 0% interest promissory note execution.
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="shrink-0 self-start whitespace-nowrap text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 sm:self-center">
                   ✓ Active (0% Int.)
                 </span>
               </div>
 
-              <div className="p-4 flex items-center justify-between bg-slate-50/50">
-                <div>
+              <div className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 bg-slate-50/50">
+                <div className="min-w-0 flex-1">
                   <div className="font-bold text-slate-900">
                     PhilHealth Circular 2024-0037 (+50% ACR Increase)
                   </div>
@@ -204,13 +204,13 @@ export const ConfigurationPage: React.FC = () => {
                     Applies the 50% rate expansion across inpatient medical, surgical, and ICU case rates.
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="shrink-0 self-start whitespace-nowrap text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 sm:self-center">
                   ✓ Active (+50%)
                 </span>
               </div>
 
-              <div className="p-4 flex items-center justify-between">
-                <div>
+              <div className="p-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0 flex-1">
                   <div className="font-bold text-slate-900">
                     Single Period of Confinement (SPC) Repeal (Circ 2024-0021 &amp; 2025-0015)
                   </div>
@@ -218,7 +218,7 @@ export const ConfigurationPage: React.FC = () => {
                     Permits repeat admissions within 90 days and unlocks retroactive claims back to Feb 2019.
                   </div>
                 </div>
-                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="shrink-0 self-start whitespace-nowrap text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 sm:self-center">
                   ✓ Active Rule
                 </span>
               </div>
