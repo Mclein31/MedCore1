@@ -110,10 +110,10 @@ Important sources:
 - `MedCore_Vault/PROJECT.md`, `PRODUCT/problems.md`, `PRODUCT/users.md`, `PRODUCT/value_proposition.md`, `PRODUCT/workflows.md`, `SYSTEM/architecture.md`, and relevant `DECISIONS/` notes.
 - Actual source under `apps/dashboard/src`, `apps/mobile/src`, `apps/server/src`, and `apps/shared`.
 - `apps/dashboard/src/index.css`, `apps/dashboard/tailwind.config.js`, shared controls and actual chart components, and `apps/mobile/src/components/theme.ts` — visual authority.
-- `docs/media/assets/ui/` — authentic October 12 synthetic captures retained from the earlier handoff; historical still references, not fresh recordings.
+- `UI_SCREENSHOTS/` — current dashboard/mobile screen set, including authentic AI-result screenshots. `docs/media/assets/ui/` is refreshed from this set for the portable handoff; browser captures are screenshots, while the separate MP4 clips provide interactive source footage.
 - `docs/media/assets/team/manifest.json` — confirmed portrait mapping and deck roles.
 
-The old root `UI_SCREENSHOTS/` folder and storyboard are deleted in the current working tree. Do not recreate them or undo those deletions. Use the copies prepared under `docs/media/assets/`. The older `docs/market/MedCore.pptx` contains unrelated template text about LakbayPoints and transport; the current supplied PDF is the presentation authority. Never carry those template artifacts, fake website addresses, misspelled placeholder headings, or unrelated slides into this film.
+The current `UI_SCREENSHOTS/` set was refreshed for this production pass; it deliberately excludes the removed patient-portal feature. `docs/media/assets/ui/` mirrors the refreshed captures for the portable handoff. The older `docs/market/MedCore.pptx` contains unrelated template text about LakbayPoints and transport; the current supplied PDF is the presentation authority. Never carry those template artifacts, fake website addresses, misspelled placeholder headings, or unrelated slides into this film.
 
 Original inspiration clips:
 
@@ -227,7 +227,7 @@ The current implementation contains five AI features, verified against `apps/ser
 | **Executive AI briefing/report** | Actual Executive AI Briefing card → expand/refresh → authentic returned summary and source telemetry | Summarizes recorded financial patterns for staff review. Do not invent savings, add fake recommendations, or show a default placeholder as a returned answer. |
 | **AI-assisted benefit/ID-card scanning** | Actual supported card-scanner/upload view → synthetic/redacted test card → authentic extracted fields → human verification | Assists data capture; the person checks the fields. Do not use real credentials, perfect-accuracy claims, or an invented successful OCR overlay. |
 
-**Mandatory AI hero beats:** the Cora question/answer and the claims AI audit. **Supporting AI beats:** executive briefing and, where authentic footage is available, appeal drafting/card scanning. Give each shown output enough time to read. Reallocate time within the existing 160-second product block; do not extend the total or replace real workflows with standalone AI advertising. The beat map in Section 8 provides candidate placements. Where a capability is not captured, mention it only as an implemented supporting capability and do not claim the film demonstrated it.
+**Show all five implemented AI capabilities in the finished film:** Cora, card scanning, HMO appeal drafting, the claims pre-flight audit, and the executive briefing. Keep AI in proportion to the broader product story: the film is about a family’s billing-clarity problem and how the staff dashboard and patient app coordinate a clearer bill, coverage review, payment, and discharge. AI is one practical aid inside those workflows, not the film’s subject or a separate AI montage. Cora and the claims audit receive the clearest demonstrations; card scanning and appeal drafting are brief workflow inserts; the executive briefing supports the reporting chapter. Every AI shot must use an authentic generated result from a purpose-made synthetic input, show the actual product UI, and preserve a visible staff/patient review step. Reallocate time inside the existing 160-second product block; keep the 04:50 master and functional-workflow requirement intact. Do not replace the problem, dashboard/mobile product, reconciliation, payment, or discharge beats with extra AI screen time.
 
 For each AI hero: real input → real trigger → authentic processing → real output → visible human review. Use a quiet external “AI explains” / “AI assists review” label or a thin teal focus stroke around the source panel. Keep native output, loading indicators, and errors unchanged. An external animated connector can lead from an actual source field to the actual explanation without suggesting that the model changed the underlying amount. Financial calculations remain the recorded ledger’s authoritative arithmetic.
 
@@ -302,16 +302,18 @@ Record input events alongside takes, with clip, action, timestamp, screen coordi
 | 00:26–00:37 | Statement arrives; personal-share uncertainty | Bill slides from helpful officer; slow motivated push toward family/bill. Amount reveals once. Reduce music density so the question lands. |
 | 00:37–00:54 | Review brings understanding; bill becomes ledger | Pan between relevant documents, then pull back to calmer posture. Small alignment effect; preserve the two-second near-silent breath. |
 | 00:54–01:14 | Monitor overview → deduction detail → iPhone handoff | Push into the real ledger, pan along relevant amounts, pull back and hand off to the iPhone. Two interfaces imply shared data only with matching capture records. |
-| 01:14–01:25 | GUIDE estimator; optional genuine card-scan insert | Establish monitor; arrow selects procedure; push toward estimate; hold. Optional OCR can use up to 4 seconds only if its authentic output is readable and estimator action/result still fits. Otherwise keep the full estimator beat. |
-| 01:25–01:36 | VERIFY recorded coverage; optional real AI appeal draft | Pointer selects the relevant item; pan to authorization/exclusion. Up to 5 seconds may show a genuine existing appeal draft and review controls; otherwise retain the coverage worklist. Never stage a submitted/approved appeal. |
-| 01:36–01:47 | Ledger item and explanation | Push toward the real waterfall; arrow selects item; pan to its explanation; hold the actual remaining share. |
-| 01:47–02:02 | iPhone Home → Bill → Coverage | Phone reveal/brief pull-out, then push toward total and pan to real deductions/coverage; actual tap rings. Keep the primary phone legible. |
+| 01:14–01:23 | GUIDE estimator; choose a real procedure and show the estimate | Establish monitor; arrow selects procedure; push toward the actual amount and hold. |
+| 01:23–01:29 | Mobile Coverage: scan a purpose-made test card; show authentic extracted fields and the review state | Six-second supporting AI insert; keep the invalid synthetic card/result and human verification clear. |
+| 01:29–01:36 | VERIFY recorded HMO coverage and authorization status | Pointer selects the real row; distinguish recorded payer status from AI-generated content. |
+| 01:36–01:43 | Open an eligible synthetic item’s appeal action; show generated draft and review controls | Seven-second supporting AI insert; no submission or approval implication. |
+| 01:43–01:52 | Ledger item and explanation | Push toward the real waterfall; arrow selects item; pan to its explanation; hold the actual remaining share. |
+| 01:52–02:02 | iPhone Home → Bill → Coverage | Phone reveal, then push toward total and pan to real deductions/coverage; actual tap rings. Keep the primary phone legible. |
 | 02:02–02:14 | **Cora AI hero:** language, question, genuine answer | Push into the real sheet; language tap; keep question and answer spatially connected; pan after real response arrives and hold one useful passage. Gentle response cue once, not per word. |
 | 02:14–02:56 | iPhone amount, methods, QR/review, recorded result, receipt/history | Move from context to chosen method to amount; synchronized tap; stationary processing; short push to real receipt, then pull back to history. Keep the app and action in focus; no notice overlay. |
 | 02:56–03:17 | Separate arrangement branch; genuine pass where available | Small labeled lateral handoff; focus on real schedule. Push to actual QR/PIN only when an active pass is genuinely captured. Missing pass stays an explicit capture limitation, not invented clearance. |
 | 03:17–03:28 | Staff clearance stages → SMS action → message notification modal | Monitor re-establishes; pan to the real SMS action; tracked arrow clicks once, with ripple/dry click; actual prepared message opens in a product-matching modal; push toward message and hold. |
 | 03:28–03:41 | **Claims AI hero:** real AI Scrub/audit → flag → review | Arrow clicks actual AI action; preserve real loading; push into returned result; pan to one finding/remediation; pull out to checklist. No insurer-approval fanfare. |
-| 03:41–03:48 | **Executive AI briefing**, where genuinely captured, with real telemetry context | Focus on actual expanded briefing/source figures; readable stationary summary. If only analytics is captured, describe analytics and identify missing AI output. |
+| 03:41–03:48 | **Executive AI briefing** with its actual synthetic telemetry context, then connect to analytics | Focus on the authentic expanded briefing/source figures; hold still while reading, then return to chart context. |
 | 03:48–03:54 | Actual analytics + external impact-goal card | Ease out to chart context; target card enters beside the chart and stays readable; source/model details stay in the editor’s notes. |
 | 03:54–04:14 | Users, estimates, existing-system context | Paired monitor/iPhone reappears; gently pan the group of audience labels; estimate cards settle for eight seconds; restrained ecosystem connector. |
 | 04:14–04:34 | Two team card groups | Whole-card entrances only; original portraits remain unaltered and still. Camera holds for reading full names/roles. |
@@ -471,16 +473,17 @@ Every generated shot inherits the character/style prompt from Section 7, with th
 
 | Time | Real action and readable result | Editorial treatment / sound |
 |---|---|---|
-| 01:14–01:25 | Dashboard: Encounters & Ledgers → pre-admission estimator; choose a real available procedure; show the resulting estimate | Small GUIDE label; focus on actual deductions/out-of-pocket estimate; one real click, hold result |
-| 01:25–01:36 | Dashboard: Approvals & Disputes / HMO Gateway Roster; select the relevant synthetic encounter; show pending/approved recorded coverage | VERIFY label; highlight actual status; no fabricated external response |
-| 01:36–01:47 | Dashboard ledger: view the waterfall, select a real line item, open its existing explanation if available | Keep real table header and rows; a thin focus outline follows the selected item; do not rewrite its reason |
-| 01:47–01:57 | Mobile: Home → Bill; show the remaining balance and scroll to the real breakdown | Mobile is dominant; hold the total and deductions; authentic tap plus quiet scroll texture |
-| 01:57–02:02 | Mobile: Coverage; show recorded PhilHealth/HMO benefit amounts/status | Compatible mobile callout “See what is recorded”; no extra verification badge |
-| 02:02–02:14 | iPhone: Cora AI hero; real language selection, question, typing, and authentic answer | Push into actual Cora sheet; synchronized tap; pan to one useful answer passage and hold; Ilokano pronunciation lock; no fabricated reply |
+| 01:14–01:23 | Dashboard: Encounters & Ledgers → pre-admission estimator; choose an available synthetic procedure and show its estimate | GUIDE label; focus on actual deductions/out-of-pocket estimate; one click, readable hold |
+| 01:23–01:29 | Mobile Coverage: scan the clearly marked synthetic test card; show authentic OCR fields and review prompt | Six-second supporting insert; do not imply the card is valid or fields have been verified |
+| 01:29–01:36 | Dashboard: Approvals & Disputes / HMO Gateway Roster; show recorded coverage and authorization status | VERIFY label; highlight actual status; no fabricated external response |
+| 01:36–01:43 | Open an eligible synthetic dispute’s actual AI appeal action; show the genuine generated draft and review controls | Seven-second supporting insert; preserve draft status; never imply submission or payer approval |
+| 01:43–01:52 | Dashboard ledger: view the waterfall, select a real line item, open its existing explanation if available | Keep real table header and rows; a thin focus outline follows the selected item; do not rewrite its reason |
+| 01:52–02:02 | Mobile: Home → Bill → Coverage; show remaining balance, breakdown, and recorded benefits | Mobile is dominant; hold actual amounts; authentic taps plus quiet scroll texture |
+| 02:02–02:14 | iPhone: Cora AI hero; select a language, ask a real question about the displayed synthetic bill, and show the authentic answer | Push into actual Cora sheet; synchronized tap; pan to the balance explanation and hold; Ilokano pronunciation lock; no fabricated reply |
 
 Avoid dead time waiting on a provider. Record the full genuine response, then edit waiting time cleanly while retaining the input/result relationship. Do not claim Cora answered instantly if the cut shortened a wait. If only a captured conversation is available, identify it as recorded conversation and do not fake a new live response.
 
-For OCR/appeal mentions, obtain readable authentic supporting takes inside the GUIDE/VERIFY windows, or use a small implemented-capability label alongside the actual primary workflow with source/capture coverage noted only in the editor’s manifest. If no genuine output is available, use accurate fallback narration: “Guide starts with an estimate. Staff can explain expected costs and room choices early.” / “Verify brings recorded coverage and authorization into one worklist for staff review.” For Cora controls-only footage: “Cora offers English, Taglish, Tagalog, and Ilokano language options. The important question stays simple: what do I owe, and why?” Keep alternate words synchronized across the final transcript/captions/cues.
+All five AI capabilities are required in the completed edit, but their screen time stays subordinate to the family’s billing-clarity problem and the broader staff dashboard/patient mobile workflows. Use the supplied authentic OCR and appeal output takes as brief GUIDE/VERIFY inserts; keep their full generated content available in the source footage and screenshots. Do not turn them into an AI montage. Preserve the estimator, ledger, mobile bill, coverage, payment, receipt, clearance, and analytics demonstrations around them. Cora and claims are the two clearest AI demonstrations; the executive briefing supports reporting. Keep alternate narration synchronized across transcript, captions, and cues.
 
 Show the source UI large throughout. Keep chapter labels small. Do not interrupt these 60 seconds with standalone character scenes or marketing cards.
 
@@ -504,10 +507,10 @@ Show the source UI large throughout. Keep chapter labels small. Do not interrupt
 | 03:06–03:17 | Genuine synthetic active discharge pass in mobile Documents, then staff pass/clearance view | Show the actual QR and private PIN; quiet warm clearance chime; do not infer medical clearance from payment alone |
 | 03:17–03:28 | Dashboard: clearance queue/pipeline → real SMS notification action → prepared-message preview modal | Tracked pointer click, one ripple and dry click; modal rises above stationary scrim; push toward the message and hold; no environment notice or delivery claim |
 | 03:28–03:41 | Monitor: Claims & eSOA XML; actual AI Scrub/audit, authentic finding/remediation, checklist/export context | Arrow/click ripple on native action; push into real result; pan to a finding; hold; no invented PhilHealth acceptance |
-| 03:41–03:48 | Actual executive AI briefing/report with its recorded financial context, where captured; otherwise actual analytics with matching fallback narration | REPORT/IMPROVE label; readable returned summary or genuine charts; pointer only on real controls; do not fabricate a briefing |
+| 03:41–03:48 | Actual executive AI briefing/report with its recorded financial context, then continue into the genuine analytics view | REPORT/IMPROVE label; readable returned summary; pointer only on real controls; do not fabricate a briefing |
 | 03:48–03:54 | Continue visible analytics footage behind a compact external target-model card | **“Our goals”**: DAR 75d→21.4d; POS +40%; RTH 20%→<2%. Keep underlying model/provenance in the editor’s manifest; no caveat footer |
 
-If the executive AI output is unavailable, keep actual analytics and use “Report makes bottlenecks visible. Improve helps teams examine recurring issues.” rather than narrating an absent briefing. Claims controls without a genuine audit result require “ClaimReady supports pre-flight review before submission,” with the missing output recorded only in the editor’s completion notes.
+The briefing and claims audit must each have a genuine generated result in the source captures. If either is unavailable during a take, retry or use a separately captured authentic synthetic demonstration; never present a placeholder as generated output. Keep analytics as the reporting context and preserve the rest of the product narrative if a take must be replaced.
 
 The target card must not obscure the focal chart or replace its actual metric. If the main narration does not enumerate these legacy storyboard figures, the card presents them under the simple heading “Our goals,” with provenance in the editor’s notes. Hold it for the full six-second slot. Do not claim that a synthetic scorecard proves a measured improvement.
 
@@ -586,7 +589,7 @@ The last frame must remain clean and intentional. End on the product, not the te
 
 ## 11. Real capture plan and continuity ledger
 
-Prepare a source inventory before editing. The stills in `assets/ui/` are real historical app renders. They are useful visual references and fallback establishing/detail images. They do not automatically establish current functionality or a coherent same-patient demonstration.
+Prepare a source inventory before editing. The current stills in `assets/ui/` are browser screenshots of the current app; the five AI-output images show genuine Gemini results returned into actual app components from synthetic inputs. Use the MP4s under `docs/media/production/footage/` for input → action → result motion. Keep provenance from `footage/inventory.json` and `footage/ai-responses.json`; screenshots alone do not prove interactivity or backend integration.
 
 Preferred capture groups:
 
@@ -601,7 +604,11 @@ Preferred capture groups:
 | ClaimReady | Claims & eSOA XML | `assets/ui/dashboard/05-claims-esoa.png`, associated scroll capture |
 | REPORT / IMPROVE | RCM Analytics | `assets/ui/dashboard/06-rcm-analytics.png`, associated numbered scroll captures |
 | Patient clarity | Home, Bill, Coverage | `assets/ui/mobile/07-home.png`, `08-bill.png`, `09-coverage.png`, associated scroll captures |
-| Cora | Actual mobile sheet/chat | `assets/ui/mobile/16-cora-assistant.png`; newer actual language verification captures may be preferable |
+| Cora | Actual mobile sheet/chat and answer | `assets/ui/ai/mobile-cora-answer.png` and `assets/ui/mobile/16-cora-assistant.png` |
+| OCR | Mobile Coverage → Scan Card OCR | `assets/ui/ai/mobile-benefit-card-ocr.png`; input `assets/ai-demo/synthetic-test-card.png` is explicitly marked NOT VALID |
+| HMO appeal | Approvals & Disputes → Disputes & Promissory → Draft Appeal | `assets/ui/ai/dashboard-hmo-appeal.png`; generated text is a draft for staff review only |
+| Claims audit | Claims & eSOA XML → Run AI Audit | `assets/ui/ai/dashboard-claims-ai-audit.png` |
+| Executive briefing | Overview → Executive RCM & Operational Telemetry Briefing | `assets/ui/ai/dashboard-executive-briefing.png` |
 | Payment | Amount, methods, QR Ph, review, processing, result, receipt | `assets/ui/mobile/payment-flow/01-amount.png` through relevant result/receipt images |
 | Documents/history | Documents, Payments, hospital updates | `assets/ui/mobile/13-documents.png`, `10-payments.png`, `15-hospital-updates.png` |
 | Genuine pass | Mobile Documents pass + staff pass modal | A fresh/supplied synthetic active-pass capture is required; do not invent it from a payment screenshot |
@@ -622,7 +629,7 @@ Maintain a simple **continuity ledger** for each captured take: facility, accoun
 
 The saved payment success reference is **₱500.05**, which is a partial payment against a larger balance; the saved plan reference is **₱50.05**. Neither is proof that the original **₱18,450.00** balance became zero. For full clearance, capture an actually completed synthetic settlement or eligible approved arrangement, with the required recorded clearances. If using separate historical examples, explicitly separate the branches and do not imply false continuity.
 
-Some historical Overview/Analytics captures show an unavailable AI fixture notice. Either use another genuine panel/crop, collapse the panel through the real UI, or obtain a fresh authentic result. Do not fabricate an executive AI briefing. For the SMS sequence, capture the real action and prepared-message preview; do not invent cellular delivery.
+The current AI screenshots and response manifest show authentic Gemini-generated results from purpose-made synthetic inputs, rendered in the actual dashboard/mobile components. The standalone source runner sends only the exact feature prompts and synthetic input values to the configured Gemini model; it bypasses database-backed AI routes. Do not describe these captures as proving the production backend, database, or payer integration. For the SMS sequence, capture the real action and prepared-message preview; do not invent cellular delivery.
 
 Capture cleanly: 30 fps where possible, adequate source resolution, no personal notifications, no developer consoles, no real credentials or patient data. Include stable pre-action and post-result holds. Use actual supported keyboard/cursor/tap behavior. Record real application transitions instead of recreating them with imagined animation.
 

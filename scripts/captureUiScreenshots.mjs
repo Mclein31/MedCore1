@@ -95,7 +95,10 @@ async function dashboardRoutes() {
     await capture(page, `dashboard/${file}`);
     if (label === 'Discharge Clearance') {
       await page.getByRole('tab', { name: '6-Stage Pipeline', exact: true }).click();
+      // The six-stage board needs a wider editorial viewport to show every column at once.
+      await page.setViewportSize({ width: 1920, height: 1000 });
       await capture(page, 'dashboard/02b-discharge-pipeline');
+      await page.setViewportSize({ width: 1440, height: 1000 });
     }
     if (label === 'Encounters & Ledgers') {
       await page.getByRole('tab', { name: 'Pre-admission cost estimator', exact: true }).click();
@@ -110,9 +113,6 @@ async function dashboardRoutes() {
       await capture(page, 'dashboard/04c-disputes-promissory');
     }
   }
-  await page.goto(`${dashboardUrl}/#/clarify/${encounters[0].id}`, { waitUntil: 'networkidle' });
-  await page.getByRole('complementary', { name: 'Workspace navigation' }).waitFor({ state: 'hidden' });
-  await capture(page, 'dashboard/08-patient-portal');
   await context.close();
 }
 async function mobileRoutes() {
@@ -254,8 +254,8 @@ try {
   assert.deepEqual(dashboardMutations, []);
   for (const file of previousFiles) if (!files.includes(file) && /^(dashboard|mobile)\/[a-z0-9/.-]+\.png$/.test(file)) await unlink(resolve(output, file)).catch(() => {});
   await unlink(resolve(output, 'capture-diagnostic.png')).catch(() => {});
-  await writeFile(resolve(output, 'manifest.json'), JSON.stringify({ complete: true, capturedAt: new Date().toISOString(), dashboardViewport: '1440×1000', mobileViewport: '390×900', files, pageErrors: errors, dashboardMutations, data: 'Synthetic local fixture. One local simulated payment and note for completion/receipt screenshots. No hospital or real gateway access.' }, null, 2));
-  const index = ['# Dashboard and mobile screenshots', '', 'Current UI captured with synthetic data. Dashboard: 1440×1000. Mobile web: 390×900.', '', 'Long screens include numbered scroll captures. Mobile images are browser renders of the React Native app, not physical-device captures.', '', '## Dashboard', '', ...files.filter(f => f.startsWith('dashboard/')).map(f => `- [${f.split('/').at(-1)}](${f})`), '', '## Mobile', '', ...files.filter(f => f.startsWith('mobile/')).map(f => `- [${f.replace('mobile/', '')}](${f})`), '', 'Reproduce with `node scripts/captureUiScreenshots.mjs` while the existing synthetic fixture and local previews are running. See `apps/mobile/validation/apple-ui/README.md` for startup commands.', ''];
+  await writeFile(resolve(output, 'manifest.json'), JSON.stringify({ complete: true, capturedAt: new Date().toISOString(), dashboardViewport: '1440×1000', dashboardPipelineViewport: '1920×1000', mobileViewport: '390×900', files, pageErrors: errors, dashboardMutations, data: 'Synthetic local fixture. One local simulated payment and note for completion/receipt screenshots. No hospital or real gateway access.' }, null, 2));
+  const index = ['# Dashboard and mobile screenshots', '', 'Current UI captured with synthetic data. Dashboard: 1440×1000; the six-stage pipeline uses a wide 1920×1000 capture so all stages are visible. Mobile web: 390×900.', '', 'Long screens include numbered scroll captures. Mobile images are browser renders of the React Native app, not physical-device captures.', '', '## Dashboard', '', ...files.filter(f => f.startsWith('dashboard/')).map(f => `- [${f.split('/').at(-1)}](${f})`), '', '## Mobile', '', ...files.filter(f => f.startsWith('mobile/')).map(f => `- [${f.replace('mobile/', '')}](${f})`), '', 'Reproduce with `node scripts/captureUiScreenshots.mjs` while the synthetic fixture and local previews are running on ports 8901, 5175, and 8084. See `apps/mobile/validation/apple-ui/README.md` for startup commands.', ''];
   await writeFile(resolve(output, 'README.md'), index.join('\n'));
   console.log(JSON.stringify({ complete: true, images: files.length, dashboard: files.filter(f => f.startsWith('dashboard/')).length, mobile: files.filter(f => f.startsWith('mobile/')).length, pageErrors: errors }, null, 2));
 } catch (error) {

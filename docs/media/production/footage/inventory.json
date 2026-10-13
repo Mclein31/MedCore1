@@ -1,5 +1,5 @@
 {
-  "complete": false,
+  "complete": true,
   "clips": [
     {
       "file": "guide.mp4",
@@ -38,8 +38,8 @@
       "duration": 13,
       "width": 1440,
       "height": 900,
-      "source": "Actual app browser capture; synthetic local fixture",
-      "actions": "async()=>{await scroll(dp,460);await pause(2200);await scroll(dp,280);}"
+      "source": "Actual dashboard claims audit UI; authentic gemini-3.5-flash-lite generated assessment using limited synthetic claim evidence",
+      "actions": "async()=>{await dp.getByRole('button',{name:'AI Scrub',exact:true}).nth(6).click();await dp.getByRole('heading',{name:'PhilHealth eClaims 3.0 Clinical Forensic Scrubber'}).waitFor();await dp.getByText(aiResponses.claims.clinicalSummary.slice(0,40),{exact:false}).waitFor();await pause(700);await dp.locator('[data-overlay-root] .overflow-y-auto').last().evaluate(el=>{el.scrollTop=320;el.dispatchEvent(new Event('scroll',{bubbles:true}));});await pause(900);}"
     },
     {
       "file": "analytics.mp4",
@@ -70,8 +70,8 @@
       "duration": 12,
       "width": 390,
       "height": 900,
-      "source": "Actual app browser capture; synthetic local fixture",
-      "actions": "async()=>{await p.getByRole('radio',{name:'Reply in Tagalog',exact:true}).click();await pause(2000);await p.getByRole('radio',{name:'Reply in English',exact:true}).click();await p.getByPlaceholder('Ask Cora about your hospital bill…').fill('What is my remaining balance?');}"
+      "source": "Actual mobile Cora UI; authentic gemini-3.5-flash-lite response grounded in the synthetic mobile fixture",
+      "actions": "async()=>{await p.getByRole('radio',{name:'Reply in Tagalog',exact:true}).click();await pause(900);await p.getByRole('radio',{name:'Reply in English',exact:true}).click();await p.getByPlaceholder('Ask Cora about your hospital bill…').fill('What is my remaining balance, and how did my recorded benefits affect it?');await p.getByRole('button',{name:'Send question to Cora'}).click();await p.getByText(/18,?450/).last().waitFor();}"
     },
     {
       "file": "payment-methods.mp4",
@@ -112,15 +112,51 @@
       "height": 900,
       "source": "Actual app browser capture; synthetic local fixture",
       "actions": "async()=>{await scroll(p,260);}"
+    },
+    {
+      "file": "documents.mp4",
+      "duration": 11,
+      "width": 390,
+      "height": 900,
+      "source": "Actual app browser capture; synthetic local fixture",
+      "actions": "async()=>{await p.getByRole('button',{name:/^Statement of account,/}).click();await pause(2000);await scroll(p,260);}"
+    },
+    {
+      "file": "executive-briefing.mp4",
+      "duration": 15,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual dashboard briefing UI; authentic gemini-3.5-flash-lite inference from synthetic aggregates",
+      "actions": "async()=>{await dp.getByRole('button',{name:'Expand briefing'}).click();await pause(2800);await scroll(dp,220);}"
+    },
+    {
+      "file": "appeal.mp4",
+      "duration": 12,
+      "width": 1440,
+      "height": 900,
+      "source": "Actual dashboard appeal UI; authentic gemini-3.5-flash-lite generated unsubmitted draft using synthetic dispute facts",
+      "actions": "async()=>{await dp.getByRole('button',{name:'Draft Appeal',exact:true}).first().click();await dp.getByText(aiResponses.appeal.referenceNumber,{exact:true}).waitFor();await dp.getByText('Letterhead Preview',{exact:true}).waitFor();await pause(900);await scroll(dp,180);}"
+    },
+    {
+      "file": "ocr.mp4",
+      "duration": 9,
+      "width": 390,
+      "height": 900,
+      "source": "Actual mobile OCR UI; authentic gemini-3.5-flash-lite extraction from synthetic test card",
+      "actions": "async()=>{await p.getByRole('button',{name:/Scan Card OCR/}).click();const selectCard=p.getByText('Select Card Image',{exact:true});await selectCard.waitFor();const chooser=p.waitForEvent('filechooser');await selectCard.click();await (await chooser).setFiles(resolve(out,'synthetic-test-card.png'));await p.getByText('Extracted — review details',{exact:true}).waitFor();await pause(800);}"
     }
   ],
   "limitations": [
     "Synthetic in-memory API; no production patient data",
     "Staff and patient demonstrations use separate synthetic records",
-    "Cora controls only; no live AI answer",
+    "All five AI demonstrations display authentic Gemini inference from purpose-made synthetic inputs using the implemented feature prompts and schemas; backend database routes were bypassed.",
+    "OCR source is a synthetic card clearly marked NOT VALID; extracted values require human review.",
+    "HMO appeal is an unsubmitted draft; claims audit is an assessment for staff review; Cora explains only the synthetic account ledger.",
     "No discharge pass exists in fixture; documents slot shows actual documents",
     "Payment simulated; no transfer",
     "Dashboard mutations blocked; no live insurer verification",
     "XML sample is fixture data, not submitted claim"
-  ]
+  ],
+  "count": 18,
+  "totalSeconds": 196
 }

@@ -1,6 +1,6 @@
 # Dashboard and mobile screenshots
 
-Current UI captured with synthetic data. Dashboard: 1440×1000. Mobile web: 390×900.
+Current UI captured with synthetic data. Dashboard: 1440×1000; the six-stage pipeline uses a wide 1920×1000 capture so all stages are visible. Mobile web: 390×900.
 
 Long screens include numbered scroll captures. Mobile images are browser renders of the React Native app, not physical-device captures.
 
@@ -27,16 +27,7 @@ Long screens include numbered scroll captures. Mobile images are browser renders
 - [06-rcm-analytics-scroll-03.png](dashboard/06-rcm-analytics-scroll-03.png)
 - [06-rcm-analytics-scroll-04.png](dashboard/06-rcm-analytics-scroll-04.png)
 - [07-settings-rules.png](dashboard/07-settings-rules.png)
-- [08-patient-portal.png](dashboard/08-patient-portal.png)
-
-### SMS sandbox previews
-
-All previews use the dedicated local synthetic fixture and deliver no cellular SMS.
-
-- [Doctor nudge](dashboard/sms-sandbox/01-doctor-nudge.png)
-- [QuickSign preview](dashboard/sms-sandbox/02-quicksign-preview.png)
-- [Intake orientation](dashboard/sms-sandbox/03-intake-preview.png)
-- [Admission preview](dashboard/sms-sandbox/04-admission-preview.png)
+- [07-settings-rules-scroll-01.png](dashboard/07-settings-rules-scroll-01.png)
 
 ## Mobile
 
@@ -89,4 +80,16 @@ All previews use the dedicated local synthetic fixture and deliver no cellular S
 - [17-historical-receipt-scroll-01.png](mobile/17-historical-receipt-scroll-01.png)
 - [17-historical-receipt-scroll-02.png](mobile/17-historical-receipt-scroll-02.png)
 
-Reproduce with `node scripts/captureUiScreenshots.mjs` while the existing synthetic fixture and local previews are running. See `apps/mobile/validation/apple-ui/README.md` for startup commands.
+Reproduce with `node scripts/captureUiScreenshots.mjs` while the synthetic fixture and local previews are running on ports 8901, 5175, and 8084. See `apps/mobile/validation/apple-ui/README.md` for startup commands.
+
+
+## AI output captures
+
+These six screenshots show genuine Gemini-generated results in the actual app UI, using synthetic-only demo inputs. The appeal is an unsubmitted draft; extracted card fields require human review.
+
+- [dashboard-executive-briefing.png](ai/dashboard-executive-briefing.png)
+- [dashboard-hmo-appeal.png](ai/dashboard-hmo-appeal.png)
+- [dashboard-claims-ai-audit.png](ai/dashboard-claims-ai-audit.png)
+- [dashboard-claims-ai-findings.png](ai/dashboard-claims-ai-findings.png)
+- [mobile-cora-answer.png](ai/mobile-cora-answer.png)
+- [mobile-benefit-card-ocr.png](ai/mobile-benefit-card-ocr.png)
