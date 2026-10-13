@@ -3,7 +3,8 @@ import { usePullRefresh } from '../hooks/usePullRefresh';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { describeClaimStatus, describeHmoStatus, formatPeso, hasHmo, remainingBalance } from '../lib/format';
-import { Sparkles, Camera } from 'lucide-react-native';
+import { Camera } from 'lucide-react-native';
+import { CoraAvatar } from '../components/CoraAvatar';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
 import { BenefitCardScannerModal } from '../components/BenefitCardScannerModal';
 import { C, EmptyState, ErrorState, LoadingState, RefreshNotice, Row, Screen, SectionHeader, StatusBadge, T } from '../components/ui';
@@ -38,7 +39,7 @@ export default function CoverageScreen({ navigation }: { navigation?: any }) {
           borderRadius: 12
         }}
       >
-        <Sparkles size={15} color={C.brand} />
+        <CoraAvatar size={22} />
         <Text style={{ fontSize: 12, fontWeight: '700', color: C.brandDark }}>Ask Cora AI</Text>
       </Pressable>
 

@@ -12,7 +12,8 @@ import {
   StyleSheet
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sparkles, Mic, Send, X, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { Mic, Send, X, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { CoraAvatar } from './CoraAvatar';
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';
 import { createAiApi, CoraChatResponse } from '../services/aiApi';
@@ -274,7 +275,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
           <View style={styles.header}>
             <View style={styles.headerTitleRow}>
               <View style={styles.coraAvatar}>
-                <Sparkles size={18} color="#FFFFFF" />
+                <CoraAvatar size={38} />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -358,7 +359,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               >
                 {m.sender === 'cora' && (
                   <View style={styles.coraMiniAvatar}>
-                    <Sparkles size={12} color="#FFFFFF" />
+                    <CoraAvatar size={24} />
                   </View>
                 )}
                 <View
@@ -406,7 +407,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
             {loading && (
               <View style={[styles.msgRow, styles.msgRowCora]}>
                 <View style={styles.coraMiniAvatar}>
-                  <Sparkles size={12} color="#FFFFFF" />
+                  <CoraAvatar size={24} />
                 </View>
                 <View style={[styles.msgBubble, styles.msgBubbleCora, styles.loadingBubble]}>
                   <CoraTypingDots language={language} />
@@ -515,7 +516,6 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: C.brand,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -652,7 +652,6 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: C.brand,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4

@@ -18,6 +18,7 @@
     "test:claims": "node --import ./node_modules/tsx/dist/loader.mjs apps/dashboard/__tests__/claimsEsoa.ts",
     "test:overlays": "node --import ./node_modules/tsx/dist/loader.mjs apps/dashboard/__tests__/overlays.ts && node --import ./node_modules/tsx/dist/loader.mjs apps/mobile/__tests__/overlays.mts",
     "test:cora": "node --import ./node_modules/tsx/dist/loader.mjs apps/mobile/__tests__/coraLanguage.mts",
+    "test:cora:mascot": "node --import ./node_modules/tsx/dist/loader.mjs apps/mobile/__tests__/coraMascot.mts",
     "test:ai:cache": "node --import ./node_modules/tsx/dist/loader.mjs apps/server/__tests__/aiCache.test.ts",
     "test:ai:cache:postgres": "node --import ./node_modules/tsx/dist/loader.mjs scripts/testAiCachePostgres.ts",
     "db:ai-cache": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiCacheMigration.ts",

@@ -10,7 +10,7 @@ import { useResource } from '../hooks/useResource';
 import { createPaymentApi } from '../services/paymentApi';
 import { createPatientApi } from '../services/patientApi';
 import { describeDischargeStage, formatDate, formatDateTime, formatPeso } from '../lib/format';
-import { Sparkles } from 'lucide-react-native';
+import { CoraAvatar } from '../components/CoraAvatar';
 import ReceiptSheet from '../components/ReceiptSheet';
 import BillBreakdown from '../components/BillBreakdown';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
@@ -93,7 +93,7 @@ export default function RecordDetailScreen({ route }: NativeStackScreenProps<Roo
         marginBottom: 8
       }}
     >
-      <Sparkles size={16} color={C.brand} />
+      <CoraAvatar size={22} />
       <Text style={{ fontSize: 13, fontWeight: '700', color: C.brandDark }}>
         Ask Cora about these charges
       </Text>

@@ -1,15 +1,16 @@
 import { useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
 import { usePullRefresh } from '../hooks/usePullRefresh';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
 import { useNetworkStatus } from '../lib/offline';
 import { describeClaimStatus, describeDischargeStage, describeHmoStatus, formatDate, formatDateTime, formatPeso, hasHmo, remainingBalance } from '../lib/format';
-import { Sparkles } from 'lucide-react-native';
+import { CoraAvatar } from '../components/CoraAvatar';
 import QuickActions from '../components/QuickActions';
 import { Icon } from '../components/icons';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
-import { CoraFloatingPill } from '../components/CoraFloatingPill';
+import { CoraFloatingMascot } from '../components/CoraFloatingMascot';
 import { C, Card, EmptyState, ErrorState, Expandable, LedgerRow, LoadingState, PrimaryButton, RefreshNotice, Row, Screen, SectionHeader, Stepper, T } from '../components/ui';
 
 function firstName(full: string | undefined): string {
@@ -17,6 +18,7 @@ function firstName(full: string | undefined): string {
   return (full.includes(',') ? full.split(',')[1] : full).trim().split(/\s+/)[0] || 'there';
 }
 export default function HomeScreen({ navigation }: { navigation: any }) {
+  const focused = useIsFocused();
   const { patient, encounters, overview, currentEncounter, loading, error, lastSynced, refresh } = usePatient();
   const pullRefresh = usePullRefresh(refresh);
   const facility = useFacilityName();
@@ -37,7 +39,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     { label: 'Payments', icon: 'payments', onPress: () => navigation.navigate('Payments') },
     { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
   ];
-  return <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: 0 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
+  return <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: currentEncounter ? 96 : 0 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
     <View style={{ paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20 }}>
       <Text style={T.meta}>Good day,</Text>
       <Text accessibilityRole="header" style={[T.display, { marginTop: 4, lineHeight: 41 }]}>{patient?.fullName || firstName(patient?.fullName)}</Text>
@@ -91,7 +93,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
                 borderRadius: 22
               }}
             >
-              <Sparkles size={13} color={C.brand} />
+              <CoraAvatar size={20} />
               <Text style={{ fontSize: 13, fontWeight: '600', color: C.brandDark }}>Ask Cora</Text>
             </Pressable>
           </View>
@@ -115,8 +117,8 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     </View>
   </ScrollView>
   {currentEncounter && (
-    <View testID="cora-dock" style={{ paddingHorizontal: 22, paddingVertical: 8, alignItems: 'flex-end', backgroundColor: C.paper }}>
-      <CoraFloatingPill
+    <View testID="cora-dock" pointerEvents="box-none" style={{ position: 'absolute', right: 14, bottom: 4 }}>
+      <CoraFloatingMascot active={focused && !coraOpen}
         onPress={() => {
           setCoraQuery(undefined);
           setCoraOpen(true);
