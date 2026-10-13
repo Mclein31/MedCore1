@@ -29,7 +29,7 @@ New admissions accept an optional real mobile number instead of inventing a plac
 
 The discharge card, contextual drawer and Doctor QuickSign SMS actions are enabled with role/stage/busy guards. The estimator requires a real registered encounter for orientation SMS; procedure codes/clinical estimates are not sent. The admission form forwards its mobile input and displays its confirmed intake preview. Shared context rejects stale account/role responses, deduplicates in-flight actions and retains request references for transport retries. Billing/clearance responses can also display their confirmed simulated notices.
 
-The dismissible body-portal toast shows `[SIMULATED SMS SENT]`, normalized recipient, exact message bubble, reference, link/clinical-data notice, and **“No cellular SMS was delivered.”** It sits above existing modals, wraps long text and respects reduced motion.
+The dismissible body-portal notification now shows **SMS update**, the normalized recipient and exact message bubble. Environment/compliance notices and the internal reference are omitted from the presentation at the user’s request. The internal dispatch/reference and backend restrictions stay intact. It sits above existing modals, wraps long text and respects reduced motion. Historical screenshots below predate this presentation revision; current component evidence is under `../sms-clean-presentation/`.
 
 ## Validation
 

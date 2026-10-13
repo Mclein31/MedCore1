@@ -173,7 +173,7 @@ export const EncountersLedgerPage: React.FC = () => {
               <Button fullWidth size="md" variant="primary"
                 disabled={!smsEncounter || isSmsSending(smsEncounter.id) || !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)}
                 onClick={() => { if (smsEncounter) void notifyPatientSms(smsEncounter.id, 'INTAKE_ORIENTATION'); }}>
-                {smsEncounter && isSmsSending(smsEncounter.id) ? 'Simulating…' : 'Send Intake Orientation (SMS)'}
+                {smsEncounter && isSmsSending(smsEncounter.id) ? 'Preparing…' : 'Send Intake Orientation (SMS)'}
               </Button>
             </div>
 

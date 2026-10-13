@@ -1,0 +1,17 @@
+{
+  "word": "Ilokano",
+  "visible_transcript": "Ilokano",
+  "stress_syllable": 3,
+  "direction_only_lowercase": "ee-loh-kah-noh",
+  "english_ipa": "ˌiloʊˈkɑnoʊ",
+  "do_not_speak": [
+    "pronunciation instructions",
+    "SSML tags in a plain-text engine",
+    "syllables spelled as letters"
+  ],
+  "sources": [
+    "https://diksiyonaryo.ph/word/ilokano",
+    "https://www.dictionary.com/browse/ilocano"
+  ],
+  "acceptance_test": "Synthesize and listen to: Cora explains the bill in Ilokano. Then the full language list. Confirm final exported audio; do not claim corrected audio from a text-only revision."
+}
