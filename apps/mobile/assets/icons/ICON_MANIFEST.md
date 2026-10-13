@@ -26,6 +26,7 @@ Provider artwork provenance and display rules: [payment sources](payments/SOURCE
 
 | Purpose | Filename | Path | Size / format |
 |---|---|---|---|
+| Cora concierge mascot | `cora-mascot.png` | `assets/brand/` | 1254×1254 transparent RGBA PNG; original and generation prompt in `logo/CORA_MASCOT.md` |
 | Original transparent badge | `MedCore_Badge_Logo.png` | `assets/brand/` | 380×356 PNG, byte-identical to `logo/` |
 | Original transparent wordmark | `MedCore_Text_logo.png` | `assets/brand/` | 3244×1280 PNG, byte-identical to `logo/` |
 | Opaque launcher canvas | `app-icon.png` | `assets/brand/` | 1024×1024 RGB PNG |

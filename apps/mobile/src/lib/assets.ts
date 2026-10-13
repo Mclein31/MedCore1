@@ -7,6 +7,8 @@
 
 export const ASSETS = {
   brand: {
+    cora: require('../../assets/brand/cora-mascot.png'),
+    coraBlink: require('../../assets/brand/cora-mascot-blink.png'),
     badge: require('../../assets/brand/MedCore_Badge_Logo.png'),
     launcher: require('../../assets/brand/app-icon.png'),
     adaptive: require('../../assets/brand/adaptive-icon.png'),

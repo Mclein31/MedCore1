@@ -15,6 +15,7 @@ const fixture:any = { client: {}, requests: [], loops: [], styles: {}, accountId
 const native = `import React from 'react';const f=globalThis.__coraLanguageFixture;
 const host=tag=>React.forwardRef((p,ref)=>{if(p.testID)f.styles[p.testID]=p.style;return React.createElement(tag,{ref,'data-testid':p.testID,role:p.accessibilityRole,'aria-label':p.accessibilityLabel,'aria-checked':p.accessibilityState?.checked,disabled:p.disabled,onClick:p.onPress},p.children);});
 export const View=host('div'),Text=host('span'),Pressable=host('button');
+export const Image=p=>React.createElement('img',{'data-testid':p.testID,src:p.source,alt:p.accessible===false?'':p.accessibilityLabel});
 export const ScrollView=React.forwardRef((p,ref)=>{React.useImperativeHandle(ref,()=>({scrollToEnd(){}}));return React.createElement('div',null,p.children);});
 export const TextInput=p=>{f.setInput=p.onChangeText;f.inputValue=p.value;return React.createElement('input',{'aria-label':'Question',value:p.value,readOnly:!p.editable,onChange:e=>p.onChangeText(e.target.value)});};
 export const StyleSheet={create:s=>s};
@@ -30,12 +31,14 @@ await build({ entryPoints: ['apps/mobile/src/components/CoraAssistantModal.tsx']
     b.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: 'safe-area', namespace: 'fixture' }));
     b.onResolve({ filter: /^lucide-react-native$/ }, () => ({ path: 'icons', namespace: 'fixture' }));
     b.onResolve({ filter: /\/lib\/auth$/ }, () => ({ path: 'auth', namespace: 'fixture' }));
+    b.onResolve({ filter: /\/lib\/assets$/ }, () => ({ path: 'assets', namespace: 'fixture' }));
     b.onResolve({ filter: /\/services\/aiApi$/ }, () => ({ path: 'api', namespace: 'fixture' }));
     b.onResolve({ filter: /\.\/ModalOverlay$/ }, () => ({ path: 'overlay', namespace: 'fixture' }));
     b.onLoad({ filter: /.*/, namespace: 'fixture' }, args => ({ loader: 'js', contents: args.path === 'native' ? native
       : args.path === 'safe-area' ? 'export const useSafeAreaInsets=()=>({top:0,bottom:0,left:0,right:0});'
       : args.path === 'icons' ? "export const Sparkles=()=>null,Mic=()=>null,Send=()=>null,X=()=>null,ShieldCheck=()=>null,ChevronRight=()=>null;"
       : args.path === 'auth' ? 'export const useAuth=()=>({client:globalThis.__coraLanguageFixture.client,user:{id:globalThis.__coraLanguageFixture.accountId}});'
+      : args.path === 'assets' ? "export const ASSETS={brand:{cora:'/cora-mascot.png'}};"
       : args.path === 'overlay' ? "import React from 'react';export const ModalOverlay=p=>p.visible?React.createElement('section',{role:'dialog'},p.children):null;"
       : `export const createAiApi=()=>({sendCoraMessage:(message,language,encounterId,mode,signal,conversation)=>new Promise((resolve,reject)=>globalThis.__coraLanguageFixture.requests.push({message,language,encounterId,mode,signal,conversation,resolve,reject}))});` }));
   }}] });
@@ -51,6 +54,8 @@ const reply=(request:any,text:string,language=request.language)=>act(async()=>{r
 let passed=0;const check=(name:string)=>{passed++;console.log(`[PASS] ${name}`);};
 try {
   await render();await render();
+  assert.ok(document.querySelectorAll('[data-testid="cora-avatar"]').length >= 2);
+  assert.ok([...document.querySelectorAll<HTMLImageElement>('[data-testid="cora-avatar"]')].every(image=>image.getAttribute('src')==='/cora-mascot.png'&&image.alt===''));
   assert.match(document.body.textContent!,/Hello, ako si Cora/);
   await press('Reply in English');assert.match(document.body.textContent!,/Hello, I'm Cora/);assert.doesNotMatch(document.body.textContent!,/Hello, ako si Cora/);
   check('Switching language updates the welcome and exposes a distinct Tagalog option');

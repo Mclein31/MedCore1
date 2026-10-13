@@ -2489,3 +2489,11 @@ An exhaustive end-to-end performance and reliability audit and refactor was comp
 
 
 [DECISION] Product-film inspiration review now covers three clips, including the new 18.46s motion showcase. Latest user clarification requires selective motion/typography only when it serves the product/story; V3 Section 5 chooses one paper-to-ledger transition, purposeful task camera moves, dashboard-only pointer/click feedback, sparse meaningful words and action-specific sound. Abstract grids/3D/outline-word effects are excluded. Fresh timed-frame visual review and denser selected sequences informed the notes; reference audio was extracted but not directly auditioned, so sonic matching is not claimed. Narration/timing are unchanged; prompt aliases and ZIP were synchronized.
+
+## Cora mascot and floating animation — October 14, 2026
+
+[DECISION] Cora now uses original transparent teal mascot artwork instead of sparkle icons in the mobile chat header, response/typing avatars and labeled Cora entry actions. Originals and built-in generation/edit prompts live in `logo/CORA_MASCOT.md`; byte-identical app copies are registered in `ASSETS.brand.cora` and `coraBlink`. The Home pill is replaced by a standalone 64px mascot with an 80px accessible Ask Cora button, no visible label/dot/background, anchored above navigation. Scroll padding leaves underlying content reachable.
+
+[FIX] Open/closed-eye PNG frames fade independently of occasional five-degree head tilts, using native-driver transforms/opacity and noninteraction loops. Motion pauses for reduced motion, inactive Home, open chat and background AppState, and stops on unmount. Explicit image dimensions are required: React Native Web otherwise used the 1254px source size despite the 72px parent, causing the initially missing mascot. User subsequently requested a slight reduction to 64px.
+
+[VALIDATION] Six mascot lifecycle groups, eight Cora UI groups, 56 mobile unit checks, strict mobile lint/types and iOS/Android Metro exports pass. The current local synthetic browser preview visibly renders the final size, live sampling observed both blink/tilt, and tapping opens Cora. Evidence: [mascot verification](../docs/validation/cora-mascot/README.md). Physical-device animation/VoiceOver remains unverified. No backend/dependency changes or agent commit/push; unrelated existing UI work was preserved.

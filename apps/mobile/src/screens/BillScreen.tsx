@@ -3,7 +3,7 @@ import { usePullRefresh } from '../hooks/usePullRefresh';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
 import { formatDate, formatPeso, remainingBalance } from '../lib/format';
-import { Sparkles } from 'lucide-react-native';
+import { CoraAvatar } from '../components/CoraAvatar';
 import BillBreakdown from '../components/BillBreakdown';
 import QuickActions from '../components/QuickActions';
 import { EXPLAIN_MY_BILL_QUERY } from '../lib/coraConversation';
@@ -53,7 +53,7 @@ export default function BillScreen({ navigation }: { navigation: any }) {
           marginBottom: 10
         }}
       >
-        <Sparkles size={16} color={C.brand} />
+        <CoraAvatar size={22} />
         <Text style={{ fontSize: 13, fontWeight: '700', color: C.brandDark }}>
           Explain My Bill with Cora AI
         </Text>
