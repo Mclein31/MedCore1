@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { X, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2 } from '@/components/common/SolarIcons';
 import { ConfirmButton } from '@/components/common';
 
 export const WhyDoIOweThisDrawer: React.FC = () => {

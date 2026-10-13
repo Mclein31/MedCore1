@@ -13,7 +13,7 @@ import {
   Calendar,
   Building2,
   Lock
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 interface Props {
   bill: PatientBillStatement;

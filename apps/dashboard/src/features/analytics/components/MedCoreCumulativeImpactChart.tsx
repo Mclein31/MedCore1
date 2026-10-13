@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CUMULATIVE_IMPACT_SERIES } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp } from '@/utils/formatters';
-import { TrendingDown, ShieldCheck, BedDouble, FileText } from 'lucide-react';
+import { TrendingDown, ShieldCheck, BedDouble, FileText } from '@/components/common/SolarIcons';
 
 export const MedCoreCumulativeImpactChart: React.FC = () => {
   const [hoveredMonth, setHoveredMonth] = useState<typeof CUMULATIVE_IMPACT_SERIES[0] | null>(null);

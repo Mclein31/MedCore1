@@ -9,7 +9,7 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
   const { encounters } = useMedCore();

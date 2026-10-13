@@ -50,7 +50,7 @@ export type ButtonVariant =
 
 export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-blue-500/25',
+    'bg-brand-teal hover:bg-brand-teal-dark active:bg-brand-teal-dark text-white font-semibold shadow-2xs focus-visible:ring-2 focus-visible:ring-brand-teal-dark focus-visible:ring-offset-2',
   secondary:
     'border border-slate-300 bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-400/25',
   tertiary:
@@ -62,9 +62,9 @@ export const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   destructiveOutline:
     'border border-rose-200 bg-rose-50/70 hover:bg-rose-100 text-rose-700 font-semibold focus:outline-none focus:ring-2 focus:ring-rose-400/25',
   success:
-    'bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-emerald-500/25',
+    'bg-emerald-700 hover:bg-emerald-800 active:bg-emerald-900 text-white font-semibold shadow-2xs focus-visible:ring-2 focus-visible:ring-emerald-700 focus-visible:ring-offset-2',
   warning:
-    'bg-amber-600 hover:bg-amber-700 active:bg-amber-800 text-white font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-amber-500/25',
+    'bg-amber-700 hover:bg-amber-800 active:bg-amber-900 text-white font-semibold shadow-2xs focus-visible:ring-2 focus-visible:ring-amber-700 focus-visible:ring-offset-2',
   outline:
     'border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold shadow-2xs focus:outline-none focus:ring-2 focus:ring-slate-400/25',
   subtle:

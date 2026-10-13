@@ -30,7 +30,7 @@ import {
   computeArAgingSummary,
   extractActionableExceptions
 } from '@/utils/rcmAnalyticsCalculations';
-import { SearchX, RotateCcw } from 'lucide-react';
+import { SearchX, RotateCcw } from '@/components/common/SolarIcons';
 import { Button } from '@/components/common';
 import { ExecutiveAiBriefingCard } from '@/components/ai/ExecutiveAiBriefingCard';
 

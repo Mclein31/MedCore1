@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState } from 'react';
 import { formatPeso, maskCardNumber } from '../../utils/billFormatters';
 import { validateLuhn, validateExpiry } from '../../utils/paymentSimulator';
-import { CreditCard, Zap, ShieldCheck, Lock, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Zap, ShieldCheck, Lock, CheckCircle2 } from '@/components/common/SolarIcons';
 
 interface Props {
   amount: number;

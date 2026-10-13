@@ -13,34 +13,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   pulse = false,
   className = ''
 }) => {
-  const dotColor = {
-    success: 'bg-emerald-600',
-    warning: 'bg-amber-500',
-    danger: 'bg-rose-600',
-    info: 'bg-blue-600',
-    neutral: 'bg-slate-400'
-  };
-
-  const textColor = {
-    success: 'text-emerald-700 font-bold',
-    warning: 'text-amber-700 font-bold',
-    danger: 'text-rose-700 font-bold',
-    info: 'text-blue-700 font-bold',
-    neutral: 'text-slate-600 font-semibold'
-  };
-
   return (
     <span
-      className={`inline-flex items-center gap-1.5 text-xs ${textColor[variant]} ${className}`}
+      className={`status-badge status-badge-${variant} inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold ${className}`}
     >
-      <span className="relative flex h-2 w-2 shrink-0">
+      <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
         {pulse && (
           <span
-            className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotColor[variant]}`}
+            className="status-badge-dot animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
           />
         )}
         <span
-          className={`relative inline-flex rounded-full h-2 w-2 ${dotColor[variant]}`}
+          className="status-badge-dot relative inline-flex rounded-full h-2 w-2"
         />
       </span>
       <span>{label}</span>

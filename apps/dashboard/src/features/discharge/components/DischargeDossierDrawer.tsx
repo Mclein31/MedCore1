@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { X, ExternalLink, CheckCircle2, Clock, AlertTriangle, Printer } from 'lucide-react';
+import { X, ExternalLink, CheckCircle2, Clock, AlertTriangle, Printer } from '@/components/common/SolarIcons';
 import { ConfirmButton } from '@/components/common';
 
 export const DischargeDossierDrawer: React.FC = () => {

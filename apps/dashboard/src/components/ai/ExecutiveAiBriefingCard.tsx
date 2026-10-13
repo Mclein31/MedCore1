@@ -16,7 +16,7 @@ import {
   Building2,
   FileText,
   ShieldAlert
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { Button, MarkdownNarrative } from '@/components/common';
 
 export interface ExecutiveAiBriefingCardProps {

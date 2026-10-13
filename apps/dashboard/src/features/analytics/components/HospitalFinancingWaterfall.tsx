@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatPhp } from '@/utils/formatters';
 import { WaterfallAggregate } from '@/utils/rcmAnalyticsCalculations';
-import { ShieldCheck, Info, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, Info, CheckCircle2 } from '@/components/common/SolarIcons';
 
 interface HospitalFinancingWaterfallProps {
   waterfall: WaterfallAggregate;

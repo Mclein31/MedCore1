@@ -1,7 +1,7 @@
 import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { Clock, ShieldAlert, FileCheck, CreditCard, ArrowRight } from 'lucide-react';
+import { Clock, ShieldAlert, FileCheck, CreditCard, ArrowRight } from '@/components/common/SolarIcons';
 
 export const PriorityActionStrip: React.FC = () => {
   const { encounters, setActiveFilter, setActiveRoute } = useMedCore();

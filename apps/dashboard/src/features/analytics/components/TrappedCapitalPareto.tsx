@@ -1,7 +1,7 @@
 import React from 'react';
 import { formatPhp } from '@/utils/formatters';
 import { TrappedCapitalFriction } from '@/utils/rcmAnalyticsCalculations';
-import { Lock, Clock, Filter, X } from 'lucide-react';
+import { Lock, Clock, Filter, X } from '@/components/common/SolarIcons';
 
 interface TrappedCapitalParetoProps {
   drivers: TrappedCapitalFriction[];

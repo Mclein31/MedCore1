@@ -17,7 +17,7 @@ import {
 import { LoginScreen } from '@/components/auth/LoginScreen';
 import { PrintDocumentContainer } from '@/components/printing';
 import { SmsDeliveryToast } from '@/components/notifications/SmsDeliveryToast';
-import { AlertCircle, X, RefreshCw, Activity } from 'lucide-react';
+import { AlertCircle, X, RefreshCw, Activity } from '@/components/common/SolarIcons';
 
 // Code-Split 8 Task-Oriented Operational Route Pages for optimal bundle size and startup performance
 const CommandCenterPage = lazy(() => import('@/pages/CommandCenterPage').then(m => ({ default: m.CommandCenterPage })));
@@ -132,7 +132,15 @@ export const MainLayout: React.FC = () => {
     apiError,
     clearApiError
   } = useMedCore();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches
+  );
+  useEffect(() => {
+    const compact = window.matchMedia('(max-width: 900px)');
+    const update = () => setIsSidebarCollapsed(compact.matches);
+    compact.addEventListener('change', update);
+    return () => compact.removeEventListener('change', update);
+  }, []);
 
   // Hash-based routing listener for magic links like #/clarify/enc-8812 or #/patient-portal
   useEffect(() => {

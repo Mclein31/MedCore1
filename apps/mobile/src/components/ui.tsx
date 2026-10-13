@@ -140,6 +140,16 @@ export function SecondaryButton({ title, onPress, disabled }: { title: string; o
   );
 }
 
+// Compact secondary actions share geometry, semantic color and press feedback.
+export function ActionButton({ title, onPress, icon, tone = 'brand', a11y, stretch = false }: {
+  title: string; onPress: () => void; icon: React.ReactNode; tone?: 'brand' | 'blue'; a11y?: string; stretch?: boolean;
+}) {
+  return <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={a11y || title}
+    style={({ pressed }) => [s.actionButton, { backgroundColor: tone === 'blue' ? C.blueSoft : C.brandSoft, borderColor: tone === 'blue' ? C.blueBorder : C.brandBorder }, stretch && { flex: 1 }, pressed && { opacity: 0.65 }]}>
+    {icon}<Text style={{ flexShrink: 1, textAlign: 'center', fontSize: 13, lineHeight: 18, fontWeight: '600', color: tone === 'blue' ? C.blueDark : C.brandDark }}>{title}</Text>
+  </Pressable>;
+}
+
 // Segmented mode switch (e.g. Log in | Create account).
 export function SegControl({ options, value, onChange, disabled }: {
   options: Array<{ key: string; label: string }>; value: string; onChange: (k: string) => void; disabled?: boolean;
@@ -286,11 +296,11 @@ export function ConfirmationModal({ visible, title, detail, confirmLabel, onConf
   );
 }
 
-export function Expandable({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+export function Expandable({ title, subtitle, children, inset = false }: { title: string; subtitle: string; children: React.ReactNode; inset?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
-    <View style={s.expand}>
-      <Pressable onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${title}, ${open ? 'collapse' : 'expand'}`}>
+    <View style={[s.expand, inset && s.expandInset]}>
+      <Pressable style={({ pressed }) => ({ minHeight: 48, justifyContent: 'center', opacity: pressed ? 0.65 : 1 })} onPress={() => setOpen((o) => !o)} accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${title}, ${open ? 'collapse' : 'expand'}`}>
         <View style={s.expandHead}>
           <View style={s.expandMain}>
             <Text accessibilityRole="header" style={T.cardTitle}>{title}</Text>
@@ -319,7 +329,7 @@ const s = StyleSheet.create({
   emptyGlyph: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' },
   emptyGlyphText: { fontSize: 26, color: C.brand },
   sectionHeader: { marginTop: 24, marginBottom: 12, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: StyleSheet.hairlineWidth, borderRadius: Radius.surface, padding: 16, marginBottom: 12 },
+  card: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: Radius.surface, padding: 16, marginBottom: 12 },
   cardFlush: { padding: 0, borderWidth: 0, borderRadius: Radius.surface },
   row: { minHeight: 44, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, gap: 12 },
   rowLabel: { fontSize: 14, color: C.secondary, flex: 1, minWidth: 0 },
@@ -337,6 +347,7 @@ const s = StyleSheet.create({
   primaryBtnText: { textAlign: 'center', color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
   secondaryBtn: { borderColor: C.border, borderWidth: 1, backgroundColor: C.surface, borderRadius: Radius.pill, paddingVertical: 13, paddingHorizontal: 18, alignItems: 'center', marginTop: 12, minHeight: 50, justifyContent: 'center' },
   secondaryBtnText: { textAlign: 'center', color: C.ink, fontSize: 17, fontWeight: '600' },
+  actionButton: { minHeight: 48, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, paddingVertical: 10, paddingHorizontal: 12, borderRadius: Radius.control },
   seg: { flexDirection: 'row', backgroundColor: C.elevated, borderRadius: Radius.control, padding: 4, marginBottom: 18 },
   segOpt: { minHeight: 48, justifyContent: 'center', flex: 1, borderRadius: 11, paddingVertical: 11, alignItems: 'center' },
   segOptActive: { backgroundColor: C.surface, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 2 },
@@ -344,7 +355,7 @@ const s = StyleSheet.create({
   segTextActive: { color: C.ink, fontWeight: '700' },
   field: { marginBottom: 14 },
   fieldLabel: { fontSize: 12, fontWeight: '500', color: C.ink, marginBottom: 7 },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.paper, borderColor: C.paper, borderWidth: 1, borderRadius: Radius.control },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.paper, borderColor: C.inputBorder, borderWidth: 1, borderRadius: Radius.control },
   input: { flex: 1, minWidth: 0, paddingHorizontal: 14, paddingVertical: 13, fontSize: 14, color: C.ink, minHeight: 50 },
   inputFocused: { borderColor: C.brand },
   modal: { backgroundColor: C.surface, borderTopLeftRadius: Radius.sheet, borderTopRightRadius: Radius.sheet, width: '100%', maxWidth: 560, maxHeight: '85%', flexGrow: 0 },
@@ -362,6 +373,7 @@ const s = StyleSheet.create({
   stepTitle: { fontSize: 16, fontWeight: '600', color: C.ink },
   stepTodo: { color: C.secondary, fontWeight: '600' },
   expand: { backgroundColor: C.surface, borderColor: C.border, borderWidth: 1, borderRadius: Radius.surface, padding: 16, marginBottom: 12 },
+  expandInset: { borderWidth: 0, borderRadius: 0, padding: 0, paddingVertical: 8, marginBottom: 0 },
   expandHead: { flexDirection: 'row', alignItems: 'center' },
   expandMain: { flex: 1, paddingRight: 10 },
   expandGlyph: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.brandSoft, color: C.brand, fontSize: 18, fontWeight: '700', textAlign: 'center', lineHeight: 30 },

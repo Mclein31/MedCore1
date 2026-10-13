@@ -11,7 +11,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 interface SidebarNavProps {
   isCollapsed: boolean;
@@ -136,6 +136,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
             }`}
           >
             <Icon
+              weight={isActive ? 'Bold' : 'Linear'}
+              aria-hidden="true"
               className={`w-4.5 h-4.5 shrink-0 ${
                 isActive ? 'text-brand-teal-dark' : 'text-slate-500'
               }`}

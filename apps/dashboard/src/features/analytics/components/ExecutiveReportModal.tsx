@@ -3,7 +3,7 @@ import React from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
 import { WaterfallAggregate, MacroKpiMetrics, CommercialCarrierMetric } from '@/utils/rcmAnalyticsCalculations';
-import { X, Printer, Download, CheckCircle2, ShieldCheck, Building } from 'lucide-react';
+import { X, Printer, Download, CheckCircle2, ShieldCheck, Building } from '@/components/common/SolarIcons';
 import { Button, IconButton } from '@/components/common';
 
 interface ExecutiveReportModalProps {

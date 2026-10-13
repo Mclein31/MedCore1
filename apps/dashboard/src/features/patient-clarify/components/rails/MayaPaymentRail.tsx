@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { formatPeso, maskMobile } from '../../utils/billFormatters';
 import { validatePhilippineMobile } from '../../utils/paymentSimulator';
-import { Zap, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Zap, ShieldCheck, CheckCircle2 } from '@/components/common/SolarIcons';
 
 interface Props {
   amount: number;

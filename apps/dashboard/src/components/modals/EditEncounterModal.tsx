@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import {apiClient} from '@/api';
 import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
-import { X, Pencil, BedDouble, Stethoscope, FileText, AlertCircle } from 'lucide-react';
+import { X, Pencil, BedDouble, Stethoscope, FileText, AlertCircle } from '@/components/common/SolarIcons';
 import { Button, IconButton, Select } from '@/components/common';
 
 export const EditEncounterModal: React.FC = () => {

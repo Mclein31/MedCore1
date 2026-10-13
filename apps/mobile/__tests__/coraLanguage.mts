@@ -29,7 +29,7 @@ await build({ entryPoints: ['apps/mobile/src/components/CoraAssistantModal.tsx']
     b.onResolve({ filter: /^react(?:\/.+)?$/ }, args => ({ path: mobileRequire.resolve(args.path), external: true }));
     b.onResolve({ filter: /^react-native$/ }, () => ({ path: 'native', namespace: 'fixture' }));
     b.onResolve({ filter: /^react-native-safe-area-context$/ }, () => ({ path: 'safe-area', namespace: 'fixture' }));
-    b.onResolve({ filter: /^lucide-react-native$/ }, () => ({ path: 'icons', namespace: 'fixture' }));
+    b.onResolve({ filter: /SolarIcons$/ }, () => ({ path: 'icons', namespace: 'fixture' }));
     b.onResolve({ filter: /\/lib\/auth$/ }, () => ({ path: 'auth', namespace: 'fixture' }));
     b.onResolve({ filter: /\/lib\/assets$/ }, () => ({ path: 'assets', namespace: 'fixture' }));
     b.onResolve({ filter: /\/services\/aiApi$/ }, () => ({ path: 'api', namespace: 'fixture' }));

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useAuth } from '../lib/auth';
 import { isMobileDemoAdmin } from '../lib/mobileAccess';
 import { useFacilityName } from '../hooks/useFacility';
@@ -52,5 +52,6 @@ export default function ProfileScreen({ navigation }: { navigation: any }) {
     <Text style={[T.meta, { marginHorizontal: 12, marginBottom: 16 }]}>{admin ? 'Use the dropdown beside Profile to choose a hospital patient. Home, bills and records follow that selection.' : 'Only your own hospital records are visible here. For billing questions or account recovery, contact your hospital billing desk.'}</Text>
     <Card flush><LedgerRow icon="logout" textSize={16} title="Log out" onPress={() => setConfirm(true)} last /></Card>
     <Text style={[T.meta, { textAlign: 'center', marginTop: 16 }]}>MedCore · Patient financial companion</Text>
+    <Pressable accessibilityRole="link" accessibilityLabel="Solar icons by 480 Design, CC BY 4.0 license" onPress={() => { void Linking.openURL('https://solar-icons.vercel.app/docs/v2/community/license').catch(() => {}); }} style={({ pressed }) => ({ minHeight: 48, justifyContent: 'center', opacity: pressed ? 0.65 : 1 })}><Text style={[T.meta, { textAlign: 'center', textDecorationLine: 'underline' }]}>Solar icons by 480 Design · CC BY 4.0</Text></Pressable>
   </ScrollView><ConfirmationModal visible={confirm} title="Log out" detail="Are you sure you want to log out of MedCore?" confirmLabel="Yes, log out" onConfirm={() => { void signOut(); }} onCancel={() => setConfirm(false)} busy={busy} /></Screen>;
 }

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ActiveDischargeRadar } from '@/features/discharge/components/ActiveDischargeRadar';
 import { DischargeMissionControl } from '@/features/discharge/components/DischargeMissionControl';
-import { Columns, Kanban } from 'lucide-react';
+import { Columns, Kanban } from '@/components/common/SolarIcons';
 import { SegmentedTabs, SegmentedTabItem } from '@/components/common';
 
 const VIEW_TABS: SegmentedTabItem<'WORKSPACE' | 'KANBAN'>[] = [
@@ -13,10 +13,10 @@ export const DischargeClearancePage: React.FC = () => {
   const [subView, setSubView] = useState<'WORKSPACE' | 'KANBAN'>('WORKSPACE');
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-var(--header-height,3rem))] max-h-[calc(100vh-var(--header-height,3rem))] overflow-hidden bg-slate-50">
+    <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-slate-50">
       {/* Subview Navigation Bar */}
-      <div className="px-4 sm:px-6 py-2 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-2xs">
-        <div className="flex items-center gap-2">
+      <div className="px-4 sm:px-6 py-2 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-2xs">
+        <div className="min-w-0 flex flex-wrap items-center gap-2">
           <h1 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
             Discharge Clearance Mission Control
           </h1>

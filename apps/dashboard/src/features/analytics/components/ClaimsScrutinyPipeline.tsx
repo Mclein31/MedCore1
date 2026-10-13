@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ClaimsPipelineMetrics } from '@/utils/rcmAnalyticsCalculations';
-import { ShieldCheck, FileCheck, CheckCircle2, AlertTriangle, XCircle, Clock } from 'lucide-react';
+import { ShieldCheck, FileCheck, CheckCircle2, AlertTriangle, XCircle, Clock } from '@/components/common/SolarIcons';
 
 interface ClaimsScrutinyPipelineProps {
   metrics: ClaimsPipelineMetrics;

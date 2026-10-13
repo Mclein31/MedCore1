@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, ArrowRight, HelpCircle, FileText, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight, HelpCircle, FileText, ChevronRight } from '@/components/common/SolarIcons';
 import { ConfirmButton, Button } from '@/components/common';
 
 interface DualOperationalPipelinesProps {
@@ -101,7 +101,7 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
 
   useEffect(()=>{ setPayerPage(1); setExceptionsPage(1); }, [searchQuery]);
   return (
-    <div className="flex-1 min-h-0 flex flex-col p-3 sm:p-4 overflow-hidden space-y-2">
+    <div className="approval-pipelines flex-1 min-h-0 flex flex-col p-3 sm:p-4 overflow-hidden space-y-2">
       <div className="flex items-center justify-between shrink-0">
         <div>
           <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight">
@@ -113,7 +113,7 @@ export const DualOperationalPipelines: React.FC<DualOperationalPipelinesProps> =
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 flex-1 min-h-0 overflow-hidden items-stretch">
+      <div className="approval-pipelines-grid grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 flex-1 min-h-0 overflow-hidden items-stretch">
         {/* Left Pipeline: Payer Coverage & Authorizations */}
         <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 shadow-2xs flex flex-col min-h-0 overflow-hidden justify-between">
           <div className="flex flex-col flex-1 min-h-0 overflow-hidden">

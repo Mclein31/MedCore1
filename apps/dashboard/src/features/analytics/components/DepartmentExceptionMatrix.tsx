@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { DepartmentMetric } from '@/utils/rcmAnalyticsCalculations';
 import { formatPhp } from '@/utils/formatters';
-import { Building2, Filter, X } from 'lucide-react';
+import { Building2, Filter, X } from '@/components/common/SolarIcons';
 
 interface DepartmentExceptionMatrixProps {
   departments: DepartmentMetric[];

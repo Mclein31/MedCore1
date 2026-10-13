@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { matchesEncounterSearch } from '@/utils/encounterSearch';
 import { useMedCore } from '@/context/MedCoreContext';
 import { formatPhp } from '@/utils/formatters';
-import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer, Sparkles } from 'lucide-react';
+import { CheckCircle2, Clock, AlertTriangle, ShieldAlert, ExternalLink, RefreshCw, ChevronLeft, ChevronRight, Printer, Sparkles } from '@/components/common/SolarIcons';
 import { ConfirmButton, Button, Select, SegmentedTabs } from '@/components/common';
 import { HmoAppealGeneratorModal } from '@/components/ai/HmoAppealGeneratorModal';
 

@@ -2,7 +2,7 @@ import { useMedCore } from '@/context/MedCoreContext';
 import React, { useState, useEffect } from 'react';
 import { CommercialCarrierMetric } from '@/types/domain';
 import { formatPhp } from '@/utils/formatters';
-import { ShieldCheck, ChevronLeft, ChevronRight, CheckCircle2, TrendingDown, ArrowDownRight } from 'lucide-react';
+import { ShieldCheck, ChevronLeft, ChevronRight, CheckCircle2, TrendingDown, ArrowDownRight } from '@/components/common/SolarIcons';
 import { IconButton } from '@/components/common';
 
 interface CommercialCarrierLedgerProps {

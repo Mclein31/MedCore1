@@ -11,7 +11,7 @@ import {
   QrCode,
   FileText,
   ChevronRight
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton } from '@/components/common';
 
 export const ContextualActionDrawer: React.FC = () => {

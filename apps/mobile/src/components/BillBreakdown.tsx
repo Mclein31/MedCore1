@@ -27,7 +27,7 @@ export default function BillBreakdown({ encounter }: { encounter: PatientEncount
     <Field label="Search your charges" placeholder="Search charges" trailingIcon="search" value={query} onChangeText={setQuery} hint="Search by item name or charge category." />
     {groups.length === 0 && <EmptyState title={query.trim() ? 'No matching charges' : 'No charges posted'} detail={query.trim() ? 'Try a different item name or clear your search.' : 'Your hospital will post charges here as they become available.'} />}
     {groups.map(([category, items]) => <Expandable key={category} title={CATEGORY_LABELS[category] || category} subtitle={`${items.length} item${items.length === 1 ? '' : 's'} · Patient share ${formatPeso(items.reduce((sum, item) => sum + item.patientOop, 0))}`}>
-      {items.map((item) => <View key={item.id} style={{ marginBottom: 12 }}><Expandable title={item.description} subtitle={`${item.qty} × ${formatPeso(item.unitPrice)} · Patient share ${formatPeso(item.patientOop)}`}>
+      {items.map((item, index) => <View key={item.id} style={index > 0 ? { borderTopWidth: 1, borderTopColor: C.border } : undefined}><Expandable inset title={item.description} subtitle={`${item.qty} × ${formatPeso(item.unitPrice)} · Patient share ${formatPeso(item.patientOop)}`}>
         <Text style={T.body}>{item.plainLanguageExplainer || 'Ask the hospital billing desk if you need help understanding this charge.'}</Text>
         {item.isDisputed && <View style={{ marginVertical: 8 }}><StatusBadge tone="warn" text="Billing issue under review" /></View>}
         {item.exclusionReasonClause && <Text style={[T.meta, { marginVertical: 8 }]}>{item.exclusionReasonClause}</Text>}

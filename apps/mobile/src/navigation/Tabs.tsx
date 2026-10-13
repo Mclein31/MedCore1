@@ -1,6 +1,5 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Text, useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,12 +20,11 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import MedHeader, { HeaderBack } from '../components/Header';
 import PatientSelector from '../components/PatientSelector';
-import { TabGlyph } from '../components/icons';
+import MedTabBar from '../components/MedTabBar';
 import { C } from '../components/ui';
-import { HeaderLayout, NavigationLayout } from '../components/theme';
+import { HeaderLayout } from '../components/theme';
 import { ErrorState, Screen, SecondaryButton } from '../components/ui';
 import { PatientProvider } from '../hooks/PatientProvider';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import RecordDetailScreen from '../screens/RecordDetailScreen';
 import type { RootStackParamList, TabParamList } from './types';
@@ -35,62 +33,36 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function MainTabs() {
-  const insets = useSafeAreaInsets();
-  const { fontScale } = useWindowDimensions();
   return (
     <Tab.Navigator
       initialRouteName="Home"
+      tabBar={props => <MedTabBar {...props} />}
       safeAreaInsets={{ bottom: 0 }}
       screenOptions={({ navigation, route }) => ({
         header: () => <MedHeader navigation={navigation} title={route.name} titleAccessory={route.name === 'Profile' ? <PatientSelector /> : undefined} />,
         sceneStyle: { backgroundColor: C.paper },
-        tabBarActiveTintColor: C.brandDark,
-        tabBarInactiveTintColor: C.secondary,
-        tabBarLabel: ({ color, focused }) => <Text style={{ fontSize: NavigationLayout.labelSize, fontWeight: focused ? '600' : '400', marginTop: 1, color, textAlign: 'center' }}>{route.name}</Text>,
-        tabBarAllowFontScaling: true,
-        tabBarLabelPosition: 'below-icon',
-        tabBarStyle: {
-          backgroundColor: C.surface,
-          borderTopWidth: 0,
-          borderRadius: 28,
-          marginHorizontal: 12,
-          marginTop: 4,
-          marginBottom: Math.max(insets.bottom, 10),
-          paddingTop: 8,
-          height: 64 + Math.max(0, (fontScale - 1) * 32),
-          paddingBottom: 8,
-          shadowColor: C.ink,
-          shadowOpacity: 0.06,
-          shadowRadius: 12,
-          shadowOffset: { width: 0, height: 3 },
-          elevation: 3
-        }
+
       })}
     >
       <Tab.Screen
         name="Home"
         component={HomeScreen}
-        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="home" focused={focused} /> }}
       />
       <Tab.Screen
         name="Bill"
         component={BillScreen}
-        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="bill" focused={focused} /> }}
       />
       <Tab.Screen
         name="Coverage"
         component={CoverageScreen}
-        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="coverage" focused={focused} /> }}
       />
       <Tab.Screen
         name="Payments"
         component={PaymentsScreen}
-        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="payments" focused={focused} /> }}
       />
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ tabBarIcon: ({ focused }: { focused: boolean }) => <TabGlyph name="profile" focused={focused} /> }}
       />
     </Tab.Navigator>
   );

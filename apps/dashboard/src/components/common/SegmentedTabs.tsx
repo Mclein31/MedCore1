@@ -52,7 +52,7 @@ export function SegmentedTabs<T extends string = string>({
     <div
       role="tablist"
       aria-label={ariaLabel}
-      className={`${fullWidth ? 'flex w-full' : 'inline-flex'} items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200 shrink-0 ${sizeConfig.text} ${className}`}
+      className={`${fullWidth ? 'flex w-full' : 'inline-flex'} min-w-0 max-w-full overflow-x-auto items-center gap-1 p-0.5 bg-slate-100 rounded-lg border border-slate-200 ${sizeConfig.text} ${className}`}
     >
       {items.map((item) => {
         const isActive = item.id === activeId;
@@ -67,11 +67,11 @@ export function SegmentedTabs<T extends string = string>({
             aria-selected={isActive}
             title={item.title}
             onClick={() => onChange(item.id)}
-            className={`${fullWidth ? 'flex-1' : ''} inline-flex items-center justify-center ${sizeConfig.gap} ${
+            className={`${fullWidth ? 'flex-1 min-w-0' : 'shrink-0'} inline-flex items-center justify-center ${sizeConfig.gap} ${
               size === 'sm' ? 'px-2 py-0.5' : 'px-2.5 py-1'
-            } rounded-md font-semibold transition-all cursor-pointer ${
+            } rounded-md font-semibold transition-colors cursor-pointer ${
               isActive
-                ? 'bg-white text-blue-700 shadow-2xs font-bold border border-slate-200/60'
+                ? 'bg-white text-brand-teal-dark shadow-2xs font-bold border border-slate-300'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
             }`}
           >

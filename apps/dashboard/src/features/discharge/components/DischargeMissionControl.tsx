@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   CreditCard,
   QrCode
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 
 interface StageConfig {
   stage: DischargeStage;

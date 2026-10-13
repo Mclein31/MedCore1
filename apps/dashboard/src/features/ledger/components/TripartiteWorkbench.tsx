@@ -17,7 +17,7 @@ import {
   Plus,
   Pencil,
   Trash2
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton } from '@/components/common';
 
 export const TripartiteWorkbench: React.FC = () => {
@@ -130,7 +130,7 @@ export const TripartiteWorkbench: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-full bg-white overflow-hidden">
+    <div className="ledger-workbench flex flex-col h-full bg-white overflow-hidden">
       {/* 1. Encounter Summary Header (Inspo 1 Comlogik Style) */}
       <div className="px-6 py-3.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 shrink-0 bg-white">
         <div className="flex items-center gap-4">
@@ -325,7 +325,7 @@ export const TripartiteWorkbench: React.FC = () => {
           Statutory deduction waterfall (centavo precision)
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm divide-y md:divide-y-0 md:divide-x divide-slate-200">
+        <div className="ledger-waterfall grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 text-sm">
           <div>
             <div className="text-xs text-slate-500 font-medium">1. Gross charges</div>
             <div className="text-base font-bold font-mono text-slate-900 mt-0.5">
@@ -383,7 +383,7 @@ export const TripartiteWorkbench: React.FC = () => {
       </div>
 
       {/* 3. Category Filter & Line Item Table */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="ledger-charge-region flex-1 flex flex-col min-h-0">
         {/* Table Filters */}
         <div className="px-4 py-2 border-b border-slate-200 flex items-center justify-between gap-4 shrink-0 bg-white">
           <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
@@ -497,20 +497,22 @@ export const TripartiteWorkbench: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => openEditChargeModal(item)}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
+                        aria-label={`Edit charge: ${item.description}`}
+                        className="min-w-7 min-h-7 inline-flex items-center justify-center p-1.5 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200 transition-colors"
                         title="Edit line item description, category, or gross amount"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <ConfirmButton
                         label={<Trash2 className="w-3.5 h-3.5" />}
+                        ariaLabel={`Remove charge: ${item.description}`}
                         modalTitle="Remove Line Item from Running Bill?"
                         modalDescription={`Are you sure you want to remove "${item.description}" (${formatPhp(item.grossAmount)}) from ${pName}'s running bill?`}
                         confirmLabel="Remove Item"
                         variant="subtle"
                         confirmVariant="danger"
                         size="xs"
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors border border-transparent hover:border-rose-200"
+                        className="min-w-7 min-h-7 p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors border border-transparent hover:border-rose-200"
                         contextInfo={[
                           { label: 'Patient', value: pName },
                           { label: 'Item Description', value: item.description },

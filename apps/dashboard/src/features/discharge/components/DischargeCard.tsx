@@ -12,7 +12,7 @@ import {
   Send,
   Pill,
   QrCode
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { ConfirmButton } from '@/components/common';
 
 interface DischargeCardProps {
@@ -96,7 +96,7 @@ export const DischargeCard: React.FC<DischargeCardProps> = ({ encounter, isSelec
                 selectEncounter(encounter.id);
                 openDoctorQuickSign();
               }}
-              className="flex-1 py-2 px-2.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-xs"
+              className="flex-1 py-2 px-2.5 rounded-lg bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold flex items-center justify-center gap-1 transition-colors shadow-xs"
             >
               <FileCheck2 className="w-3.5 h-3.5" />
               <span>Review Doctor PF</span>

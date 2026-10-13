@@ -7,7 +7,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   X
-} from 'lucide-react';
+} from '@/components/common/SolarIcons';
 import { Button } from '@/components/common/Button';
 import { IconButton } from '@/components/common/IconButton';
 
@@ -179,12 +179,12 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     warning: {
       badgeBg: 'bg-amber-50 text-amber-800 border-amber-200',
       icon: AlertTriangle,
-      confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500 shadow-sm'
+      confirmBtn: 'bg-amber-700 hover:bg-amber-800 text-white focus:ring-amber-500 shadow-sm'
     },
     success: {
       badgeBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
       icon: CheckCircle2,
-      confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500 shadow-sm'
+      confirmBtn: 'bg-emerald-700 hover:bg-emerald-800 text-white focus:ring-emerald-500 shadow-sm'
     }
   }[variant];
 

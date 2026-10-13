@@ -12,7 +12,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { cardImageDataUri } from '../lib/benefitCardImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Camera, CheckCircle2, AlertCircle, X, Sparkles, Upload } from 'lucide-react-native';
+import { Camera, CheckCircle2, AlertCircle, X, Sparkles, Upload } from './SolarIcons';
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';
 import { createAiApi, CardOcrResponse } from '../services/aiApi';

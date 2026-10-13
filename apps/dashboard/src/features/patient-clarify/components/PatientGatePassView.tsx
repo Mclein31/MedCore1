@@ -3,7 +3,7 @@ import {DischargePass} from '@/types/domain';
 import GatePassQr from '@/components/common/GatePassQr';
 import {gatePassPayload} from '../../../../../shared/gatePassPayload';
 import {formatPstDateTime} from '../utils/billFormatters';
-import {ArrowLeft} from 'lucide-react';
+import {ArrowLeft} from '@/components/common/SolarIcons';
 interface Props {gatePass?:DischargePass;patientName:string;roomBed:string;attendingDoctor?:string;onBack?:()=>void}
 export const PatientGatePassView:React.FC<Props>=({gatePass,patientName,roomBed,attendingDoctor,onBack})=>{
   const payload=gatePass?gatePassPayload(gatePass):null;

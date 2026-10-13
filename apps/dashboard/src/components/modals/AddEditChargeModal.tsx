@@ -2,7 +2,7 @@ import { ViewportOverlay } from '@/components/common/ViewportOverlay';
 import React, { useState, useEffect } from 'react';
 import { useMedCore } from '@/context/MedCoreContext';
 import { ChargemasterItem } from '@/types/domain';
-import { X, Plus, Pencil, DollarSign, Tag, FileText, Hash, Info, Layers } from 'lucide-react';
+import { X, Plus, Pencil, DollarSign, Tag, FileText, Hash, Info, Layers } from '@/components/common/SolarIcons';
 import { formatPhp } from '@/utils/formatters';
 import { Button, IconButton, Select } from '@/components/common';
 
@@ -126,7 +126,7 @@ export const AddEditChargeModal: React.FC = () => {
   ];
 
   return (
-    <ViewportOverlay className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="modal">
+    <ViewportOverlay dialogLabel={isEditing ? 'Edit charge' : 'Add itemized charge'} onDismiss={() => { if (!isSubmitting) closeAddEditChargeModal(); }} className="flex items-center justify-center p-4" backdropClassName="bg-slate-900/60 backdrop-blur-xs" motion="rise" layer="modal">
       <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
@@ -156,11 +156,11 @@ export const AddEditChargeModal: React.FC = () => {
         {error&&<p role="alert" className="px-6 py-3 text-sm text-rose-700">{error}</p>}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="addeditchargemodal-field-1" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-blue-600" />
               <span>Charge Description &amp; Dosage</span>
             </label>
-            <input
+            <input id="addeditchargemodal-field-1"
               type="text"
               required
               value={description}
@@ -171,11 +171,11 @@ export const AddEditChargeModal: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <label htmlFor="addeditchargemodal-field-2" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
               <Tag className="w-3.5 h-3.5 text-blue-600" />
               <span>Department Category</span>
             </label>
-            <Select
+            <Select id="addeditchargemodal-field-2"
               size="md"
               value={category}
               onChange={(e) => setCategory(e.target.value as any)}
@@ -193,11 +193,11 @@ export const AddEditChargeModal: React.FC = () => {
           {/* 3-Column Quantity, Unit Price, and Gross Amount Grid */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <label htmlFor="addeditchargemodal-field-3" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                 <Hash className="w-3.5 h-3.5 text-blue-600" />
                 <span>Quantity</span>
               </label>
-              <input
+              <input id="addeditchargemodal-field-3"
                 type="number"
                 min="1"
                 step="1"
@@ -209,11 +209,11 @@ export const AddEditChargeModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <label htmlFor="addeditchargemodal-field-4" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-blue-600" />
                 <span>Unit Price (₱)</span>
               </label>
-              <input
+              <input id="addeditchargemodal-field-4"
                 type="number"
                 min="0"
                 step="0.01"
@@ -225,11 +225,11 @@ export const AddEditChargeModal: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+              <label htmlFor="addeditchargemodal-field-5" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                 <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
                 <span>Gross Total (₱)</span>
               </label>
-              <input
+              <input id="addeditchargemodal-field-5"
                 type="number"
                 min="0.01"
                 step="0.01"
@@ -243,11 +243,11 @@ export const AddEditChargeModal: React.FC = () => {
 
           {!isEditing && (
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <label htmlFor="addeditchargemodal-field-6" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5 text-blue-600" />
                 <span>Statutory Coverage Allocation Target</span>
               </label>
-              <Select
+              <Select id="addeditchargemodal-field-6"
                 size="md"
                 value={coverageType}
                 onChange={(e) => setCoverageType(e.target.value as any)}

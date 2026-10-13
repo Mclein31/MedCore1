@@ -12,7 +12,7 @@ import {
   StyleSheet
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mic, Send, X, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { Mic, Send, X, ShieldCheck, ChevronRight } from './SolarIcons';
 import { CoraAvatar } from './CoraAvatar';
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';

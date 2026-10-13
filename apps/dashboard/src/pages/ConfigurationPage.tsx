@@ -34,7 +34,7 @@ export const ConfigurationPage: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full">
           {/* 1. Database & HIS Adapters */}
           <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-bold text-base text-slate-900">
                 Hospital Information System (HIS) CDC Connector
               </h3>
@@ -65,7 +65,7 @@ export const ConfigurationPage: React.FC = () => {
                   readOnly
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     Sync Poll Interval
@@ -91,7 +91,7 @@ export const ConfigurationPage: React.FC = () => {
 
           {/* 2. PhilHealth HITP API & eClaims 3.0 Keys */}
           <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-bold text-base text-slate-900">
                 PhilHealth HITP Gateway &amp; eClaims 3.0
               </h3>
@@ -132,7 +132,7 @@ export const ConfigurationPage: React.FC = () => {
                   className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                     API Endpoint Environment
@@ -157,7 +157,7 @@ export const ConfigurationPage: React.FC = () => {
 
           {/* 3. Statutory Governance & Deduction Rules */}
           <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-bold text-base text-slate-900">
                 Statutory Deduction Rules &amp; Precedence
               </h3>
@@ -227,7 +227,7 @@ export const ConfigurationPage: React.FC = () => {
 
           {/* 4. Operational SLA Timers */}
           <div className="p-6 rounded-xl border border-slate-200 bg-white shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-bold text-base text-slate-900">
                 Discharge Bottleneck SLA Thresholds
               </h3>
@@ -289,6 +289,7 @@ export const ConfigurationPage: React.FC = () => {
           </Button>
         </div>
       </fieldset>
+      <p className="text-xs text-slate-500"><a href="https://solar-icons.vercel.app/docs/v2/community/license" target="_blank" rel="noreferrer" className="underline underline-offset-2">Solar icons by 480 Design · CC BY 4.0</a></p>
     </div>
   );
 };
