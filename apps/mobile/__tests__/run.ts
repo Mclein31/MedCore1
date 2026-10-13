@@ -438,6 +438,14 @@ async function integrationChecks() {
       await assert.rejects(api.get('/test'), (e: unknown) => e instanceof ApiError && e.code === 'NETWORK_ERROR');
       assert.strictEqual(expired, false);
     });
+    await asyncCheck('AI outages show a clear retry message while non-AI errors retain their existing copy', async () => {
+      const api = new ApiClient(async () => 'valid');
+      globalThis.fetch = (async () => new Response('{}', { status: 503 })) as typeof fetch;
+      await assert.rejects(api.request('/ai/cora/chat', { method: 'POST', body: '{}' }),
+        (error: unknown) => error instanceof ApiError && error.status === 503 && error.message === 'AI is temporarily unavailable right now. Please try again shortly.');
+      await assert.rejects(api.get('/test'),
+        (error: unknown) => error instanceof ApiError && error.message === 'Our server had trouble. Please try again in a moment.');
+    });
     await asyncCheck('late responses cannot cross account boundaries during body parsing', async () => {
       let token: string | null = 'old';
       globalThis.fetch = (async () => ({ status: 200, ok: true, json: async () => { token = 'new'; return {}; } }) as Response) as typeof fetch;

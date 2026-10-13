@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-function patientFriendlyMessage(status: number, code: string | undefined, fallback: string): string {
+function patientFriendlyMessage(status: number, code: string | undefined, fallback: string, isAiRequest: boolean): string {
   if (code === 'INVALID_CREDENTIALS') return 'Check your email and password, then try again.';
   if (code === 'PATIENT_NOT_LINKED' || code === 'PATIENT_NOT_FOUND') return fallback;
   if (status === 0) return 'We could not connect. Please check your connection and try again.';
@@ -27,6 +27,7 @@ function patientFriendlyMessage(status: number, code: string | undefined, fallba
   if (status === 403) return 'You do not have access to this information.';
   if (status === 404) return 'We could not find that record. It may have been moved or removed.';
   if (status === 409) return fallback || 'This already exists. Please check and try again.';
+  if (isAiRequest && status >= 500) return 'AI is temporarily unavailable right now. Please try again shortly.';
   if (status >= 500) return 'Our server had trouble. Please try again in a moment.';
   return fallback || 'Something went wrong. Please try again.';
 }
@@ -91,7 +92,11 @@ export class ApiClient {
       checkSubject();
       if (data === null || typeof data !== 'object' || Array.isArray(data)) throw new ApiError('The server returned an invalid response. Please try again.', 502, 'INVALID_RESPONSE');
       if (!res.ok) {
-        const error = new ApiError(patientFriendlyMessage(res.status, data?.error?.code, data?.error?.message || ''), res.status, data?.error?.code);
+        const error = new ApiError(
+          patientFriendlyMessage(res.status, data?.error?.code, data?.error?.message || '', path.startsWith('/ai/')),
+          res.status,
+          data?.error?.code
+        );
         if (res.status === 401 && token) this.onExpired?.(token);
         throw error;
       }

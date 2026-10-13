@@ -185,7 +185,7 @@ export const DischargeMissionControl: React.FC = () => {
       </div>
 
       {/* 6-Stage Kanban Board */}
-      <div className="flex-1 overflow-x-auto p-4 flex gap-4 min-h-0">
+      <div className="flex-1 min-h-0 grid grid-flow-col auto-cols-[minmax(264px,1fr)] 2xl:auto-cols-fr gap-3 overflow-x-auto 2xl:overflow-x-hidden p-3">
         {STAGES.map((s) => {
           const StageIcon = s.icon;
           const stageEncounters = filteredEncounters.filter(
@@ -199,10 +199,10 @@ export const DischargeMissionControl: React.FC = () => {
           return (
             <div
               key={s.stage}
-              className="flex-1 min-w-[270px] max-w-[320px] flex flex-col bg-slate-100/80 rounded-xl border border-slate-200 overflow-hidden"
+              className="min-w-0 flex flex-col bg-slate-100/80 rounded-lg border border-slate-300 overflow-hidden"
             >
               {/* Column Header */}
-              <div className="p-3 border-b border-slate-200 bg-white">
+              <div className="p-2.5 border-b border-slate-300 bg-white">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <StageIcon className="w-4 h-4 text-slate-500 shrink-0" />
@@ -223,7 +223,7 @@ export const DischargeMissionControl: React.FC = () => {
               </div>
 
               {/* Cards List */}
-              <div className="flex-1 p-3 space-y-3 overflow-y-auto">
+              <div className="flex-1 min-h-0 p-2 space-y-2 overflow-y-auto">
                 {stageEncounters.map((encounter) => (
                   <DischargeCard
                     key={encounter.id}
