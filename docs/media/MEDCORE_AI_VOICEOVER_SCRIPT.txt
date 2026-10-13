@@ -1,27 +1,28 @@
 MEDCORE — CLEAR THE WAY FOR CARE
-narration script — 04:30 target
-Read only the narration paragraphs. Scene labels are not spoken.
+narration script — V2 — 04:50 target
+Read only the narration paragraphs. Scene headings are not spoken.
+Place phrases using MEDCORE_PRODUCT_VIDEO_NARRATION_CUES.csv; do not read demo paragraphs continuously.
 
-Scene 1 — Hook | 00:00–00:15 | 15 seconds
-MedCore clears the hospital money maze. Our goal: discharge in under forty-five minutes, not eight hours. One clear financial picture, for the hospital and the family waiting to go home.
+Scene 1 — Hook | 00:00–00:12 | 12 seconds
+The care is done. Why is the bill still unclear? Meet MedCore: financial clarity for families, and a discharge target under forty-five minutes, not eight hours.
 
-Scene 2 — Problem with emotion | 00:15–00:55 | 40 seconds
-Consider the experience behind our storyboard: a senior citizen, a PhilHealth member for thirty-nine years, also covered by a private HMO. A thirty-eight-thousand-peso outpatient procedure came with an unexpected eight-thousand-three-hundred-peso personal bill. After the hospital reviewed it, that amount became one thousand three hundred. The family’s question was simple: why was the balance unclear in the first place? Meanwhile, staff chase approvals, recheck charges, and explain bills across disconnected systems.
+Scene 2 — Personal experience with fictional characters | 00:12–00:54 | 42 seconds
+Before MedCore, there was a family trying to understand a bill. A senior citizen, covered by PhilHealth for thirty-nine years, also had a private HMO. The quoted bill: thirty-six thousand five hundred pesos. The unexpected personal share: eight thousand three hundred. Coverage existed. Clarity was missing. A later review brought the balance down to one thousand three hundred. Why did understanding the bill take extra help? That question became the reason to build MedCore.
 
-Scene 3 — Solution promise | 00:55–01:20 | 25 seconds
-MedCore adds a reconciliation layer alongside existing hospital systems. It brings hospital charges, eligible discounts, PhilHealth benefits, and HMO approvals into one explainable ledger. Guide. Verify. Reward. Report. Improve. And ClaimReady helps staff review claims before submission. The same financial picture reaches the patient’s phone.
+Scene 3 — Proposed solution | 00:54–01:14 | 20 seconds
+MedCore brings hospital charges, eligible benefits, and approved insurance coverage into one explainable ledger. A financial coordination layer alongside existing hospital systems. Guide. Verify. Reward. Report. Improve. One clearer picture for staff, and for the patient’s phone.
 
-Scene 4 — GUIDE + VERIFY, dashboard to patient | 01:20–02:20 | 60 seconds
-Guide starts with an estimate, so room choices and expected personal costs are visible early. It supports financial orientation, not a demand for an emergency deposit. Verify brings coverage and authorization information into one worklist. Staff can review approved amounts, track pending letters of authorization, and investigate exclusions. In this prototype, an approval action takes seconds; the goal is to replace hours of follow-up. On mobile, patients see their remaining balance, their bill, and their coverage in a few clear taps. Cora, the billing assistant, helps explain recorded charges and benefits. It supports English, Taglish, Tagalog, and Ilokano, so financial information is easier to understand.
+Scene 4 — GUIDE + VERIFY + patient clarity | 01:14–02:14 | 60 seconds
+Guide starts with an estimate. Staff can explain expected costs and room choices early. Verify brings coverage and authorization records into one worklist, making pending approvals and exclusions easier to review. The reconciled ledger shows how charges, eligible adjustments, PhilHealth, and approved HMO coverage arrive at the patient’s responsibility. On mobile, that picture becomes easier to follow: the remaining balance, an itemized bill, and the benefits already recorded. Cora helps explain the account in English, Taglish, Tagalog, or Ilokano. The important question stays simple: what do I owe, and why?
 
-Scene 5 — REWARD + REPORT + CLAIMREADY + IMPROVE | 02:20–03:35 | 75 seconds
-When the final bill is ready, Reward makes the next step clear. The mobile flow offers GCash, Maya, QR Ph, cards, and bank options, with a review before confirmation. This demonstration uses simulated payments. A successful transaction produces a receipt and updates the recorded balance. An approved zero-interest payment arrangement provides another supported path. Once the required clearances are complete, a digital discharge pass brings together a QR code and private exit PIN. Behind that experience, Report keeps staff focused on clearance stages and bottlenecks. Our illustrative scorecards show the goals: receivable days from seventy-five to twenty-one point four, collections up forty percent, and claim returns below two percent. ClaimReady checks the electronic statement of account before submission. Improve helps teams see recurring issues and strengthen the next review.
+Scene 5 — REWARD + clearance + ClaimReady + REPORT / IMPROVE | 02:14–03:54 | 100 seconds
+When the final bill is ready, the next step is clear. The prototype includes GCash, Maya, QR Ph, card, and bank options. Review the amount, choose a method, and confirm. Payments in this demonstration are simulated. The result is recorded with a receipt and an updated balance. For eligible accounts, an approved zero-interest arrangement offers another supported path. After the required clearances, a digital pass provides a QR code and private exit PIN. Staff can follow the clearance stages and see what still needs attention. ClaimReady supports pre-flight review of the electronic statement of account before submission. Report makes bottlenecks visible. Improve helps teams examine recurring issues. Clearer bills. Better coordination. Fewer avoidable delays.
 
-Scene 6 — Market + ecosystem | 03:35–03:55 | 20 seconds
-Built for patients, billing teams, doctors, and hospital leaders. Our starting focus is NCR, Calabarzon, Cebu, and Cagayan Valley. The storyboard’s market model frames the opportunity. MedCore complements existing hospital software with clearer three-way financial coordination.
+Scene 6 — Target users, market, and existing solutions | 03:54–04:14 | 20 seconds
+Built for patients and families, billing and claims teams, and hospital leaders. Our starting focus includes NCR, Calabarzon, Cebu, and Cagayan Valley. Existing hospital systems remain essential. MedCore adds a focused layer for financial clarity and coordination.
 
-Scene 7 — Product and story payoff | 03:55–04:15 | 20 seconds
-For the family, a bill they can understand. For the hospital, a clearer path through approvals and discharge. MedCore connects those moments with one shared financial picture. Less confusion. Clearer next steps. More attention for care.
+Scene 7 — Team composition | 04:14–04:34 | 20 seconds
+The people behind MedCore bring together student development, coaching, academic guidance, and healthcare administration. Different perspectives, focused on one purpose: making hospital finances easier to understand, and the path through them easier to follow.
 
-Scene 8 — Traction + close | 04:15–04:30 | 15 seconds
-DTI Be Your Own Boss. Best Pitch, Pitch Perfect. A Cagayan Valley pilot-ready prototype. Reclaim beds. Recover cash. Release patients with dignity. MedCore.
+Scene 8 — Recognition, pilot direction, and close | 04:34–04:50 | 16 seconds
+Best Pitch at DTI’s Be Your Own Boss program. Next: a proposed Cagayan Valley pilot. MedCore. Clear the Way for Care.
