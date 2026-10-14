@@ -138,14 +138,9 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
 
       {/* Error Notice */}
       {error && !loading && (
-        <div className="p-4 mx-5 my-4 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs text-rose-800">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
-            <span>{error}</span>
-          </div>
-          <Button size="sm" variant="secondary" onClick={() => void fetchBriefing(true)}>
-            Retry
-          </Button>
+        <div role="status" aria-live="polite" className="mx-5 mb-4 flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-600">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
+          <span>{error}</span>
         </div>
       )}
 

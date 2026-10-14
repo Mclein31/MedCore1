@@ -65,7 +65,7 @@ export function HeroBtn({ title, onPress, ghost, disabled, a11y }: {
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [s.heroBtn, ghost ? s.heroBtnGhost : s.heroBtnSolid, (disabled || pressed) && s.dimmed]}
+      style={({ pressed }) => [s.heroBtn, ghost ? s.heroBtnGhost : s.heroBtnSolid, disabled && s.dimmed, pressed && !disabled && (ghost ? s.heroBtnGhostPressed : s.heroBtnSolidPressed)]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
@@ -119,7 +119,7 @@ export function PrimaryButton({ title, onPress, disabled, a11y, compact = false,
   const reduced = useReducedMotion();
   return (
     <Pressable
-      style={({ pressed }) => [s.primaryBtn, { minHeight }, compact && { borderRadius: Radius.control }, (disabled || pressed) && s.dimmed, pressed && !reduced && { transform: [{ scale: 0.98 }] }]}
+      style={({ pressed }) => [s.primaryBtn, { minHeight }, compact && { borderRadius: Radius.control }, disabled && s.dimmed, pressed && !disabled && s.primaryPressed, pressed && !reduced && { transform: [{ scale: 0.98 }] }]}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
@@ -134,7 +134,7 @@ export function PrimaryButton({ title, onPress, disabled, a11y, compact = false,
 export function SecondaryButton({ title, onPress, disabled }: { title: string; onPress: () => void; disabled?: boolean }) {
   const reduced = useReducedMotion();
   return (
-    <Pressable style={({ pressed }) => [s.secondaryBtn, (disabled || pressed) && s.dimmed, pressed && !reduced && { transform: [{ scale: 0.98 }] }]} disabled={disabled} accessibilityState={{ disabled: !!disabled }} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
+    <Pressable style={({ pressed }) => [s.secondaryBtn, disabled && s.dimmed, pressed && !disabled && s.secondaryPressed, pressed && !reduced && { transform: [{ scale: 0.98 }] }]} disabled={disabled} accessibilityState={{ disabled: !!disabled }} onPress={onPress} accessibilityRole="button" accessibilityLabel={title}>
       <Text style={s.secondaryBtnText}>{title}</Text>
     </Pressable>
   );
@@ -320,10 +320,14 @@ const s = StyleSheet.create({
   heroActions: { gap: 10, marginTop: 24, flexGrow: 1, justifyContent: 'flex-end' },
   heroBtn: { width: '100%', borderRadius: Radius.pill, paddingVertical: 13, alignItems: 'center', justifyContent: 'center', minHeight: 50 },
   heroBtnSolid: { backgroundColor: '#FFFFFF' },
+  heroBtnSolidPressed: { backgroundColor: C.brandSoft },
   heroBtnGhost: { borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.65)' },
+  heroBtnGhostPressed: { backgroundColor: 'rgba(255,255,255,0.16)' },
   heroBtnText: { textAlign: 'center', color: C.hero, fontSize: 15, fontWeight: '700' },
   heroBtnGhostText: { color: '#FFFFFF' },
   dimmed: { opacity: 0.55 },
+  primaryPressed: { backgroundColor: C.brandDark },
+  secondaryPressed: { backgroundColor: C.elevated, borderColor: C.secondary },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 28, gap: 10 },
   centerText: { textAlign: 'center' },
   emptyGlyph: { width: 56, height: 56, borderRadius: 28, backgroundColor: C.brandSoft, alignItems: 'center', justifyContent: 'center' },

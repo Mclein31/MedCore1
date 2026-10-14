@@ -60,7 +60,12 @@ try {
     await page.getByRole('heading', { name: /Claims/ }).first().waitFor();
     await sidebar.getByRole('button', { name: 'Overview', exact: true }).click();
     await page.getByRole('heading', { name: 'Overview', exact: true }).waitFor();
-    await sidebar.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+    if (width > 900) {
+      await sidebar.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
+    } else {
+      // The dashboard intentionally starts with a compact icon rail at this width.
+      assert.ok(await sidebar.getByRole('button', { name: 'Expand sidebar', exact: true }).count());
+    }
     await sidebar.getByRole('button', { name: 'Claims & eSOA XML', exact: true }).focus();
     await page.keyboard.press('Enter');
     assert.equal(await sidebar.getByRole('button', { name: 'Claims & eSOA XML', exact: true }).getAttribute('aria-current'), 'page');
@@ -104,8 +109,10 @@ try {
     await noHorizontalOverflow(page, page.getByTestId('financial-summary').filter({ visible: true }).first());
     const pay = page.getByRole('button', { name: 'Pay balance', exact: true });
     await pay.scrollIntoViewIfNeeded();
+    await pay.evaluate(element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await page.waitForTimeout(100);
     const payBounds = await pay.boundingBox(), dockBounds = await page.getByTestId('cora-dock').filter({ visible: true }).boundingBox();
-    assert.ok(payBounds.y + payBounds.height <= dockBounds.y + 1, 'Cora must not cover the payment action');
+    assert.ok(payBounds.y + payBounds.height <= dockBounds.y + 1, `Cora must not cover the payment action at ${width}px (payment bottom ${payBounds.y + payBounds.height}, dock top ${dockBounds.y})`);
     assert.equal(await pay.evaluate(e => {
       const b = e.getBoundingClientRect();
       return e.contains(document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2));

@@ -22,9 +22,8 @@ export default function BillScreen({ navigation }: { navigation: any }) {
     <View style={{ backgroundColor: C.brandSoft, borderBottomLeftRadius: 24, borderBottomRightRadius: 24, padding: 22, paddingTop: 16, paddingBottom: 36 }}>
       <View style={{ marginBottom: 24 }}><Hero eyebrow="Your hospital bill" amountLabel="Remaining balance" figure={formatPeso(balance)} trailing={<Text style={[T.meta, { color: C.surface }]}>{formatDate(enc.admissionDate)}</Text>} /></View>
       <QuickActions actions={[
-        { label: balance > 0 && enc.stage === 'PENDING_SETTLEMENT' ? 'Pay bill' : 'Payments', icon: 'payments', disabled: balance > 0 && enc.stage === 'PENDING_SETTLEMENT' && (!!error || loading), onPress: () => balance > 0 && enc.stage === 'PENDING_SETTLEMENT' ? navigation.navigate('PaymentFlow', { encounterId: enc.uuid }) : navigation.navigate('Payments') },
+        { label: 'Payments', icon: 'payments', onPress: () => navigation.navigate('Payments') },
         { label: 'Coverage', icon: 'coverage', onPress: () => navigation.navigate('Coverage') },
-        { label: 'Receipts', icon: 'bill', onPress: () => navigation.navigate('Payments') },
         { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
       ]} />
     </View>

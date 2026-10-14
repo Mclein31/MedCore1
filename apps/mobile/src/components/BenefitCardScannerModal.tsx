@@ -100,13 +100,13 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
                 <Text style={styles.headerTitle}>Scan Benefit Card / Gov ID</Text>
                 <Text style={styles.headerSub}>Multimodal OCR with Gemini Vision</Text>
               </View>
-              <Pressable onPress={onClose} style={styles.closeButton}>
+              <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Close benefit card scanner" style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.72 }]}>
                 <X size={20} color={C.secondary} />
               </Pressable>
             </View>
 
             {/* Category Filter Chips */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
+            <ScrollView horizontal accessibilityRole="radiogroup" accessibilityLabel="Benefit card category" showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryScroll}>
               {[
                 { id: 'ALL', label: 'Auto Detect' },
                 { id: 'PHILHEALTH', label: 'PhilHealth PIN' },
@@ -121,7 +121,10 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
                     activeSelection.current++; pendingRequest.current?.abort();
                     setSelectedCategory(cat.id); setExtractedData(null); setError(null); setLoading(false);
                   }}
-                  style={[styles.categoryChip, selectedCategory === cat.id && styles.categoryChipActive]}
+                  accessibilityRole="radio"
+                  accessibilityLabel={cat.label}
+                  accessibilityState={{ checked: selectedCategory === cat.id, selected: selectedCategory === cat.id }}
+                  style={({ pressed }) => [styles.categoryChip, selectedCategory === cat.id && styles.categoryChipActive, pressed && { opacity: 0.72 }]}
                 >
                   <Text style={[styles.categoryChipText, selectedCategory === cat.id && styles.categoryChipTextActive]}>
                     {cat.label}
@@ -268,8 +271,11 @@ const styles = StyleSheet.create({
     marginTop: 1
   },
   closeButton: {
-    padding: 6,
-    borderRadius: 8
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12
   },
   categoryScroll: {
     paddingTop: 10,
@@ -277,7 +283,9 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    minHeight: 44,
+    paddingVertical: 8,
+    justifyContent: 'center',
     borderRadius: 16,
     backgroundColor: C.elevated,
     borderWidth: 1,

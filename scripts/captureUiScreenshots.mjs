@@ -1,6 +1,6 @@
 // Capture real UI with synthetic loopback data. Run from the project root.
 import assert from 'node:assert/strict';
-import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { build } from 'esbuild';
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || '/private/tmp/medcore-visual-tools/node_modules/playwright-core/index.mjs');
@@ -13,7 +13,8 @@ const { INITIAL_ENCOUNTERS } = await import(`data:text/javascript;base64,${Buffe
 const encounters = INITIAL_ENCOUNTERS.slice(0, 6).map((enc, i) => ({ ...enc, patient: { ...enc.patient, fullName: `Sample Patient ${i + 1}`, maskedName: `Sample Patient ${i + 1}` } }));
 const user = { id: 'screenshot-staff', facilityId: 'screenshot-facility', facilityName: 'Sample Medical Center', fullName: 'Alex Rivera', email: 'staff@example.test', title: 'Billing specialist', role: 'BILLING_SPECIALIST' };
 const files = [], errors = [], dashboardMutations = [];
-const previousFiles = await readFile(resolve(output, 'manifest.json'), 'utf8').then(text => JSON.parse(text).files || []).catch(() => []);
+const previousManifest = await readFile(resolve(output, 'manifest.json'), 'utf8').then(text => JSON.parse(text)).catch(() => ({}));
+const previousFiles = previousManifest.files || [];
 const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_BROWSER_PATH || '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser' });
 let currentPage;
 function listen(page) { currentPage = page; page.on('pageerror', error => errors.push(error.message)); }
@@ -254,10 +255,23 @@ try {
   assert.deepEqual(dashboardMutations, []);
   for (const file of previousFiles) if (!files.includes(file) && /^(dashboard|mobile)\/[a-z0-9/.-]+\.png$/.test(file)) await unlink(resolve(output, file)).catch(() => {});
   await unlink(resolve(output, 'capture-diagnostic.png')).catch(() => {});
-  await writeFile(resolve(output, 'manifest.json'), JSON.stringify({ complete: true, capturedAt: new Date().toISOString(), dashboardViewport: '1440×1000', dashboardPipelineViewport: '1920×1000', mobileViewport: '390×900', files, pageErrors: errors, dashboardMutations, data: 'Synthetic local fixture. One local simulated payment and note for completion/receipt screenshots. No hospital or real gateway access.' }, null, 2));
-  const index = ['# Dashboard and mobile screenshots', '', 'Current UI captured with synthetic data. Dashboard: 1440×1000; the six-stage pipeline uses a wide 1920×1000 capture so all stages are visible. Mobile web: 390×900.', '', 'Long screens include numbered scroll captures. Mobile images are browser renders of the React Native app, not physical-device captures.', '', '## Dashboard', '', ...files.filter(f => f.startsWith('dashboard/')).map(f => `- [${f.split('/').at(-1)}](${f})`), '', '## Mobile', '', ...files.filter(f => f.startsWith('mobile/')).map(f => `- [${f.replace('mobile/', '')}](${f})`), '', 'Reproduce with `node scripts/captureUiScreenshots.mjs` while the synthetic fixture and local previews are running on ports 8901, 5175, and 8084. See `apps/mobile/validation/apple-ui/README.md` for startup commands.', ''];
+  const retainedAiFiles = (await readdir(resolve(output, 'ai')).catch(() => []))
+    .filter(file => file.endsWith('.png')).sort().map(file => `ai/${file}`);
+  const allFiles = [...files, ...retainedAiFiles];
+  const aiDemonstrations = retainedAiFiles.length ? { source: 'Authentic generated-output captures retained from the previous AI capture run; this synthetic UI screenshot run does not generate AI output.', features: ['Cora billing assistant', 'Benefit card OCR', 'HMO appeal drafting', 'Claims pre-flight audit', 'Executive RCM briefing'] } : undefined;
+  const screenshotManifest = { complete: true, capturedAt: new Date().toISOString(), dashboardViewport: '1440×1000', dashboardPipelineViewport: '1920×1000', mobileViewport: '390×900', files: allFiles, pageErrors: errors, dashboardMutations, data: 'Synthetic local fixture. One local simulated payment and note for completion/receipt screenshots. No hospital or real gateway access.', ...(aiDemonstrations ? { aiDemonstrations } : {}) };
+  await writeFile(resolve(output, 'manifest.json'), JSON.stringify(screenshotManifest, null, 2));
+  const index = ['# Dashboard and mobile screenshots', '', 'Current UI captured with synthetic data. Dashboard: 1440×1000; the six-stage pipeline uses a wide 1920×1000 capture so all stages are visible. Mobile web: 390×900.', '', 'Long screens include numbered scroll captures. Mobile images are browser renders of the React Native app, not physical-device captures.', '', '## Dashboard', '', ...files.filter(f => f.startsWith('dashboard/')).map(f => `- [${f.split('/').at(-1)}](${f})`), '', '## Mobile', '', ...files.filter(f => f.startsWith('mobile/')).map(f => `- [${f.replace('mobile/', '')}](${f})`), '', ...(retainedAiFiles.length ? ['## AI output captures', '', 'These authentic generated-output captures are retained from the previous AI capture run; this synthetic screenshot run does not generate new AI output.', '', ...retainedAiFiles.map(f => `- [${f.replace('ai/', '')}](${f})`), ''] : []), '## Recorded walkthroughs', '', '- [Dashboard walkthrough](recordings/dashboard-walkthrough.webm)', '- [Mobile walkthrough](recordings/mobile-walkthrough.webm)', '', 'Record the current UI with `node scripts/recordUiWalkthroughs.mjs`. Both captures use synthetic local data.', '', 'Reproduce the screenshots with `node scripts/captureUiScreenshots.mjs` while the synthetic fixture and local previews are running on ports 8901, 5175, and 8084. See `apps/mobile/validation/apple-ui/README.md` for startup commands.', ''];
   await writeFile(resolve(output, 'README.md'), index.join('\n'));
-  console.log(JSON.stringify({ complete: true, images: files.length, dashboard: files.filter(f => f.startsWith('dashboard/')).length, mobile: files.filter(f => f.startsWith('mobile/')).length, pageErrors: errors }, null, 2));
+  const portableAssets = resolve('docs/media/assets/ui');
+  for (const file of allFiles) {
+    const target = resolve(portableAssets, file);
+    await mkdir(resolve(target, '..'), { recursive: true });
+    await copyFile(resolve(output, file), target);
+  }
+  await writeFile(resolve(portableAssets, 'manifest.json'), JSON.stringify(screenshotManifest, null, 2));
+  await writeFile(resolve(portableAssets, 'README.md'), index.join('\n').replaceAll('](recordings/', '](../../../../UI_SCREENSHOTS/recordings/'));
+  console.log(JSON.stringify({ complete: true, images: allFiles.length, dashboard: files.filter(f => f.startsWith('dashboard/')).length, mobile: files.filter(f => f.startsWith('mobile/')).length, retainedAi: retainedAiFiles.length, pageErrors: errors }, null, 2));
 } catch (error) {
   if (currentPage && !currentPage.isClosed()) {
     console.log('Capture state:', (await currentPage.locator('body').innerText()).slice(0, 2400));
