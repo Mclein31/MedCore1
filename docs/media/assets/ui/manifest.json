@@ -1,9 +1,9 @@
 {
   "complete": true,
-  "capturedAt": "2026-10-13T20:32:59.656Z",
-  "dashboardViewport": "1440×1000",
-  "dashboardPipelineViewport": "1920×1000",
-  "mobileViewport": "390×900",
+  "capturedAt": "2026-10-14T01:27:07.880Z",
+  "dashboardViewport": "1440\u00d71000",
+  "dashboardPipelineViewport": "1920\u00d71000",
+  "mobileViewport": "390\u00d7900",
   "files": [
     "dashboard/00-login.png",
     "dashboard/01-overview.png",
