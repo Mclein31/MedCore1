@@ -1,9 +1,9 @@
 {
   "complete": true,
-  "capturedAt": "2026-10-14T01:27:07.880Z",
-  "dashboardViewport": "1440\u00d71000",
-  "dashboardPipelineViewport": "1920\u00d71000",
-  "mobileViewport": "390\u00d7900",
+  "capturedAt": "2026-10-14T04:33:03.770Z",
+  "dashboardViewport": "1440×1000",
+  "dashboardPipelineViewport": "1920×1000",
+  "mobileViewport": "390×900",
   "files": [
     "dashboard/00-login.png",
     "dashboard/01-overview.png",
@@ -75,22 +75,22 @@
     "mobile/17-historical-receipt.png",
     "mobile/17-historical-receipt-scroll-01.png",
     "mobile/17-historical-receipt-scroll-02.png",
+    "ai/dashboard-claims-ai-audit.png",
+    "ai/dashboard-claims-ai-findings.png",
     "ai/dashboard-executive-briefing.png",
     "ai/dashboard-hmo-appeal.png",
-    "ai/dashboard-claims-ai-audit.png",
-    "ai/mobile-cora-answer.png",
     "ai/mobile-benefit-card-ocr.png",
-    "ai/dashboard-claims-ai-findings.png"
+    "ai/mobile-cora-answer.png"
   ],
   "pageErrors": [],
   "dashboardMutations": [],
   "data": "Synthetic local fixture. One local simulated payment and note for completion/receipt screenshots. No hospital or real gateway access.",
   "aiDemonstrations": {
-    "source": "Actual app UI; authentic Gemini responses from purpose-made synthetic inputs; local DB-backed AI endpoints bypassed.",
+    "source": "Authentic generated-output captures retained from the previous AI capture run; this synthetic UI screenshot run does not generate AI output.",
     "features": [
       "Cora billing assistant",
       "Benefit card OCR",
-      "HMO appeal drafting (unsubmitted draft)",
+      "HMO appeal drafting",
       "Claims pre-flight audit",
       "Executive RCM briefing"
     ]

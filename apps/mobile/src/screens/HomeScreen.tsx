@@ -6,7 +6,6 @@ import { usePatient } from '../hooks/usePatient';
 import { useFacilityName } from '../hooks/useFacility';
 import { useNetworkStatus } from '../lib/offline';
 import { describeClaimStatus, describeDischargeStage, describeHmoStatus, formatDate, formatDateTime, formatPeso, hasHmo, remainingBalance } from '../lib/format';
-import { CoraAvatar } from '../components/CoraAvatar';
 import QuickActions from '../components/QuickActions';
 import { Icon } from '../components/icons';
 import { CoraAssistantModal } from '../components/CoraAssistantModal';
@@ -24,7 +23,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
   const facility = useFacilityName();
   const net = useNetworkStatus();
   const [coraOpen, setCoraOpen] = useState(false);
-  const [coraQuery, setCoraQuery] = useState<string | undefined>(undefined);
   if (loading && !overview) return <LoadingState message="Loading your hospital account…" />;
   if (error && !overview) return <ErrorState message={error} onRetry={refresh} />;
   const checklist = overview?.dischargeChecklist || [];
@@ -39,7 +37,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     { label: 'Payments', icon: 'payments', onPress: () => navigation.navigate('Payments') },
     { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') }
   ];
-  return <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: currentEncounter ? 96 : 0 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
+  return <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}><ScrollView contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false} contentContainerStyle={{ paddingBottom: currentEncounter ? 144 : 0 }} refreshControl={<RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} tintColor={C.brand} />} showsVerticalScrollIndicator={false}>
     <View style={{ paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20 }}>
       <Text style={T.meta}>Good day,</Text>
       <Text accessibilityRole="header" style={[T.display, { marginTop: 4, lineHeight: 41 }]}>{patient?.fullName || firstName(patient?.fullName)}</Text>
@@ -73,30 +71,7 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
       </Card>
       {steps.length > 0 && (
         <>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 12 }}>
-            <Text accessibilityRole="header" style={T.section}>Your discharge journey</Text>
-            <Pressable
-              onPress={() => {
-                setCoraQuery('What does this discharge stage mean and what is needed next?');
-                setCoraOpen(true);
-              }}
-              accessibilityRole="button"
-              accessibilityLabel="Ask Cora about this stage"
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 4,
-                minHeight: 44,
-                paddingVertical: 8,
-                paddingHorizontal: 12,
-                backgroundColor: C.brandSoft,
-                borderRadius: 22
-              }}
-            >
-              <CoraAvatar size={20} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: C.brandDark }}>Ask Cora</Text>
-            </Pressable>
-          </View>
+          <Text accessibilityRole="header" style={[T.section, { marginTop: 24, marginBottom: 12 }]}>Your discharge journey</Text>
           <View style={{ paddingVertical: 8 }}><Stepper steps={steps} /></View>
         </>
       )}
@@ -120,7 +95,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     <View testID="cora-dock" pointerEvents="box-none" style={{ position: 'absolute', right: 14, bottom: 4 }}>
       <CoraFloatingMascot active={focused && !coraOpen}
         onPress={() => {
-          setCoraQuery(undefined);
           setCoraOpen(true);
         }}
       />
@@ -131,7 +105,6 @@ export default function HomeScreen({ navigation }: { navigation: any }) {
     onClose={() => setCoraOpen(false)}
     encounter={currentEncounter}
     navigation={navigation}
-    initialQuery={coraQuery}
   />
   </Screen>;
 }

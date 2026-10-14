@@ -80,16 +80,22 @@ Long screens include numbered scroll captures. Mobile images are browser renders
 - [17-historical-receipt-scroll-01.png](mobile/17-historical-receipt-scroll-01.png)
 - [17-historical-receipt-scroll-02.png](mobile/17-historical-receipt-scroll-02.png)
 
-Reproduce with `node scripts/captureUiScreenshots.mjs` while the synthetic fixture and local previews are running on ports 8901, 5175, and 8084. See `apps/mobile/validation/apple-ui/README.md` for startup commands.
-
-
 ## AI output captures
 
-These six screenshots show genuine Gemini-generated results in the actual app UI, using synthetic-only demo inputs. The appeal is an unsubmitted draft; extracted card fields require human review.
+These authentic generated-output captures are retained from the previous AI capture run; this synthetic screenshot run does not generate new AI output.
 
-- [dashboard-executive-briefing.png](ai/dashboard-executive-briefing.png)
-- [dashboard-hmo-appeal.png](ai/dashboard-hmo-appeal.png)
 - [dashboard-claims-ai-audit.png](ai/dashboard-claims-ai-audit.png)
 - [dashboard-claims-ai-findings.png](ai/dashboard-claims-ai-findings.png)
-- [mobile-cora-answer.png](ai/mobile-cora-answer.png)
+- [dashboard-executive-briefing.png](ai/dashboard-executive-briefing.png)
+- [dashboard-hmo-appeal.png](ai/dashboard-hmo-appeal.png)
 - [mobile-benefit-card-ocr.png](ai/mobile-benefit-card-ocr.png)
+- [mobile-cora-answer.png](ai/mobile-cora-answer.png)
+
+## Recorded walkthroughs
+
+- [Dashboard walkthrough](recordings/dashboard-walkthrough.webm)
+- [Mobile walkthrough](recordings/mobile-walkthrough.webm)
+
+Record the current UI with `node scripts/recordUiWalkthroughs.mjs`. Both captures use synthetic local data.
+
+Reproduce the screenshots with `node scripts/captureUiScreenshots.mjs` while the synthetic fixture and local previews are running on ports 8901, 5175, and 8084. See `apps/mobile/validation/apple-ui/README.md` for startup commands.

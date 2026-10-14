@@ -12,7 +12,7 @@ import {
   StyleSheet
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mic, Send, X, ShieldCheck, ChevronRight } from './SolarIcons';
+import { Mic, Send, X, ChevronRight } from './SolarIcons';
 import { CoraAvatar } from './CoraAvatar';
 import { C, Spacing, Radius } from './theme';
 import { useAuth } from '../lib/auth';
@@ -280,17 +280,14 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text style={styles.headerTitle}>Cora AI</Text>
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>Concierge</Text>
-                  </View>
                 </View>
-                <Text style={styles.headerSub}>Multilingual Patient Billing Assistant</Text>
+                <Text style={styles.headerSub}>Billing help in your language</Text>
               </View>
               <Pressable
                 onPress={closeAssistant}
                 accessibilityRole="button"
                 accessibilityLabel="Close Cora assistant"
-                style={styles.closeButton}
+                style={({ pressed }) => [styles.closeButton, pressed && styles.pressedControl]}
               >
                 <X size={20} color={C.secondary} />
               </Pressable>
@@ -314,13 +311,6 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               ))}
             </View>
 
-            {/* Invariant Truth Notice */}
-            <View style={styles.invariantPill}>
-              <ShieldCheck size={13} color={C.brand} />
-              <Text style={styles.invariantPillText}>
-                Zero Centavo Drift · Figures Grounded in Official eSOA
-              </Text>
-            </View>
           </View>
 
           {/* Grounded Financial Truth Banner (if stay available) */}
@@ -445,9 +435,9 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
           <View style={styles.inputBar}>
             <Pressable
               onPress={handleVoiceToggle}
-              style={[styles.iconButton, isListening && styles.iconButtonActive]}
+              style={({ pressed }) => [styles.iconButton, isListening && styles.iconButtonActive, pressed && styles.pressedControl]}
               accessibilityRole="button"
-              accessibilityLabel="Voice speech recognition"
+              accessibilityLabel={isListening ? 'Stop voice input' : 'Start voice input'}
             >
               <Mic size={20} color={isListening ? C.danger : C.secondary} />
             </Pressable>
@@ -466,6 +456,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               }
               placeholderTextColor={C.faint}
               style={styles.inputField}
+              accessibilityLabel="Ask Cora about your hospital bill"
               onSubmitEditing={() => handleSend()}
               returnKeyType="send"
               maxLength={2000}
@@ -476,9 +467,10 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
               onPress={() => handleSend()}
               accessibilityRole="button"
               disabled={loading || !input.trim() || !encounter?.uuid}
-              style={[
+              style={({ pressed }) => [
                 styles.sendButton,
-                (!input.trim() || loading || !encounter?.uuid) && styles.sendButtonDisabled
+                (!input.trim() || loading || !encounter?.uuid) && styles.sendButtonDisabled,
+                pressed && styles.pressedControl
               ]}
               accessibilityLabel="Send question to Cora"
             >
@@ -524,26 +516,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: C.ink
   },
-  badge: {
-    backgroundColor: C.brandSoft,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: Radius.badge
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: C.brandDark,
-    textTransform: 'uppercase'
-  },
   headerSub: {
     fontSize: 11,
     color: C.secondary,
     marginTop: 1
   },
   closeButton: {
-    padding: 6,
-    borderRadius: 8
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12
   },
   langBar: {
     flexDirection: 'row',
@@ -573,23 +556,6 @@ const styles = StyleSheet.create({
   langChipTextActive: {
     color: C.brandDark,
     fontWeight: '700'
-  },
-  invariantPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#BBF7D0',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    marginTop: 8
-  },
-  invariantPillText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#15803D'
   },
   balanceCard: {
     backgroundColor: '#F8FAFC',
@@ -758,16 +724,20 @@ const styles = StyleSheet.create({
     borderTopColor: C.border
   },
   iconButton: {
-    padding: 8,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
     backgroundColor: C.elevated
   },
+  pressedControl: { opacity: 0.72 },
   iconButtonActive: {
     backgroundColor: '#FEE2E2'
   },
   inputField: {
     flex: 1,
-    height: 40,
+    minHeight: 44,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: C.border,
@@ -777,9 +747,9 @@ const styles = StyleSheet.create({
     color: C.ink
   },
   sendButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 44,
+    minHeight: 44,
+    borderRadius: 22,
     backgroundColor: C.brand,
     alignItems: 'center',
     justifyContent: 'center'

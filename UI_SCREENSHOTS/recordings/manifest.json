@@ -1,0 +1,19 @@
+{
+  "complete": true,
+  "recordedAt": "2026-10-14T04:33:27.644Z",
+  "format": "WebM / VP9",
+  "source": "Current app UI rendered in headless Chromium with synthetic local data; no patient or payer systems accessed.",
+  "dashboardViewport": "1440×900",
+  "mobileViewport": "390×844",
+  "pageErrors": [],
+  "recordings": [
+    {
+      "file": "recordings/dashboard-walkthrough.webm",
+      "bytes": 3150566
+    },
+    {
+      "file": "recordings/mobile-walkthrough.webm",
+      "bytes": 1422810
+    }
+  ]
+}
