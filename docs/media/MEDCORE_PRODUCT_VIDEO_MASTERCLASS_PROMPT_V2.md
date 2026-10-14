@@ -19,8 +19,19 @@ The target is a credible product launch film with an emotionally intelligible st
 - Establish the dashboard inside a clean desktop-monitor frame and the mobile app inside a consistent iPhone frame. Use directed zoom-ins, zoom-outs, and pans to take viewers from context to action to readable result.
 - Show a visible mouse-arrow pointer throughout **all dashboard interaction footage**, not only SMS: navigation, tabs, filters, row selection, estimator controls, AI actions, claims, clearance, analytics, and SMS. Pair every actual dashboard click with a restrained ripple and synchronized click sound. **Never show a mouse pointer on mobile footage.**
 - Make MedCore’s implemented AI features visible through real controls and authentic outputs, especially Cora and staff-side AI review.
+- Use the existing supplied MP4 recordings as the source footage. Do not recapture, replace, regenerate, or re-export any screen recordings; improve pacing and perceived smoothness through editing the existing clips only.
 - Pronounce Ilokano as one spoken word with stress on its third syllable. Never speak a pronunciation guide or spell its syllables letter by letter.
 - Follow the original storyboard’s emotional order while satisfying the provided competition guideline and the current PDF presentation.
+
+## 1A. Use relevant skills already available in the repository/environment
+
+Before planning or editing, inspect the project root and the active environment for existing Claude skills and project instructions. Check `CLAUDE.md`, `AGENTS.md`, `.claude/skills/`, `.agents/skills/`, and any skills directory or skill-discovery command exposed by the current Claude environment. Read and apply the relevant existing guidance for video editing/compositing, motion design, visual storytelling, typography, audio/sound mixing, accessibility, and final media quality assurance. Prefer repository-local skills first, then already-installed environment skills.
+
+Select skills by their actual contents and capabilities, not their names alone. Do not assume a skill is installed, do not invent skill paths or instructions, and do not install new skills or dependencies for this task. The repository may contain `.agents/agents/*/SKILL.md` files describing specialist agent roles; treat those as role guidance, not as video-production skills unless their contents directly provide applicable production practices. Do not delegate or spawn agents unless the user separately requests it.
+
+Apply the selected guidance to improve the edit’s story clarity, pacing, temporal continuity, optical-flow judgment, typography, color treatment, sound balance, accessibility, and export validation. Respect all MedCore-specific constraints in this prompt: use only the existing recordings, preserve actual interface pixels and results, keep the AI loading/result moments visible, and do not alter the locked runtime or product workflows. If a useful skill conflicts with these constraints, this prompt takes precedence.
+
+In the editor’s completion notes (not in the film), list each skill actually used by its exact name and file path, plus one concrete improvement it informed. If no relevant skills are available, say so plainly and proceed using the production guidance in this prompt without installing anything.
 
 ### Clean presentation — latest user direction
 
@@ -48,7 +59,7 @@ The supplied guideline requires all of the following. Make each visibly identifi
 
 **Functional prototype is a content requirement, not a decorative screen-time statistic.** Reserve **160 seconds / 55.2%** for Scenes 4 and 5. At least **150 seconds / 51.7% of the complete film** must remain a visible, legible demonstration of actual product workflows after accounting for any interruptions. Maintain real UI as the dominant image throughout this block. Do not count a spinning phone, an empty device mockup, a benefits slide, or a conceptual diagram as functional demonstration.
 
-Prefer authentic recordings that show input → action → resulting state. Recorded pauses for explanation are fine. Pure still animations may supplement the edit, but a film with only stills must not be represented as having demonstrated interactivity. If recordings are absent and your tools allow capture, obtain them from a dedicated synthetic instance of the actual application. If you cannot do that, identify the missing recording dependency in your deliverables rather than inventing a working prototype.
+Use the supplied authentic recordings that show input → action → resulting state. The MP4 source recordings are already provided for this edit: use them as-is and do not recapture, replace, regenerate, or export new recordings. Recorded pauses for explanation are fine. Pure still animations may supplement the edit, but a film with only stills must not be represented as having demonstrated interactivity. Only for a separate future task where no source recordings are supplied, capture from a dedicated synthetic instance of the actual application if available; otherwise identify the missing recording dependency rather than inventing a working prototype.
 
 Aim for at least **75 seconds of meaningful mobile demonstration**, including readable split-screen shots, inside the 160-second block. The hospital dashboard must receive similarly substantial attention. Show both as parts of one product, with different tasks and a shared financial picture.
 
@@ -267,7 +278,16 @@ Visual continuity rules: the same clothing/hair in every shot; stable screen dir
 
 Use **Avenir Next** for editorial titles, chapter labels, callouts, and end cards: Regular for supporting copy and Bold for headlines and short labels. Choose a similarly warm, highly legible humanist sans-serif only if Avenir Next is unavailable. Keep every text element in the same family and upright style; do not mix in Arial for currency or symbols. Use a clear two-weight hierarchy, with confident headline weight and comfortable line spacing. Keep editorial text concise and large enough to read at 1080p. Preserve the recorded application UI exactly; this typography direction applies to the film’s added graphics and captions, not the product interface.
 
-Make graphic and camera transitions **slightly quicker and more decisive**: aim for roughly 0.3–0.65 seconds for routine entrances, focus moves, and transitions, with a clean ease-out and no lingering drift. Reserve up to about 0.9 seconds for a major story transformation when the visual change needs it. Do not accelerate scrolling, pointer actions, or the actual app interaction. Keep the result still long enough to read—typically 2–4 seconds, longer for AI findings, bills, and other dense evidence. Quicker transitions should improve momentum while preserving the full 4:50 runtime and all narration holds.
+Make graphic and camera transitions **slightly quicker and more decisive**: aim for roughly 0.3–0.65 seconds for routine entrances, focus moves, and transitions, with a clean ease-out and no lingering drift. Reserve up to about 0.9 seconds for a major story transformation when the visual change needs it. Keep the result still long enough to read—typically 2–4 seconds, longer for AI findings, bills, and other dense evidence. Quicker transitions should improve momentum while preserving the full 4:50 runtime and all narration holds.
+
+**Existing MP4 footage: smoother motion and faster pacing, without re-recording**
+
+- Edit only the 18 supplied source clips in `production/footage/`. Do not launch the apps for capture, ask for replacement footage, recapture screens, regenerate any footage, or re-export/overwrite the source recordings. Preserve the source files unchanged.
+- Make routine navigation, scrolling, and transitional waits feel moderately quicker, generally around **1.15×–1.25×** where the source action remains understandable. Use restrained, continuous speed ramps only at clip boundaries or natural pauses; avoid abrupt jumps, skipped interactions, or edits that change what an action means. Keep taps/clicks and their visible outcomes in correct sequence.
+- Smooth the supplied 25 fps footage for the 30 fps film with high-quality motion-compensated frame interpolation (optical flow) only between genuine adjacent source frames. Inspect interpolated UI closely for warped text, numbers, logos, status badges, table rules, or cursor shapes. If optical flow distorts any interface detail, use clean frame-rate conversion, original frames, or a simple retime/cut for that passage instead. Never use generative frame creation on application UI, and do not add artificial motion blur.
+- Keep the real scroll path, pointer/tap movement, and final screen state faithful to the source. Do not disguise source cuts with camera moves or crop away evidence of an interaction.
+- Make the AI loading state legible for at least **1.5 seconds**, then hold its authentic generated result for at least **2 seconds**. Preserve enough additional stationary time for dense AI findings and billing details to be read.
+- Do not speed up, time-stretch, or pitch-shift narration. Keep dialogue synchronized and natural. Use recovered time from faster source footage to hold authentic results or adjacent product context while maintaining the locked 4:50 runtime; never fill runtime by slowing the voice or inventing app states.
 
 **The goal is an immersive product film with a deliberate rhythm:** feel the family’s uncertainty, follow an action, see its result, understand the relief. Motion should guide the audience through that experience. Use visibly more motion than a narrated presentation while allowing the product’s key information to settle.
 
@@ -637,7 +657,7 @@ The saved payment success reference is **₱500.05**, which is a partial payment
 
 The current AI screenshots and response manifest show authentic Gemini-generated results from purpose-made synthetic inputs, rendered in the actual dashboard/mobile components. The standalone source runner sends only the exact feature prompts and synthetic input values to the configured Gemini model; it bypasses database-backed AI routes. Do not describe these captures as proving the production backend, database, or payer integration. For the SMS sequence, capture the real action and prepared-message preview; do not invent cellular delivery.
 
-Capture cleanly: 30 fps where possible, adequate source resolution, no personal notifications, no developer consoles, no real credentials or patient data. Include stable pre-action and post-result holds. Use actual supported keyboard/cursor/tap behavior. Record real application transitions instead of recreating them with imagined animation.
+For a separate future capture only when source footage is absent: capture cleanly at 30 fps where possible, with adequate source resolution, no personal notifications, no developer consoles, and no real credentials or patient data. Include stable pre-action and post-result holds; use actual supported keyboard/cursor/tap behavior; record real application transitions. For this requested edit, use the supplied MP4s and do not create replacement captures.
 
 ## 12. Accuracy without weakening the film
 
