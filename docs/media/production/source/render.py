@@ -12,11 +12,13 @@ GRAPHICS=ROOT/'graphics'
 SHOTS=ROOT/'renders'
 W,H=1920,1080
 BG='#F5F6F8'; NAVY='#0F2A4A'; INK='#0F172A'; TEAL='#11806D'; MUTED='#475569'; LINE='#E2E8F0'
-FONT=os.environ.get('MEDCORE_FONT','/System/Library/Fonts/HelveticaNeue.ttc')
+FONT=os.environ.get('MEDCORE_FONT','/System/Library/Fonts/Avenir Next.ttc')
 FFMPEG=os.environ.get('FFMPEG') or shutil.which('ffmpeg') or '/private/tmp/medcore-film-deps/imageio_ffmpeg/binaries/ffmpeg-macos-aarch64-v7.1'
 
 def font(n,bold=False):
-    return ImageFont.truetype(FONT,n,index=1 if bold else 0)
+    # Avenir Next gives the editorial cards a warmer, more confident weight.
+    # TTC faces: 0 Bold, 7 Regular. Keep bold upright (not the adjacent italic face).
+    return ImageFont.truetype(FONT,n,index=0 if bold else 7)
 def canvas(color=(0,0,0,0),size=(W,H)):
     return Image.new('RGBA',size,color)
 def text(im,xy,s,size=40,color=INK,bold=False,width=None,spacing=12):
@@ -34,7 +36,7 @@ def text(im,xy,s,size=40,color=INK,bold=False,width=None,spacing=12):
     for line in lines:
         cursor=x
         for part in re.split(r'([→₱≈])',line):
-            chosen=ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial.ttf',size) if part in ['→','₱','≈'] else font(size,bold)
+            chosen=font(size,bold)
             d.text((cursor,y),part,font=chosen,fill=color)
             cursor+=d.textlength(part,font=chosen)
         y+=size+spacing
@@ -147,23 +149,14 @@ def prepare():
         if mode=='mobile':
             text(im,(155,270),title,78,NAVY,True,width=740)
             text(im,(158,500),sub,36,MUTED,width=700)
-            card(im,(155,740,855,860),fill='#E7F4F0',outline='#D7EAE3')
-            note='Actual mobile UI • Synthetic fixture'
-            if name in ('payment-methods','qr-review','receipt','history'):note='Simulated payment\nNo real funds transferred'
-            if name=='cora':note='Language controls demonstrated\nLive AI response not captured'
-            if name=='documents':note='Discharge pass not issued in this fixture\nRequired clearances must be recorded'
-            if name=='arrangement':note='Alternative branch • Preview only\nFinanced principal is not cash collected'
-            text(im,(177,764),note,25,TEAL,width=640)
             box=[1120,100,390,900]
             card(im,(1109,89,1521,1011),radius=26,fill='white')
         else:
             text(im,(92,104),title,37,NAVY,True)
             text(im,(98,984),sub,24,MUTED)
             box=[256,170,1408,792] # ratio adapts below without stretching.
-        text(im,(1520,45),'SAMPLE DATA',20,TEAL,True)
-        if mode=='desktop':text(im,(1110,991),'Actual UI • Synthetic fixture • Staff example',20,MUTED)
         if name=='analytics':
-            l=canvas();card(l,(1110,700,1825,936),fill='#FFFFFF');text(l,(1140,723),'ILLUSTRATIVE IMPACT TARGETS',23,TEAL,True);text(l,(1140,766),'DAR 75d → 21.4d   /   POS +40%',28,NAVY,True);text(l,(1140,812),'RTH 20% → <2% (illustrative 1.2%)',26,NAVY);text(l,(1140,871),'Not measured pilot outcomes',24,MUTED);ls=[layer('analytics-targets',l,delay=7,move=18)]
+            l=canvas();card(l,(1110,700,1825,936),fill='#FFFFFF');text(l,(1140,723),'ILLUSTRATIVE IMPACT TARGETS',23,TEAL,True);text(l,(1140,766),'DAR 75d → 21.4d   /   POS +40%',28,NAVY,True);text(l,(1140,812),'RTH 20% → <2% (illustrative 1.2%)',26,NAVY);ls=[layer('analytics-targets',l,delay=7,move=18)]
         shot('demo-'+name,start,end,'recording',base=save(im,'demo-'+name),footage='footage/'+name+'.mp4',box=box,layers=ls)
     im=base('users','Who it is for');text(im,(105,160),'Clarity for every side.',72,NAVY,True)
     for i,(t,b) in enumerate([('Patients & families','Understand the bill'),('Billing & claims teams','Coordinate the next step'),('Hospital leaders','See the financial picture')]):
@@ -216,8 +209,8 @@ def render_shot(s,force=False):
     for l in s.get('layers',[]):
         cmd+=['-loop','1','-framerate','30','-i',str(ROOT/l['path'])]
         delay=l['delay'];move=l['move']
-        filters.append(f'[{idx}:v]format=rgba,fade=t=in:st={delay}:d=0.4:alpha=1[v{idx}]')
-        filters.append(f"[{cur}][v{idx}]overlay=x={l['x']}:y='{l['y']}+{move}*exp(-7*max(0,t-{delay}))':enable='gte(t,{delay})'[b{idx}]")
+        filters.append(f'[{idx}:v]format=rgba,fade=t=in:st={delay}:d=0.28:alpha=1[v{idx}]')
+        filters.append(f"[{cur}][v{idx}]overlay=x={l['x']}:y='{l['y']}+{move}*exp(-9*max(0,t-{delay}))':enable='gte(t,{delay})'[b{idx}]")
         cur=f'b{idx}';idx+=1
     filters.append(f'[{cur}]format=yuv420p[out]')
     cmd+=['-filter_complex_threads','1','-filter_complex',';'.join(filters),'-map','[out]','-t',str(s['duration']),'-r','30','-an','-c:v','libx264','-preset','fast','-crf','18','-threads','2','-movflags','+faststart',str(out)]
