@@ -109,7 +109,7 @@ export async function authMiddleware(c: Context, next: Next) {
           panNumber: user.panNumber,
           contactNumber: user.contactNumber,
           linkedMrn: (user as any).linkedMrn ?? null,
-          mobileDemoAdmin: mobileDemoCapability(user)
+          mobileDemoAdmin: mobileDemoCapability(user, c.env as any)
         });
       }
     } catch (e) {

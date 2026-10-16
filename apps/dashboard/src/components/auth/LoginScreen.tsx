@@ -5,7 +5,7 @@ import { Building2, ShieldCheck, Lock, Mail, ArrowRight, UserCheck, Check, Spark
 export const LoginScreen: React.FC = () => {
   const { login, sessionNotice, initialLoginEmail } = useMedCore();
   const [email, setEmail] = useState(initialLoginEmail);
-  const [password, setPassword] = useState(sessionNotice ? '' : 'HospitalRCM2026!');
+  const [password, setPassword] = useState('');
   const [facilityCode, setFacilityCode] = useState('SJMC-MNL');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -75,7 +75,6 @@ export const LoginScreen: React.FC = () => {
 
   const handleQuickSelect = (demoEmail: string) => {
     setEmail(demoEmail);
-    setPassword('HospitalRCM2026!');
     setErrorMessage(null);
   };
 
