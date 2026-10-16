@@ -1,6 +1,13 @@
 # Moving the MedCore database from Ohio to Singapore
 
-**Status:** data copy done 2026-10-16. The hosted Hyperdrive switch is pending; see "As performed" below.
+**Status:** completed 2026-10-16. The hosted app runs on Singapore `demo`.
+
+**Switch verification (2026-10-16):**
+- Hyperdrive `medcore-hyperdrive` now points at the `demo` **direct** endpoint (`ep-wandering-shadow-azd4q0ln`, ap-southeast-1), with caching disabled.
+- **Live health:** HTTP 200, `CONNECTED`, 248 encounters. Warm DB latency is about 435–463 ms, against about 966 ms on Ohio (2026-10-10). The first calls after idle take about 1.8 s while Neon wakes the compute.
+- `pg_stat_activity` shows the Hyperdrive sessions on `demo` and none on Ohio.
+- **Local:** `npm run build` passes, server `tsc` passes, and `npm run dev:server` reaches `demo` in 53 ms. Login → `GET /encounters` (248) → `/auth/me` → logout → `/auth/me` 401 all pass.
+- **Repo:** `neon init --branch demo` linked `.neon` (git-ignored), created `neon.ts`, added `@neon/config` and `@neon/env`, and pulled `DATABASE_URL`, `DATABASE_URL_UNPOOLED` and `NEON_BRANCH=demo` into `.env`.
 
 ## As performed (2026-10-16)
 
