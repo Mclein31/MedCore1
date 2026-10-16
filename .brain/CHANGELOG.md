@@ -2,6 +2,11 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
+## [2026-10-16] v1 look restored on v2 (branch `rebuild/mobile-v2`)
+- Dashboard: v1 tokens (SF font at 90%, #087F70 teal, mint selection), floating top bar, grouped sidebar with badges, split sign-in, Overview tiles and cards. New pages from v1: Discharge Clearance board, pre-admission estimator (now on `computeWaterfall`), read-only Settings & Rules.
+- Mobile: badge + wordmark header, floating pill tab bar, round shortcuts, teal bill card on a mint band, grouped Profile, Hospital updates.
+- `packages/icons` (`@medcore/icons`): the v1 Solar geometry (CC BY 4.0) shared by both apps. Gap list: `docs/v2/API_GAPS.md`.
+
 ## [2026-10-16] v2 patient mobile app (branch `rebuild/mobile-v2`)
 - `apps/mobile` (Expo 57, RN 0.86.3, React 19.2.3) talks only to `/api/v1/auth/patient/*` and `/api/v1/patient/stays/*`. Tabs: Home, Bill, Coverage, Payments, Profile; stack: Documents, Pay, Payment plan, Question a charge. No AI screens.
 - `src/lib/apiClient.ts` (bearer token, CSRF header on anonymous sign-in calls, Idempotency-Key on payments, card = brand + last 4 only, 401 clears the session) and `src/lib/tokenStore.ts` (expo-secure-store `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, serialized writes so sign-out always wins). Vitest: 25 tests.
