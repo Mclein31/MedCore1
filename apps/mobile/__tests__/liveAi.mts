@@ -14,7 +14,8 @@ let client = new ApiClient(async () => token);
 try {
   const credentials = process.env.MEDCORE_MOBILE_AI_VERIFY_EMAIL && process.env.MEDCORE_MOBILE_AI_VERIFY_PASSWORD
     ? { email: process.env.MEDCORE_MOBILE_AI_VERIFY_EMAIL, password: process.env.MEDCORE_MOBILE_AI_VERIFY_PASSWORD, facilityCode: 'SJMC-MNL' }
-    : { email: 'mobile.admin.demo@example.test', password: 'HospitalRCM2026!', facilityCode: 'SJMC-MNL' };
+    : { email: 'mobile.admin.demo@example.test', password: process.env.SEED_PASSWORD, facilityCode: 'SJMC-MNL' };
+  assert.ok(credentials.password, 'Set MEDCORE_MOBILE_AI_VERIFY_PASSWORD or SEED_PASSWORD.');
   const login:any = await client.request('/auth/login', { method:'POST', body:JSON.stringify(credentials) });
   token=login.token;
   assert.ok(token);

@@ -1,3 +1,4 @@
+import { seedPassword } from './seedPassword';
 import assert from 'node:assert/strict';
 import app from '../apps/server/src/index';
 import { getAiConfig } from '../apps/server/src/config/aiConfig';
@@ -22,7 +23,7 @@ async function request(path: string, body?: object) {
 async function main() {
   const login = await request('/auth/login', {
     email: process.env.MEDCORE_AI_VERIFY_EMAIL || 'elena.santos@stjude.ph',
-    password: process.env.MEDCORE_AI_VERIFY_PASSWORD || 'HospitalRCM2026!',
+    password: process.env.MEDCORE_AI_VERIFY_PASSWORD || seedPassword(),
     facilityCode: 'SJMC-MNL'
   });
   token = login.token;
@@ -59,7 +60,7 @@ async function main() {
   assert.notEqual(letters[0], letters[1], 'Distinct cases cannot return the same canned letter');
   const enc = selected[0].enc;
   const staffToken = token;
-  const mobileLogin = await request('/auth/login', { email: 'mobile.admin.demo@example.test', password: 'HospitalRCM2026!', facilityCode: 'SJMC-MNL' });
+  const mobileLogin = await request('/auth/login', { email: 'mobile.admin.demo@example.test', password: seedPassword(), facilityCode: 'SJMC-MNL' });
   token = mobileLogin.token;
   try {
     const cora = await request('/ai/cora/chat', { encounterId: enc.uuid, message: 'Explain my remaining balance using the exact current ledger values.', language: 'en' });

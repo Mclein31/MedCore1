@@ -1,3 +1,4 @@
+import { seedPassword } from './seedPassword';
 import assert from 'node:assert/strict';
 import app from '../apps/server/src/index';
 import { getAiConfig } from '../apps/server/src/config/aiConfig';
@@ -12,7 +13,7 @@ async function request(path:string,body?:object){
   const data:any=await response.json();assert.equal(response.status,200,`${path}: ${response.status} ${data?.error?.code || ''}`);return data;
 }
 try{
-  const login=await request('/auth/login',{email:'mobile.admin.demo@example.test',password:'HospitalRCM2026!',facilityCode:'SJMC-MNL'});token=login.token;assert.ok(login.user.mobileDemoAdmin);
+  const login=await request('/auth/login',{email:'mobile.admin.demo@example.test',password:seedPassword(),facilityCode:'SJMC-MNL'});token=login.token;assert.ok(login.user.mobileDemoAdmin);
   const census=await request('/encounters');const enc=census.items.find((e:any)=>e.remainingBalance>0);assert.ok(enc?.uuid);
   const chat=(message:string,conversation:object[]=[])=>(request('/ai/cora/chat',{message,conversation,language:'en',encounterId:enc.uuid,mode:'WHY_DO_I_OWE'}));
   const explained=await chat(EXPLAIN_MY_BILL_QUERY);

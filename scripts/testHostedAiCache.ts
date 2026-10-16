@@ -1,5 +1,6 @@
 /// <reference path="../apps/mobile/node_modules/react-native/src/types/globals.d.ts" />
 // Authorized Cora reads only; repeats one useful generation, never changes billing/audit risk.
+import { seedPassword } from './seedPassword';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 process.loadEnvFile('.env');
@@ -13,7 +14,7 @@ const { createPatientApi } = await import('../apps/mobile/src/services/patientAp
 let token: string | null = null, patientId: string | null = null;
 let client = new ApiClient(async () => token);
 try {
-  const login: any = await client.request('/auth/login', { method: 'POST', body: JSON.stringify({ email: process.env.MEDCORE_MOBILE_AI_VERIFY_EMAIL || 'mobile.admin.demo@example.test', password: process.env.MEDCORE_MOBILE_AI_VERIFY_PASSWORD || 'HospitalRCM2026!', facilityCode: 'SJMC-MNL' }) });
+  const login: any = await client.request('/auth/login', { method: 'POST', body: JSON.stringify({ email: process.env.MEDCORE_MOBILE_AI_VERIFY_EMAIL || 'mobile.admin.demo@example.test', password: process.env.MEDCORE_MOBILE_AI_VERIFY_PASSWORD || seedPassword(), facilityCode: 'SJMC-MNL' }) });
   token = login.token; assert.ok(token);
   assert.ok(login.user.role === 'PATIENT_GUARANTOR' || login.user.mobileDemoAdmin);
   let encounter;
