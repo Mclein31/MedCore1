@@ -41,8 +41,12 @@ clearanceApp.post(
     const user = c.get('user');
 
     const result = await db.transaction(async (tx) => {
+      // Physicians may sign only their own encounters; the CFO may sign for any physician in the facility.
+      const scope = user.role === 'ATTENDING_PHYSICIAN'
+        ? and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId), eq(encounters.attendingPhysicianId, user.id))
+        : and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId));
       const [enc] = await tx.select().from(encounters)
-        .where(and(matchEncounterCondition(id), eq(encounters.facilityId, user.facilityId)))
+        .where(scope)
         .limit(1).for('update');
       if (!enc) return apiError(c, 404, 'NOT_FOUND', 'Encounter not found.');
       if (enc.stage !== 'DOCTOR_PF_PENDING') {

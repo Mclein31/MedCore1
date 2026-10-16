@@ -87,7 +87,10 @@ async function seed() {
 
     // 2. Insert Users (Administrative Specialists & Attending Physicians)
     console.log('[3/7] Seeding System Users with Web Crypto PBKDF2 hashes...');
-    const defaultPassword = 'HospitalRCM2026!';
+    const defaultPassword = process.env.SEED_PASSWORD;
+    if (!defaultPassword || defaultPassword.length < 12) {
+      throw new Error('SEED_PASSWORD (at least 12 characters) must be set in the environment to seed user accounts.');
+    }
     const userRoleConfigs: Array<{
       username: string; email: string; fullName: string; role: string; title: string;
       avatar: string; prc: string | null; pan: string | null; phone: string | null;

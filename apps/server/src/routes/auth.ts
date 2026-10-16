@@ -112,7 +112,7 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
       avatarInitials: user.avatarInitials,
       facilityId: facility.id,
       facilityName: facility.name,
-      mobileDemoAdmin: mobileDemoCapability(user)
+      mobileDemoAdmin: mobileDemoCapability(user, c.env as any)
     }
   });
 });

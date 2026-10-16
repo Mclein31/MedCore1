@@ -36,7 +36,7 @@ MedCore is currently a **demo prototype** with synthetic patients, simulated pay
 
 MedCore has many features, but its security baseline is well below AdvanCare's. The financial logic is careful: centavo math, row locks and idempotent payments are all solid. The identity layer around it is weak:
 
-1. **Anyone can sign in with a password that is in the source code.** Every seeded account shares `HospitalRCM2026!`, which is also prefilled in the shipped login screen. One seeded account is a CFO-level "demo admin" that can browse every patient.
+1. **Anyone can sign in with a password that is in the source code.** Every seeded account shares one literal password, which is also prefilled in the shipped login screen. One seeded account is a CFO-level "demo admin" that can browse every patient.
 2. **Patient registration proves nothing about who is registering.** Knowing a patient's MRN and phone number is enough to take over their billing account. Nothing verifies that the person owns an email address or phone.
 3. **There is no rate limiting anywhere.** That covers login, registration, the 4-digit gate-pass PIN and the paid Gemini endpoints.
 4. **Session handling is weaker than AdvanCare's.** Cookies are `SameSite=None` even though the dashboard is already same-origin through the Vercel proxy. The token is copied into `localStorage`. There is no CSRF header check, and several state-changing POSTs take no body (including ones that send SMS and advance the discharge stage). There is no idle timeout and sessions can't be revoked.
@@ -86,7 +86,7 @@ Not everything is behind AdvanCare. These parts are good and should not be distu
 Severity: **Critical** = exploitable now by an outsider with little effort. **High** = serious, needs a precondition or an insider. **Medium** = defence-in-depth or abuse risk. **Low** = hygiene.
 
 ### C1: Shared, public demo password on every seeded account, including a CFO account that can browse all patients
-- **Where:** `scripts/seedPostgres.ts:90` (`defaultPassword = 'HospitalRCM2026!'`), `apps/dashboard/src/components/auth/LoginScreen.tsx:8` and `:78` (password prefilled in the **production bundle**), `apps/server/src/services/mobileDemoAccess.ts` (`mobile.admin.demo@example.test` with `HOSPITAL_CFO` gets `/patient/demo/patients` and `X-Medcore-Patient-Id` impersonation of any patient, `routes/patient.ts:94-130`). The same password appears in `scripts/testBackendApi.ts`, `scripts/testCoraPolicy.ts`, `apps/mobile/__tests__/liveAi.mts`, `docs/implementation/mobile-admin-demo.md` and `.brain/PROJECT_CONTEXT.md:2167`.
+- **Where:** `scripts/seedPostgres.ts:90` (`defaultPassword` was a string literal), `apps/dashboard/src/components/auth/LoginScreen.tsx:8` and `:78` (password prefilled in the **production bundle**), `apps/server/src/services/mobileDemoAccess.ts` (`mobile.admin.demo@example.test` with `HOSPITAL_CFO` gets `/patient/demo/patients` and `X-Medcore-Patient-Id` impersonation of any patient, `routes/patient.ts:94-130`). The same password appears in `scripts/testBackendApi.ts`, `scripts/testCoraPolicy.ts`, `apps/mobile/__tests__/liveAi.mts`, `docs/implementation/mobile-admin-demo.md` and `.brain/PROJECT_CONTEXT.md:2167`.
 - **Evidence that this reaches the hosted system:**
   - `.brain/PROJECT_CONTEXT.md` ("Cloudflare Backend Deployment & Mobile API Synchronization — October 10, 2026") records that `mobile.admin.demo@example.test` (CFO) and `juan.delacruz@gmail.com` were provisioned in the **hosted Neon `neondb`**. It also records that `GET /patient/demo/patients` returned all 250 patients live.
   - The hosted DB has the full 250-encounter seed dataset, so it was most likely loaded with `seedPostgres.ts` using `FORCE_SEED=true`. The seed's localhost guard (`seedPostgres.ts:17-22`) can be overridden that way. That seed gives every staff account (`elena.santos@stjude.ph` and the others) the same literal password.
@@ -94,7 +94,7 @@ Severity: **Critical** = exploitable now by an outsider with little effort. **Hi
   - I did not try the credentials against the hosted API.
 - **Impact:** If hosted passwords were not rotated, anyone who reads the login page's JavaScript can sign in as any staff member or as the CFO principal, then list and impersonate every patient.
 - **Fix:**
-  1. Remove the prefill (`useState('')`, and delete the `setPassword('HospitalRCM2026!')` button handler).
+  1. Remove the prefill (`useState('')`, and delete the `setPassword(<literal>)` call in the quick-select handler).
   2. Make the seed require `SEED_PASSWORD` from the environment and refuse non-local hosts, as AdvanCare's `db:seed-demo` refuses anything but a local DB or a Neon branch named like "demo".
   3. Rotate every hosted account's password now, or delete the seeded staff accounts in the hosted DB.
   4. Gate the demo principal behind an env flag (`MOBILE_DEMO_ENABLED=true`) that is **off** in `wrangler.jsonc` production vars. The identity check (`username === …`) is not a security boundary.
@@ -606,7 +606,7 @@ Add `MAIL_FROM_NAME="MedCore"` to `vars` and add names only to `.env.example`. N
 
 ## 8. Verification checklist (after the fixes)
 
-- [ ] `grep -r "HospitalRCM2026" apps scripts docs .brain` finds nothing. Login with that password fails on the hosted API.
+- [ ] A grep for the old seed password across `apps scripts docs .brain` finds nothing. Login with that password fails on the hosted API.
 - [ ] The 11th login attempt in a minute returns 429. The 6th wrong password locks the account for 15 minutes.
 - [ ] A 6th wrong PIN voids the pass. `exit_pin` no longer exists in the DB.
 - [ ] Registration without a verified email code is impossible. The code goes only to `patients.email`.

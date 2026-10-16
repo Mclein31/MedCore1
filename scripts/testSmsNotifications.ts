@@ -1,4 +1,5 @@
 // Authenticated real PostgreSQL tests, exclusively in the disposable local SMS fixture.
+import { seedPassword } from './seedPassword';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { createDbConnection } from '../apps/server/src/db';
@@ -22,7 +23,7 @@ const request = async (path: string, token?: string, body?: object, key = random
   return { status: response.status, data: await response.json() as any };
 };
 const login = async (email: string, facilityCode = 'SJMC-MNL') => {
-  const result = await request('/auth/login', undefined, { email, password: 'HospitalRCM2026!', facilityCode });
+  const result = await request('/auth/login', undefined, { email, password: seedPassword(), facilityCode });
   assert.equal(result.status, 200); assert.ok(result.data.token); sessions.push(result.data.token); return result.data;
 };
 try {
