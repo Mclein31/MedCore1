@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { CheckCircle2, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, ShieldAlert } from '../../components/icons';
 import { useRef, useState, type FormEvent } from 'react';
 import { Button, Card, Field, Input, PageHeader } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';

@@ -1,6 +1,6 @@
 import { CreatePatientBody } from '@medcore/domain';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search } from '../../components/icons';
 import { useState } from 'react';
 import {
   Alert,

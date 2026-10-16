@@ -9,18 +9,18 @@ import {
   ChevronRight,
   DoorOpen,
   FileCheck2,
-  House,
+  FileText,
+  Home,
   Layers,
   LogOut,
-  ScrollText,
   Search,
   ShieldAlert,
   ShieldCheck,
-  UserCog,
-  UserRound,
-  Users as UsersIcon,
-} from 'lucide-react';
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+  User,
+  UserRoundCog,
+  Users,
+} from '../components/icons';
+import { useEffect, useRef, useState, type ComponentType, type FormEvent } from 'react';
 import { Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import badge from '../assets/logo-badge.png';
 import { cx, Spinner } from '../components/ui';
@@ -31,7 +31,7 @@ import { useStaffMeQuery } from './session';
 interface NavItem {
   to: string;
   label: string;
-  icon: typeof House;
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean; weight?: 'Linear' | 'Bold' }>;
   permission?: Permission;
   end?: boolean;
   badge?: 'clearance' | 'disputes';
@@ -42,7 +42,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Daily Operations',
     items: [
-      { to: '/staff', label: 'Overview', icon: House, permission: 'encounter:read', end: true },
+      { to: '/staff', label: 'Overview', icon: Home, permission: 'encounter:read', end: true },
       {
         to: '/staff/encounters',
         label: 'Encounters & Ledgers',
@@ -57,7 +57,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
         permission: 'dispute:read',
         badge: 'disputes',
       },
-      { to: '/staff/patients', label: 'Patients', icon: UsersIcon, permission: 'patient:read' },
+      { to: '/staff/patients', label: 'Patients', icon: Users, permission: 'patient:read' },
       { to: '/staff/beds', label: 'Census & Beds', icon: BedDouble, permission: 'bed:read' },
       { to: '/staff/lobby', label: 'Lobby Exit Check', icon: DoorOpen, permission: 'gatepass:verify' },
     ],
@@ -69,8 +69,8 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Governance & Admin',
     items: [
-      { to: '/staff/users', label: 'Staff Accounts', icon: UserCog, permission: 'staff:manage' },
-      { to: '/staff/audit', label: 'Audit Log', icon: ScrollText, permission: 'audit:read' },
+      { to: '/staff/users', label: 'Staff Accounts', icon: UserRoundCog, permission: 'staff:manage' },
+      { to: '/staff/audit', label: 'Audit Log', icon: FileText, permission: 'audit:read' },
       { to: '/staff/account', label: 'My Account', icon: ShieldCheck },
     ],
   },
@@ -205,6 +205,7 @@ export function StaffLayout() {
                         <>
                           <Icon
                             aria-hidden
+                            weight={isActive ? 'Bold' : 'Linear'}
                             className={cx(
                               'size-[18px] shrink-0',
                               isActive ? 'text-brand-800' : 'text-subtle',
@@ -376,7 +377,7 @@ function AccountMenu({
             }}
             className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs font-medium text-slate-700 hover:bg-slate-50"
           >
-            <UserRound aria-hidden className="size-4" />
+            <User aria-hidden className="size-4" />
             Account and security
           </button>
           <button

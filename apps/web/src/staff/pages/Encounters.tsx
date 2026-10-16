@@ -1,6 +1,6 @@
 import { AdmitBody, DISCHARGE_STAGES, STAGE_LABELS } from '@medcore/domain';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search } from '../../components/icons';
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {

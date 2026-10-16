@@ -10,7 +10,7 @@ import {
   type InstallmentTerm,
 } from '@medcore/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ban, Check, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeft, Ban, Check, Printer, Trash2 } from '../../components/icons';
 import { useRef, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { MoneyInput } from '../../components/MoneyInput';

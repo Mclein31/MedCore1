@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { KeyRound, Smartphone } from 'lucide-react';
+import { KeyRound, Smartphone } from '../components/icons';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
 import { AuthShell } from '../components/AuthShell';

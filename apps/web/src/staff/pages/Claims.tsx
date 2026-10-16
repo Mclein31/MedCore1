@@ -1,6 +1,6 @@
 import { STAGE_LABELS, type DischargeStage } from '@medcore/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Download } from 'lucide-react';
+import { Download } from '../../components/icons';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { Alert, Badge, Button, Card, Empty, PageHeader, Spinner, Table } from '../../components/ui';

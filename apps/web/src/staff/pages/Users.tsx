@@ -1,6 +1,6 @@
 import { CreateStaffBody, ROLE_LABELS, STAFF_ROLES, type StaffRole } from '@medcore/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Plus } from '../../components/icons';
 import { useState } from 'react';
 import {
   Alert,
