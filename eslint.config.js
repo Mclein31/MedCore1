@@ -51,4 +51,26 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ['apps/mobile/**/*.{ts,tsx}'],
+    plugins: { 'react-hooks': reactHooks },
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      // Metro bundles images through require(); nothing else may use it.
+      '@typescript-eslint/no-require-imports': ['error', { allow: ['\\.png$'] }],
+      'no-restricted-imports': [
+        'error',
+        {
+          name: '@react-native-async-storage/async-storage',
+          message:
+            'Never put the session or patient data in AsyncStorage. The token lives in expo-secure-store.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/mobile/metro.config.js'],
+    languageOptions: { sourceType: 'commonjs' },
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
 );
