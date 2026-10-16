@@ -7,3 +7,4 @@ dist/
 .wrangler/
 *.tsbuildinfo
 needs_fix/
+.neon
