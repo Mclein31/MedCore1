@@ -1,7 +1,7 @@
 import type { Context, Next } from 'hono';
 import { apiError } from './error';
 
-const publicAuth = new Set(['/api/v1/auth/login', '/api/v1/auth/register', '/api/v1/auth/forgot-password', '/api/v1/auth/otp/request', '/api/v1/auth/otp/verify']);
+const publicAuth = new Set(['/api/v1/auth/login', '/api/v1/auth/otp/request', '/api/v1/auth/otp/verify']);
 export async function apiAccess(c: Context, next: Next) {
   c.header('Cache-Control', 'private, no-store');
   const path = c.req.path.replace(/\/+$/, '');

@@ -246,9 +246,11 @@ await check('disputes require encounter ownership and charge membership', async 
   assert.equal(response.status, 200); const data = await response.json(); assert.equal(data.encounter, undefined);
   assert.equal(rows.billing_disputes.length, 1); assert.equal(rows.chargemaster_items[0].isDisputed, true);
 });
-await check('blank registered phone cannot pass self-registration', async () => {
-  const response = await request('/auth/register', { email: 'test@example.invalid', password: 'synthetic-test-password', fullName: 'Test Patient', mrn: 'TEST-001', contactNumber: '09123456789', facilityCode: 'TEST-FACILITY' });
-  assert.equal(response.status, 404); assert.equal(writes, 0);
+await check('retired password self-registration and reset endpoints are gone', async () => {
+  const register = await request('/auth/register', { email: 'test@example.invalid', password: 'synthetic-test-password', fullName: 'Test Patient', mrn: 'TEST-001', contactNumber: '09123456789', facilityCode: 'TEST-FACILITY' });
+  assert.equal(register.status, 404);
+  assert.equal((await request('/auth/forgot-password', { email: 'test@example.invalid' })).status, 404);
+  assert.equal(writes, 0);
 });
 await check('staff predicates retain facility scope; unlinked patients fail closed', async () => {
   const staffCondition = await runWithDb(mockDb(), () => encounterAccessCondition({ ...user, role: 'BILLING_SPECIALIST' } as any, ownId));
