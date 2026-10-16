@@ -18,32 +18,34 @@ features, remains on `main`.
 
 ## Run it locally
 
-Requires Node 22+ and PostgreSQL 15+.
+Requires Node 22+, PostgreSQL 15+ and, for the mobile app, Xcode with an iOS simulator (Expo Go installs itself).
+Run every command from the repository root.
 
 ```bash
 cp .env.example .env          # fill GATE_PASS_SECRET, DATA_ENCRYPTION_KEY, SEED_PASSWORD
 npm install
-createdb medcore
+createdb medcore              # or point DATABASE_URL at another empty database
 npm run db:migrate
 npm run db:seed               # fictional demo hospital SJMC-MNL
-npm run dev                   # API on :8787, web on http://localhost:5173
+npm run dev                   # API on :8787, staff dashboard on http://localhost:5173
+npm run ios -w @medcore/mobile   # second terminal: patient app in the iOS simulator
 ```
 
-Staff sign in with `cfo@`, `billing@`, `claims@`, `hmo@`, `dr.cruz@`, `lobby@` … `stjude.example.test` and
-`SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app (MRN + date of birth, then an emailed
-6-digit code; in development the code is printed in the API log).
+Set `PATIENT_ONLINE_PAYMENTS=simulated` and `PATIENT_ONLINE_PROMISSORY=true` in `.env` to try payments and payment
+plans from the app.
 
-## Patient mobile app
+Port 8787 is also the v1 Worker's port (`wrangler dev` on `main`). If it is taken, move v2:
+`PORT=8788` in `.env`, then start the dashboard with `API_PORT=8788 npm run dev -w @medcore/web` and the app with
+`EXPO_PUBLIC_API_PORT=8788 npm run ios -w @medcore/mobile`.
 
-```bash
-npm run dev -w @medcore/api                 # API on :8787 (PORT=… to move it)
-npm run ios -w @medcore/mobile              # Expo Go in the iOS simulator
-```
+Staff sign in at http://localhost:5173 with `cfo@`, `billing@`, `claims@`, `hmo@`, `dr.cruz@`, `lobby@` …
+`stjude.example.test` and `SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app: "First time",
+a seeded MRN (for example `MRN-240118`) and date of birth, then the 6-digit code printed in the API log.
 
-The app calls `http://localhost:8787` (`10.0.2.2` on the Android emulator). Set `EXPO_PUBLIC_API_PORT` if the
-API runs on another port, or `EXPO_PUBLIC_API_URL` for a phone on your network (start the API with
-`HOST=0.0.0.0`). Sign in with a seeded MRN and date of birth; the code is printed in the API log. Online payment
-needs `PATIENT_ONLINE_PAYMENTS=simulated`.
+The app calls `http://localhost:8787` (`10.0.2.2` on the Android emulator). For a phone on your network set
+`EXPO_PUBLIC_API_URL=http://<your-mac-ip>:8787` and start the API with `HOST=0.0.0.0`.
+
+What v1 had that v2 does not yet: [`docs/v2/API_GAPS.md`](docs/v2/API_GAPS.md).
 
 ## Checks
 
