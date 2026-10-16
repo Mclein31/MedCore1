@@ -1,8 +1,0 @@
-{
-  "name": "@medcore/dashboard",
-  "private": true,
-  "scripts": {
-    "build": "npm --prefix ../.. run build"
-  },
-  "type": "module"
-}

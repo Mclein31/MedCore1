@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+MedCore_Vault
+docs
+UI_SCREENSHOTS
+logo
+.brain
+.agents
+.claude
+.obsidian
+product video inspo
+apps/api/drizzle
+package-lock.json
+skills-lock.json

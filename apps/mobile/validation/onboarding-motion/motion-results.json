@@ -1,9 +1,0 @@
-{
-  "environment": "Actual React Native Web components in isolated jsdom; motion enabled; synthetic directory/session for selector checks",
-  "passed": 3,
-  "results": [
-    "all three SVG accent layers animate when motion is enabled",
-    "onboarding motion finishes within five seconds",
-    "startup SVG orbit animates while loading"
-  ]
-}

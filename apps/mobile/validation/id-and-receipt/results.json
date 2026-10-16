@@ -1,8 +1,0 @@
-{
-  "environment": "Actual React Native Web components in isolated jsdom; synthetic history receipt and encounter; no network",
-  "passed": 2,
-  "results": [
-    "history payment receipt retains its visible ticket surround and cutouts",
-    "receipt ticket contains only actual payment data; itemized bill stays outside"
-  ]
-}

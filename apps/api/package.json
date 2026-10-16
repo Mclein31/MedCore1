@@ -1,0 +1,31 @@
+{
+  "name": "@medcore/api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --import tsx --watch src/node.ts",
+    "start": "node --env-file-if-exists=../../.env --import tsx src/node.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node --env-file-if-exists=../../.env --import tsx src/db/migrate.ts",
+    "db:seed": "node --env-file-if-exists=../../.env --import tsx src/db/seed.ts",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@medcore/domain": "*",
+    "@hono/node-server": "^2.1.5",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.13",
+    "pg": "^8.23.1",
+    "zod": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.0",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.0",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.151.0"
+  }
+}
