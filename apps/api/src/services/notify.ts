@@ -35,16 +35,15 @@ export function sendSignInCode(c: AppContext, to: string, code: string, facility
 }
 
 export function notifyBillReady(c: AppContext, to: string): void {
-  const url = `${c.var.services.config.publicAppUrl}/portal`;
   deliver(
     c,
     to,
     'Your hospital statement is ready',
     [
-      'Your hospital statement is ready to view in the MedCore patient portal.',
+      'Your hospital statement is ready in the MedCore app.',
       '',
-      `Sign in at ${url} with this email address to see an itemized, plain-language bill,`,
-      'question any charge, pay, or arrange a 0% interest payment plan.',
+      'Open the MedCore app and sign in with this email address to see an itemized,',
+      'plain-language bill, question any charge, pay, or arrange a 0% interest payment plan.',
       '',
       'For your privacy, this email does not include amounts or medical details.',
     ].join('\n'),

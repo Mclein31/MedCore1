@@ -3,7 +3,7 @@
 Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order.
 
 ## 0. v2 rebuild (`rebuild/medcore-v2`)
-- ✅ (2026-10-16) Domain package, hardened API, staff console and patient portal; 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
+- ✅ (2026-10-16) Domain package, hardened API, staff dashboard (patient web portal later removed: patients use the mobile app); 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
 - 👤 Review the branch and decide whether it replaces `main` (sections A–C below describe `main`).
 - ⬜ Rebuild the mobile app against the v2 API (`/api/v1/auth/patient/code/*`, `/api/v1/patient/stays/*`, bearer token via `client: "mobile"`); the old app calls ~20 endpoints that no longer exist.
 - ⬜ Port the AI layer (PHI scrubber, Cora, OCR, claims scrubber, appeals, briefing) onto v2 with per-user rate limits and input caps.

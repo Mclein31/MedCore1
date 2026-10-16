@@ -9,11 +9,11 @@ mobile app and the AI features, remains on `main`.
 
 ## Layout
 
-| Path              | What it is                                                                                         |
-| ----------------- | -------------------------------------------------------------------------------------------------- |
+| Path              | What it is                                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/domain` | Pure business rules shared by API and web: money, waterfall, promissory schedules, discharge state machine, permission matrix, request contracts. No I/O. |
-| `apps/api`        | Hono + Drizzle + PostgreSQL. Runs on Node (`src/node.ts`) and Cloudflare Workers (`src/worker.ts`). |
-| `apps/web`        | React 19 + Vite + Tailwind 4. Staff console at `/staff`, patient portal at `/portal`.               |
+| `apps/api`        | Hono + Drizzle + PostgreSQL. Runs on Node (`src/node.ts`) and Cloudflare Workers (`src/worker.ts`).                                                       |
+| `apps/web`        | React 19 + Vite + Tailwind 4. Hospital staff dashboard only. Patients use the mobile app.                                                                 |
 
 ## Run it locally
 
@@ -29,8 +29,8 @@ npm run dev                   # API on :8787, web on http://localhost:5173
 ```
 
 Staff sign in with `cfo@`, `billing@`, `claims@`, `hmo@`, `dr.cruz@`, `lobby@` … `stjude.example.test` and
-`SEED_PASSWORD`, then enroll an authenticator app. Patients sign in at `/portal` with their MRN and date of
-birth; in development the 6-digit code is printed in the API log.
+`SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app (MRN + date of birth, then an emailed
+6-digit code; in development the code is printed in the API log).
 
 ## Checks
 

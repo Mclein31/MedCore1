@@ -79,7 +79,7 @@ export function Patients() {
         {query.data && query.data.items.length === 0 && <Empty title="No patients found." />}
         {query.data && query.data.items.length > 0 && (
           <>
-            <Table head={['Name', 'MRN', 'Born', 'Discount', 'Portal email', '']} caption="Patients">
+            <Table head={['Name', 'MRN', 'Born', 'Discount', 'App email', '']} caption="Patients">
               {query.data.items.map((p) => (
                 <tr key={p.id}>
                   <td className="px-3 py-2.5 font-medium">{p.fullName}</td>
@@ -191,7 +191,7 @@ function CreatePatientDialog({ open, onClose }: { open: boolean; onClose: () => 
           )}
         </Field>
         <Field
-          label="Email for portal sign-in"
+          label="Email for the patient app sign-in"
           hint="Check it with the patient. Sign-in codes only ever go here."
           error={fieldError('email')}
         >
@@ -264,7 +264,7 @@ function EmailDialog({ patient, onClose }: { patient: PatientRow | null; onClose
     <Dialog
       open={patient !== null}
       onClose={onClose}
-      title={`Portal email for ${patient?.fullName ?? ''}`}
+      title={`App sign-in email for ${patient?.fullName ?? ''}`}
       description="Only change this after checking the patient’s or guarantor’s ID in person. The change is audited."
     >
       <form
@@ -275,7 +275,7 @@ function EmailDialog({ patient, onClose }: { patient: PatientRow | null; onClose
         }}
       >
         {save.isError && <Alert>{errorMessage(save.error)}</Alert>}
-        <Field label="Email" hint="Leave empty to remove portal access.">
+        <Field label="Email" hint="Leave empty to remove app access.">
           {(f) => (
             <Input
               {...f}
