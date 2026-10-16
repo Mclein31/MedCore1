@@ -2,6 +2,10 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
+## [2026-10-16] Audit C2 closed, login rate limit (C3)
+- Removed `POST /api/v1/auth/register` (MRN + phone + password) and `/forgot-password` from `routes/auth.ts` and `publicAuth`. Anonymous calls now get 401 from the auth wall; signed-in calls get 404. Stays are linked only through `/auth/otp/*` with purpose REGISTER.
+- New Workers rate limiter `PATIENT_AUTH_LIMITER` (namespace 2005, 10 per 60 s) in `wrangler.jsonc`. `otp.ts` already used it; `/auth/login` now checks it per IP and per email and returns 429 `RATE_LIMITED`. Not deployed yet.
+
 ## [2026-10-16] Patient email-code sign-in (audit C2, §4)
 - `POST /api/v1/auth/otp/request` and `/verify` (`apps/server/src/routes/otp.ts`), ported from AdvanCare ADV-AUTH-001: 6-digit codes, sha256 stored, 10 min, 5 tries, 5 per hour, newest code only, race-safe consume. REGISTER sends only to the hospital-recorded `patients.email` (MRN + phone pick the record, decoy mask when nothing matches). Patient sessions last 30 days; `revoked_at` is honoured, `last_seen_at` is touched hourly, and logout now revokes instead of deleting.
 - Mailer `apps/server/src/services/mailer.ts`: dependency-free SMTP. It loads `cloudflare:sockets` lazily on Workers and `node:tls` on Node. With `NODE_ENV=development` and no SMTP, the code is logged; anywhere else that returns 503.

@@ -111,7 +111,7 @@ async function requireLinkedPatient(c: any) {
         c,
         404,
         'PATIENT_NOT_LINKED',
-        'No patient record is linked to this account yet. Please register with the MRN and contact number on your admission slip.'
+        'No patient record is linked to this account yet. Link your hospital stay in the app with the MRN and contact number on your admission slip.'
       )
     };
   }

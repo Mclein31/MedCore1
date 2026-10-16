@@ -18,7 +18,7 @@ http.createServer(async (req, res) => {
   let body = ''; for await (const chunk of req) body += chunk;
   const input = body ? JSON.parse(body) : {};
   if (p.endsWith('/auth/login')) return send(res, 200, { success: true, token: 'synthetic-ui-session', user });
-  if (p.endsWith('/auth/logout') || p.endsWith('/auth/forgot-password')) return send(res, 200, { success: true });
+  if (p.endsWith('/auth/logout')) return send(res, 200, { success: true });
   if (p.endsWith('/auth/me')) return send(res, 200, { authenticated: true, user });
   if (req.headers.authorization !== 'Bearer synthetic-ui-session') return send(res, 401, { error: { code: 'UNAUTHORIZED' } });
   if (p === '/api/v1/patient/me') return send(res, 200, { patient });
