@@ -27,7 +27,9 @@
     "test:sms:ui": "node --import ./node_modules/tsx/dist/loader.mjs scripts/verifySmsUi.mts",
     "test:otp": "SMTP_USER= SMTP_PASSWORD= node --import ./node_modules/tsx/dist/loader.mjs apps/server/test/mailer.test.ts && node --import ./node_modules/tsx/dist/loader.mjs scripts/testOtpFlow.ts",
     "db:otp": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyOtpMigration.ts",
-    "seed:otp-emails": "node --import ./node_modules/tsx/dist/loader.mjs scripts/seedDemoPatientEmails.ts"
+    "seed:otp-emails": "node --import ./node_modules/tsx/dist/loader.mjs scripts/seedDemoPatientEmails.ts",
+    "db:ai-audit": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiAuditMigration.ts",
+    "test:sms:ui": "node --import ./node_modules/tsx/dist/loader.mjs scripts/verifySmsUi.mts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",
