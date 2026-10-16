@@ -1,74 +1,124 @@
-import { Text, View } from 'react-native';
-import { peso } from '../lib/format';
-import { Badge, Row, Screen, SectionHeader } from '../ui/kit';
-import { C, S, T } from '../ui/theme';
-import { WithStay } from './common';
-
-const DISCOUNT_LABEL = { NONE: null, SENIOR: 'Senior citizen', PWD: 'Person with disability' } as const;
-
-export function CoverageScreen() {
+import { useState } from 'react';
+import { usePullRefresh } from '../hooks/usePullRefresh';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { usePatient } from '../hooks/usePatient';
+import { formatPeso, hasHmo, remainingBalance } from '../lib/format';
+import { Camera } from '../components/SolarIcons';
+import { CoraAvatar } from '../components/CoraAvatar';
+import { CoraAssistantModal } from '../components/CoraAssistantModal';
+import { BenefitCardScannerModal } from '../components/BenefitCardScannerModal';
+import {
+  ActionButton,
+  C,
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  RefreshNotice,
+  Row,
+  Screen,
+  SectionHeader,
+  StatusBadge,
+  T,
+} from '../components/ui';
+export default function CoverageScreen({ navigation }: { navigation?: any }) {
+  const { currentEncounter: enc, loading, error, refresh } = usePatient();
+  const pullRefresh = usePullRefresh(refresh);
+  const [coraOpen, setCoraOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  if (loading && !enc) return <LoadingState message="Loading your coverage…" />;
+  if (error && !enc) return <ErrorState message={error} onRetry={refresh} />;
+  if (!enc)
+    return (
+      <Screen safeBottom={false}>
+        <EmptyState
+          title="No coverage yet"
+          detail="PhilHealth and HMO details will appear when a hospital stay is linked."
+        />
+      </Screen>
+    );
+  if (enc.billState === 'DRAFT')
+    return (
+      <Screen safeBottom={false}>
+        <EmptyState
+          title="Bill not available yet"
+          detail="Your hospital is still preparing your statement. Charges and benefits appear after the bill is finalized."
+        />
+      </Screen>
+    );
+  const w = enc.waterfall;
+  const hmo = enc.hmo;
   return (
-    <WithStay>
-      {({ d, refreshing, refresh }) => {
-        const l = d.ledger!;
-        const discount = DISCOUNT_LABEL[d.stay.discountKind];
-        const statutory = l.vatExemptionCents + l.seniorPwdDiscountCents;
-        return (
-          <Screen refreshing={refreshing} onRefresh={refresh} background={C.surface} gap={S.md}>
-            <SectionHeader title="Benefits applied" />
-            <View>
-              <Row label="PhilHealth" value={peso(l.philhealthCents)} />
-              <Row label="HMO" value={peso(l.hmoCents)} />
-              <Row label="Statutory discounts" value={peso(statutory)} />
-              <Row label="Your responsibility" value={peso(l.netPatientDueCents)} />
-              <Row label="Remaining balance" value={peso(l.balanceCents)} bold last />
-            </View>
+    <Screen safeBottom={false}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <RefreshNotice error={error} onRetry={refresh} />
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+          <ActionButton
+            stretch
+            title="Ask Cora AI"
+            a11y="Ask Cora AI about my coverage"
+            onPress={() => setCoraOpen(true)}
+            icon={<CoraAvatar size={22} />}
+          />
+          <ActionButton
+            stretch
+            tone="blue"
+            title="Scan Card OCR"
+            a11y="Scan Card OCR, benefit card or government ID"
+            onPress={() => setScannerOpen(true)}
+            icon={<Camera size={15} color={C.blue} />}
+          />
+        </View>
 
-            <Divider />
-            <SectionHeader title="PhilHealth" />
-            <Badge
-              tone={l.philhealthCents > 0 ? 'good' : 'neutral'}
-              label={l.philhealthCents > 0 ? 'Applied' : 'Not applied'}
-            />
-            <Text style={T.body}>
-              {l.philhealthCents > 0
-                ? 'Your PhilHealth case rate was applied before any HMO. No action needed.'
-                : 'No PhilHealth benefit is on this bill. Ask the billing desk if you are a member.'}
+        <SectionHeader title="Benefits applied" />
+        <View style={{ paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: C.border }}>
+          <Row label="PhilHealth" value={formatPeso(w.philhealthTotal)} />
+          <Row label="HMO" value={formatPeso(w.hmoApprovedAmount)} />
+          <Row label="Statutory discounts" value={formatPeso(w.vatExemption + w.seniorPwdDiscount)} />
+          <Row label="Your responsibility" value={formatPeso(w.netPatientDue)} />
+          <Row label="Remaining balance" value={formatPeso(remainingBalance(enc))} bold />
+        </View>
+        <SectionHeader title="PhilHealth" />
+        <View style={{ paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: C.border }}>
+          <StatusBadge tone="info" text="Benefit amount recorded" />
+          <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
+            Claim status and case-rate details are not available in the patient app yet.
+          </Text>
+          <View style={{ marginTop: 12 }}>
+            <Row label="Benefit applied" value={formatPeso(w.philhealthTotal)} />
+          </View>
+        </View>
+        <SectionHeader title="HMO authorization" />
+        {hasHmo(enc) ? (
+          <View style={{ paddingBottom: 20 }}>
+            <Text style={T.cardTitle}>{hmo.providerName}</Text>
+            <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
+              Provider details, authorization status and benefit limits are not available in the patient app
+              yet.
             </Text>
-            <Row label="Benefit applied" value={peso(l.philhealthCents)} last />
-
-            <Divider />
-            <SectionHeader title="HMO authorization" />
-            <Badge
-              tone={l.hmoCents > 0 ? 'good' : 'neutral'}
-              label={l.hmoCents > 0 ? 'HMO approved' : 'No HMO on this bill'}
-            />
-            <Text style={T.body}>
-              {l.hmoCents > 0
-                ? 'Your HMO approved the covered amount after PhilHealth.'
-                : 'If you have an HMO card, show it at the billing desk so they can request a letter of authorization.'}
-            </Text>
-            <Row label="Approved amount" value={peso(l.hmoCents)} last />
-
-            <Divider />
-            <SectionHeader title="Statutory discounts" />
-            <Badge
-              tone={discount ? 'good' : 'neutral'}
-              label={discount ? `${discount} discount applied` : 'None applied'}
-            />
-            <Row label="VAT exemption" value={peso(l.vatExemptionCents)} />
-            <Row label="20% senior / PWD discount" value={peso(l.seniorPwdDiscountCents)} last />
-            <Text style={T.meta}>
-              Philippine law sets the order: VAT exemption and the senior/PWD discount come off first, then
-              PhilHealth, then your HMO. What remains is your share.
-            </Text>
-          </Screen>
-        );
-      }}
-    </WithStay>
+            <Row label="Benefit applied" value={formatPeso(hmo.approvedAmount)} />
+          </View>
+        ) : (
+          <Text style={T.body}>
+            No HMO benefit is applied to this bill. Contact hospital billing for coverage details.
+          </Text>
+        )}
+      </ScrollView>
+      <CoraAssistantModal
+        visible={coraOpen}
+        onClose={() => setCoraOpen(false)}
+        encounter={enc}
+        navigation={navigation}
+        initialQuery="Can you explain my PhilHealth and HMO coverage for this hospital stay?"
+      />
+      <BenefitCardScannerModal visible={scannerOpen} onClose={() => setScannerOpen(false)} />
+    </Screen>
   );
-}
-
-function Divider() {
-  return <View style={{ height: 1, backgroundColor: C.border, marginVertical: S.sm }} />;
 }

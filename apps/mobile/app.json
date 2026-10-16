@@ -5,23 +5,41 @@
     "scheme": "medcore",
     "version": "2.0.0",
     "orientation": "portrait",
-    "icon": "./assets/app-icon.png",
+    "icon": "./assets/brand/app-icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/MedCore_Badge_Logo.png",
+      "image": "./assets/brand/MedCore_Badge_Logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#0F2A4A"
     },
     "ios": {
-      "supportsTablet": false,
+      "supportsTablet": true,
       "bundleIdentifier": "ph.medcore.patient",
-      "config": { "usesNonExemptEncryption": false }
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "ph.medcore.patient",
-      "adaptiveIcon": { "backgroundColor": "#F5F8F7", "foregroundImage": "./assets/adaptive-icon.png" },
-      "allowBackup": false
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F8F7",
+        "foregroundImage": "./assets/brand/adaptive-icon.png"
+      },
+      "predictiveBackGestureEnabled": false
     },
-    "plugins": ["expo-secure-store"]
+    "web": {
+      "favicon": "./assets/brand/MedCore_Badge_Logo.png"
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a benefit card photo for credential extraction.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      "expo-secure-store"
+    ]
   }
 }

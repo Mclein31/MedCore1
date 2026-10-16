@@ -1,233 +1,308 @@
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { DISCHARGE_STAGES, STAGE_LABELS } from '@medcore/domain';
-import { Pressable, Text, View } from 'react-native';
-import { day, peso, stageLabel, when } from '../lib/format';
-import { useCurrentStay } from '../lib/stays';
-import type { RootParams, TabParams } from '../navigation';
-import { ExitPass } from '../ui/ExitPass';
-import { Clock, CreditCard, FileText, Receipt, ShieldCheck } from '../ui/icons';
-import { Button, Card, LinkRow, QuickActions, Screen, SectionHeader } from '../ui/kit';
-import { C, R, S, T } from '../ui/theme';
-import { WithStay } from './common';
+import { useState } from 'react';
+import { useIsFocused } from '@react-navigation/native';
+import { usePullRefresh } from '../hooks/usePullRefresh';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { usePatient } from '../hooks/usePatient';
+import { useFacilityName } from '../hooks/useFacility';
+import { useNetworkStatus } from '../lib/offline';
+import {
+  describeClaimStatus,
+  describeDischargeStage,
+  describeHmoStatus,
+  formatDate,
+  formatDateTime,
+  formatPeso,
+  hasHmo,
+  remainingBalance,
+} from '../lib/format';
+import QuickActions from '../components/QuickActions';
+import { Icon } from '../components/icons';
+import { CoraAssistantModal } from '../components/CoraAssistantModal';
+import { CoraFloatingMascot } from '../components/CoraFloatingMascot';
+import {
+  C,
+  Card,
+  EmptyState,
+  ErrorState,
+  Expandable,
+  LedgerRow,
+  LoadingState,
+  PrimaryButton,
+  RefreshNotice,
+  Row,
+  Screen,
+  SectionHeader,
+  Stepper,
+  T,
+} from '../components/ui';
 
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<TabParams, 'Home'>,
-  NativeStackScreenProps<RootParams>
->;
-
-export function HomeScreen({ navigation }: Props) {
-  const { items, select } = useCurrentStay();
-  return (
-    <WithStay requireBill={false}>
-      {({ row, d, refreshing, refresh }) => {
-        const l = d.ledger;
-        const cleared = d.stay.stage === 'CLEARED';
-        const owe = l?.balanceCents ?? 0;
-        const canPay = Boolean(d.options?.onlinePayments) && owe > 0 && !cleared;
-        const stageIndex = DISCHARGE_STAGES.indexOf(d.stay.stage);
-        return (
-          <Screen refreshing={refreshing} onRefresh={refresh} gap={0}>
-            <View style={{ paddingBottom: 20 }}>
-              <Text style={T.meta}>Good day,</Text>
-              <Text accessibilityRole="header" style={[T.display, { marginTop: 4 }]}>
-                {d.stay.patientName}
-              </Text>
-              <Text style={[T.meta, { marginTop: 6 }]}>{d.stay.facilityName}</Text>
-            </View>
-
-            {d.gatePass ? (
-              <ExitPass pass={d.gatePass} />
-            ) : (
-              <View style={{ backgroundColor: C.surface, borderRadius: R.hero, padding: 22, gap: 8 }}>
-                <Text style={[T.meta, { fontWeight: '500' }]}>
-                  {d.stay.billReady ? 'Remaining hospital balance' : 'Your hospital bill'}
-                </Text>
-                <Text accessibilityRole="header" style={T.display}>
-                  {d.stay.billReady ? peso(owe) : 'Being prepared'}
-                </Text>
-                <Text style={T.meta}>
-                  {d.stay.billReady
-                    ? 'After coverage, discounts and recorded payments.'
-                    : 'We will email you when your final bill is ready.'}
-                </Text>
-                {d.stay.billReady ? (
-                  <View style={{ marginTop: 8 }}>
-                    <Button
-                      title={canPay ? 'Pay balance' : 'Review bill'}
-                      onPress={() =>
-                        canPay ? navigation.navigate('Pay', { stayId: row.id }) : navigation.navigate('Bill')
-                      }
-                    />
-                  </View>
-                ) : null}
-              </View>
-            )}
-
-            <View style={{ marginTop: S.md }}>
-              <QuickActions
-                actions={[
-                  { label: 'Bill', icon: Receipt, onPress: () => navigation.navigate('Bill') },
-                  { label: 'Coverage', icon: ShieldCheck, onPress: () => navigation.navigate('Coverage') },
-                  { label: 'Payments', icon: CreditCard, onPress: () => navigation.navigate('Payments') },
-                  { label: 'Documents', icon: FileText, onPress: () => navigation.navigate('Documents') },
-                ]}
-              />
-            </View>
-
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Clock size={17} color={C.brandDark} />
-              <Text style={[T.meta, { flex: 1 }]}>{statusLine(d.stay.stage, d.stay.billReady, owe)}</Text>
-            </View>
-            <Text style={[T.meta, { marginTop: 8 }]}>
-              {d.stay.encounterNumber} · Admitted {day(d.stay.admittedAt)}
-            </Text>
-
-            {l ? (
-              <View style={{ gap: S.md, marginTop: S.xl }}>
-                <SectionHeader title="Coverage applied to your bill" />
-                <Card flush>
-                  <LinkRow
-                    title="PhilHealth"
-                    subtitle={l.philhealthCents > 0 ? 'Applied' : 'Not applied'}
-                    value={peso(l.philhealthCents)}
-                    onPress={() => navigation.navigate('Coverage')}
-                  />
-                  <LinkRow
-                    title="HMO"
-                    subtitle={l.hmoCents > 0 ? 'HMO approved' : 'No HMO coverage on this bill'}
-                    value={peso(l.hmoCents)}
-                    onPress={() => navigation.navigate('Coverage')}
-                    last
-                  />
-                </Card>
-              </View>
-            ) : null}
-
-            <View style={{ gap: S.md, marginTop: S.xl }}>
-              <SectionHeader title="Your discharge journey" />
-              <View>
-                {DISCHARGE_STAGES.filter((s) => s !== 'ADMITTED').map((stage, i, all) => {
-                  const index = DISCHARGE_STAGES.indexOf(stage);
-                  const state =
-                    index < stageIndex || cleared ? 'done' : index === stageIndex ? 'now' : 'todo';
-                  return (
-                    <Step key={stage} title={STAGE_LABELS[stage]} state={state} last={i === all.length - 1} />
-                  );
-                })}
-              </View>
-            </View>
-
-            {(d.timeline?.length ?? 0) > 0 ? (
-              <View style={{ gap: S.md, marginTop: S.xl }}>
-                <SectionHeader
-                  title="Latest from your hospital"
-                  action={
-                    <Pressable
-                      onPress={() => navigation.navigate('Updates')}
-                      accessibilityRole="button"
-                      style={{ minHeight: 44, justifyContent: 'center' }}
-                    >
-                      <Text style={{ color: C.brand, fontWeight: '600' }}>All updates</Text>
-                    </Pressable>
-                  }
-                />
-                {d.timeline!.slice(0, 3).map((t, i) => (
-                  <View
-                    key={`${t.createdAt}-${i}`}
-                    style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
-                  >
-                    <Text style={T.cardTitle}>{t.title}</Text>
-                    {t.detail ? <Text style={[T.meta, { marginTop: 4 }]}>{t.detail}</Text> : null}
-                    <Text style={[T.meta, { marginTop: 4 }]}>{when(t.createdAt)}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-
-            {items.length > 1 ? (
-              <View style={{ gap: S.md, marginTop: S.xl }}>
-                <SectionHeader title="Recent stays" />
-                <Card flush>
-                  {items.map((s, i) => (
-                    <LinkRow
-                      key={s.id}
-                      title={`${s.encounterNumber}${s.id === row.id ? ' · showing' : ''}`}
-                      subtitle={`${day(s.admittedAt)} · ${s.patientName}`}
-                      value={s.billReady ? peso(s.balanceCents) : undefined}
-                      onPress={() => select(s.id)}
-                      last={i === items.length - 1}
-                    />
-                  ))}
-                </Card>
-              </View>
-            ) : null}
-          </Screen>
-        );
-      }}
-    </WithStay>
-  );
+function firstName(full: string | undefined): string {
+  if (!full) return 'there';
+  return (full.includes(',') ? full.split(',')[1] : full).trim().split(/\s+/)[0] || 'there';
 }
-
-function statusLine(stage: string, billReady: boolean, owe: number) {
-  if (stage === 'CLEARED') return 'You are cleared to go home. Show your exit pass at the lobby.';
-  if (stage === 'PENDING_SETTLEMENT')
-    return owe > 0 ? 'Your bill is ready for settlement.' : 'Waiting for the hospital to finish clearance.';
-  if (!billReady) return `${stageLabel(stage)}. Your bill is still being prepared.`;
-  return `${stageLabel(stage)}.`;
-}
-
-/** Vertical journey: a rail connects the steps so patients see where they are (v1 Stepper). */
-function Step({ title, state, last }: { title: string; state: 'done' | 'now' | 'todo'; last: boolean }) {
-  const color = state === 'todo' ? C.border : C.brand;
+export default function HomeScreen({ navigation }: { navigation: any }) {
+  const focused = useIsFocused();
+  const { patient, encounters, overview, currentEncounter, loading, error, lastSynced, refresh } =
+    usePatient();
+  const pullRefresh = usePullRefresh(refresh);
+  const facility = useFacilityName();
+  const net = useNetworkStatus();
+  const [coraOpen, setCoraOpen] = useState(false);
+  if (loading && !overview) return <LoadingState message="Loading your hospital account…" />;
+  if (error && !overview) return <ErrorState message={error} onRetry={refresh} />;
+  const checklist = overview?.dischargeChecklist || [];
+  const firstOpen = checklist.findIndex((item) => !item.done);
+  const steps = checklist.map((item, i) => ({
+    title: item.label,
+    state: (item.done ? 'done' : i === firstOpen ? 'now' : 'todo') as 'done' | 'now' | 'todo',
+  }));
+  const owe = currentEncounter ? remainingBalance(currentEncounter) : 0;
+  const cleared = currentEncounter?.stage === 'CLEARED_GATE_PASS';
+  const readyToPay = owe > 0 && currentEncounter?.stage === 'PENDING_SETTLEMENT';
+  const actions = [
+    { label: 'Bill', icon: 'bill', onPress: () => navigation.navigate('Bill') },
+    { label: 'Coverage', icon: 'coverage', onPress: () => navigation.navigate('Coverage') },
+    { label: 'Payments', icon: 'payments', onPress: () => navigation.navigate('Payments') },
+    { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') },
+  ];
+  if (currentEncounter?.billState === 'DRAFT')
+    return (
+      <Screen safeBottom={false}>
+        <Text accessibilityRole="header" style={T.display}>
+          {patient?.fullName}
+        </Text>
+        <Text style={T.meta}>{facility}</Text>
+        <EmptyState
+          title="Bill not available yet"
+          detail="Your hospital is still preparing your statement. Charges, benefits and your balance appear after finalization."
+        />
+        <QuickActions actions={actions} />
+        <SectionHeader title="Your discharge journey" />
+        <Stepper steps={steps} />
+      </Screen>
+    );
   return (
-    <View
-      style={{ flexDirection: 'row', gap: 14 }}
-      accessible
-      accessibilityLabel={`${title}, ${state === 'done' ? 'done' : state === 'now' ? 'in progress' : 'upcoming'}`}
-    >
-      <View style={{ alignItems: 'center', width: 18 }}>
-        <View
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 9,
-            borderWidth: 2,
-            borderColor: color,
-            backgroundColor: state === 'done' ? C.brand : C.surface,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {state === 'now' ? (
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.brand }} />
-          ) : null}
-          {state === 'done' ? (
-            <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>✓</Text>
-          ) : null}
+    <Screen gutter={0} topSpacing={0} safeBottom={false} background={C.paper}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        contentContainerStyle={{ paddingBottom: currentEncounter ? 144 : 0 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={pullRefresh.refreshing}
+            onRefresh={pullRefresh.onRefresh}
+            tintColor={C.brand}
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={{ paddingHorizontal: 22, paddingTop: 24, paddingBottom: 20 }}>
+          <Text style={T.meta}>Good day,</Text>
+          <Text accessibilityRole="header" style={[T.display, { marginTop: 4, lineHeight: 41 }]}>
+            {patient?.fullName || firstName(patient?.fullName)}
+          </Text>
+          <Text style={[T.meta, { marginTop: 6 }]}>{facility}</Text>
         </View>
-        {!last ? (
+        <View style={{ paddingHorizontal: 22, paddingBottom: 28 }}>
           <View
-            style={{
-              flex: 1,
-              width: 2,
-              backgroundColor: state === 'done' ? C.brand : C.border,
-              minHeight: 18,
+            testID="financial-summary"
+            style={{ backgroundColor: C.surface, borderRadius: 22, padding: 22, marginBottom: 12 }}
+          >
+            <Text style={[T.meta, { fontWeight: '500' }]}>
+              {cleared
+                ? 'Discharge status'
+                : currentEncounter
+                  ? 'Remaining hospital balance'
+                  : 'Your hospital account'}
+            </Text>
+            <Text accessibilityRole="header" style={[T.display, { marginTop: 8, lineHeight: 42 }]}>
+              {cleared ? 'Cleared to leave' : currentEncounter ? formatPeso(owe) : 'No current statement'}
+            </Text>
+            {currentEncounter && (
+              <Text style={[T.meta, { marginTop: 8 }]}>
+                {cleared
+                  ? 'Your discharge pass is ready.'
+                  : 'After coverage, discounts and recorded payments.'}
+              </Text>
+            )}
+            <PrimaryButton
+              title={cleared ? 'View discharge pass' : readyToPay ? 'Pay balance' : 'Review bill'}
+              disabled={readyToPay && (!!error || !net.connected || loading)}
+              onPress={() =>
+                cleared
+                  ? navigation.navigate('Documents')
+                  : readyToPay
+                    ? navigation.navigate('PaymentFlow', { encounterId: currentEncounter!.uuid })
+                    : navigation.navigate('Bill')
+              }
+            />
+          </View>
+          <QuickActions actions={actions} />
+          <RefreshNotice error={error} onRetry={refresh} />
+          {!net.connected && (
+            <Text style={[T.meta, { color: C.warning }]} accessibilityRole="alert">
+              You’re offline. Information may be out of date.
+            </Text>
+          )}
+          {currentEncounter ? (
+            <>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                <Icon name="clock" size={17} color={C.brandDark} />
+                <Text style={[T.meta, { flex: 1 }]}>{describeDischargeStage(currentEncounter.stage)}</Text>
+              </View>
+              <Text style={[T.meta, { marginTop: 8 }]}>
+                {currentEncounter.roomBed ? `Room ${currentEncounter.roomBed} · ` : ''}Admitted{' '}
+                {formatDate(currentEncounter.admissionDate)}
+              </Text>
+              {(overview?.alerts?.length ?? 0) > 0 && (
+                <>
+                  <SectionHeader
+                    title="Latest from your hospital"
+                    action={
+                      <Pressable
+                        onPress={() => navigation.navigate('Notifications')}
+                        accessibilityRole="button"
+                        style={{ minHeight: 44, justifyContent: 'center' }}
+                      >
+                        <Text style={{ color: C.brand, fontWeight: '600' }}>All updates</Text>
+                      </Pressable>
+                    }
+                  />
+                  {(overview?.alerts || []).slice(0, 2).map((item, i) => (
+                    <View
+                      key={`${item.timestamp}-${i}`}
+                      style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
+                    >
+                      <Text style={T.cardTitle}>{item.title}</Text>
+                      <Text style={[T.meta, { marginTop: 4 }]}>{item.message}</Text>
+                      {item.timestamp && (
+                        <Text style={[T.meta, { marginTop: 4 }]}>{formatDateTime(item.timestamp)}</Text>
+                      )}
+                    </View>
+                  ))}
+                </>
+              )}
+              <SectionHeader title="Coverage applied to your bill" />
+              <Card flush>
+                <LedgerRow
+                  title="PhilHealth"
+                  sub={describeClaimStatus(currentEncounter.philhealth?.status || '').title}
+                  value={formatPeso(currentEncounter.waterfall.philhealthTotal)}
+                  onPress={() => navigation.navigate('Coverage')}
+                />
+                <LedgerRow
+                  title={hasHmo(currentEncounter) ? currentEncounter.hmo.providerName : 'No HMO on file'}
+                  sub={
+                    hasHmo(currentEncounter)
+                      ? describeHmoStatus(currentEncounter.hmo.finalLoaStatus).title
+                      : 'Contact billing to add coverage details'
+                  }
+                  value={formatPeso(currentEncounter.waterfall.hmoApprovedAmount)}
+                  onPress={() => navigation.navigate('Coverage')}
+                  last
+                />
+              </Card>
+              {steps.length > 0 && (
+                <>
+                  <Text accessibilityRole="header" style={[T.section, { marginTop: 24, marginBottom: 12 }]}>
+                    Your discharge journey
+                  </Text>
+                  <View style={{ paddingVertical: 8 }}>
+                    <Stepper steps={steps} />
+                  </View>
+                </>
+              )}
+              <Expandable title="How your bill adds up" subtitle="Charges, benefits, discounts and payments">
+                <Row
+                  label="Total hospital charges"
+                  value={formatPeso(currentEncounter.waterfall.grossTotal)}
+                />
+                <Row
+                  label="VAT exemption"
+                  value={`−${formatPeso(currentEncounter.waterfall.vatExemption)}`}
+                />
+                <Row
+                  label="Senior / PWD discount"
+                  value={`−${formatPeso(currentEncounter.waterfall.seniorPwdDiscount)}`}
+                />
+                <Row
+                  label="PhilHealth benefit"
+                  value={`−${formatPeso(currentEncounter.waterfall.philhealthTotal)}`}
+                />
+                <Row
+                  label="HMO benefit"
+                  value={`−${formatPeso(currentEncounter.waterfall.hmoApprovedAmount)}`}
+                />
+                <Row
+                  label="Patient responsibility"
+                  value={formatPeso(currentEncounter.waterfall.netPatientDue)}
+                />
+                <Row label="Remaining balance" value={formatPeso(owe)} bold />
+              </Expandable>
+            </>
+          ) : (
+            <EmptyState
+              title="No hospital stay yet"
+              detail="Your bill and discharge updates will appear when your hospital admission is linked."
+            />
+          )}
+          <SectionHeader title="Your records" />
+          <Card flush>
+            <LedgerRow
+              title="Insurance claims"
+              sub="Track benefits and review status"
+              onPress={() => navigation.navigate('Claims')}
+            />
+            <LedgerRow
+              title="Documents & receipts"
+              sub="Statements, payment plans and discharge passes"
+              onPress={() => navigation.navigate('Documents')}
+              last
+            />
+          </Card>
+          {encounters.length > 1 && (
+            <>
+              <SectionHeader title="Recent stays" />
+              <Card flush>
+                {encounters.slice(0, 3).map((enc, i, all) => (
+                  <LedgerRow
+                    key={enc.uuid}
+                    title={enc.encounterNumber}
+                    sub={`${formatDate(enc.admissionDate)} · ${enc.primaryDiagnosis || 'Hospital stay'}`}
+                    onPress={() => navigation.navigate('RecordDetail', { encounterId: enc.uuid })}
+                    last={i === all.length - 1}
+                  />
+                ))}
+              </Card>
+            </>
+          )}
+          {lastSynced && (
+            <Text style={[T.meta, { marginTop: 12 }]}>
+              Last updated {formatDateTime(lastSynced.toISOString())}
+            </Text>
+          )}
+        </View>
+      </ScrollView>
+      {currentEncounter && (
+        <View
+          testID="cora-dock"
+          pointerEvents="box-none"
+          style={{ position: 'absolute', right: 14, bottom: 4 }}
+        >
+          <CoraFloatingMascot
+            active={focused && !coraOpen}
+            onPress={() => {
+              setCoraOpen(true);
             }}
           />
-        ) : null}
-      </View>
-      <Text
-        style={[
-          T.row,
-          { paddingBottom: 18, marginTop: -1 },
-          state === 'now' && { fontWeight: '700' },
-          state === 'todo' && { color: C.faint },
-        ]}
-      >
-        {title}
-      </Text>
-    </View>
+        </View>
+      )}
+      <CoraAssistantModal
+        visible={coraOpen}
+        onClose={() => setCoraOpen(false)}
+        encounter={currentEncounter}
+        navigation={navigation}
+      />
+    </Screen>
   );
 }
