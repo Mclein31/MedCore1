@@ -11,7 +11,9 @@ Newest first. Every durable `[DECISION]` from the former 2,540-line `PROJECT_CON
 - [DECISION] Rate limits live in Postgres (`rate_limit_buckets`), not Workers bindings, so they hold across regions and on Node.
 - [DECISION] Official receipt, bill, claim, note and encounter numbers are gap-free per facility and year (`document_counters`); claim and note numbers are unique per facility (a global unique index was a multi-tenant bug caught by tests).
 - [DECISION] Online patient payment is `PATIENT_ONLINE_PAYMENTS=disabled|simulated` (default disabled); simulated payments are flagged `is_simulated` and shown as such to staff only.
-- [DECISION] AI features (Cora, OCR, claims scrubber, appeals, briefing) and the Expo mobile app are not in v2 yet; they are follow-ups on top of the v2 API.
+- [DECISION] AI features (Cora, OCR, claims scrubber, appeals, briefing) are not in v2 yet; they are follow-ups on top of the v2 API.
+- [DECISION] The v2 mobile app (`apps/mobile`) keeps its session only as a bearer token in expo-secure-store (this device only, unlocked only); never AsyncStorage (lint-enforced). It validates forms with the same `@medcore/domain` contracts as the API, and the API client copies only whitelisted payment fields so no full card number can ever be sent.
+- [DECISION] The staff console and patient portal use the shield badge (`logo/MedCore_Badge_Logo.png`) as the logo and favicon, matching the mobile app.
 
 ## 2026-10-16: Security audit (proposed, not implemented)
 - [DECISION] Adopt AdvanCare ADV-AUTH-001 email OTP (Gmail SMTP App Password over `cloudflare:sockets`) for patients, sent to a hospital-recorded `patients.email`. Staff move to AdvanCare-style sessions and CSRF, and later TOTP. Migration `0006_security_hardening.sql` is drafted in the audit report. Audit: `docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`. Phase plan is in `TODO.md`.

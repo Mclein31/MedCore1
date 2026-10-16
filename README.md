@@ -4,16 +4,17 @@ Financial clearance and patient billing middleware for Philippine hospitals. Med
 deduction waterfall to the centavo, runs discharge clearance as a strict state machine, and gives patients a
 plain-language bill they can question, pay, or put on a 0% interest promissory note (RA 9439).
 
-This branch (`rebuild/medcore-v2`) is a ground-up rewrite. The previous implementation, including the Expo
-mobile app and the AI features, remains on `main`.
+This branch (`rebuild/medcore-v2`) is a ground-up rewrite. The previous implementation, including the AI
+features, remains on `main`.
 
 ## Layout
 
-| Path              | What it is                                                                                         |
-| ----------------- | -------------------------------------------------------------------------------------------------- |
+| Path              | What it is                                                                                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `packages/domain` | Pure business rules shared by API and web: money, waterfall, promissory schedules, discharge state machine, permission matrix, request contracts. No I/O. |
-| `apps/api`        | Hono + Drizzle + PostgreSQL. Runs on Node (`src/node.ts`) and Cloudflare Workers (`src/worker.ts`). |
-| `apps/web`        | React 19 + Vite + Tailwind 4. Staff console at `/staff`, patient portal at `/portal`.               |
+| `apps/api`        | Hono + Drizzle + PostgreSQL. Runs on Node (`src/node.ts`) and Cloudflare Workers (`src/worker.ts`).                                                       |
+| `apps/web`        | React 19 + Vite + Tailwind 4. Staff console at `/staff`, patient portal at `/portal`.                                                                     |
+| `apps/mobile`     | Expo (SDK 57) patient app: bill, coverage, payments, questions, exit pass. Bearer token in the OS keychain.                                               |
 
 ## Run it locally
 
@@ -31,6 +32,18 @@ npm run dev                   # API on :8787, web on http://localhost:5173
 Staff sign in with `cfo@`, `billing@`, `claims@`, `hmo@`, `dr.cruz@`, `lobby@` … `stjude.example.test` and
 `SEED_PASSWORD`, then enroll an authenticator app. Patients sign in at `/portal` with their MRN and date of
 birth; in development the 6-digit code is printed in the API log.
+
+## Patient mobile app
+
+```bash
+npm run dev -w @medcore/api                 # API on :8787 (PORT=… to move it)
+npm run ios -w @medcore/mobile              # Expo Go in the iOS simulator
+```
+
+The app calls `http://localhost:8787` (`10.0.2.2` on the Android emulator). Set `EXPO_PUBLIC_API_PORT` if the
+API runs on another port, or `EXPO_PUBLIC_API_URL` for a phone on your network (start the API with
+`HOST=0.0.0.0`). Sign in with a seeded MRN and date of birth; the code is printed in the API log. Online payment
+needs `PATIENT_ONLINE_PAYMENTS=simulated`.
 
 ## Checks
 

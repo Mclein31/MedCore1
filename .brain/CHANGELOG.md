@@ -2,6 +2,12 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
+## [2026-10-16] v2 patient mobile app (branch `rebuild/mobile-v2`)
+- `apps/mobile` (Expo 57, RN 0.86.3, React 19.2.3) talks only to `/api/v1/auth/patient/*` and `/api/v1/patient/stays/*`. Tabs: Home, Bill, Coverage, Payments, Profile; stack: Documents, Pay, Payment plan, Question a charge. No AI screens.
+- `src/lib/apiClient.ts` (bearer token, CSRF header on anonymous sign-in calls, Idempotency-Key on payments, card = brand + last 4 only, 401 clears the session) and `src/lib/tokenStore.ts` (expo-secure-store `WHEN_UNLOCKED_THIS_DEVICE_ONLY`, serialized writes so sign-out always wins). Vitest: 25 tests.
+- Monorepo quirk: web hoists React 19.3 to the root; `metro.config.js` and `tsconfig.json` pin React to the app's own 19.2.3.
+- Dashboard (`apps/web`) logo and favicon switched to the shield badge from `logo/MedCore_Badge_Logo.png` (user request).
+
 ## [2026-10-16] v2 rebuild on branch `rebuild/medcore-v2`
 - Fresh monorepo: `packages/domain`, `apps/api`, `apps/web`; old apps removed on that branch only. README.md and DEPLOY.md describe setup, security model and deployment. CI in `.github/workflows/ci.yml` (typecheck, lint, prettier, tests with a Postgres service, build, `npm audit --omit=dev`).
 - Migrations `apps/api/drizzle/0000_init.sql` (generated) and `0001_hardening.sql` (immutability/no-delete triggers). Local dev DB `medcore_v2_dev`; tests create and drop `medcore_v2_test`.

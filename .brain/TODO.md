@@ -5,7 +5,8 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 ## 0. v2 rebuild (`rebuild/medcore-v2`)
 - ✅ (2026-10-16) Domain package, hardened API, staff console and patient portal; 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
 - 👤 Review the branch and decide whether it replaces `main` (sections A–C below describe `main`).
-- ⬜ Rebuild the mobile app against the v2 API (`/api/v1/auth/patient/code/*`, `/api/v1/patient/stays/*`, bearer token via `client: "mobile"`); the old app calls ~20 endpoints that no longer exist.
+- ✅ (2026-10-16) Mobile app rebuilt as `apps/mobile` on branch `rebuild/mobile-v2` (cut from `rebuild/medcore-v2`, not merged): code sign-in, bill, question a charge, simulated card payment, payment plan, exit pass QR/PIN, logout. Verified in the iOS simulator (Expo Go) against the local v2 API; 25 tests for the API client and token storage.
+- ⬜ Mobile follow-ups: EAS dev build and signed builds, physical-device checks (keychain, Dynamic Type, VoiceOver), push notifications when a bill is ready, refund display once the API has refunds.
 - ⬜ Port the AI layer (PHI scrubber, Cora, OCR, claims scrubber, appeals, briefing) onto v2 with per-user rate limits and input caps.
 - ⬜ Deploy: Neon branch + Hyperdrive id + secrets in `apps/api/wrangler.jsonc`, API host in `apps/web/vercel.json` (see `DEPLOY.md`). Not deployed anywhere yet.
 - ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet). Promissory installment collection tracking. Official PhilHealth eSOA DTD conformance still unproven.
