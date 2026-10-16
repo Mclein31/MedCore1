@@ -1,3 +1,4 @@
+import { seedPassword } from './seedPassword';
 import app from '../apps/server/src/index';
 import { db } from '../apps/server/src/db';
 import { payments, paymentReceipts, systemAuditLogs, beds } from '../apps/server/src/db/schema';
@@ -33,7 +34,7 @@ async function runApiTests() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'elena.santos@stjude.ph',
-      password: 'HospitalRCM2026!',
+      password: seedPassword(),
       facilityCode: 'SJMC-MNL'
     })
   });
@@ -116,7 +117,7 @@ async function runApiTests() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'arthur.delgado@stjude.ph',
-      password: 'HospitalRCM2026!',
+      password: seedPassword(),
       facilityCode: 'SJMC-MNL'
     })
   });
@@ -343,7 +344,7 @@ async function runApiTests() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'bert.aquino@stjude.ph',
-      password: 'HospitalRCM2026!',
+      password: seedPassword(),
       facilityCode: 'SJMC-MNL'
     })
   });

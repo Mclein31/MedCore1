@@ -1,4 +1,5 @@
 // Sandbox-only visual QA using actual dashboard components and local PostgreSQL.
+import { seedPassword } from './seedPassword';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -34,7 +35,7 @@ try {
  const page=await context.newPage();page.on('pageerror',(error: Error)=>errors.push(error.message));
  await page.goto(process.env.MEDCORE_DASHBOARD_UI_URL || 'http://127.0.0.1:5175',{waitUntil:'networkidle'});
  await page.getByRole('textbox').first().fill('elena.santos@stjude.ph');
- await page.locator('input[type=password]').fill('HospitalRCM2026!');
+ await page.locator('input[type=password]').fill(seedPassword());
  await page.getByRole('button',{name:/Sign in/i}).click();
  await page.getByRole('button',{name:'Discharge Clearance',exact:true}).click();
  await page.getByRole('tab',{name:'6-Stage Pipeline',exact:true}).click();

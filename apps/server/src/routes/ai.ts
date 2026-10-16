@@ -15,9 +15,22 @@ import { executiveBriefingService } from '../services/ai/executiveBriefingServic
 import { ocrService } from '../services/ai/ocrService';
 import { db } from '../db';
 import { aiAuditLogs } from '../db/schema';
+import { getClientIp } from '../utils/clientIp';
 
 const aiApp = new Hono();
 aiApp.use('*', (c, next) => observeAiCache(outcome => c.header('X-AI-Cache', outcome), next));
+// Gemini calls cost real money, so each caller gets AI_LIMITER's budget (10 per 60 s on Workers).
+// The binding is absent in the Node standalone server, where no limit applies.
+type RateLimiter = { limit(options: { key: string }): Promise<{ success: boolean }> };
+aiApp.use('*', async (c, next) => {
+  const limiter = (c.env as any)?.AI_LIMITER as RateLimiter | undefined;
+  if (!limiter || c.req.method !== 'POST') return next();
+  const user = c.get('user');
+  const key = user ? `user:${user.id}` : `ip:${getClientIp(c)}`;
+  const { success } = await limiter.limit({ key });
+  if (!success) return apiError(c, 429, 'AI_RATE_LIMITED', 'Too many AI requests. Please wait a minute and try again.');
+  return next();
+});
 const STAFF_AI_ROLES = ['BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HMO_COORDINATOR', 'HOSPITAL_CFO', 'ATTENDING_PHYSICIAN'];
 function inferenceError(c: any, err: unknown, code: string, message: string) {
   if (err instanceof AiInferenceError) {
@@ -143,7 +156,7 @@ aiApp.post('/cora/chat', zValidator('json', coraChatSchema), async (c) => {
 // 2. Clinical Claims Forensic Scrubber (Pre-Flight Audit)
 // ----------------------------------------------------------------------
 const scrubberSchema = z.object({
-  encounterId: z.string().min(1, 'Encounter ID is required'),
+  encounterId: z.string().min(1, 'Encounter ID is required').max(100),
   forceEscalation: z.boolean().optional().default(false)
 });
 
@@ -191,14 +204,14 @@ aiApp.post(
 // 3. Automated HMO Medical Necessity Appeal Drafter
 // ----------------------------------------------------------------------
 const hmoAppealSchema = z.object({
-  encounterId: z.string().min(1, 'Encounter ID is required'),
-  deniedItemDescription: z.string().optional(),
-  deniedItem: z.string().optional(),
+  encounterId: z.string().min(1, 'Encounter ID is required').max(100),
+  deniedItemDescription: z.string().max(1000).optional(),
+  deniedItem: z.string().max(300).optional(),
   deniedAmount: z.number().finite().nonnegative().optional().default(0),
-  hmoProviderName: z.string().optional(),
-  hmoId: z.string().optional(),
+  hmoProviderName: z.string().max(200).optional(),
+  hmoId: z.string().max(100).optional(),
   forceRefresh: z.boolean().optional().default(false),
-  justificationNotes: z.string().optional()
+  justificationNotes: z.string().max(4000).optional()
 });
 
 aiApp.post(
@@ -290,8 +303,9 @@ aiApp.post(
 // 5. Multimodal Government ID & Benefit Card Scanner (OCR)
 // ----------------------------------------------------------------------
 const ocrSchema = z.object({
-  imageBase64: z.string().min(1, 'Image base64 data is required'),
-  cardCategory: z.string().optional()
+  // About 6 MB of base64, roughly a 4.5 MB image.
+  imageBase64: z.string().min(1, 'Image base64 data is required').max(6 * 1024 * 1024, 'Image is too large. Use a photo under 4.5 MB.'),
+  cardCategory: z.string().max(50).optional()
 });
 
 aiApp.post('/ocr/extract-card', zValidator('json', ocrSchema), async (c) => {

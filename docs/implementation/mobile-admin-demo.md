@@ -4,7 +4,7 @@ The mobile app supports one explicitly provisioned administrator for the univers
 
 ## Current seeded credentials — October 10, 2026
 
-The standard `scripts/seedPostgres.ts` now creates the reserved demo account itself. After a standard reseed, use `mobile.admin.demo@example.test` with `HospitalRCM2026!` at facility `SJMC-MNL`. Reseeding replaces the previously provisioned password. The older generated credential in `/private/tmp/medcore-mobile-admin-login.json` can therefore be stale; the provisioning utility does not reset existing passwords. On October 10 the saved generated credential no longer matched the local database, while the seeded password returned HTTP 200 and the demo directory returned 250 patients. This verification applies to the local backend; hosted credentials are separate.
+The standard `scripts/seedPostgres.ts` now creates the reserved demo account itself. After a standard reseed, use `mobile.admin.demo@example.test` with the password set via `SEED_PASSWORD` at facility `SJMC-MNL`. The demo capability is only active when the server has `MOBILE_DEMO_ENABLED=true`. Reseeding replaces the previously provisioned password. The older generated credential in `/private/tmp/medcore-mobile-admin-login.json` can therefore be stale; the provisioning utility does not reset existing passwords. On October 10 the saved generated credential no longer matched the local database, while the seeded password returned HTTP 200 and the demo directory returned 250 patients. This verification applies to the local backend; hosted credentials are separate.
 
 ## Local setup
 
