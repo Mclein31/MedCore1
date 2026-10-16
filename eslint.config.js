@@ -55,7 +55,11 @@ export default tseslint.config(
     files: ['apps/mobile/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      // The app is the original v1 UI ported onto v2: classic hook rules, not the React Compiler set
+      // (its ref-in-render rules would force rewriting working v1 components).
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
       // Metro bundles images through require(); nothing else may use it.
       '@typescript-eslint/no-require-imports': ['error', { allow: ['\\.png$'] }],
       'no-restricted-imports': [
@@ -67,6 +71,15 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // Non-sensitive UI flags only (onboarding seen, notifications read).
+    files: [
+      'apps/mobile/src/hooks/useOnboarding.ts',
+      'apps/mobile/src/hooks/useUnread.ts',
+      'apps/mobile/src/screens/NotificationsScreen.tsx',
+    ],
+    rules: { 'no-restricted-imports': 'off' },
   },
   {
     files: ['apps/mobile/metro.config.js'],

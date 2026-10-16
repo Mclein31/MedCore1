@@ -1,186 +1,140 @@
-import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
-import type { CompositeScreenProps } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Pressable, Text, View } from 'react-native';
-import { day, humanize, peso } from '../lib/format';
-import type { RootParams, TabParams } from '../navigation';
-import { BillSummary } from '../ui/BillSummary';
-import { CreditCard, FileText, HelpCircle, ShieldCheck } from '../ui/icons';
-import { Badge, Button, QuickActions, Screen, SectionHeader } from '../ui/kit';
-import { C, R, S, T } from '../ui/theme';
-import { WithStay } from './common';
-
-type Props = CompositeScreenProps<
-  BottomTabScreenProps<TabParams, 'Bill'>,
-  NativeStackScreenProps<RootParams>
->;
-
-export function BillScreen({ navigation }: Props) {
+import { useState } from 'react';
+import { usePullRefresh } from '../hooks/usePullRefresh';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { usePatient } from '../hooks/usePatient';
+import { formatDate, formatPeso, remainingBalance } from '../lib/format';
+import { CoraAvatar } from '../components/CoraAvatar';
+import BillBreakdown from '../components/BillBreakdown';
+import QuickActions from '../components/QuickActions';
+import { EXPLAIN_MY_BILL_QUERY } from '../lib/coraConversation';
+import { CoraAssistantModal } from '../components/CoraAssistantModal';
+import {
+  ActionButton,
+  C,
+  EmptyState,
+  ErrorState,
+  Hero,
+  LoadingState,
+  PrimaryButton,
+  RefreshNotice,
+  Screen,
+  StatusBadge,
+  T,
+} from '../components/ui';
+export default function BillScreen({ navigation }: { navigation: any }) {
+  const { currentEncounter, loading, error, refresh } = usePatient();
+  const pullRefresh = usePullRefresh(refresh);
+  const [coraOpen, setCoraOpen] = useState(false);
+  if (loading && !currentEncounter) return <LoadingState message="Loading your bill…" />;
+  if (error && !currentEncounter) return <ErrorState message={error} onRetry={refresh} />;
+  if (!currentEncounter)
+    return (
+      <Screen safeBottom={false}>
+        <EmptyState
+          title="No bill yet"
+          detail="Your itemized bill will appear once hospital charges are posted."
+        />
+      </Screen>
+    );
+  if (currentEncounter.billState === 'DRAFT')
+    return (
+      <Screen safeBottom={false}>
+        <EmptyState
+          title="Bill not available yet"
+          detail="Your hospital is still preparing your statement. Charges and benefits appear after the bill is finalized."
+        />
+      </Screen>
+    );
+  const enc = currentEncounter;
+  const balance = remainingBalance(enc);
   return (
-    <WithStay>
-      {({ row, d, refreshing, refresh }) => {
-        const l = d.ledger!;
-        const all = d.charges ?? [];
-        const charges = all.filter((c) => c.coverage !== 'WAIVED');
-        const removed = all.filter((c) => c.coverage === 'WAIVED');
-        const categories = [...new Set(charges.map((c) => c.category))];
-        const open = d.stay.stage !== 'CLEARED';
-        const canPay = Boolean(d.options?.onlinePayments) && l.balanceCents > 0 && open;
-        return (
-          <Screen refreshing={refreshing} onRefresh={refresh} background={C.surface} gutter={0} gap={0}>
-            {/* v1 mint band with the teal bill card and shortcuts. */}
-            <View
-              style={{
-                backgroundColor: C.brandSoft,
-                marginTop: -20,
-                paddingTop: 16,
-                paddingHorizontal: S.gutter,
-                paddingBottom: 8,
-                borderBottomLeftRadius: 28,
-                borderBottomRightRadius: 28,
-              }}
-            >
-              <View style={{ backgroundColor: C.brand, borderRadius: R.hero, padding: 20, gap: 4 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
-                    Your hospital bill
-                  </Text>
-                  <Text style={T.heroSub}>{day(d.stay.admittedAt)}</Text>
-                </View>
-                <Text style={[T.heroSub, { marginTop: 12, fontWeight: '600' }]}>Remaining balance</Text>
-                <Text style={T.heroFigure}>{peso(l.balanceCents)}</Text>
-              </View>
-              <View style={{ marginTop: 8 }}>
-                <QuickActions
-                  actions={[
-                    { label: 'Payments', icon: CreditCard, onPress: () => navigation.navigate('Payments') },
-                    { label: 'Coverage', icon: ShieldCheck, onPress: () => navigation.navigate('Coverage') },
-                    { label: 'Documents', icon: FileText, onPress: () => navigation.navigate('Documents') },
-                  ]}
-                />
-              </View>
-            </View>
-
-            <View style={{ paddingHorizontal: S.gutter, paddingTop: 20, gap: S.md }}>
-              <Text style={T.meta}>
-                {d.stay.encounterNumber} · Your responsibility before payments: {peso(l.netPatientDueCents)}
-              </Text>
-              <Badge
-                tone={d.stay.billState === 'SETTLED' ? 'good' : 'brand'}
-                label={d.stay.billState === 'SETTLED' ? 'Bill settled' : 'Final bill ready'}
-              />
-              {canPay ? (
-                <Button
-                  title="Continue to Payment"
-                  onPress={() => navigation.navigate('Pay', { stayId: row.id })}
-                />
-              ) : null}
-
-              <SectionHeader title="Your bill breakdown" />
-              {l.vatExemptionCents + l.seniorPwdDiscountCents > 0 ? (
-                <Text style={T.meta}>Senior citizen / PWD adjustments are shown below.</Text>
-              ) : null}
-              <BillSummary l={l} />
-
-              <SectionHeader title="What you were charged for" />
-              <Text style={T.meta}>Something look wrong? Question a charge and billing will review it.</Text>
-              {categories.map((cat) => (
-                <View key={cat} style={{ marginTop: S.sm }}>
-                  <Text style={[T.small, { fontWeight: '700', letterSpacing: 0.5 }]}>
-                    {humanize(cat).toUpperCase()}
-                  </Text>
-                  {charges
-                    .filter((c) => c.category === cat)
-                    .map((c) => (
-                      <View
-                        key={c.id}
-                        style={{
-                          paddingVertical: 13,
-                          borderBottomWidth: 1,
-                          borderBottomColor: C.border,
-                          gap: 4,
-                        }}
-                      >
-                        <View style={{ flexDirection: 'row', gap: S.md }}>
-                          <Text style={[T.row, { flex: 1, fontWeight: '500' }]}>
-                            {c.description}
-                            {c.quantity > 1 ? <Text style={T.meta}> × {c.quantity}</Text> : null}
-                          </Text>
-                          <Text style={T.money}>{peso(c.grossCents)}</Text>
-                        </View>
-                        {c.explainer ? <Text style={T.meta}>{c.explainer}</Text> : null}
-                        <View
-                          style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm, alignItems: 'center' }}
-                        >
-                          {c.coverage === 'EXCLUDED' ? (
-                            <Badge tone="warn" label="Not covered by insurers" />
-                          ) : null}
-                          {c.isDisputed ? <Badge tone="info" label="Under review" /> : null}
-                          {!c.isDisputed && open ? (
-                            <Pressable
-                              onPress={() =>
-                                navigation.navigate('QuestionCharge', { stayId: row.id, chargeId: c.id })
-                              }
-                              accessibilityRole="button"
-                              accessibilityLabel={`Question ${c.description}`}
-                              hitSlop={8}
-                              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 32 }}
-                            >
-                              <HelpCircle color={C.brandDark} size={16} />
-                              <Text style={{ color: C.brandDark, fontWeight: '600', fontSize: 14 }}>
-                                Question this charge
-                              </Text>
-                            </Pressable>
-                          ) : null}
-                        </View>
-                      </View>
-                    ))}
-                </View>
-              ))}
-              {removed.length > 0 ? (
-                <Text style={T.meta}>
-                  Removed after review:{' '}
-                  {removed.map((c) => `${c.description} (${peso(c.grossCents)})`).join(', ')}.
-                </Text>
-              ) : null}
-
-              {(d.disputes?.length ?? 0) > 0 ? (
-                <>
-                  <SectionHeader title="Your questions" />
-                  {d.disputes!.map((x) => {
-                    const charge = all.find((c) => c.id === x.chargeId);
-                    return (
-                      <View
-                        key={x.id}
-                        style={{
-                          paddingVertical: S.sm,
-                          gap: 6,
-                          borderBottomWidth: 1,
-                          borderBottomColor: C.border,
-                        }}
-                      >
-                        <Text style={T.cardTitle}>{charge?.description ?? 'Charge'}</Text>
-                        <Badge
-                          tone={x.status === 'OPEN' ? 'info' : x.status === 'WAIVED' ? 'good' : 'neutral'}
-                          label={
-                            x.status === 'OPEN'
-                              ? 'Under review'
-                              : x.status === 'WAIVED'
-                                ? 'Removed from bill'
-                                : 'Charge confirmed'
-                          }
-                        />
-                        <Text style={T.meta}>{x.reason}</Text>
-                        {x.resolutionNote ? <Text style={T.meta}>Answer: {x.resolutionNote}</Text> : null}
-                      </View>
-                    );
-                  })}
-                </>
-              ) : null}
-            </View>
-          </Screen>
-        );
-      }}
-    </WithStay>
+    <Screen gutter={0} topSpacing={0} safeBottom={false}>
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 28 }}
+        refreshControl={
+          <RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={{
+            backgroundColor: C.brandSoft,
+            borderBottomLeftRadius: 24,
+            borderBottomRightRadius: 24,
+            padding: 22,
+            paddingTop: 16,
+            paddingBottom: 36,
+          }}
+        >
+          <View style={{ marginBottom: 24 }}>
+            <Hero
+              eyebrow="Your hospital bill"
+              amountLabel="Remaining balance"
+              figure={formatPeso(balance)}
+              trailing={<Text style={[T.meta, { color: C.surface }]}>{formatDate(enc.admissionDate)}</Text>}
+            />
+          </View>
+          <QuickActions
+            actions={[
+              { label: 'Payments', icon: 'payments', onPress: () => navigation.navigate('Payments') },
+              { label: 'Coverage', icon: 'coverage', onPress: () => navigation.navigate('Coverage') },
+              { label: 'Documents', icon: 'file', onPress: () => navigation.navigate('Documents') },
+            ]}
+          />
+        </View>
+        <View style={{ paddingHorizontal: 22, paddingTop: 16 }}>
+          <RefreshNotice error={error} onRetry={refresh} />
+          <Text style={T.meta}>
+            {enc.encounterNumber} · Your responsibility before payments:{' '}
+            {formatPeso(enc.waterfall.netPatientDue)}
+          </Text>
+          <View style={{ marginTop: 12 }}>
+            <StatusBadge
+              tone={enc.billState === 'PAID' ? 'ok' : enc.stage === 'PENDING_SETTLEMENT' ? 'info' : 'warn'}
+              text={
+                enc.billState === 'PAID'
+                  ? 'Paid'
+                  : enc.stage === 'PENDING_SETTLEMENT'
+                    ? 'Final bill ready'
+                    : 'Bill under review'
+              }
+            />
+          </View>
+          {balance > 0 && enc.stage === 'PENDING_SETTLEMENT' && (
+            <PrimaryButton
+              title="Continue to Payment"
+              disabled={!!error || loading}
+              onPress={() =>
+                navigation.navigate('PaymentFlow', { encounterId: enc.uuid, startAtMethod: true })
+              }
+            />
+          )}
+          {enc.stage === 'CLEARED_GATE_PASS' && (
+            <PrimaryButton title="View Digital Gate Pass" onPress={() => navigation.navigate('Documents')} />
+          )}
+          <View style={{ marginTop: 14, marginBottom: 10 }}>
+            <ActionButton
+              title="Explain My Bill with Cora AI"
+              onPress={() => setCoraOpen(true)}
+              icon={<CoraAvatar size={22} />}
+            />
+          </View>
+          <BillBreakdown encounter={enc} />
+        </View>
+      </ScrollView>
+      <CoraAssistantModal
+        visible={coraOpen}
+        onClose={() => setCoraOpen(false)}
+        encounter={enc}
+        navigation={navigation}
+        initialQuery={EXPLAIN_MY_BILL_QUERY}
+        autoSendInitialQuery
+        initialMode="WHY_DO_I_OWE"
+      />
+    </Screen>
   );
 }

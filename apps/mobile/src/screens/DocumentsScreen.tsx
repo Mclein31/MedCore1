@@ -1,80 +1,151 @@
-import { Text, View } from 'react-native';
-import { peso, railLabel, stageLabel, when } from '../lib/format';
-import { ExitPass } from '../ui/ExitPass';
-import { LinkRow, Screen, SectionHeader } from '../ui/kit';
-import { C, S, T } from '../ui/theme';
-import { WithStay } from './common';
+import { usePullRefresh } from '../hooks/usePullRefresh';
+import { useCallback, useMemo } from 'react';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { usePatient } from '../hooks/usePatient';
+import { useResource } from '../hooks/useResource';
+import { readSavedPass } from '../lib/gatePassCache';
+import { paymentAccountNamespace } from '../lib/mobileAccess';
+import { ApiError } from '../lib/api';
+import { useAuth } from '../lib/auth';
+import { createDocumentsApi } from '../services/documentsApi';
+import { formatDateTime, formatPeso } from '../lib/format';
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  LedgerRow,
+  LoadingState,
+  RefreshNotice,
+  Screen,
+  SectionHeader,
+  T,
+} from '../components/ui';
+import type { PatientDocument } from '../types/domain';
 
-export function DocumentsScreen() {
+function Group({
+  title,
+  docs,
+  onOpen,
+}: {
+  title: string;
+  docs: PatientDocument[];
+  onOpen: (d: PatientDocument) => void;
+}) {
+  if (docs.length === 0) return null;
   return (
-    <WithStay requireBill={false}>
-      {({ d, refreshing, refresh }) => {
-        const receipts = d.payments ?? [];
-        const notes = d.promissoryNotes ?? [];
-        const statements = d.stay.billReady && d.ledger ? 1 : 0;
-        return (
-          <Screen refreshing={refreshing} onRefresh={refresh} background={C.surface} gap={S.md}>
-            <Text style={T.meta}>Statements, receipts and clearance documents, organized by type.</Text>
+    <View>
+      <SectionHeader title={title} />
+      <Card flush>
+        {docs.map((d, i) => (
+          <LedgerRow
+            key={`${d.kind}-${d.id}`}
+            title={d.title}
+            sub={`${d.encounterNumber}${d.issuedAt ? ` · ${formatDateTime(d.issuedAt)}` : ''}${d.status ? ` · ${d.status === 'ACTIVE_READY_FOR_EXIT' ? 'Ready for exit' : d.status}` : ''}`}
+            value={d.amount !== null && d.amount !== undefined ? formatPeso(d.amount) : undefined}
+            onPress={() => onOpen(d)}
+            last={i === docs.length - 1}
+          />
+        ))}
+      </Card>
+    </View>
+  );
+}
 
-            <SectionHeader title="Discharge pass" />
-            {d.gatePass ? (
-              <ExitPass pass={d.gatePass} />
-            ) : (
-              <Text style={T.meta}>
-                Your exit pass appears here once the hospital clears you to go home. Current step:{' '}
-                {stageLabel(d.stay.stage).toLowerCase()}.
-              </Text>
-            )}
+export default function DocumentsScreen({ navigation }: { navigation: any }) {
+  const { encounters } = usePatient();
+  const { client, user, selectedPatientId } = useAuth();
+  const load = useCallback(async () => {
+    try {
+      return await createDocumentsApi(client).list();
+    } catch (error) {
+      if (
+        !(error instanceof ApiError) ||
+        error.status !== 0 ||
+        !['NETWORK_ERROR', 'TIMEOUT'].includes(error.code || '') ||
+        !user
+      )
+        throw error;
+      const saved = await readSavedPass(
+        user.id,
+        paymentAccountNamespace(user, selectedPatientId || undefined),
+      );
+      if (!saved) throw error;
+      return {
+        items: [
+          {
+            kind: 'GATE_PASS',
+            id: saved.pass.passNumber,
+            title: 'Saved discharge pass (offline)',
+            encounterNumber: saved.encounterNumber,
+            status: saved.pass.status,
+            issuedAt: saved.pass.issuedAt,
+          },
+        ],
+        total: 1,
+        uploadSupported: false,
+      };
+    }
+  }, [client, user, selectedPatientId]);
+  const { data, loading, error, refresh: loadList } = useResource(load, 5000);
+  const pullRefresh = usePullRefresh(loadList);
+  const docs = data?.items || [];
 
-            <SectionHeader title={`Statements · ${statements}`} />
-            {statements ? (
-              <LinkRow
-                title="Statement of account"
-                subtitle={`${d.stay.billNumber ?? d.stay.encounterNumber} · balance ${peso(d.ledger!.balanceCents)}`}
-                last
-              />
-            ) : (
-              <Text style={T.meta}>Your statement appears here once the bill is finalized.</Text>
-            )}
+  const groups = useMemo(
+    () => ({
+      statements: docs.filter((d) => d.kind === 'STATEMENT'),
+      receipts: docs.filter((d) => d.kind === 'RECEIPT'),
+      clearance: docs.filter((d) => d.kind === 'GATE_PASS' || d.kind === 'PROMISSORY_NOTE'),
+      other: docs.filter((d) => !['STATEMENT', 'RECEIPT', 'GATE_PASS', 'PROMISSORY_NOTE'].includes(d.kind)),
+    }),
+    [docs],
+  );
 
-            <SectionHeader title={`Receipts · ${receipts.length}`} />
-            {receipts.length === 0 ? <Text style={T.meta}>No official receipts yet.</Text> : null}
-            <View>
-              {receipts.map((p, i) => (
-                <LinkRow
-                  key={p.reference}
-                  title={p.officialReceiptNumber}
-                  subtitle={`${railLabel(p.rail)} · ${when(p.createdAt)}`}
-                  value={peso(p.amountCents)}
-                  last={i === receipts.length - 1}
-                />
-              ))}
-            </View>
+  function openDocument(doc: PatientDocument) {
+    const encounter = encounters.find((item) => item.encounterNumber === doc.encounterNumber);
+    navigation.navigate('RecordDetail', {
+      encounterId: encounter?.uuid || doc.encounterNumber,
+      documentKind: doc.kind,
+      documentId: doc.id,
+    });
+  }
 
-            {notes.length > 0 ? (
-              <>
-                <SectionHeader title="Payment plans" />
-                <View>
-                  {notes.map((n, i) => (
-                    <LinkRow
-                      key={n.noteNumber}
-                      title={n.noteNumber}
-                      subtitle={`${n.months} months, 0% interest · signed ${when(n.signedAt)}`}
-                      value={peso(n.principalCents)}
-                      last={i === notes.length - 1}
-                    />
-                  ))}
-                </View>
-              </>
-            ) : null}
+  if (loading && !data) return <LoadingState message="Loading your documents…" />;
+  if (error && !data) return <ErrorState message={error!} onRetry={loadList} />;
 
-            <Text style={[T.meta, { marginTop: S.md }]}>
-              Document upload from the phone is not supported yet. To submit papers, please visit the hospital
-              billing desk.
-            </Text>
-          </Screen>
-        );
-      }}
-    </WithStay>
+  return (
+    <Screen>
+      <ScrollView
+        contentInsetAdjustmentBehavior="never"
+        automaticallyAdjustContentInsets={false}
+        refreshControl={
+          <RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />
+        }
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <RefreshNotice error={error} onRetry={loadList} />
+        <Text style={[T.meta, { marginTop: 8 }]}>
+          Statements, receipts and clearance documents, organized by type.
+        </Text>
+        {docs.length === 0 && (
+          <EmptyState
+            title="No documents yet"
+            detail="Statements, receipts, and discharge papers will appear here."
+          />
+        )}
+        <Group
+          title={`Statements · ${groups.statements.length}`}
+          docs={groups.statements}
+          onOpen={openDocument}
+        />
+        <Group title={`Receipts · ${groups.receipts.length}`} docs={groups.receipts} onOpen={openDocument} />
+        <Group title="Discharge & payment plans" docs={groups.clearance} onOpen={openDocument} />
+        <Group title="Other papers" docs={groups.other} onOpen={openDocument} />
+        <Text style={[T.meta, { marginVertical: 14 }]}>
+          Tap a document to view its hospital record and discharge pass details. Document upload from the
+          phone is not yet supported — to submit papers, please visit the hospital billing desk.
+        </Text>
+      </ScrollView>
+    </Screen>
   );
 }
