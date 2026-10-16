@@ -1,6 +1,7 @@
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import {
   forwardRef,
+  type ComponentType,
   useEffect,
   useId,
   useRef,
@@ -17,10 +18,11 @@ export function cx(...parts: (string | false | null | undefined)[]) {
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 disabled:bg-brand-700/50',
-  secondary: 'bg-white text-ink border border-line hover:bg-slate-50 disabled:text-subtle',
-  danger: 'bg-red-700 text-white hover:bg-red-800 disabled:bg-red-700/50',
-  ghost: 'text-brand-800 hover:bg-brand-50 disabled:text-subtle',
+  primary: 'bg-brand-600 text-white font-semibold shadow-xs hover:bg-brand-800 disabled:bg-brand-600/50',
+  secondary:
+    'bg-white text-slate-700 font-semibold border border-line shadow-xs hover:bg-slate-50 disabled:text-subtle',
+  danger: 'bg-rose-600 text-white font-semibold shadow-xs hover:bg-rose-700 disabled:bg-rose-600/50',
+  ghost: 'text-brand-800 font-medium hover:bg-brand-100 disabled:text-subtle',
 };
 
 export const Button = forwardRef<
@@ -37,8 +39,8 @@ export const Button = forwardRef<
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       className={cx(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-colors disabled:cursor-not-allowed',
-        size === 'sm' ? 'h-8 px-3 text-sm' : 'h-10 px-4 text-sm',
+        'press inline-flex items-center justify-center gap-2 rounded-lg transition-colors disabled:cursor-not-allowed',
+        size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3.5 text-sm',
         VARIANTS[variant],
         className,
       )}
@@ -65,7 +67,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-ink">
+      <label htmlFor={id} className="text-sm font-semibold text-ink">
         {label}
       </label>
       {children({ id, 'aria-describedby': describedBy, 'aria-invalid': error ? true : undefined })}
@@ -75,7 +77,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
         </p>
       )}
       {error && (
-        <p id={errorId} className="text-xs font-medium text-red-700">
+        <p id={errorId} className="text-xs font-medium text-rose-700">
           {error}
         </p>
       )}
@@ -84,7 +86,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
 }
 
 const inputClass =
-  'h-10 w-full rounded-lg border border-line bg-white px-3 text-sm text-ink placeholder:text-slate-400 aria-[invalid=true]:border-red-500 disabled:bg-slate-50';
+  'h-10 w-full rounded-lg border border-control bg-white px-3 text-sm text-ink placeholder:text-subtle transition-colors focus:border-brand-600 aria-[invalid=true]:border-rose-600 disabled:border-line disabled:bg-elevated';
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest },
@@ -117,10 +119,10 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={cx('rounded-xl border border-line bg-surface', className)}>
+    <section className={cx('rounded-2xl border border-line bg-surface', className)}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3.5">
-          {title && <h2 className="text-sm font-semibold text-ink">{title}</h2>}
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line-subtle px-5 py-4">
+          {title && <h2 className="text-[15px] font-semibold text-ink">{title}</h2>}
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
       )}
@@ -130,23 +132,25 @@ export function Card({
 }
 
 type Tone = 'neutral' | 'brand' | 'good' | 'warn' | 'bad' | 'info';
-const TONES: Record<Tone, string> = {
-  neutral: 'bg-slate-100 text-slate-700',
-  brand: 'bg-brand-50 text-brand-800',
-  good: 'bg-emerald-50 text-emerald-800',
-  warn: 'bg-amber-50 text-amber-800',
-  bad: 'bg-red-50 text-red-800',
-  info: 'bg-sky-50 text-sky-800',
+// The v1 status badge: tinted pill with a colored dot.
+const TONES: Record<Tone, { pill: string; dot: string }> = {
+  neutral: { pill: 'bg-elevated text-muted', dot: 'bg-muted' },
+  brand: { pill: 'bg-brand-100 text-brand-800', dot: 'bg-brand-600' },
+  good: { pill: 'bg-emerald-50 text-emerald-700', dot: 'bg-emerald-700' },
+  warn: { pill: 'bg-amber-50 text-amber-700', dot: 'bg-amber-700' },
+  bad: { pill: 'bg-rose-50 text-rose-700', dot: 'bg-rose-700' },
+  info: { pill: 'bg-blue-50 text-blue-700', dot: 'bg-blue-700' },
 };
 
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: ReactNode }) {
   return (
     <span
       className={cx(
-        'inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium whitespace-nowrap',
-        TONES[tone],
+        'inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold whitespace-nowrap',
+        TONES[tone].pill,
       )}
     >
+      <span aria-hidden className={cx('size-1.5 shrink-0 rounded-full', TONES[tone].dot)} />
       {children}
     </span>
   );
@@ -164,11 +168,11 @@ export function Alert({
     <div
       role={tone === 'bad' ? 'alert' : 'status'}
       className={cx(
-        'flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm',
-        tone === 'bad' && 'bg-red-50 text-red-800',
-        tone === 'good' && 'bg-emerald-50 text-emerald-800',
-        tone === 'info' && 'bg-sky-50 text-sky-800',
-        tone === 'warn' && 'bg-amber-50 text-amber-900',
+        'flex items-start gap-2 rounded-xl border px-3 py-2.5 text-sm',
+        tone === 'bad' && 'border-rose-200 bg-rose-50 text-rose-800',
+        tone === 'good' && 'border-emerald-200 bg-emerald-50 text-emerald-800',
+        tone === 'info' && 'border-blue-200 bg-blue-50 text-blue-800',
+        tone === 'warn' && 'border-amber-200 bg-amber-50 text-amber-900',
       )}
     >
       <Icon aria-hidden className="mt-0.5 size-4 shrink-0" />
@@ -188,7 +192,7 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-line px-6 py-10 text-center">
+    <div className="rounded-2xl border border-dashed border-line bg-surface px-6 py-10 text-center">
       <p className="text-sm font-medium text-ink">{title}</p>
       {children && <div className="mt-1 text-sm text-subtle">{children}</div>}
     </div>
@@ -228,13 +232,13 @@ export function Dialog({
       }}
       aria-labelledby="dialog-title"
       className={cx(
-        'm-auto w-[calc(100%-2rem)] rounded-xl border border-line bg-white p-0 text-ink shadow-xl',
+        'm-auto w-[calc(100%-2rem)] rounded-2xl border border-line bg-white p-0 text-ink shadow-xl',
         wide ? 'max-w-2xl' : 'max-w-md',
       )}
     >
       {open && (
         <div className="p-6">
-          <h2 id="dialog-title" className="text-base font-semibold">
+          <h2 id="dialog-title" className="text-lg font-bold tracking-tight">
             {title}
           </h2>
           {description && <p className="mt-1 text-sm text-muted">{description}</p>}
@@ -245,11 +249,32 @@ export function Dialog({
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
+/** The v1 "priority action" tile: icon, arrow, a large value and a label. */
+export function Stat({
+  label,
+  value,
+  hint,
+  icon: Icon,
+  tone = 'ink',
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: ReactNode;
+  icon?: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  tone?: 'ink' | 'warn' | 'bad';
+}) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-4 py-3.5">
-      <p className="text-xs font-medium text-subtle">{label}</p>
-      <p className="tabular mt-1 text-xl font-semibold text-ink">{value}</p>
+    <div className="priority-action flex min-h-[110px] min-w-0 flex-col rounded-2xl border border-line bg-surface p-4">
+      {Icon && <Icon aria-hidden className="size-4 text-subtle" />}
+      <p
+        className={cx(
+          'tabular mt-auto pt-3 text-lg font-semibold tracking-tight [overflow-wrap:anywhere]',
+          tone === 'warn' ? 'text-amber-700' : tone === 'bad' ? 'text-rose-700' : 'text-ink',
+        )}
+      >
+        {value}
+      </p>
+      <p className="mt-0.5 text-xs text-muted">{label}</p>
       {hint && <p className="mt-0.5 text-xs text-subtle">{hint}</p>}
     </div>
   );
@@ -269,36 +294,44 @@ export function Table({
       <table className="w-full text-left text-sm">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
-          <tr className="border-b border-line text-xs text-subtle">
+          <tr className="border-b border-line text-[11px] tracking-wide text-muted uppercase">
             {head.map((h, i) => (
-              <th key={i} scope="col" className="px-3 py-2 font-medium whitespace-nowrap">
+              <th key={i} scope="col" className="px-3 py-2.5 font-semibold whitespace-nowrap">
                 {h}
               </th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-line">{children}</tbody>
+        <tbody className="divide-y divide-line-subtle [&_tr:hover]:bg-[#f5f9fb]">{children}</tbody>
       </table>
     </div>
   );
 }
 
+/** v1 page heading: small eyebrow, large title, and pill-shaped primary actions on the right. */
 export function PageHeader({
   title,
   subtitle,
+  eyebrow,
   actions,
 }: {
   title: ReactNode;
   subtitle?: ReactNode;
+  eyebrow?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-ink">{title}</h1>
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+      <div className="min-w-0">
+        {eyebrow && <p className="text-xs text-muted">{eyebrow}</p>}
+        <h1 className="mt-0.5 text-[2rem] leading-tight font-bold tracking-tight text-ink">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
       </div>
-      {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap gap-2 [&_button]:h-10 [&_button]:rounded-full [&_button]:px-5">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,28 +1,42 @@
 @import 'tailwindcss';
 
+/*
+ * MedCore design tokens, carried over from the v1 dashboard (main branch) so the staff
+ * console and the patient app share one look: slate canvas, white panels, one accessible
+ * teal (#087F70), mint selection (#DCF1EB) and navy (#0F2A4A) for emphasis.
+ */
 @theme {
   --font-sans:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, 'Segoe UI', Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: 'SF Mono', Menlo, Monaco, Consolas, monospace;
 
-  --color-brand-50: #effaf8;
-  --color-brand-100: #d5f2ec;
-  --color-brand-200: #ade3d9;
-  --color-brand-500: #14a38f;
-  --color-brand-600: #0f8576;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e57;
-  --color-brand-900: #134e48;
+  --color-brand-50: #eef8f5;
+  --color-brand-100: #dcf1eb;
+  --color-brand-200: #aad5c9;
+  --color-brand-500: #0e9384;
+  --color-brand-600: #087f70;
+  --color-brand-700: #087f70;
+  --color-brand-800: #096659;
+  --color-brand-900: #0a4f46;
+  --color-navy: #0f2a4a;
 
   --color-ink: #0f172a;
   --color-muted: #475569;
-  --color-subtle: #64748b;
-  --color-line: #e2e8f0;
+  --color-subtle: #5b6b82;
+  --color-line: #d3dce5;
+  --color-line-subtle: #e4e9ef;
+  --color-control: #7f8ea0;
   --color-surface: #ffffff;
-  --color-canvas: #f6f8fa;
+  --color-elevated: #f1f5f9;
+  --color-canvas: #f5f6f8;
 }
 
 @layer base {
+  :root {
+    /* 90% scale: the v1 workstation density. */
+    font-size: 14.4px;
+  }
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
@@ -32,8 +46,8 @@
   }
   /* Visible keyboard focus everywhere; never removed. */
   :focus-visible {
-    outline: 2px solid var(--color-brand-600);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-brand-800);
+    outline-offset: 3px;
     border-radius: 6px;
   }
   .tabular {
@@ -42,12 +56,58 @@
   dialog::backdrop {
     background: rgb(15 23 42 / 0.45);
   }
+  thead {
+    background-color: var(--color-elevated);
+  }
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* Floating, translucent top bar. */
+  .workspace-toolbar {
+    margin: 8px 12px 0;
+    border: 1px solid var(--color-line);
+    border-radius: 16px;
+    background: rgb(255 255 255 / 0.88);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: 0 2px 12px rgb(15 23 42 / 0.04);
+  }
+  .sidebar-link {
+    min-height: 40px;
+    border-radius: 10px;
+  }
+  .sidebar-link[aria-current='page'] {
+    background: var(--color-brand-100);
+    color: var(--color-brand-800);
+    box-shadow: inset 3px 0 var(--color-brand-600);
+  }
+  .priority-action {
+    transition:
+      background-color 120ms ease-out,
+      border-color 120ms ease-out;
+  }
+  .priority-action:hover {
+    background: #fafbfc;
+    border-color: var(--color-brand-200);
+  }
+  .priority-action:active {
+    background: var(--color-brand-100);
+  }
+  .press:active:not(:disabled) {
+    transform: scale(0.98);
+    opacity: 0.85;
+  }
+  @media (pointer: coarse) {
+    .sidebar-link {
+      min-height: 44px;
     }
   }
 }

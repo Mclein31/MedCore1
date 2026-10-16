@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { KeyRound, Smartphone } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
-import { Logo } from '../components/Logo';
+import { AuthShell } from '../components/AuthShell';
 import { QrCode } from '../components/QrCode';
 import { Alert, Button, Field, Input } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
@@ -22,10 +22,9 @@ export function StaffLogin() {
   if (me.isSuccess && step.kind !== 'recovery') return <Navigate to="/staff" replace />;
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <Logo subtitle="Hospital staff" />
-        <div className="mt-8 rounded-xl border border-line bg-surface p-6">
+    <AuthShell>
+      <div>
+        <div>
           {params.get('expired') && step.kind === 'password' && (
             <div className="mb-4">
               <Alert tone="info">Your session ended. Please sign in again.</Alert>
@@ -44,11 +43,8 @@ export function StaffLogin() {
           )}
           {step.kind === 'recovery' && <RecoveryCodes codes={step.codes} />}
         </div>
-        <p className="mt-6 text-center text-xs text-subtle">
-          Access is logged. Never share your password or codes.
-        </p>
       </div>
-    </main>
+    </AuthShell>
   );
 }
 
@@ -86,7 +82,7 @@ function PasswordStep({ onNext }: { onNext: (step: Step) => void }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
-      <h1 className="text-lg font-semibold">Sign in</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Sign in</h1>
       {error && <Alert>{error}</Alert>}
       <Field label="Work email">
         {(f) => (
@@ -154,7 +150,7 @@ function MfaStep({ challenge, onRestart }: { challenge: string; onRestart: () =>
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <Smartphone aria-hidden className="size-5 text-brand-700" />
-        <h1 className="text-lg font-semibold">Two-step sign-in</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Two-step sign-in</h1>
       </div>
       <p className="text-sm text-muted">
         {useRecovery
@@ -256,7 +252,7 @@ function EnrollStep({
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <KeyRound aria-hidden className="size-5 text-brand-700" />
-          <h1 className="text-lg font-semibold">Set up two-step sign-in</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Set up two-step sign-in</h1>
         </div>
         <p className="text-sm text-muted">
           Staff accounts need an authenticator app (Google Authenticator, Microsoft Authenticator, 1Password
@@ -275,7 +271,7 @@ function EnrollStep({
 
   return (
     <form onSubmit={confirm} className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Scan this code</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Scan this code</h1>
       <p className="text-sm text-muted">Open your authenticator app, add an account, and scan the code.</p>
       <div className="flex justify-center">
         <QrCode value={setup.otpauthUri} label="Authenticator setup QR code" />
@@ -315,7 +311,7 @@ function RecoveryCodes({ codes }: { codes: string[] }) {
   const [saved, setSaved] = useState(false);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Save your recovery codes</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Save your recovery codes</h1>
       <Alert tone="warn">
         These are shown only once. If you lose your phone, each code lets you sign in one time. Store them
         somewhere safe, like a password manager.
