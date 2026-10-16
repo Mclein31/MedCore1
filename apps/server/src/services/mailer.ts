@@ -60,7 +60,7 @@ export async function sendMail(env: MailEnv, mail: Mail): Promise<'sent' | 'logg
     console.error(JSON.stringify({ level: 'error', message: 'SMTP_USER / SMTP_PASSWORD not configured' }));
     throw new MailError(503, 'EMAIL_UNAVAILABLE', 'We can’t send email right now. Please try again later.');
   }
-  const from = env.MAIL_FROM || env.SMTP_USER!;
+  const from = (env.MAIL_FROM || env.SMTP_USER!).trim();
   const message = buildMessage({ from, fromName: env.MAIL_FROM_NAME || 'MedCore', ...mail });
   try {
     await withTimeout(smtpSend(env, from, mail.to, message), TIMEOUT_MS);
@@ -119,7 +119,7 @@ async function smtpSend(env: MailEnv, from: string, to: string, message: string)
     await reply(220);
     await send('EHLO medcore.app');
     await reply(250);
-    await send(`AUTH PLAIN ${btoa(`\0${env.SMTP_USER}\0${env.SMTP_PASSWORD}`)}`);
+    await send(`AUTH PLAIN ${btoa(`\0${env.SMTP_USER!.trim()}\0${appPassword(env.SMTP_PASSWORD!)}`)}`);
     await reply(235);
     await send(`MAIL FROM:<${from}>`);
     await reply(250);
@@ -133,6 +133,11 @@ async function smtpSend(env: MailEnv, from: string, to: string, message: string)
   } finally {
     await socket.close().catch(() => undefined);
   }
+}
+
+/** Google shows App Passwords as "abcd efgh ijkl mnop"; the spaces are not part of it. */
+export function appPassword(value: string): string {
+  return value.replace(/\s+/g, '');
 }
 
 /** Lines starting with "." get an extra "." (RFC 5321 §4.5.2). */

@@ -1,6 +1,6 @@
 // Port of AdvanCare test/mailer.test.ts. No network: SMTP is blanked, so mail can never be sent.
 import assert from 'node:assert/strict';
-import { buildMessage, dotStuff, isSafeAddress, MailError, sendMail } from '../src/services/mailer';
+import { appPassword, buildMessage, dotStuff, isSafeAddress, MailError, sendMail } from '../src/services/mailer';
 import { codeHash, decoyMask, generateCode, maskEmail, normalizePhone } from '../src/services/otp';
 
 let checks = 0;
@@ -33,6 +33,10 @@ assert.equal(dotStuff('.a\r\nb\r\n.c'), '..a\r\nb\r\n..c');
 assert.equal(dotStuff('a.\r\n..b'), 'a.\r\n...b');
 assert.equal(dotStuff('ok\r\n.\r\nafter'), 'ok\r\n..\r\nafter', 'a lone "." line cannot end DATA early');
 pass('dot-stuffs lines that start with a period');
+
+assert.equal(appPassword('abcd efgh ijkl mnop'), 'abcdefghijklmnop');
+assert.equal(appPassword(' abcdefghijklmnop\n'), 'abcdefghijklmnop');
+pass('App Passwords pasted with Google\'s spaces still authenticate');
 
 const logged: string[] = [];
 const log = console.log;
