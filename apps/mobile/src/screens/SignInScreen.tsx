@@ -7,7 +7,7 @@ import { api, errorMessage } from '../lib/api';
 import type { CodeIdentity } from '../lib/apiClient';
 import { useSession } from '../lib/session';
 import { Button, Choice, Field, Notice } from '../ui/kit';
-import { C, R, S, T } from '../ui/theme';
+import { C, S, T } from '../ui/theme';
 
 type Mode = 'REGISTER' | 'LOGIN';
 
@@ -74,37 +74,44 @@ export function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: C.paper }}
+      style={{ flex: 1, backgroundColor: C.surface }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
-          paddingTop: insets.top + 32,
+          paddingTop: insets.top + 48,
           paddingBottom: insets.bottom + 32,
-          paddingHorizontal: S.gutter,
+          paddingHorizontal: 28,
           gap: S.xl,
         }}
       >
-        <View style={{ alignItems: 'center', gap: S.sm }}>
+        <View style={{ alignItems: 'center', paddingVertical: S.md }}>
           <Image
             source={require('../../assets/MedCore_Badge_Logo.png')}
-            style={{ width: 72, height: 72 }}
-            accessibilityIgnoresInvertColors
+            style={{ width: 110, height: 104 }}
+            resizeMode="contain"
+            accessibilityLabel="MedCore"
           />
-          <Text style={T.title}>MedCore</Text>
-          <Text style={T.meta}>Your hospital bill, in plain language</Text>
         </View>
 
-        <View style={{ backgroundColor: C.surface, borderRadius: R.hero, padding: S.xl, gap: S.lg }}>
+        <View style={{ gap: S.lg }}>
           {session.expired && !sentTo ? (
             <Notice tone="info">Your session ended. Please sign in again.</Notice>
           ) : null}
           {!sentTo ? (
             <>
-              <Text accessibilityRole="header" style={T.section}>
-                See your hospital bill
-              </Text>
+              <View style={{ gap: 6 }}>
+                <Text
+                  accessibilityRole="header"
+                  style={{ fontSize: 24, lineHeight: 30, fontWeight: '700', color: C.ink }}
+                >
+                  Sign in to your account
+                </Text>
+                <Text style={[T.body, { color: C.secondary }]}>
+                  See your hospital bill, coverage and exit pass.
+                </Text>
+              </View>
               <Choice
                 label="Have you used MedCore before?"
                 value={mode}
@@ -182,7 +189,10 @@ export function SignInScreen() {
             </>
           ) : (
             <>
-              <Text accessibilityRole="header" style={T.section}>
+              <Text
+                accessibilityRole="header"
+                style={{ fontSize: 24, lineHeight: 30, fontWeight: '700', color: C.ink }}
+              >
                 Check your email
               </Text>
               <Text style={T.meta}>

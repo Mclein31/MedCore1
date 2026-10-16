@@ -4,8 +4,8 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Text, View } from 'react-native';
 import { day, peso, railLabel, when } from '../lib/format';
 import type { RootParams, TabParams } from '../navigation';
-import { Badge, Button, Card, Empty, Notice, Screen } from '../ui/kit';
-import { C, S, T } from '../ui/theme';
+import { Badge, Button, Empty, LinkRow, Notice, Screen, SectionHeader } from '../ui/kit';
+import { C, R, S, T } from '../ui/theme';
 import { WithStay } from './common';
 
 type Props = CompositeScreenProps<
@@ -25,100 +25,98 @@ export function PaymentsScreen({ navigation }: Props) {
         const payments = d.payments ?? [];
         const notes = d.promissoryNotes ?? [];
         return (
-          <Screen refreshing={refreshing} onRefresh={refresh}>
-            <Card>
-              <Text style={T.meta}>Left to pay now</Text>
-              <Text style={[T.display, { marginTop: S.xs }]}>{peso(l.balanceCents)}</Text>
-              <Text style={[T.meta, { marginTop: S.xs }]}>
-                Your share {peso(l.netPatientDueCents)} · paid {peso(l.paidCents)}
-                {l.financedCents > 0 ? ` · on a plan ${peso(l.financedCents)}` : ''}
+          <Screen refreshing={refreshing} onRefresh={refresh} background={C.surface} gap={S.md}>
+            <View style={{ backgroundColor: C.brand, borderRadius: R.hero, padding: 20, gap: 6 }}>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '700' }}>
+                Amount you currently owe
               </Text>
-            </Card>
+              <Text style={T.heroFigure}>{peso(l.balanceCents)}</Text>
+              <Text style={T.heroSub}>
+                {open ? 'Review your bill and choose a payment option.' : 'Nothing left to pay on this bill.'}
+              </Text>
+              {open && canPay ? (
+                <View style={{ marginTop: 12 }}>
+                  <Button
+                    title="Pay balance"
+                    variant="inverse"
+                    onPress={() => navigation.navigate('Pay', { stayId: row.id })}
+                  />
+                </View>
+              ) : null}
+            </View>
 
             {open ? (
-              <Card title="How would you like to settle?">
-                <View style={{ gap: S.md }}>
-                  {d.disputes?.some((x) => x.status === 'OPEN') ? (
-                    <Notice tone="info">
-                      You questioned a charge. You can still pay now; we will refund you if the charge is
-                      removed.
-                    </Notice>
-                  ) : null}
-                  {canPay ? (
-                    <Button
-                      title="Pay online"
-                      onPress={() => navigation.navigate('Pay', { stayId: row.id })}
-                    />
-                  ) : (
-                    <Notice tone="info">
-                      Online payment is not available yet. Please pay at the cashier.
-                    </Notice>
-                  )}
-                  {canPlan ? (
-                    <Button
-                      title="Pay in installments (0% interest)"
-                      variant="secondary"
-                      onPress={() => navigation.navigate('PaymentPlan', { stayId: row.id })}
-                    />
-                  ) : null}
-                  <Text style={T.small}>
-                    You can also pay at the cashier. Under RA 9439 a hospital cannot hold you for unpaid
-                    bills; a promissory note lets you go home and pay later.
-                  </Text>
-                </View>
-              </Card>
+              <>
+                {!canPay ? (
+                  <Notice tone="info">Online payment is not available yet. Please pay at the cashier.</Notice>
+                ) : null}
+                {d.disputes?.some((x) => x.status === 'OPEN') ? (
+                  <Notice tone="info">
+                    You questioned a charge. You can still pay now; we will refund you if the charge is
+                    removed.
+                  </Notice>
+                ) : null}
+                {canPlan ? (
+                  <Button
+                    title="Pay in installments (0% interest)"
+                    variant="secondary"
+                    onPress={() => navigation.navigate('PaymentPlan', { stayId: row.id })}
+                  />
+                ) : null}
+                <Text style={T.meta}>
+                  You can also pay at the cashier. Under RA 9439 a hospital cannot hold you for unpaid bills;
+                  a promissory note lets you go home and pay later.
+                </Text>
+              </>
             ) : null}
 
-            <Card title="Payments">
-              {payments.length === 0 ? (
-                <Text style={T.meta}>No payments yet.</Text>
-              ) : (
-                payments.map((p, i) => (
-                  <View
+            <SectionHeader title={`Payments · ${payments.length}`} />
+            {payments.length === 0 ? (
+              <Empty title="No payments yet" detail="Payments you make will appear here with receipts." />
+            ) : (
+              <View>
+                {payments.map((p, i) => (
+                  <LinkRow
                     key={p.reference}
-                    style={{
-                      flexDirection: 'row',
-                      gap: S.md,
-                      paddingVertical: S.sm,
-                      borderBottomWidth: i === payments.length - 1 ? 0 : 1,
-                      borderBottomColor: C.border,
-                    }}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={T.label}>{railLabel(p.rail)}</Text>
-                      <Text style={T.small}>
-                        Official receipt {p.officialReceiptNumber} · {when(p.createdAt)}
-                      </Text>
-                    </View>
-                    <Text style={T.money}>{peso(p.amountCents)}</Text>
-                  </View>
-                ))
-              )}
-            </Card>
+                    title={railLabel(p.rail)}
+                    subtitle={`OR ${p.officialReceiptNumber} · ${when(p.createdAt)}`}
+                    value={peso(p.amountCents)}
+                    onPress={() => navigation.navigate('Documents')}
+                    last={i === payments.length - 1}
+                  />
+                ))}
+              </View>
+            )}
 
             {notes.map((n) => (
-              <Card key={n.noteNumber} title={`Payment plan ${n.noteNumber}`}>
+              <View key={n.noteNumber} style={{ gap: S.sm }}>
+                <SectionHeader title={`Payment plan ${n.noteNumber}`} />
                 <Badge
-                  tone={n.status === 'ACTIVE' ? 'info' : 'neutral'}
+                  tone={n.status === 'ACTIVE' ? 'brand' : 'neutral'}
                   label={n.status === 'ACTIVE' ? 'Active' : n.status}
                 />
-                <Text style={[T.meta, { marginVertical: S.sm }]}>
+                <Text style={T.meta}>
                   {peso(n.principalCents)} over {n.months} months, 0% interest. Signed {day(n.signedAt)}.
                 </Text>
                 {n.schedule.map((i) => (
                   <View
                     key={i.sequence}
-                    style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}
+                    style={{
+                      flexDirection: 'row',
+                      justifyContent: 'space-between',
+                      paddingVertical: 8,
+                      borderBottomWidth: 1,
+                      borderBottomColor: C.border,
+                    }}
                   >
-                    <Text style={T.meta}>
+                    <Text style={T.row}>
                       {i.sequence}. Due {day(i.dueDate)}
                     </Text>
                     <Text style={T.money}>{peso(i.amountCents)}</Text>
                   </View>
                 ))}
-              </Card>
+              </View>
             ))}
-            {!open && payments.length === 0 && notes.length === 0 ? <Empty title="Nothing to pay" /> : null}
           </Screen>
         );
       }}

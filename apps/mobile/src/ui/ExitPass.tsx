@@ -1,4 +1,4 @@
-import { CheckCircle2 } from 'lucide-react-native';
+import { CheckCircle2 } from './icons';
 import { Text, View } from 'react-native';
 import { when } from '../lib/format';
 import type { GatePass } from '../lib/types';

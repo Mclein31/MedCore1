@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -12,23 +13,31 @@ import {
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
+import { ChevronRight, type IconComponent } from './icons';
 import { C, R, S, T } from './theme';
 
+/** Scrolling screen body. Tabs default to the grey "paper" canvas; detail screens use white, as in v1. */
 export function Screen({
   children,
   refreshing,
   onRefresh,
+  background = C.paper,
+  gutter = S.gutter,
+  gap = S.lg,
 }: {
   children: ReactNode;
   refreshing?: boolean;
   onRefresh?: () => void;
+  background?: string;
+  gutter?: number;
+  gap?: number;
 }) {
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.paper }}
-      contentContainerStyle={{ padding: S.gutter, paddingBottom: 48, gap: S.lg }}
+      style={{ flex: 1, backgroundColor: background }}
+      contentContainerStyle={{ paddingHorizontal: gutter, paddingTop: 20, paddingBottom: 48, gap }}
       keyboardShouldPersistTaps="handled"
-      contentInsetAdjustmentBehavior="automatic"
+      showsVerticalScrollIndicator={false}
       refreshControl={
         onRefresh ? (
           <RefreshControl refreshing={Boolean(refreshing)} onRefresh={onRefresh} tintColor={C.brand} />
@@ -52,9 +61,12 @@ export function Card({
   flush?: boolean;
 }) {
   return (
-    <View style={[styles.card, flush && { paddingVertical: S.xs }, style]}>
+    <View style={[styles.card, flush && { paddingVertical: 0 }, style]}>
       {title ? (
-        <Text accessibilityRole="header" style={[T.section, { marginBottom: S.md }]}>
+        <Text
+          accessibilityRole="header"
+          style={[T.cardTitle, { marginBottom: S.sm, marginTop: flush ? S.lg : 0 }]}
+        >
           {title}
         </Text>
       ) : null}
@@ -63,7 +75,25 @@ export function Card({
   );
 }
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <View
+      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: S.sm }}
+    >
+      <Text accessibilityRole="header" style={T.section}>
+        {title}
+      </Text>
+      {action}
+    </View>
+  );
+}
+
+/** Small grey group label above a grouped card (v1 Profile). */
+export function GroupLabel({ children }: { children: string }) {
+  return <Text style={[T.meta, { marginTop: S.sm, marginBottom: -S.sm, marginLeft: 2 }]}>{children}</Text>;
+}
+
+type ButtonVariant = 'primary' | 'secondary' | 'inverse' | 'ghost' | 'danger';
 
 export function Button({
   title,
@@ -71,6 +101,7 @@ export function Button({
   variant = 'primary',
   busy,
   disabled,
+  icon: Icon,
   accessibilityHint,
 }: {
   title: string;
@@ -78,12 +109,14 @@ export function Button({
   variant?: ButtonVariant;
   busy?: boolean;
   disabled?: boolean;
+  icon?: IconComponent;
   accessibilityHint?: string;
 }) {
   const inactive = disabled || busy;
   const palette = {
     primary: { bg: C.brand, fg: '#FFFFFF', border: C.brand },
-    secondary: { bg: C.surface, fg: C.brandDark, border: C.brand },
+    secondary: { bg: C.brandSoft, fg: C.brandDark, border: C.brandBorder },
+    inverse: { bg: '#FFFFFF', fg: C.ink, border: '#FFFFFF' },
     ghost: { bg: 'transparent', fg: C.brandDark, border: 'transparent' },
     danger: { bg: C.surface, fg: C.danger, border: C.danger },
   }[variant];
@@ -92,19 +125,26 @@ export function Button({
       onPress={onPress}
       disabled={inactive}
       accessibilityRole="button"
+      accessibilityLabel={title}
       accessibilityState={{ disabled: Boolean(inactive), busy: Boolean(busy) }}
       accessibilityHint={accessibilityHint}
       style={({ pressed }) => [
         styles.button,
+        variant === 'ghost' && { minHeight: 44, paddingHorizontal: S.sm },
         { backgroundColor: palette.bg, borderColor: palette.border },
         inactive && { opacity: 0.45 },
-        pressed && { opacity: 0.8 },
+        pressed && !inactive && { opacity: 0.85, transform: [{ scale: 0.98 }] },
       ]}
     >
       {busy ? (
         <ActivityIndicator color={palette.fg} />
       ) : (
-        <Text style={{ color: palette.fg, fontSize: 16, fontWeight: '600' }}>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: S.sm }}>
+          {Icon ? <Icon size={20} color={palette.fg} /> : null}
+          <Text style={{ color: palette.fg, fontSize: variant === 'ghost' ? 15 : 17, fontWeight: '600' }}>
+            {title}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
@@ -118,7 +158,7 @@ export function Field({
 }: { label: string; hint?: string; error?: string | null } & TextInputProps) {
   return (
     <View style={{ gap: 6 }}>
-      <Text style={T.label}>{label}</Text>
+      <Text style={[T.meta, { fontWeight: '600', color: C.ink }]}>{label}</Text>
       <TextInput
         placeholderTextColor={C.faint}
         accessibilityLabel={label}
@@ -157,23 +197,32 @@ export function Notice({ tone = 'danger', children }: { tone?: Tone; children: R
   );
 }
 
-export function Badge({ tone = 'info', label }: { tone?: Tone | 'neutral'; label: string }) {
-  const t = tone === 'neutral' ? { bg: C.elevated, fg: C.secondary } : TONES[tone];
+/** v1 status pill: "✓ Approved", "● Final bill ready". */
+export function Badge({ tone = 'info', label }: { tone?: Tone | 'neutral' | 'brand'; label: string }) {
+  const t =
+    tone === 'neutral'
+      ? { bg: C.elevated, fg: C.secondary }
+      : tone === 'brand'
+        ? { bg: C.brandSoft, fg: C.ink }
+        : TONES[tone];
+  const glyph = tone === 'good' ? '✓' : tone === 'danger' || tone === 'warn' ? '!' : '●';
   return (
     <View
+      accessibilityLabel={label}
       style={{
         alignSelf: 'flex-start',
         backgroundColor: t.bg,
         borderRadius: 8,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
       }}
     >
-      <Text style={{ color: t.fg, fontSize: 12, fontWeight: '600' }}>{label}</Text>
+      <Text style={{ color: t.fg, fontSize: 13, fontWeight: '700' }}>{`${glyph}  ${label}`}</Text>
     </View>
   );
 }
 
+/** Label/value line with a hairline under it (v1 breakdown rows). */
 export function Row({
   label,
   value,
@@ -190,39 +239,54 @@ export function Row({
   return (
     <View style={[styles.row, last && { borderBottomWidth: 0 }]}>
       <View style={{ flex: 1 }}>
-        <Text style={[T.body, bold && { fontWeight: '700' }]}>{label}</Text>
+        <Text style={[T.row, bold && { fontWeight: '700' }]}>{label}</Text>
         {hint ? <Text style={T.small}>{hint}</Text> : null}
       </View>
-      <Text style={[T.money, bold && { fontWeight: '700' }]}>{value}</Text>
+      <Text style={[T.money, bold && { fontWeight: '700', fontSize: 16 }]}>{value}</Text>
     </View>
   );
 }
 
+/** Tappable ledger row inside a card: optional icon, two lines of text, value, chevron. */
 export function LinkRow({
   title,
   subtitle,
   value,
+  icon: Icon,
   onPress,
   last,
 }: {
   title: string;
   subtitle?: string;
   value?: string;
-  onPress: () => void;
+  icon?: IconComponent;
+  onPress?: () => void;
   last?: boolean;
 }) {
+  const body = (
+    <View style={[styles.linkRow, !last && styles.divider]}>
+      {Icon ? (
+        <View style={{ width: 26, marginRight: 10 }}>
+          <Icon size={20} color={C.secondary} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[T.body, { fontSize: 16 }]}>{title}</Text>
+        {subtitle ? <Text style={T.meta}>{subtitle}</Text> : null}
+      </View>
+      {value ? <Text style={[T.money, { fontWeight: '600', marginLeft: S.sm }]}>{value}</Text> : null}
+      {onPress ? <ChevronRight size={17} color={C.faint} /> : null}
+    </View>
+  );
+  if (!onPress) return body;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.row, last && { borderBottomWidth: 0 }, pressed && { opacity: 0.6 }]}
+      accessibilityLabel={[title, subtitle, value].filter(Boolean).join(', ')}
+      style={({ pressed }) => pressed && { opacity: 0.6 }}
     >
-      <View style={{ flex: 1 }}>
-        <Text style={T.label}>{title}</Text>
-        {subtitle ? <Text style={T.meta}>{subtitle}</Text> : null}
-      </View>
-      {value ? <Text style={T.money}>{value}</Text> : null}
-      <Text style={{ color: C.faint, fontSize: 22, marginLeft: S.sm }}>›</Text>
+      {body}
     </Pressable>
   );
 }
@@ -241,7 +305,7 @@ export function Choice<V extends string | number>({
 }) {
   return (
     <View style={{ gap: 6 }} accessibilityRole="radiogroup" accessibilityLabel={label}>
-      <Text style={T.label}>{label}</Text>
+      <Text style={[T.meta, { fontWeight: '600', color: C.ink }]}>{label}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: S.sm }}>
         {options.map((o) => {
           const selected = o.value === value;
@@ -264,10 +328,71 @@ export function Choice<V extends string | number>({
   );
 }
 
+/** Round white shortcut buttons under the balance (v1 QuickActions). */
+export function QuickActions({
+  actions,
+  onTeal,
+}: {
+  actions: { label: string; icon: IconComponent; onPress: () => void }[];
+  onTeal?: boolean;
+}) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 4, justifyContent: 'space-between' }}>
+      {actions.map(({ label, icon: Icon, onPress }) => (
+        <Pressable
+          key={label}
+          onPress={onPress}
+          accessibilityRole="button"
+          accessibilityLabel={label}
+          style={({ pressed }) => ({
+            flex: 1,
+            minHeight: 84,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            opacity: pressed ? 0.65 : 1,
+            transform: [{ scale: pressed ? 0.96 : 1 }],
+          })}
+        >
+          <View style={styles.shortcut}>
+            <Icon size={24} color={C.secondary} />
+          </View>
+          <Text style={{ fontSize: 12, lineHeight: 18, fontWeight: '500', color: onTeal ? C.ink : C.ink }}>
+            {label}
+          </Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+export function Brand({ size = 30 }: { size?: number }) {
+  return (
+    <View
+      accessible
+      accessibilityLabel="MedCore"
+      style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
+    >
+      <Image
+        source={require('../../assets/MedCore_Badge_Logo.png')}
+        style={{ width: size, height: size }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+      <Image
+        source={require('../../assets/wordmark.png')}
+        style={{ width: size * 3.6, height: (size * 3.6 * 110) / 600 }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+    </View>
+  );
+}
+
 export function Loading({ message = 'Loading…' }: { message?: string }) {
   return (
-    <View style={styles.center}>
-      <ActivityIndicator color={C.brand} />
+    <View style={styles.center} accessibilityRole="progressbar" accessibilityLabel={message}>
+      <ActivityIndicator size="large" color={C.brand} />
       <Text style={[T.meta, { marginTop: S.md }]}>{message}</Text>
     </View>
   );
@@ -275,51 +400,58 @@ export function Loading({ message = 'Loading…' }: { message?: string }) {
 
 export function ErrorView({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
-    <View style={[styles.center, { gap: S.lg }]}>
-      <Text style={[T.body, { textAlign: 'center' }]}>{message}</Text>
-      <Button title="Try again" variant="secondary" onPress={onRetry} />
+    <View style={[styles.center, { gap: S.md }]} accessibilityRole="alert">
+      <Text style={[T.title, { color: C.danger }]}>Something needs attention</Text>
+      <Text style={[T.meta, { textAlign: 'center' }]}>{message}</Text>
+      <View style={{ alignSelf: 'stretch' }}>
+        <Button title="Try again" onPress={onRetry} />
+      </View>
     </View>
   );
 }
 
 export function Empty({ title, detail }: { title: string; detail?: string }) {
   return (
-    <View style={[styles.card, { alignItems: 'center', gap: S.sm, paddingVertical: S.xl }]}>
-      <Text style={[T.section, { textAlign: 'center' }]}>{title}</Text>
+    <View style={{ alignItems: 'center', gap: S.sm, paddingVertical: S.xl }}>
+      <View style={styles.emptyGlyph}>
+        <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2.5, borderColor: C.brand }} />
+      </View>
+      <Text style={[T.title, { textAlign: 'center' }]}>{title}</Text>
       {detail ? <Text style={[T.meta, { textAlign: 'center' }]}>{detail}</Text> : null}
     </View>
   );
 }
 
 export const styles = StyleSheet.create({
-  card: { backgroundColor: C.surface, borderRadius: R.card, padding: S.lg },
+  card: { backgroundColor: C.surface, borderRadius: R.card, paddingHorizontal: S.lg, paddingVertical: S.lg },
   button: {
     minHeight: 50,
-    borderRadius: R.control,
-    borderWidth: 1.5,
+    borderRadius: R.pill,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: S.lg,
   },
   input: {
-    minHeight: 50,
+    minHeight: 52,
     borderWidth: 1,
     borderColor: C.inputBorder,
     borderRadius: R.control,
-    paddingHorizontal: S.md,
-    fontSize: 17,
+    paddingHorizontal: 14,
+    fontSize: 16,
     color: C.ink,
-    backgroundColor: C.surface,
+    backgroundColor: C.input,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: S.md,
-    paddingVertical: S.md,
-    minHeight: 48,
+    paddingVertical: 13,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.border,
   },
+  linkRow: { flexDirection: 'row', alignItems: 'center', minHeight: 56, paddingVertical: 12 },
+  divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.border },
   chip: {
     minHeight: 44,
     justifyContent: 'center',
@@ -328,6 +460,22 @@ export const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.border,
     backgroundColor: C.surface,
+  },
+  shortcut: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.surface,
+  },
+  emptyGlyph: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.brandSoft,
   },
   center: {
     flex: 1,

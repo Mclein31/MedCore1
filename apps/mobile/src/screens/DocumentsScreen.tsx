@@ -1,72 +1,80 @@
 import { Text, View } from 'react-native';
-import { day, peso, railLabel, stageLabel, when } from '../lib/format';
+import { peso, railLabel, stageLabel, when } from '../lib/format';
 import { ExitPass } from '../ui/ExitPass';
-import { Card, Notice, Row, Screen } from '../ui/kit';
+import { LinkRow, Screen, SectionHeader } from '../ui/kit';
 import { C, S, T } from '../ui/theme';
 import { WithStay } from './common';
 
 export function DocumentsScreen() {
   return (
     <WithStay requireBill={false}>
-      {({ d, refreshing, refresh }) => (
-        <Screen refreshing={refreshing} onRefresh={refresh}>
-          {d.gatePass ? (
-            <ExitPass pass={d.gatePass} />
-          ) : (
-            <Card title="Exit pass">
+      {({ d, refreshing, refresh }) => {
+        const receipts = d.payments ?? [];
+        const notes = d.promissoryNotes ?? [];
+        const statements = d.stay.billReady && d.ledger ? 1 : 0;
+        return (
+          <Screen refreshing={refreshing} onRefresh={refresh} background={C.surface} gap={S.md}>
+            <Text style={T.meta}>Statements, receipts and clearance documents, organized by type.</Text>
+
+            <SectionHeader title="Discharge pass" />
+            {d.gatePass ? (
+              <ExitPass pass={d.gatePass} />
+            ) : (
               <Text style={T.meta}>
                 Your exit pass appears here once the hospital clears you to go home. Current step:{' '}
                 {stageLabel(d.stay.stage).toLowerCase()}.
               </Text>
-            </Card>
-          )}
+            )}
 
-          {d.stay.billReady && d.ledger ? (
-            <Card title="Statement of account">
-              <Row label="Bill number" value={d.stay.billNumber ?? '—'} />
-              <Row label="Stay" value={d.stay.encounterNumber} />
-              <Row label="Admitted" value={day(d.stay.admittedAt)} />
-              <Row label="Your share" value={peso(d.ledger.netPatientDueCents)} />
-              <Row label="Balance" value={peso(d.ledger.balanceCents)} bold last />
-            </Card>
-          ) : (
-            <Notice tone="info">Your statement appears here once the bill is finalized.</Notice>
-          )}
+            <SectionHeader title={`Statements · ${statements}`} />
+            {statements ? (
+              <LinkRow
+                title="Statement of account"
+                subtitle={`${d.stay.billNumber ?? d.stay.encounterNumber} · balance ${peso(d.ledger!.balanceCents)}`}
+                last
+              />
+            ) : (
+              <Text style={T.meta}>Your statement appears here once the bill is finalized.</Text>
+            )}
 
-          {(d.payments?.length ?? 0) > 0 ? (
-            <Card title="Official receipts">
-              {d.payments!.map((p, i, all) => (
-                <View
+            <SectionHeader title={`Receipts · ${receipts.length}`} />
+            {receipts.length === 0 ? <Text style={T.meta}>No official receipts yet.</Text> : null}
+            <View>
+              {receipts.map((p, i) => (
+                <LinkRow
                   key={p.reference}
-                  style={{
-                    paddingVertical: S.sm,
-                    borderBottomWidth: i === all.length - 1 ? 0 : 1,
-                    borderBottomColor: C.border,
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <Text selectable style={T.label}>
-                      OR {p.officialReceiptNumber}
-                    </Text>
-                    <Text style={T.money}>{peso(p.amountCents)}</Text>
-                  </View>
-                  <Text style={T.small}>
-                    {railLabel(p.rail)} · {when(p.createdAt)} · ref {p.reference}
-                  </Text>
-                </View>
+                  title={p.officialReceiptNumber}
+                  subtitle={`${railLabel(p.rail)} · ${when(p.createdAt)}`}
+                  value={peso(p.amountCents)}
+                  last={i === receipts.length - 1}
+                />
               ))}
-            </Card>
-          ) : null}
+            </View>
 
-          {(d.promissoryNotes ?? []).map((n) => (
-            <Card key={n.noteNumber} title={`Promissory note ${n.noteNumber}`}>
-              <Text style={T.meta}>
-                {peso(n.principalCents)} over {n.months} months at 0% interest. Signed {when(n.signedAt)}.
-              </Text>
-            </Card>
-          ))}
-        </Screen>
-      )}
+            {notes.length > 0 ? (
+              <>
+                <SectionHeader title="Payment plans" />
+                <View>
+                  {notes.map((n, i) => (
+                    <LinkRow
+                      key={n.noteNumber}
+                      title={n.noteNumber}
+                      subtitle={`${n.months} months, 0% interest · signed ${when(n.signedAt)}`}
+                      value={peso(n.principalCents)}
+                      last={i === notes.length - 1}
+                    />
+                  ))}
+                </View>
+              </>
+            ) : null}
+
+            <Text style={[T.meta, { marginTop: S.md }]}>
+              Document upload from the phone is not supported yet. To submit papers, please visit the hospital
+              billing desk.
+            </Text>
+          </Screen>
+        );
+      }}
     </WithStay>
   );
 }

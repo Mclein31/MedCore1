@@ -1,7 +1,6 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, DefaultTheme, type NavigatorScreenParams } from '@react-navigation/native';
 import { createNativeStackNavigator, type NativeStackScreenProps } from '@react-navigation/native-stack';
-import { CircleUserRound, House, ReceiptText, ShieldCheck, Wallet } from 'lucide-react-native';
 import { useSession } from './lib/session';
 import { StaySelectionProvider } from './lib/stays';
 import { BillScreen } from './screens/BillScreen';
@@ -14,6 +13,7 @@ import { PayScreen } from './screens/PayScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { QuestionChargeScreen } from './screens/QuestionChargeScreen';
 import { SignInScreen } from './screens/SignInScreen';
+import { AppHeader, PillTabBar } from './ui/chrome';
 import { Loading } from './ui/kit';
 import { C } from './ui/theme';
 
@@ -58,26 +58,20 @@ const theme = {
   },
 };
 
-const TAB_ICONS = {
-  Home: House,
-  Bill: ReceiptText,
-  Coverage: ShieldCheck,
-  Payments: Wallet,
-  Profile: CircleUserRound,
-};
-
 function Tabs() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor: C.brandDark,
-        tabBarInactiveTintColor: C.faint,
-        headerTitleStyle: { fontWeight: '700' },
-        tabBarIcon: ({ color, size }) => {
-          const Icon = TAB_ICONS[route.name];
-          return <Icon color={color} size={size} />;
-        },
-      })}
+      tabBar={(props) => <PillTabBar {...props} />}
+      screenOptions={{
+        header: ({ route, options }) => (
+          <AppHeader
+            title={options.title ?? route.name}
+            branded={route.name === 'Home'}
+            background={route.name === 'Home' ? C.paper : C.surface}
+          />
+        ),
+        sceneStyle: { backgroundColor: C.paper },
+      }}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
       <Tab.Screen name="Bill" component={BillScreen} options={{ title: 'Bill' }} />
