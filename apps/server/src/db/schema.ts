@@ -12,9 +12,11 @@ import {
   bigserial,
   index,
   unique,
+  uniqueIndex,
+  check,
   primaryKey
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 
 // ----------------------------------------------------------------------
 // PostgreSQL Enums
@@ -175,9 +177,10 @@ export const users = pgTable(
       .notNull()
       .references(() => facilities.id, { onDelete: 'restrict' }),
     username: varchar('username', { length: 64 }).notNull().unique(),
-    email: varchar('email', { length: 255 }).notNull().unique(),
-    passwordHash: varchar('password_hash', { length: 255 }).notNull(),
-    salt: varchar('salt', { length: 64 }).notNull(),
+    email: varchar('email', { length: 255 }).notNull(),
+    // Null for patient accounts that only sign in with an email code.
+    passwordHash: varchar('password_hash', { length: 255 }),
+    salt: varchar('salt', { length: 64 }),
     fullName: varchar('full_name', { length: 255 }).notNull(),
     role: userRoleEnum('role').notNull(),
     title: varchar('title', { length: 128 }).notNull(),
@@ -191,7 +194,12 @@ export const users = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
   (table) => ({
-    facilityRoleIdx: index('idx_users_facility_role').on(table.facilityId, table.role)
+    facilityRoleIdx: index('idx_users_facility_role').on(table.facilityId, table.role),
+    emailLowerUq: uniqueIndex('users_email_lower_uq').on(sql`lower(${table.email})`),
+    staffHavePassword: check(
+      'users_staff_have_password',
+      sql`${table.role} = 'PATIENT_GUARANTOR' OR (${table.passwordHash} IS NOT NULL AND ${table.salt} IS NOT NULL)`
+    )
   })
 );
 
@@ -209,6 +217,8 @@ export const userSessions = pgTable(
     ipAddress: varchar('ip_address', { length: 45 }),
     userAgent: text('user_agent'),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
   },
   (table) => ({
@@ -256,6 +266,8 @@ export const patients = pgTable(
     dateOfBirth: timestamp('date_of_birth').notNull(),
     gender: varchar('gender', { length: 1 }).notNull(),
     contactNumber: varchar('contact_number', { length: 32 }).notNull(),
+    // Recorded at admission; the only address a registration code is sent to.
+    email: varchar('email', { length: 255 }),
     philhealthPin: varchar('philhealth_pin', { length: 32 }),
     isSeniorCitizen: boolean('is_senior_citizen').notNull().default(false),
     seniorCitizenId: varchar('senior_citizen_id', { length: 64 }),
@@ -267,6 +279,55 @@ export const patients = pgTable(
   (table) => ({
     facilityMrnUq: unique('uq_patient_facility_mrn').on(table.facilityId, table.mrn),
     mrnIdx: index('idx_patients_mrn').on(table.facilityId, table.mrn)
+  })
+);
+
+// Email sign-in codes for patients (shape mirrors AdvanCare client_login_codes).
+// Only sha256(purpose:email:code) is stored, never the code.
+export const loginCodes = pgTable(
+  'login_codes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    facilityId: uuid('facility_id')
+      .notNull()
+      .references(() => facilities.id, { onDelete: 'restrict' }),
+    email: varchar('email', { length: 255 }).notNull(),
+    purpose: varchar('purpose', { length: 16 }).notNull(),
+    patientId: uuid('patient_id').references(() => patients.id, { onDelete: 'restrict' }),
+    codeHash: varchar('code_hash', { length: 64 }).notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    ip: varchar('ip', { length: 64 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  (table) => ({
+    emailIdx: index('login_codes_email_idx').on(sql`lower(${table.email})`, table.createdAt),
+    purposeCheck: check('login_codes_purpose_check', sql`${table.purpose} IN ('LOGIN', 'REGISTER')`),
+    attemptsCheck: check('login_codes_attempts_check', sql`${table.attempts} >= 0`),
+    registerHasPatient: check('login_codes_register_patient', sql`${table.purpose} = 'LOGIN' OR ${table.patientId} IS NOT NULL`)
+  })
+);
+
+// Verified links between a patient login and a patient record. Replaces users.linked_mrn.
+export const patientAccountLinks = pgTable(
+  'patient_account_links',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    patientId: uuid('patient_id')
+      .notNull()
+      .references(() => patients.id, { onDelete: 'restrict' }),
+    verifiedVia: varchar('verified_via', { length: 32 }).notNull(), // 'EMAIL_OTP' | 'STAFF_DESK' | 'LEGACY_MRN'
+    verifiedAt: timestamp('verified_at', { withTimezone: true }).defaultNow().notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true })
+  },
+  (table) => ({
+    activeUq: uniqueIndex('patient_account_links_active_uq')
+      .on(table.userId, table.patientId)
+      .where(sql`${table.revokedAt} IS NULL`)
   })
 );
 

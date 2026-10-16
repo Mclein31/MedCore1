@@ -24,7 +24,10 @@
     "db:ai-cache": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiCacheMigration.ts",
     "test:sms": "node --import ./node_modules/tsx/dist/loader.mjs apps/server/test/smsService.test.ts",
     "db:sms": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applySmsMigration.ts",
-    "test:sms:ui": "node --import ./node_modules/tsx/dist/loader.mjs scripts/verifySmsUi.mts"
+    "test:sms:ui": "node --import ./node_modules/tsx/dist/loader.mjs scripts/verifySmsUi.mts",
+    "test:otp": "SMTP_USER= SMTP_PASSWORD= node --import ./node_modules/tsx/dist/loader.mjs apps/server/test/mailer.test.ts && node --import ./node_modules/tsx/dist/loader.mjs scripts/testOtpFlow.ts",
+    "db:otp": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyOtpMigration.ts",
+    "seed:otp-emails": "node --import ./node_modules/tsx/dist/loader.mjs scripts/seedDemoPatientEmails.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.3",

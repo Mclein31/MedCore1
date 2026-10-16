@@ -5,6 +5,7 @@ import { apiAccess } from './middleware/access';
 import { authMiddleware } from './middleware/auth';
 import { apiError } from './middleware/error';
 import authApp from './routes/auth';
+import otpApp from './routes/otp';
 import encountersApp from './routes/encounters';
 import clearanceApp from './routes/clearance';
 import disputesApp from './routes/disputes';
@@ -226,6 +227,7 @@ app.get('/api/health', async (c) => {
 });
 
 // Mount Routes
+app.route('/api/v1/auth/otp', otpApp);
 app.route('/api/v1/auth', authApp);
 app.route('/api/v1/encounters', encountersApp);
 app.route('/api/v1/encounters', clearanceApp);
