@@ -1,7 +1,15 @@
 import { DISCHARGE_STAGES, STAGE_LABELS } from '@medcore/domain';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, BedDouble, Clock3, FileWarning, ShieldCheck, UserPlus, Wallet } from 'lucide-react';
-import type { ReactNode } from 'react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BedDouble,
+  Clock,
+  CreditCard,
+  ShieldCheck,
+  UserPlus,
+} from '../../components/icons';
+import type { ComponentType, ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Alert, Badge, Button, Card, cx, Empty, PageHeader, Spinner, Stat, Table } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
@@ -70,7 +78,7 @@ export function Dashboard() {
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <TileLink to="/staff/encounters">
           <Stat
-            icon={Clock3}
+            icon={Clock}
             tone={atRisk ? 'warn' : 'ink'}
             value={`${atRisk ?? '…'} at risk`}
             label="Discharge queue"
@@ -81,14 +89,14 @@ export function Dashboard() {
         </TileLink>
         <TileLink to="/staff/disputes">
           <Stat
-            icon={FileWarning}
+            icon={AlertTriangle}
             tone={a?.openDisputes.count ? 'bad' : 'ink'}
             value={`${a?.openDisputes.count ?? 0} open`}
             label="Charge disputes"
           />
         </TileLink>
         <TileLink to="/staff/encounters?stage=PENDING_SETTLEMENT">
-          <Stat icon={Wallet} value={peso(a?.money.outstandingCents ?? 0)} label="Patient receivables" />
+          <Stat icon={CreditCard} value={peso(a?.money.outstandingCents ?? 0)} label="Patient receivables" />
         </TileLink>
       </div>
 
@@ -113,7 +121,7 @@ export function Dashboard() {
             )}
           </MetricCard>
           <MetricCard
-            icon={Clock3}
+            icon={Clock}
             title="Discharge Velocity"
             chip={median === null ? 'No data yet' : median <= SLA_MINUTES ? 'Within SLA' : 'Over SLA'}
             chipTone={median === null ? 'neutral' : median <= SLA_MINUTES ? 'good' : 'warn'}
@@ -129,7 +137,7 @@ export function Dashboard() {
             </p>
           </MetricCard>
           <MetricCard
-            icon={Wallet}
+            icon={CreditCard}
             title="Inpatient Receivables"
             chip="In-flight portfolio"
             chipTone="neutral"
@@ -226,7 +234,7 @@ function MetricCard({
   footer,
   children,
 }: {
-  icon: typeof Clock3;
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
   title: string;
   chip: string;
   chipTone: 'good' | 'warn' | 'info' | 'neutral';

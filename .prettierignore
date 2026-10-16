@@ -11,3 +11,7 @@ product video inspo
 apps/api/drizzle
 package-lock.json
 skills-lock.json
+
+# Generated Solar icon geometry
+packages/icons/src/data.ts
+packages/icons/sources.json

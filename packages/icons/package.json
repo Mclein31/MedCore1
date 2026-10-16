@@ -1,0 +1,13 @@
+{
+  "name": "@medcore/icons",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Solar icon geometry (CC BY 4.0) shared by the staff dashboard and the patient app so both draw identical icons.",
+  "exports": {
+    ".": "./src/data.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
