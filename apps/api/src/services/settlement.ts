@@ -22,7 +22,10 @@ const PAYABLE_BILL_STATES = new Set(['FINALIZED', 'SENT', 'PARTIALLY_PAID']);
 export function assertSettleable(encounter: Encounter): void {
   if (encounter.voidedAt) throw conflict('STAY_VOIDED', 'This stay was voided.');
   if (encounter.stage !== 'PENDING_SETTLEMENT') {
-    throw conflict('STAGE_NOT_READY', 'Settlement opens once discharge clearance reaches "Awaiting settlement".');
+    throw conflict(
+      'STAGE_NOT_READY',
+      'Settlement opens once discharge clearance reaches "Awaiting settlement".',
+    );
   }
   if (!PAYABLE_BILL_STATES.has(encounter.billState)) {
     throw conflict('BILL_NOT_FINAL', 'The bill must be finalized before it can be settled.');
@@ -33,7 +36,12 @@ export function assertSettleable(encounter: Encounter): void {
  * If the stay is fully settled with no open disputes, close it out atomically:
  * issue the exit pass, mark the stay cleared, and release the bed to housekeeping.
  */
-export async function clearIfSettled(c: AppContext, tx: DbOrTx, encounter: Encounter, ledger: Ledger): Promise<boolean> {
+export async function clearIfSettled(
+  c: AppContext,
+  tx: DbOrTx,
+  encounter: Encounter,
+  ledger: Ledger,
+): Promise<boolean> {
   if (encounter.stage !== 'PENDING_SETTLEMENT' || !PAYABLE_BILL_STATES.has(encounter.billState)) return false;
   if (ledger.balanceCents > 0) return false;
   const open = await tx
@@ -57,7 +65,14 @@ export async function clearIfSettled(c: AppContext, tx: DbOrTx, encounter: Encou
   );
   await tx
     .update(encounters)
-    .set({ stage: 'CLEARED', stageEnteredAt: now, clearedAt: now, billState: 'SETTLED', updatedAt: now, version: encounter.version + 1 })
+    .set({
+      stage: 'CLEARED',
+      stageEnteredAt: now,
+      clearedAt: now,
+      billState: 'SETTLED',
+      updatedAt: now,
+      version: encounter.version + 1,
+    })
     .where(eq(encounters.id, encounter.id));
   if (encounter.bedId) {
     await tx
@@ -95,7 +110,8 @@ export interface PaymentInput {
  * rejected. Must run in a transaction that already holds the encounter lock.
  */
 export async function recordPayment(c: AppContext, tx: DbOrTx, encounter: Encounter, input: PaymentInput) {
-  const actorKey = input.actor.kind === 'STAFF' ? `staff:${input.actor.staffId}` : `patient:${input.actor.accountId}`;
+  const actorKey =
+    input.actor.kind === 'STAFF' ? `staff:${input.actor.staffId}` : `patient:${input.actor.accountId}`;
   const requestHash = await sha256Hex(
     JSON.stringify([
       encounter.id,
@@ -115,7 +131,10 @@ export async function recordPayment(c: AppContext, tx: DbOrTx, encounter: Encoun
     .limit(1);
   if (existing) {
     if (existing.requestHash !== requestHash) {
-      throw conflict('IDEMPOTENCY_CONFLICT', 'This payment reference was already used for a different payment.');
+      throw conflict(
+        'IDEMPOTENCY_CONFLICT',
+        'This payment reference was already used for a different payment.',
+      );
     }
     const [receipt] = await tx.select().from(receipts).where(eq(receipts.paymentId, existing.id));
     return { payment: existing, receipt: receipt!, replayed: true };
@@ -125,7 +144,11 @@ export async function recordPayment(c: AppContext, tx: DbOrTx, encounter: Encoun
   const before = await recalculateLedger(tx, encounter, c.var.services.now());
   if (before.balanceCents === 0) throw conflict('ALREADY_SETTLED', 'This bill is already settled.');
   if (input.amountCents > before.balanceCents) {
-    throw new ApiError(422, 'EXCEEDS_BALANCE', `The amount cannot exceed the balance of ${formatPeso(before.balanceCents)}.`);
+    throw new ApiError(
+      422,
+      'EXCEEDS_BALANCE',
+      `The amount cannot exceed the balance of ${formatPeso(before.balanceCents)}.`,
+    );
   }
 
   const now = c.var.services.now();
@@ -164,15 +187,30 @@ export async function recordPayment(c: AppContext, tx: DbOrTx, encounter: Encoun
 
   const ledger = await recalculateLedger(tx, encounter, now);
   if (ledger.balanceCents > 0 && encounter.billState !== 'PARTIALLY_PAID') {
-    await tx.update(encounters).set({ billState: 'PARTIALLY_PAID', updatedAt: now }).where(eq(encounters.id, encounter.id));
+    await tx
+      .update(encounters)
+      .set({ billState: 'PARTIALLY_PAID', updatedAt: now })
+      .where(eq(encounters.id, encounter.id));
   }
-  await timeline(c, tx, encounter.id, 'PAYMENT', `Payment received: ${formatPeso(input.amountCents)}`, `Official receipt ${receipt!.officialReceiptNumber}.`);
+  await timeline(
+    c,
+    tx,
+    encounter.id,
+    'PAYMENT',
+    `Payment received: ${formatPeso(input.amountCents)}`,
+    `Official receipt ${receipt!.officialReceiptNumber}.`,
+  );
   await audit(c, tx, {
     action: 'PAYMENT_RECORDED',
     resourceType: 'payment',
     resourceId: payment!.id,
     facilityId: encounter.facilityId,
-    detail: { encounterId: encounter.id, amountCents: input.amountCents, rail: input.rail, simulated: input.isSimulated },
+    detail: {
+      encounterId: encounter.id,
+      amountCents: input.amountCents,
+      rail: input.rail,
+      simulated: input.isSimulated,
+    },
   });
   await clearIfSettled(c, tx, encounter, ledger);
   return { payment: payment!, receipt: receipt!, replayed: false };
@@ -189,7 +227,12 @@ export interface NoteInput {
 }
 
 /** Sign an RA 9439 promissory note for (part of) the balance. 0% interest, no fees. */
-export async function createPromissoryNote(c: AppContext, tx: DbOrTx, encounter: Encounter, input: NoteInput) {
+export async function createPromissoryNote(
+  c: AppContext,
+  tx: DbOrTx,
+  encounter: Encounter,
+  input: NoteInput,
+) {
   assertSettleable(encounter);
   const id = validateGovernmentId(input.idType, input.idNumber);
   if (!id.valid) throw new ApiError(422, 'INVALID_GOVERNMENT_ID', id.error);
@@ -197,7 +240,11 @@ export async function createPromissoryNote(c: AppContext, tx: DbOrTx, encounter:
   const before = await recalculateLedger(tx, encounter, now);
   if (before.balanceCents === 0) throw conflict('ALREADY_SETTLED', 'This bill is already settled.');
   if (input.principalCents > before.balanceCents) {
-    throw new ApiError(422, 'EXCEEDS_BALANCE', `The note cannot exceed the balance of ${formatPeso(before.balanceCents)}.`);
+    throw new ApiError(
+      422,
+      'EXCEEDS_BALANCE',
+      `The note cannot exceed the balance of ${formatPeso(before.balanceCents)}.`,
+    );
   }
   const [active] = await tx
     .select({ id: promissoryNotes.id })
@@ -245,7 +292,14 @@ export async function createPromissoryNote(c: AppContext, tx: DbOrTx, encounter:
     })
     .returning();
   const ledger = await recalculateLedger(tx, encounter, now);
-  await timeline(c, tx, encounter.id, 'PAYMENT', `Promissory note signed: ${formatPeso(input.principalCents)}`, `${input.months} monthly installments, 0% interest.`);
+  await timeline(
+    c,
+    tx,
+    encounter.id,
+    'PAYMENT',
+    `Promissory note signed: ${formatPeso(input.principalCents)}`,
+    `${input.months} monthly installments, 0% interest.`,
+  );
   await audit(c, tx, {
     action: 'PROMISSORY_NOTE_SIGNED',
     resourceType: 'promissory_note',

@@ -31,7 +31,9 @@ export function createPool(url: string, options: PoolOptions = {}): pg.Pool {
     application_name: 'medcore-api',
   });
   // An idle client error must not crash the process; the pool replaces it.
-  pool.on('error', (err) => console.error(JSON.stringify({ level: 'error', msg: 'pg pool error', error: err.message })));
+  pool.on('error', (err) =>
+    console.error(JSON.stringify({ level: 'error', msg: 'pg pool error', error: err.message })),
+  );
   return pool;
 }
 

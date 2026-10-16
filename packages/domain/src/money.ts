@@ -44,7 +44,8 @@ export function mulRatio(value: number, numerator: bigint, denominator: bigint):
 
 /** quantity * unit price, exact. */
 export function lineTotal(quantity: number, unitPriceCents: number): number {
-  if (!Number.isSafeInteger(quantity) || quantity <= 0) throw new MoneyError('Quantity must be a positive whole number.');
+  if (!Number.isSafeInteger(quantity) || quantity <= 0)
+    throw new MoneyError('Quantity must be a positive whole number.');
   const total = BigInt(quantity) * BigInt(assertCents(unitPriceCents));
   if (total > BigInt(MAX_CENTS)) throw new MoneyError('Line total exceeds the supported money range.');
   return Number(total);
@@ -67,7 +68,7 @@ export function parsePesos(input: string): number {
 
 /** Format centavos as "₱1,234.56". */
 export function formatPeso(cents: number): string {
-  const value = assertCents(cents);
+  const value = assertCents(cents) + 0; // "+ 0" turns -0 into 0, which would otherwise print as "-0"
   const whole = Math.floor(value / 100);
   const fraction = String(value % 100).padStart(2, '0');
   return `₱${whole.toLocaleString('en-PH')}.${fraction}`;

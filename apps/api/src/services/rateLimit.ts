@@ -50,7 +50,10 @@ export async function consume(
 }
 
 /** Consume every rule; throw 429 if any is exhausted. */
-export async function enforce(c: AppContext, checks: [LimitRule, string | null | undefined][]): Promise<void> {
+export async function enforce(
+  c: AppContext,
+  checks: [LimitRule, string | null | undefined][],
+): Promise<void> {
   const now = c.var.services.now();
   for (const [rule, subject] of checks) {
     if (!subject) continue;

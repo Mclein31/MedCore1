@@ -46,11 +46,20 @@ import {
 
 export const staffAuthRoutes = new Hono<AppBindings>();
 
+const staffActor = (user: typeof staffUsers.$inferSelect) =>
+  ({ type: 'STAFF', id: user.id, email: user.email, facilityId: user.facilityId }) as const;
+
 async function startSession(c: AppContext, user: typeof staffUsers.$inferSelect) {
   const now = c.var.services.now();
   const session = await createSession(
     c.var.db,
-    { kind: 'STAFF', staffUserId: user.id, facilityId: user.facilityId, ip: c.var.ip, userAgent: c.var.userAgent },
+    {
+      kind: 'STAFF',
+      staffUserId: user.id,
+      facilityId: user.facilityId,
+      ip: c.var.ip,
+      userAgent: c.var.userAgent,
+    },
     now,
   );
   await c.var.db.update(staffUsers).set({ lastLoginAt: now }).where(eq(staffUsers.id, user.id));
@@ -76,7 +85,15 @@ staffAuthRoutes.post('/login', jsonBody(StaffLoginBody), async (c) => {
       resourceType: 'staff_user',
       resourceId: user?.id ?? null,
       facilityId: user?.facilityId ?? null,
-      detail: { reason: !user ? 'unknown_account' : !user.isActive ? 'inactive' : !user.passwordHash ? 'no_password' : 'locked' },
+      detail: {
+        reason: !user
+          ? 'unknown_account'
+          : !user.isActive
+            ? 'inactive'
+            : !user.passwordHash
+              ? 'no_password'
+              : 'locked',
+      },
     });
     throw invalidCredentials();
   }
@@ -87,13 +104,17 @@ staffAuthRoutes.post('/login', jsonBody(StaffLoginBody), async (c) => {
     const lock = failures >= MAX_FAILED_LOGINS;
     await c.var.db
       .update(staffUsers)
-      .set({ failedLoginCount: lock ? 0 : failures, lockedUntil: lock ? new Date(now.getTime() + LOCKOUT_MS) : user.lockedUntil })
+      .set({
+        failedLoginCount: lock ? 0 : failures,
+        lockedUntil: lock ? new Date(now.getTime() + LOCKOUT_MS) : user.lockedUntil,
+      })
       .where(eq(staffUsers.id, user.id));
     await audit(c, c.var.db, {
       action: lock ? 'STAFF_ACCOUNT_LOCKED' : 'STAFF_LOGIN_FAILED',
       resourceType: 'staff_user',
       resourceId: user.id,
       facilityId: user.facilityId,
+      actor: staffActor(user),
       detail: { reason: 'bad_password', failures },
     });
     throw invalidCredentials();
@@ -117,7 +138,12 @@ staffAuthRoutes.post('/login', jsonBody(StaffLoginBody), async (c) => {
     return c.json({ status: 'MFA_ENROLLMENT_REQUIRED' as const, challenge });
   }
   await startSession(c, user);
-  await audit(c, c.var.db, { action: 'STAFF_LOGIN', resourceType: 'staff_user', resourceId: user.id, facilityId: user.facilityId });
+  await audit(c, c.var.db, {
+    action: 'STAFF_LOGIN',
+    resourceType: 'staff_user',
+    resourceId: user.id,
+    actor: staffActor(user),
+  });
   return c.json({ status: 'SIGNED_IN' as const, user: publicStaffUser(user) });
 });
 
@@ -139,7 +165,13 @@ staffAuthRoutes.post('/mfa/verify', jsonBody(MfaVerifyBody), async (c) => {
       }
     } else if (!/^\d{6}$/.test(code)) {
       ok = await useRecoveryCode(tx, user.id, code, now);
-      if (ok) await audit(c, tx, { action: 'STAFF_RECOVERY_CODE_USED', resourceType: 'staff_user', resourceId: user.id, facilityId: user.facilityId });
+      if (ok)
+        await audit(c, tx, {
+          action: 'STAFF_RECOVERY_CODE_USED',
+          resourceType: 'staff_user',
+          resourceId: user.id,
+          actor: staffActor(user),
+        });
     }
     if (!ok) {
       await failChallenge(tx, challenge.id, challenge.attempts, now);
@@ -149,13 +181,18 @@ staffAuthRoutes.post('/mfa/verify', jsonBody(MfaVerifyBody), async (c) => {
     return { ok: true as const, user };
   });
 
-  if (!outcome.ok) throw new ApiError(401, 'CODE_INVALID', 'That code is not right. Check your authenticator app and try again.');
+  if (!outcome.ok)
+    throw new ApiError(
+      401,
+      'CODE_INVALID',
+      'That code is not right. Check your authenticator app and try again.',
+    );
   await startSession(c, outcome.user);
   await audit(c, c.var.db, {
     action: 'STAFF_LOGIN',
     resourceType: 'staff_user',
     resourceId: outcome.user.id,
-    facilityId: outcome.user.facilityId,
+    actor: staffActor(outcome.user),
     detail: { mfa: true },
   });
   return c.json({ status: 'SIGNED_IN' as const, user: publicStaffUser(outcome.user) });
@@ -168,13 +205,19 @@ staffAuthRoutes.post('/mfa/enroll/start', jsonBody(MfaEnrollStartBody), async (c
   const now = clock();
   return c.var.db.transaction(async (tx) => {
     const { user } = await lockChallenge(tx, token, 'MFA_ENROLL', now);
-    const [facility] = await tx.select({ name: facilities.name }).from(facilities).where(eq(facilities.id, user.facilityId));
+    const [facility] = await tx
+      .select({ name: facilities.name })
+      .from(facilities)
+      .where(eq(facilities.id, user.facilityId));
     const secret = generateTotpSecret();
     await tx
       .update(staffUsers)
       .set({ mfaPendingSecretEnc: await cipher.encrypt(secret, mfaSecretContext(user.id)) })
       .where(eq(staffUsers.id, user.id));
-    return c.json({ secret, otpauthUri: otpauthUri(secret, user.email, `MedCore ${facility?.name ?? ''}`.trim()) });
+    return c.json({
+      secret,
+      otpauthUri: otpauthUri(secret, user.email, `MedCore ${facility?.name ?? ''}`.trim()),
+    });
   });
 });
 
@@ -198,16 +241,35 @@ staffAuthRoutes.post('/mfa/enroll/confirm', jsonBody(MfaEnrollConfirmBody), asyn
     await consumeChallenge(tx, challenge.id, now);
     await tx
       .update(staffUsers)
-      .set({ mfaSecretEnc: user.mfaPendingSecretEnc, mfaPendingSecretEnc: null, mfaEnabledAt: now, mfaLastStep: step })
+      .set({
+        mfaSecretEnc: user.mfaPendingSecretEnc,
+        mfaPendingSecretEnc: null,
+        mfaEnabledAt: now,
+        mfaLastStep: step,
+      })
       .where(eq(staffUsers.id, user.id));
     const recoveryCodes = await replaceRecoveryCodes(tx, user.id, now);
-    await audit(c, tx, { action: 'STAFF_MFA_ENROLLED', resourceType: 'staff_user', resourceId: user.id, facilityId: user.facilityId });
+    await audit(c, tx, {
+      action: 'STAFF_MFA_ENROLLED',
+      resourceType: 'staff_user',
+      resourceId: user.id,
+      actor: staffActor(user),
+    });
     return { ok: true as const, user: { ...user, mfaEnabledAt: now }, recoveryCodes };
   });
 
-  if (!outcome.ok) throw new ApiError(401, 'CODE_INVALID', 'That code is not right. Check the time on your phone and try again.');
+  if (!outcome.ok)
+    throw new ApiError(
+      401,
+      'CODE_INVALID',
+      'That code is not right. Check the time on your phone and try again.',
+    );
   await startSession(c, outcome.user);
-  return c.json({ status: 'SIGNED_IN' as const, user: publicStaffUser(outcome.user), recoveryCodes: outcome.recoveryCodes });
+  return c.json({
+    status: 'SIGNED_IN' as const,
+    user: publicStaffUser(outcome.user),
+    recoveryCodes: outcome.recoveryCodes,
+  });
 });
 
 staffAuthRoutes.post('/accept-invite', jsonBody(AcceptInviteBody), async (c) => {
@@ -220,7 +282,12 @@ staffAuthRoutes.post('/accept-invite', jsonBody(AcceptInviteBody), async (c) => 
     .from(staffUsers)
     .where(and(eq(staffUsers.inviteTokenHash, await sha256Hex(token)), gt(staffUsers.inviteExpiresAt, now)))
     .limit(1);
-  if (!user || !user.isActive) throw new ApiError(410, 'INVITE_INVALID', 'This invitation link is invalid or has expired. Ask your administrator for a new one.');
+  if (!user || !user.isActive)
+    throw new ApiError(
+      410,
+      'INVITE_INVALID',
+      'This invitation link is invalid or has expired. Ask your administrator for a new one.',
+    );
   const policy = checkPassword(password, user);
   if (!policy.ok) throw new ApiError(422, 'WEAK_PASSWORD', policy.reason);
   await c.var.db.transaction(async (tx) => {
@@ -238,7 +305,12 @@ staffAuthRoutes.post('/accept-invite', jsonBody(AcceptInviteBody), async (c) => 
       .where(eq(staffUsers.id, user.id));
     // The same link doubles as an admin-issued password reset: end any old sessions.
     await revokeStaffSessions(tx, user.id, now);
-    await audit(c, tx, { action: 'STAFF_INVITE_ACCEPTED', resourceType: 'staff_user', resourceId: user.id, facilityId: user.facilityId });
+    await audit(c, tx, {
+      action: 'STAFF_INVITE_ACCEPTED',
+      resourceType: 'staff_user',
+      resourceId: user.id,
+      actor: staffActor(user),
+    });
   });
   return c.json({ ok: true, email: user.email });
 });
@@ -264,7 +336,11 @@ staffAuthRoutes.get('/me', async (c) => {
 
 staffAuthRoutes.post('/logout', async (c) => {
   await revokeSession(c.var.db, c.var.staff.sessionId, c.var.services.now());
-  await audit(c, c.var.db, { action: 'STAFF_LOGOUT', resourceType: 'staff_user', resourceId: c.var.staff.id });
+  await audit(c, c.var.db, {
+    action: 'STAFF_LOGOUT',
+    resourceType: 'staff_user',
+    resourceId: c.var.staff.id,
+  });
   clearSessionCookie(c, 'STAFF');
   return c.json({ ok: true });
 });
@@ -275,8 +351,18 @@ staffAuthRoutes.get('/sessions', async (c) => {
 });
 
 staffAuthRoutes.post('/sessions/revoke-others', async (c) => {
-  const count = await revokeStaffSessions(c.var.db, c.var.staff.id, c.var.services.now(), c.var.staff.sessionId);
-  await audit(c, c.var.db, { action: 'STAFF_SESSIONS_REVOKED', resourceType: 'staff_user', resourceId: c.var.staff.id, detail: { count } });
+  const count = await revokeStaffSessions(
+    c.var.db,
+    c.var.staff.id,
+    c.var.services.now(),
+    c.var.staff.sessionId,
+  );
+  await audit(c, c.var.db, {
+    action: 'STAFF_SESSIONS_REVOKED',
+    resourceType: 'staff_user',
+    resourceId: c.var.staff.id,
+    detail: { count },
+  });
   return c.json({ revoked: count });
 });
 
@@ -301,12 +387,17 @@ staffAuthRoutes.post('/password', jsonBody(ChangePasswordBody), async (c) => {
   if (!current.ok) throw new ApiError(401, 'INVALID_CREDENTIALS', 'Your current password is not right.');
   const policy = checkPassword(newPassword, user);
   if (!policy.ok) throw new ApiError(422, 'WEAK_PASSWORD', policy.reason);
-  if (newPassword === currentPassword) throw new ApiError(422, 'WEAK_PASSWORD', 'Choose a password you have not used here.');
+  if (newPassword === currentPassword)
+    throw new ApiError(422, 'WEAK_PASSWORD', 'Choose a password you have not used here.');
   const now = clock();
   await c.var.db.transaction(async (tx) => {
     await tx
       .update(staffUsers)
-      .set({ passwordHash: await hashPassword(newPassword, config.pbkdf2Iterations), passwordChangedAt: now, updatedAt: now })
+      .set({
+        passwordHash: await hashPassword(newPassword, config.pbkdf2Iterations),
+        passwordChangedAt: now,
+        updatedAt: now,
+      })
       .where(eq(staffUsers.id, user.id));
     // Anyone holding an old session (for example on a lost laptop) is signed out.
     await revokeStaffSessions(tx, user.id, now, c.var.staff.sessionId);
@@ -321,12 +412,26 @@ staffAuthRoutes.post('/mfa/recovery-codes', jsonBody(z.strictObject({ code: SixD
   const { cipher, now: clock } = c.var.services;
   const now = clock();
   const codes = await c.var.db.transaction(async (tx) => {
-    const [user] = await tx.select().from(staffUsers).where(eq(staffUsers.id, c.var.staff.id)).limit(1).for('update');
+    const [user] = await tx
+      .select()
+      .from(staffUsers)
+      .where(eq(staffUsers.id, c.var.staff.id))
+      .limit(1)
+      .for('update');
     if (!user?.mfaSecretEnc) throw new ApiError(409, 'MFA_NOT_ENABLED', 'Set up an authenticator app first.');
-    const step = await verifyTotp(await cipher.decrypt(user.mfaSecretEnc, mfaSecretContext(user.id)), code, now, user.mfaLastStep);
+    const step = await verifyTotp(
+      await cipher.decrypt(user.mfaSecretEnc, mfaSecretContext(user.id)),
+      code,
+      now,
+      user.mfaLastStep,
+    );
     if (step === null) throw new ApiError(401, 'CODE_INVALID', 'That code is not right.');
     await tx.update(staffUsers).set({ mfaLastStep: step }).where(eq(staffUsers.id, user.id));
-    await audit(c, tx, { action: 'STAFF_RECOVERY_CODES_REGENERATED', resourceType: 'staff_user', resourceId: user.id });
+    await audit(c, tx, {
+      action: 'STAFF_RECOVERY_CODES_REGENERATED',
+      resourceType: 'staff_user',
+      resourceId: user.id,
+    });
     return replaceRecoveryCodes(tx, user.id, now);
   });
   return c.json({ recoveryCodes: codes });

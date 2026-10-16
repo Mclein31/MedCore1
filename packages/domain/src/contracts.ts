@@ -23,9 +23,20 @@ export const Cents = z.number().int().min(0).max(MAX_CENTS);
 export const PositiveCents = Cents.min(1, 'Enter an amount greater than zero.');
 export const IsoDate = z.string().refine(isIsoDate, 'Use the format YYYY-MM-DD.');
 export const Uuid = z.uuid();
-export const SixDigitCode = z.string().trim().regex(/^\d{6}$/, 'Enter the 6-digit code.');
-export const FacilityCode = z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{2,32}$/);
-export const Mrn = z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,32}$/, 'Check the hospital record number.');
+export const SixDigitCode = z
+  .string()
+  .trim()
+  .regex(/^\d{6}$/, 'Enter the 6-digit code.');
+export const FacilityCode = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9-]{2,32}$/);
+export const Mrn = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .regex(/^[A-Z0-9-]{3,32}$/, 'Check the hospital record number.');
 
 // ---------- Staff auth ----------
 export const StaffLoginBody = z.strictObject({
@@ -36,11 +47,21 @@ export const StaffLoginBody = z.strictObject({
 
 export const MfaVerifyBody = z.strictObject({
   challenge: z.string().min(20).max(128),
-  code: z.union([SixDigitCode, z.string().trim().toUpperCase().regex(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/)]),
+  code: z.union([
+    SixDigitCode,
+    z
+      .string()
+      .trim()
+      .toUpperCase()
+      .regex(/^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/),
+  ]),
 });
 
 export const MfaEnrollStartBody = z.strictObject({ challenge: z.string().min(20).max(128) });
-export const MfaEnrollConfirmBody = z.strictObject({ challenge: z.string().min(20).max(128), code: SixDigitCode });
+export const MfaEnrollConfirmBody = z.strictObject({
+  challenge: z.string().min(20).max(128),
+  code: SixDigitCode,
+});
 
 export const ChangePasswordBody = z.strictObject({
   currentPassword: z.string().min(1).max(PASSWORD_MAX),
@@ -57,7 +78,11 @@ export const CreateStaffBody = z.strictObject({
   fullName: safeText(2, 120),
   role: z.enum(STAFF_ROLES),
   title: safeText(2, 80),
-  prcLicense: z.string().trim().regex(/^\d{7}$/, 'PRC license numbers have 7 digits.').optional(),
+  prcLicense: z
+    .string()
+    .trim()
+    .regex(/^\d{7}$/, 'PRC license numbers have 7 digits.')
+    .optional(),
 });
 
 export const UpdateStaffBody = z.strictObject({
@@ -69,7 +94,12 @@ export const UpdateStaffBody = z.strictObject({
 // ---------- Patient sign-in (email code) ----------
 export const PatientCodeRequestBody = z.discriminatedUnion('purpose', [
   z.strictObject({ purpose: z.literal('LOGIN'), facilityCode: FacilityCode, email: Email }),
-  z.strictObject({ purpose: z.literal('REGISTER'), facilityCode: FacilityCode, mrn: Mrn, dateOfBirth: IsoDate }),
+  z.strictObject({
+    purpose: z.literal('REGISTER'),
+    facilityCode: FacilityCode,
+    mrn: Mrn,
+    dateOfBirth: IsoDate,
+  }),
 ]);
 
 export const PatientCodeVerifyBody = z.discriminatedUnion('purpose', [
@@ -137,7 +167,11 @@ export const AdmitBody = z.strictObject({
 export const VoidEncounterBody = z.strictObject({ reason: safeText(10, 500) });
 
 export const AddChargeBody = z.strictObject({
-  code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{2,32}$/),
+  code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9-]{2,32}$/),
   description: safeText(2, 200),
   category: z.enum(CHARGE_CATEGORIES),
   quantity: z.number().int().min(1).max(10_000),
@@ -149,7 +183,11 @@ export const AddChargeBody = z.strictObject({
 export const RemoveChargeBody = z.strictObject({ reason: safeText(5, 300) });
 
 export const PhilhealthCoverageBody = z.strictObject({
-  caseRateCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9.-]{2,16}$/),
+  caseRateCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9.-]{2,16}$/),
   hciCents: Cents,
   pfCents: Cents,
 });
@@ -173,13 +211,26 @@ export const SignPfBody = z.strictObject({
 
 export const FinalLoaBody = z.strictObject({
   approvedCents: Cents,
-  approvalCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{4,32}$/),
+  approvalCode: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z0-9-]{4,32}$/),
 });
 
 // ---------- Settlement ----------
-export const STAFF_PAYMENT_RAILS = ['CASH', 'CARD_TERMINAL', 'BANK_TRANSFER', 'GCASH', 'MAYA', 'QR_PH'] as const;
+export const STAFF_PAYMENT_RAILS = [
+  'CASH',
+  'CARD_TERMINAL',
+  'BANK_TRANSFER',
+  'GCASH',
+  'MAYA',
+  'QR_PH',
+] as const;
 export const ONLINE_PAYMENT_RAILS = ['GCASH', 'MAYA', 'QR_PH', 'CARD', 'BANK_TRANSFER'] as const;
-export const PAYMENT_RAILS = [...new Set([...STAFF_PAYMENT_RAILS, ...ONLINE_PAYMENT_RAILS, 'PROMISSORY_NOTE'] as const)];
+export const PAYMENT_RAILS = [
+  ...new Set([...STAFF_PAYMENT_RAILS, ...ONLINE_PAYMENT_RAILS, 'PROMISSORY_NOTE'] as const),
+];
 export const ONLINE_BANKS = ['BPI', 'BDO', 'METROBANK', 'UNIONBANK', 'LANDBANK'] as const;
 
 export const StaffPaymentBody = z.strictObject({
@@ -217,7 +268,9 @@ export const PromissoryBody = z.strictObject({
   relationship: z.enum(['SELF', 'SPOUSE', 'PARENT', 'CHILD', 'SIBLING', 'GUARANTOR']),
   idType: z.enum(GOVERNMENT_ID_TYPES),
   idNumber: z.string().max(32),
-  months: z.union(INSTALLMENT_TERMS.map((m) => z.literal(m)) as [z.ZodLiteral<3>, z.ZodLiteral<6>, z.ZodLiteral<12>]),
+  months: z.union(
+    INSTALLMENT_TERMS.map((m) => z.literal(m)) as [z.ZodLiteral<3>, z.ZodLiteral<6>, z.ZodLiteral<12>],
+  ),
   principalCents: PositiveCents,
   acceptTerms: z.literal(true, { error: 'The borrower must accept the terms.' }),
 });
@@ -245,7 +298,11 @@ export const ResolveDisputeBody = z.strictObject({
 
 // ---------- Gate pass ----------
 export const VerifyGatePassBody = z.strictObject({
-  passNumber: z.string().trim().toUpperCase().regex(/^GP-[A-Z0-9]{10}$/),
+  passNumber: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^GP-[A-Z0-9]{10}$/),
   pin: SixDigitCode,
 });
 

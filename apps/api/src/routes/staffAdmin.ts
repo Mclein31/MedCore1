@@ -19,7 +19,10 @@ export const staffAdminRoutes = new Hono<AppBindings>();
 staffAdminRoutes.use('*', requirePermission('staff:manage'));
 
 async function facilityName(c: AppContext): Promise<string> {
-  const [f] = await c.var.db.select({ name: facilities.name }).from(facilities).where(eq(facilities.id, c.var.staff.facilityId));
+  const [f] = await c.var.db
+    .select({ name: facilities.name })
+    .from(facilities)
+    .where(eq(facilities.id, c.var.staff.facilityId));
   return f?.name ?? 'your hospital';
 }
 
@@ -38,8 +41,16 @@ async function assertAnotherActiveCfo(tx: Tx, facilityId: string, exceptId: stri
   const [row] = await tx
     .select({ count: sql<number>`count(*)::int` })
     .from(staffUsers)
-    .where(and(eq(staffUsers.facilityId, facilityId), eq(staffUsers.role, 'HOSPITAL_CFO'), eq(staffUsers.isActive, true), ne(staffUsers.id, exceptId)));
-  if (!row || row.count === 0) throw conflict('LAST_ADMIN', 'The hospital needs at least one active CFO account.');
+    .where(
+      and(
+        eq(staffUsers.facilityId, facilityId),
+        eq(staffUsers.role, 'HOSPITAL_CFO'),
+        eq(staffUsers.isActive, true),
+        ne(staffUsers.id, exceptId),
+      ),
+    );
+  if (!row || row.count === 0)
+    throw conflict('LAST_ADMIN', 'The hospital needs at least one active CFO account.');
 }
 
 staffAdminRoutes.get('/', async (c) => {
@@ -49,7 +60,11 @@ staffAdminRoutes.get('/', async (c) => {
     .where(eq(staffUsers.facilityId, c.var.staff.facilityId))
     .orderBy(asc(staffUsers.fullName));
   return c.json({
-    items: rows.map((u) => ({ ...publicStaffUser(u), invitePending: Boolean(u.inviteTokenHash), lockedUntil: u.lockedUntil })),
+    items: rows.map((u) => ({
+      ...publicStaffUser(u),
+      invitePending: Boolean(u.inviteTokenHash),
+      lockedUntil: u.lockedUntil,
+    })),
   });
 });
 
@@ -58,7 +73,10 @@ staffAdminRoutes.post('/', jsonBody(CreateStaffBody), async (c) => {
   const now = c.var.services.now();
   const token = randomToken(32);
   const id = await c.var.db.transaction(async (tx) => {
-    const [existing] = await tx.select({ id: staffUsers.id }).from(staffUsers).where(eq(staffUsers.email, body.email));
+    const [existing] = await tx
+      .select({ id: staffUsers.id })
+      .from(staffUsers)
+      .where(eq(staffUsers.email, body.email));
     if (existing) throw conflict('EMAIL_IN_USE', 'A staff account with this email already exists.');
     const [user] = await tx
       .insert(staffUsers)
@@ -75,7 +93,12 @@ staffAdminRoutes.post('/', jsonBody(CreateStaffBody), async (c) => {
         updatedAt: now,
       })
       .returning({ id: staffUsers.id });
-    await audit(c, tx, { action: 'STAFF_INVITED', resourceType: 'staff_user', resourceId: user!.id, detail: { role: body.role } });
+    await audit(c, tx, {
+      action: 'STAFF_INVITED',
+      resourceType: 'staff_user',
+      resourceId: user!.id,
+      detail: { role: body.role },
+    });
     return user!.id;
   });
   sendStaffInvite(c, body.email, body.fullName, token, await facilityName(c));
@@ -92,11 +115,18 @@ staffAdminRoutes.patch('/:id', jsonBody(UpdateStaffBody), async (c) => {
     if (id === self.id && (body.isActive === false || (body.role && body.role !== user.role))) {
       throw new ApiError(422, 'SELF_CHANGE', 'You cannot deactivate yourself or change your own role.');
     }
-    const losingAdmin = user.role === 'HOSPITAL_CFO' && user.isActive && (body.isActive === false || (body.role && body.role !== 'HOSPITAL_CFO'));
+    const losingAdmin =
+      user.role === 'HOSPITAL_CFO' &&
+      user.isActive &&
+      (body.isActive === false || (body.role && body.role !== 'HOSPITAL_CFO'));
     if (losingAdmin) await assertAnotherActiveCfo(tx, self.facilityId, id);
-    await tx.update(staffUsers).set({ ...body, updatedAt: now }).where(eq(staffUsers.id, id));
+    await tx
+      .update(staffUsers)
+      .set({ ...body, updatedAt: now })
+      .where(eq(staffUsers.id, id));
     // A role change or deactivation takes effect immediately everywhere.
-    if (body.isActive === false || (body.role && body.role !== user.role)) await revokeStaffSessions(tx, id, now);
+    if (body.isActive === false || (body.role && body.role !== user.role))
+      await revokeStaffSessions(tx, id, now);
     await audit(c, tx, {
       action: 'STAFF_UPDATED',
       resourceType: 'staff_user',
@@ -115,7 +145,13 @@ staffAdminRoutes.post('/:id/reset-mfa', async (c) => {
     await lockStaff(c, tx, id);
     await tx
       .update(staffUsers)
-      .set({ mfaSecretEnc: null, mfaPendingSecretEnc: null, mfaEnabledAt: null, mfaLastStep: null, updatedAt: now })
+      .set({
+        mfaSecretEnc: null,
+        mfaPendingSecretEnc: null,
+        mfaEnabledAt: null,
+        mfaLastStep: null,
+        updatedAt: now,
+      })
       .where(eq(staffUsers.id, id));
     await revokeStaffSessions(tx, id, now);
     await audit(c, tx, { action: 'STAFF_MFA_RESET', resourceType: 'staff_user', resourceId: id });
@@ -143,7 +179,11 @@ staffAdminRoutes.post('/:id/send-invite', async (c) => {
     if (!target.isActive) throw conflict('INACTIVE', 'Reactivate this account first.');
     await tx
       .update(staffUsers)
-      .set({ inviteTokenHash: await sha256Hex(token), inviteExpiresAt: new Date(now.getTime() + INVITE_TTL_MS), updatedAt: now })
+      .set({
+        inviteTokenHash: await sha256Hex(token),
+        inviteExpiresAt: new Date(now.getTime() + INVITE_TTL_MS),
+        updatedAt: now,
+      })
       .where(eq(staffUsers.id, id));
     await audit(c, tx, { action: 'STAFF_INVITE_SENT', resourceType: 'staff_user', resourceId: id });
     return target;
@@ -158,7 +198,13 @@ staffDirectoryRoutes.get('/physicians', requirePermission('encounter:admit'), as
   const rows = await c.var.db
     .select({ id: staffUsers.id, fullName: staffUsers.fullName, title: staffUsers.title })
     .from(staffUsers)
-    .where(and(eq(staffUsers.facilityId, c.var.staff.facilityId), eq(staffUsers.role, 'ATTENDING_PHYSICIAN'), eq(staffUsers.isActive, true)))
+    .where(
+      and(
+        eq(staffUsers.facilityId, c.var.staff.facilityId),
+        eq(staffUsers.role, 'ATTENDING_PHYSICIAN'),
+        eq(staffUsers.isActive, true),
+      ),
+    )
     .orderBy(asc(staffUsers.fullName));
   return c.json({ items: rows });
 });

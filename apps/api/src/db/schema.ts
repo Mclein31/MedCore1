@@ -194,10 +194,7 @@ export const patients = pgTable(
     index('patients_name_idx').on(t.facilityId, t.fullName),
     check('patients_sex', sql`${t.sex} IN ('F','M','X')`),
     check('patients_email_lowercase', sql`${t.email} IS NULL OR ${t.email} = lower(${t.email})`),
-    check(
-      'patients_discount_id',
-      sql`(${t.discountKind} = 'NONE') = (${t.discountIdEnc} IS NULL)`,
-    ),
+    check('patients_discount_id', sql`(${t.discountKind} = 'NONE') = (${t.discountIdEnc} IS NULL)`),
   ],
 );
 
@@ -235,7 +232,9 @@ export const patientAccountLinks = pgTable(
     revokedAt: instant('revoked_at'),
   },
   (t) => [
-    uniqueIndex('patient_account_links_active_uq').on(t.accountId, t.patientId).where(sql`${t.revokedAt} IS NULL`),
+    uniqueIndex('patient_account_links_active_uq')
+      .on(t.accountId, t.patientId)
+      .where(sql`${t.revokedAt} IS NULL`),
     index('patient_account_links_patient_idx').on(t.patientId),
     check('patient_account_links_via', sql`${t.verifiedVia} IN ('EMAIL_CODE','STAFF_DESK')`),
   ],
@@ -273,7 +272,9 @@ export const sessions = pgTable(
     tokenHash: varchar('token_hash', { length: 64 }).notNull().unique(),
     principalType: principalType('principal_type').notNull(),
     staffUserId: uuid('staff_user_id').references(() => staffUsers.id, { onDelete: 'restrict' }),
-    patientAccountId: uuid('patient_account_id').references(() => patientAccounts.id, { onDelete: 'restrict' }),
+    patientAccountId: uuid('patient_account_id').references(() => patientAccounts.id, {
+      onDelete: 'restrict',
+    }),
     facilityId: uuid('facility_id')
       .notNull()
       .references(() => facilities.id, { onDelete: 'restrict' }),
@@ -437,7 +438,10 @@ export const charges = pgTable(
   (t) => [
     index('charges_encounter_idx').on(t.encounterId),
     check('charges_quantity_positive', sql`${t.quantity} > 0`),
-    check('charges_amounts', sql`${t.unitPriceCents} >= 0 AND ${t.grossCents} = ${t.quantity} * ${t.unitPriceCents}`),
+    check(
+      'charges_amounts',
+      sql`${t.unitPriceCents} >= 0 AND ${t.grossCents} = ${t.quantity} * ${t.unitPriceCents}`,
+    ),
     check('charges_removed', sql`(${t.removedAt} IS NULL) = (${t.removedReason} IS NULL)`),
   ],
 );
@@ -489,7 +493,10 @@ export const hmoCoverages = pgTable(
     updatedAt: updatedAt(),
   },
   (t) => [
-    check('hmo_coverages_amounts', sql`${t.mblCents} >= 0 AND ${t.approvedCents} >= 0 AND ${t.approvedCents} <= ${t.mblCents}`),
+    check(
+      'hmo_coverages_amounts',
+      sql`${t.mblCents} >= 0 AND ${t.approvedCents} >= 0 AND ${t.approvedCents} <= ${t.mblCents}`,
+    ),
   ],
 );
 
@@ -554,7 +561,9 @@ export const payments = pgTable(
     idempotencyKey: varchar('idempotency_key', { length: 64 }).notNull(),
     requestHash: varchar('request_hash', { length: 64 }).notNull(),
     recordedByStaffId: uuid('recorded_by_staff_id').references(() => staffUsers.id, { onDelete: 'restrict' }),
-    paidByAccountId: uuid('paid_by_account_id').references(() => patientAccounts.id, { onDelete: 'restrict' }),
+    paidByAccountId: uuid('paid_by_account_id').references(() => patientAccounts.id, {
+      onDelete: 'restrict',
+    }),
     createdAt: createdAt(),
   },
   (t) => [
@@ -611,16 +620,23 @@ export const promissoryNotes = pgTable(
     signedAt: instant('signed_at').notNull(),
     status: noteStatus('status').notNull().default('ACTIVE'),
     createdByStaffId: uuid('created_by_staff_id').references(() => staffUsers.id, { onDelete: 'restrict' }),
-    createdByAccountId: uuid('created_by_account_id').references(() => patientAccounts.id, { onDelete: 'restrict' }),
+    createdByAccountId: uuid('created_by_account_id').references(() => patientAccounts.id, {
+      onDelete: 'restrict',
+    }),
     createdAt: createdAt(),
   },
   (t) => [
     index('promissory_notes_encounter_idx').on(t.encounterId),
     uniqueIndex('promissory_notes_facility_number_uq').on(t.facilityId, t.noteNumber),
-    uniqueIndex('promissory_notes_one_active_uq').on(t.encounterId).where(sql`${t.status} = 'ACTIVE'`),
+    uniqueIndex('promissory_notes_one_active_uq')
+      .on(t.encounterId)
+      .where(sql`${t.status} = 'ACTIVE'`),
     check('promissory_notes_principal_positive', sql`${t.principalCents} > 0`),
     check('promissory_notes_months', sql`${t.months} IN (3, 6, 12)`),
-    check('promissory_notes_one_actor', sql`num_nonnulls(${t.createdByStaffId}, ${t.createdByAccountId}) = 1`),
+    check(
+      'promissory_notes_one_actor',
+      sql`num_nonnulls(${t.createdByStaffId}, ${t.createdByAccountId}) = 1`,
+    ),
   ],
 );
 
@@ -647,7 +663,9 @@ export const gatePasses = pgTable(
     voidedReason: varchar('voided_reason', { length: 200 }),
   },
   (t) => [
-    uniqueIndex('gate_passes_one_active_uq').on(t.encounterId).where(sql`${t.status} = 'ACTIVE'`),
+    uniqueIndex('gate_passes_one_active_uq')
+      .on(t.encounterId)
+      .where(sql`${t.status} = 'ACTIVE'`),
     check('gate_passes_attempts', sql`${t.pinAttempts} >= 0`),
     check('gate_passes_money', sql`${t.settledCents} >= 0 AND ${t.financedCents} >= 0`),
   ],
@@ -671,7 +689,9 @@ export const disputes = pgTable(
     reason: varchar('reason', { length: 1000 }).notNull(),
     status: disputeStatus('status').notNull().default('OPEN'),
     filedByStaffId: uuid('filed_by_staff_id').references(() => staffUsers.id, { onDelete: 'restrict' }),
-    filedByAccountId: uuid('filed_by_account_id').references(() => patientAccounts.id, { onDelete: 'restrict' }),
+    filedByAccountId: uuid('filed_by_account_id').references(() => patientAccounts.id, {
+      onDelete: 'restrict',
+    }),
     resolvedBy: uuid('resolved_by').references(() => staffUsers.id, { onDelete: 'restrict' }),
     resolutionNote: varchar('resolution_note', { length: 1000 }),
     resolvedAt: instant('resolved_at'),
@@ -679,7 +699,9 @@ export const disputes = pgTable(
   },
   (t) => [
     index('disputes_facility_status_idx').on(t.facilityId, t.status),
-    uniqueIndex('disputes_one_open_per_charge_uq').on(t.chargeId).where(sql`${t.status} = 'OPEN'`),
+    uniqueIndex('disputes_one_open_per_charge_uq')
+      .on(t.chargeId)
+      .where(sql`${t.status} = 'OPEN'`),
     check('disputes_amount_positive', sql`${t.contestedCents} > 0`),
     check('disputes_one_filer', sql`num_nonnulls(${t.filedByStaffId}, ${t.filedByAccountId}) = 1`),
     check('disputes_resolution', sql`(${t.status} = 'OPEN') = (${t.resolvedAt} IS NULL)`),

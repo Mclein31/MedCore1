@@ -1,6 +1,11 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { CHARGE_CATEGORIES, computeWaterfall, settlementPosition, type WaterfallCharge } from '../src/waterfall';
+import {
+  CHARGE_CATEGORIES,
+  computeWaterfall,
+  settlementPosition,
+  type WaterfallCharge,
+} from '../src/waterfall';
 import { MoneyError } from '../src/money';
 
 const none = {
@@ -93,12 +98,14 @@ describe('computeWaterfall', () => {
   });
 
   it('rejects fractional, negative and impossible inputs', () => {
-    const bad = (charge: Partial<WaterfallCharge>, extra: Partial<typeof none> = {}) => () =>
-      computeWaterfall({
-        ...none,
-        ...extra,
-        charges: [{ grossCents: 100, category: 'PHARMACY', coverage: 'COVERED', ...charge }],
-      });
+    const bad =
+      (charge: Partial<WaterfallCharge>, extra: Partial<typeof none> = {}) =>
+      () =>
+        computeWaterfall({
+          ...none,
+          ...extra,
+          charges: [{ grossCents: 100, category: 'PHARMACY', coverage: 'COVERED', ...charge }],
+        });
     expect(bad({ grossCents: 10.5 })).toThrow(MoneyError);
     expect(bad({ grossCents: -1 })).toThrow(MoneyError);
     expect(bad({ grossCents: Number.NaN })).toThrow(MoneyError);
@@ -130,7 +137,11 @@ describe('computeWaterfall', () => {
             doctorExcessPfCents: 0,
           });
           const parts =
-            r.vatExemptionCents + r.seniorPwdDiscountCents + r.philhealthCents + r.hmoCents + r.netPatientDueCents;
+            r.vatExemptionCents +
+            r.seniorPwdDiscountCents +
+            r.philhealthCents +
+            r.hmoCents +
+            r.netPatientDueCents;
           expect(parts).toBe(r.grossCents);
           for (const value of Object.values(r)) {
             expect(Number.isSafeInteger(value)).toBe(true);
@@ -147,9 +158,21 @@ describe('computeWaterfall', () => {
 
 describe('settlementPosition', () => {
   it('reports balance, credit and settled state', () => {
-    expect(settlementPosition(10_000, 4_000, 0)).toEqual({ balanceCents: 6_000, creditCents: 0, isSettled: false });
-    expect(settlementPosition(10_000, 4_000, 6_000)).toEqual({ balanceCents: 0, creditCents: 0, isSettled: true });
-    expect(settlementPosition(5_000, 8_000, 0)).toEqual({ balanceCents: 0, creditCents: 3_000, isSettled: true });
+    expect(settlementPosition(10_000, 4_000, 0)).toEqual({
+      balanceCents: 6_000,
+      creditCents: 0,
+      isSettled: false,
+    });
+    expect(settlementPosition(10_000, 4_000, 6_000)).toEqual({
+      balanceCents: 0,
+      creditCents: 0,
+      isSettled: true,
+    });
+    expect(settlementPosition(5_000, 8_000, 0)).toEqual({
+      balanceCents: 0,
+      creditCents: 3_000,
+      isSettled: true,
+    });
     expect(settlementPosition(0, 0, 0).isSettled).toBe(true);
   });
 });

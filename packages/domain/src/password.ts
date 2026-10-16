@@ -40,14 +40,20 @@ const COMMON = new Set([
 
 export type PasswordCheck = { ok: true } | { ok: false; reason: string };
 
-export function checkPassword(password: string, identity: { email: string; fullName?: string }): PasswordCheck {
-  if (password.length < PASSWORD_MIN) return { ok: false, reason: `Use at least ${PASSWORD_MIN} characters.` };
+export function checkPassword(
+  password: string,
+  identity: { email: string; fullName?: string },
+): PasswordCheck {
+  if (password.length < PASSWORD_MIN)
+    return { ok: false, reason: `Use at least ${PASSWORD_MIN} characters.` };
   if (password.length > PASSWORD_MAX) return { ok: false, reason: `Use at most ${PASSWORD_MAX} characters.` };
   const lower = password.toLowerCase();
-  if (COMMON.has(lower)) return { ok: false, reason: 'That password is too common. Try a short phrase of unrelated words.' };
+  if (COMMON.has(lower))
+    return { ok: false, reason: 'That password is too common. Try a short phrase of unrelated words.' };
   if (/^(.)\1+$/.test(password)) return { ok: false, reason: 'Avoid repeating one character.' };
   const local = identity.email.split('@')[0]?.toLowerCase() ?? '';
-  if (local.length >= 4 && lower.includes(local)) return { ok: false, reason: 'Do not include your email address.' };
+  if (local.length >= 4 && lower.includes(local))
+    return { ok: false, reason: 'Do not include your email address.' };
   for (const part of (identity.fullName ?? '').toLowerCase().split(/\s+/)) {
     if (part.length >= 4 && lower.includes(part)) return { ok: false, reason: 'Do not include your name.' };
   }

@@ -15,7 +15,19 @@ const PASS_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
 export type GatePass = typeof gatePasses.$inferSelect;
 
-function canonical(p: Pick<GatePass, 'id' | 'facilityId' | 'passNumber' | 'encounterId' | 'settledCents' | 'financedCents' | 'issuedAt' | 'expiresAt'>) {
+function canonical(
+  p: Pick<
+    GatePass,
+    | 'id'
+    | 'facilityId'
+    | 'passNumber'
+    | 'encounterId'
+    | 'settledCents'
+    | 'financedCents'
+    | 'issuedAt'
+    | 'expiresAt'
+  >,
+) {
   return [
     'gate-pass:v1',
     p.facilityId,
@@ -92,7 +104,10 @@ export async function verifyPass(
 
   // Integrity before PIN: a row edited in the database fails here.
   if (!timingSafeEqual(pass.signature, await signPass(secret, pass))) {
-    await tx.update(gatePasses).set({ status: 'VOIDED', voidedReason: 'Signature mismatch' }).where(eq(gatePasses.id, pass.id));
+    await tx
+      .update(gatePasses)
+      .set({ status: 'VOIDED', voidedReason: 'Signature mismatch' })
+      .where(eq(gatePasses.id, pass.id));
     return { result: 'TAMPERED' };
   }
 
@@ -101,7 +116,10 @@ export async function verifyPass(
     const voided = attempts >= MAX_PIN_ATTEMPTS;
     await tx
       .update(gatePasses)
-      .set({ pinAttempts: attempts, ...(voided ? { status: 'VOIDED' as const, voidedReason: 'Too many wrong PINs' } : {}) })
+      .set({
+        pinAttempts: attempts,
+        ...(voided ? { status: 'VOIDED' as const, voidedReason: 'Too many wrong PINs' } : {}),
+      })
       .where(eq(gatePasses.id, pass.id));
     return voided ? { result: 'VOIDED' } : { result: 'WRONG_PIN', attemptsLeft: MAX_PIN_ATTEMPTS - attempts };
   }

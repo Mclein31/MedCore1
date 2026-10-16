@@ -43,8 +43,14 @@ let cached: { config: Config; cipher: FieldCipher } | null = null;
 
 function settings(env: Env) {
   if (!cached) {
-    const strings = Object.fromEntries(Object.entries(env).filter(([, v]) => typeof v === 'string')) as Record<string, string>;
-    const config = loadConfig({ ...strings, DATABASE_URL: env.HYPERDRIVE.connectionString, TRUST_PROXY: 'cloudflare' });
+    const strings = Object.fromEntries(
+      Object.entries(env).filter(([, v]) => typeof v === 'string'),
+    ) as Record<string, string>;
+    const config = loadConfig({
+      ...strings,
+      DATABASE_URL: env.HYPERDRIVE.connectionString,
+      TRUST_PROXY: 'cloudflare',
+    });
     cached = { config, cipher: new FieldCipher(config.dataEncryptionKey) };
   }
   return cached;
@@ -80,8 +86,6 @@ export default {
   async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
     const client = new pg.Client({ connectionString: env.HYPERDRIVE.connectionString });
     await client.connect();
-    ctx.waitUntil(
-      purgeExpired(createDb(client), new Date()).finally(() => client.end()),
-    );
+    ctx.waitUntil(purgeExpired(createDb(client), new Date()).finally(() => client.end()));
   },
 };

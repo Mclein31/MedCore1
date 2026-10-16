@@ -61,7 +61,12 @@ export interface ActiveSession {
 }
 
 /** Returns the live session for a token, sliding its idle window, or null. */
-export async function resolveSession(db: DbOrTx, token: string, kind: SessionKind, now: Date): Promise<ActiveSession | null> {
+export async function resolveSession(
+  db: DbOrTx,
+  token: string,
+  kind: SessionKind,
+  now: Date,
+): Promise<ActiveSession | null> {
   if (!token || token.length > 128) return null;
   const [row] = await db
     .select()
@@ -77,15 +82,28 @@ export async function resolveSession(db: DbOrTx, token: string, kind: SessionKin
       .set({ lastSeenAt: now, idleExpiresAt: new Date(idle) })
       .where(eq(sessions.id, row.id));
   }
-  return { id: row.id, staffUserId: row.staffUserId, patientAccountId: row.patientAccountId, facilityId: row.facilityId };
+  return {
+    id: row.id,
+    staffUserId: row.staffUserId,
+    patientAccountId: row.patientAccountId,
+    facilityId: row.facilityId,
+  };
 }
 
 export async function revokeSession(db: DbOrTx, sessionId: string, now: Date): Promise<void> {
-  await db.update(sessions).set({ revokedAt: now }).where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
+  await db
+    .update(sessions)
+    .set({ revokedAt: now })
+    .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
 }
 
 /** Revoke every live session of a staff user, optionally keeping the current one. */
-export async function revokeStaffSessions(db: DbOrTx, staffUserId: string, now: Date, keepSessionId?: string) {
+export async function revokeStaffSessions(
+  db: DbOrTx,
+  staffUserId: string,
+  now: Date,
+  keepSessionId?: string,
+) {
   const conditions = [eq(sessions.staffUserId, staffUserId), isNull(sessions.revokedAt)];
   if (keepSessionId) conditions.push(ne(sessions.id, keepSessionId));
   const revoked = await db

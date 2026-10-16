@@ -47,10 +47,17 @@ export interface TransitionContext {
 
 export type TransitionResult = { ok: true; to: DischargeStage } | { ok: false; reason: string };
 
-export function transition(from: DischargeStage, action: DischargeAction, ctx: TransitionContext): TransitionResult {
+export function transition(
+  from: DischargeStage,
+  action: DischargeAction,
+  ctx: TransitionContext,
+): TransitionResult {
   const required = SOURCE_STAGE[action];
   if (from !== required) {
-    return { ok: false, reason: `This step needs the stay to be at "${STAGE_LABELS[required]}", but it is at "${STAGE_LABELS[from]}".` };
+    return {
+      ok: false,
+      reason: `This step needs the stay to be at "${STAGE_LABELS[required]}", but it is at "${STAGE_LABELS[from]}".`,
+    };
   }
   switch (action) {
     case 'DECLARE_MGH':

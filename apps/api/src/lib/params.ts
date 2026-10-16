@@ -17,7 +17,11 @@ const IDEMPOTENCY_KEY = /^[A-Za-z0-9-]{16,64}$/;
 export function idempotencyKey(c: AppContext): string {
   const key = c.req.header('idempotency-key');
   if (!key || !IDEMPOTENCY_KEY.test(key)) {
-    throw new ApiError(400, 'IDEMPOTENCY_KEY_REQUIRED', 'Send an Idempotency-Key header (16–64 letters, digits or hyphens).');
+    throw new ApiError(
+      400,
+      'IDEMPOTENCY_KEY_REQUIRED',
+      'Send an Idempotency-Key header (16–64 letters, digits or hyphens).',
+    );
   }
   return key;
 }

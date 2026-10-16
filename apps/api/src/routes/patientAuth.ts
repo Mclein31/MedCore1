@@ -40,7 +40,9 @@ async function findPatientByIdentity(db: DbOrTx, facilityId: string, mrn: string
   const [patient] = await db
     .select()
     .from(patients)
-    .where(and(eq(patients.facilityId, facilityId), eq(patients.mrn, mrn), eq(patients.dateOfBirth, dateOfBirth)))
+    .where(
+      and(eq(patients.facilityId, facilityId), eq(patients.mrn, mrn), eq(patients.dateOfBirth, dateOfBirth)),
+    )
     .limit(1);
   return patient ?? null;
 }
@@ -48,12 +50,16 @@ async function findPatientByIdentity(db: DbOrTx, facilityId: string, mrn: string
 const GENERIC_SENT = {
   sent: true,
   expiresInMinutes: CODE_TTL_MS / 60_000,
-  message: 'If the details match our records, we emailed a 6-digit code to the address the hospital has on file.',
+  message:
+    'If the details match our records, we emailed a 6-digit code to the address the hospital has on file.',
 };
 
 patientAuthRoutes.post('/code/request', jsonBody(PatientCodeRequestBody), async (c) => {
   const body = c.req.valid('json');
-  const identity = body.purpose === 'LOGIN' ? `email:${body.facilityCode}:${body.email}` : `mrn:${body.facilityCode}:${body.mrn}`;
+  const identity =
+    body.purpose === 'LOGIN'
+      ? `email:${body.facilityCode}:${body.email}`
+      : `mrn:${body.facilityCode}:${body.mrn}`;
   await enforce(c, [
     [LIMITS.codeRequestIp, c.var.ip],
     [LIMITS.codeRequestIdentity, identity],
@@ -87,7 +93,12 @@ patientAuthRoutes.post('/code/request', jsonBody(PatientCodeRequestBody), async 
     }
   }
   if (!email) {
-    await audit(c, db, { action: 'PATIENT_CODE_REQUEST_UNMATCHED', resourceType: 'login_code', facilityId: facility.id, detail: { purpose: body.purpose } });
+    await audit(c, db, {
+      action: 'PATIENT_CODE_REQUEST_UNMATCHED',
+      resourceType: 'login_code',
+      facilityId: facility.id,
+      detail: { purpose: body.purpose },
+    });
     return c.json(GENERIC_SENT, 202);
   }
 
@@ -110,7 +121,13 @@ patientAuthRoutes.post('/code/request', jsonBody(PatientCodeRequestBody), async 
     await tx
       .update(loginCodes)
       .set({ consumedAt: now })
-      .where(and(eq(loginCodes.facilityId, facility.id), eq(loginCodes.email, email!), isNull(loginCodes.consumedAt)));
+      .where(
+        and(
+          eq(loginCodes.facilityId, facility.id),
+          eq(loginCodes.email, email!),
+          isNull(loginCodes.consumedAt),
+        ),
+      );
     await tx.insert(loginCodes).values({
       facilityId: facility.id,
       email: email!,
@@ -120,13 +137,19 @@ patientAuthRoutes.post('/code/request', jsonBody(PatientCodeRequestBody), async 
       expiresAt: new Date(now.getTime() + CODE_TTL_MS),
       createdAt: now,
     });
-    await audit(c, tx, { action: 'PATIENT_CODE_SENT', resourceType: 'login_code', facilityId: facility.id, detail: { purpose: body.purpose } });
+    await audit(c, tx, {
+      action: 'PATIENT_CODE_SENT',
+      resourceType: 'login_code',
+      facilityId: facility.id,
+      detail: { purpose: body.purpose },
+    });
   });
   sendSignInCode(c, email, code, facility.name);
   return c.json(GENERIC_SENT, 202);
 });
 
-const invalidCode = () => new ApiError(401, 'CODE_INVALID', 'That code is not right or has expired. Request a new one.');
+const invalidCode = () =>
+  new ApiError(401, 'CODE_INVALID', 'That code is not right or has expired. Request a new one.');
 
 patientAuthRoutes.post('/code/verify', jsonBody(PatientCodeVerifyBody), async (c) => {
   const body = c.req.valid('json');
@@ -191,33 +214,76 @@ patientAuthRoutes.post('/code/verify', jsonBody(PatientCodeVerifyBody), async (c
       .limit(1);
     if (body.purpose === 'REGISTER') {
       account ??= (
-        await tx.insert(patientAccounts).values({ facilityId: facility.id, email, createdAt: now }).returning()
+        await tx
+          .insert(patientAccounts)
+          .values({ facilityId: facility.id, email, createdAt: now })
+          .returning()
       )[0];
       const [link] = await tx
         .select({ id: patientAccountLinks.id })
         .from(patientAccountLinks)
-        .where(and(eq(patientAccountLinks.accountId, account!.id), eq(patientAccountLinks.patientId, patientId!), isNull(patientAccountLinks.revokedAt)));
+        .where(
+          and(
+            eq(patientAccountLinks.accountId, account!.id),
+            eq(patientAccountLinks.patientId, patientId!),
+            isNull(patientAccountLinks.revokedAt),
+          ),
+        );
       if (!link) {
-        await tx.insert(patientAccountLinks).values({ accountId: account!.id, patientId: patientId!, verifiedVia: 'EMAIL_CODE', verifiedAt: now });
+        await tx.insert(patientAccountLinks).values({
+          accountId: account!.id,
+          patientId: patientId!,
+          verifiedVia: 'EMAIL_CODE',
+          verifiedAt: now,
+        });
       }
     }
     if (!account || !account.isActive) return { ok: false as const };
     await tx.update(patientAccounts).set({ lastLoginAt: now }).where(eq(patientAccounts.id, account.id));
-    const session = await createSession(tx, { kind: 'PATIENT', patientAccountId: account.id, facilityId: facility.id, ip: c.var.ip, userAgent: c.var.userAgent }, now);
+    const session = await createSession(
+      tx,
+      {
+        kind: 'PATIENT',
+        patientAccountId: account.id,
+        facilityId: facility.id,
+        ip: c.var.ip,
+        userAgent: c.var.userAgent,
+      },
+      now,
+    );
     return { ok: true as const, account, session };
   });
 
   if (!outcome.ok) {
-    await audit(c, db, { action: 'PATIENT_CODE_REJECTED', resourceType: 'login_code', facilityId: facility.id, detail: { purpose: body.purpose, locked: Boolean(outcome.locked) } });
+    await audit(c, db, {
+      action: 'PATIENT_CODE_REJECTED',
+      resourceType: 'login_code',
+      facilityId: facility.id,
+      detail: { purpose: body.purpose, locked: Boolean(outcome.locked) },
+    });
     if (outcome.locked) throw new ApiError(401, 'CODE_LOCKED', 'Too many wrong tries. Request a new code.');
     throw invalidCode();
   }
-  c.set('patient', { kind: 'PATIENT', accountId: outcome.account.id, facilityId: facility.id, email, sessionId: outcome.session.id });
-  await audit(c, db, { action: body.purpose === 'REGISTER' ? 'PATIENT_REGISTERED_ACCOUNT' : 'PATIENT_LOGIN', resourceType: 'patient_account', resourceId: outcome.account.id });
+  c.set('patient', {
+    kind: 'PATIENT',
+    accountId: outcome.account.id,
+    facilityId: facility.id,
+    email,
+    sessionId: outcome.session.id,
+  });
+  await audit(c, db, {
+    action: body.purpose === 'REGISTER' ? 'PATIENT_REGISTERED_ACCOUNT' : 'PATIENT_LOGIN',
+    resourceType: 'patient_account',
+    resourceId: outcome.account.id,
+  });
 
   if (body.client === 'mobile') {
     // Native apps keep the bearer token in the OS keychain; browsers never see it.
-    return c.json({ status: 'SIGNED_IN', token: outcome.session.token, expiresAt: outcome.session.expiresAt });
+    return c.json({
+      status: 'SIGNED_IN',
+      token: outcome.session.token,
+      expiresAt: outcome.session.expiresAt,
+    });
   }
   setSessionCookie(c, 'PATIENT', outcome.session.token);
   return c.json({ status: 'SIGNED_IN' });
@@ -225,13 +291,20 @@ patientAuthRoutes.post('/code/verify', jsonBody(PatientCodeVerifyBody), async (c
 
 patientAuthRoutes.get('/me', patientAuth, async (c) => {
   const p = c.var.patient;
-  const [facility] = await c.var.db.select({ name: facilities.name, code: facilities.code }).from(facilities).where(eq(facilities.id, p.facilityId));
+  const [facility] = await c.var.db
+    .select({ name: facilities.name, code: facilities.code })
+    .from(facilities)
+    .where(eq(facilities.id, p.facilityId));
   return c.json({ email: p.email, facility });
 });
 
 patientAuthRoutes.post('/logout', patientAuth, async (c) => {
   await revokeSession(c.var.db, c.var.patient.sessionId, c.var.services.now());
-  await audit(c, c.var.db, { action: 'PATIENT_LOGOUT', resourceType: 'patient_account', resourceId: c.var.patient.accountId });
+  await audit(c, c.var.db, {
+    action: 'PATIENT_LOGOUT',
+    resourceType: 'patient_account',
+    resourceId: c.var.patient.accountId,
+  });
   clearSessionCookie(c, 'PATIENT');
   return c.json({ ok: true });
 });

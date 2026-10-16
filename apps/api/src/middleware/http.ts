@@ -26,7 +26,11 @@ export function clientIp(c: AppContext, peerAddress: string | null): string | nu
   if (mode === 'cloudflare') return c.req.header('cf-connecting-ip') ?? null;
   if (mode === 'x-forwarded-for') {
     // The right-most entry is the one our own proxy appended; earlier ones are client-controlled.
-    const hops = c.req.header('x-forwarded-for')?.split(',').map((s) => s.trim()).filter(Boolean);
+    const hops = c.req
+      .header('x-forwarded-for')
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     return hops?.at(-1) ?? peerAddress;
   }
   return peerAddress;
@@ -64,7 +68,8 @@ export const csrf: MiddlewareHandler<AppBindings> = async (c, next) => {
   if (SAFE_METHODS.has(c.req.method)) return next();
   const { cookies, allowedOrigins } = c.var.services.config;
   const cookieHeader = c.req.header('cookie') ?? '';
-  const hasSessionCookie = cookieHeader.includes(`${cookies.staff}=`) || cookieHeader.includes(`${cookies.patient}=`);
+  const hasSessionCookie =
+    cookieHeader.includes(`${cookies.staff}=`) || cookieHeader.includes(`${cookies.patient}=`);
   const bearer = c.req.header('authorization')?.startsWith('Bearer ');
   if (bearer && !hasSessionCookie) return next();
 
@@ -83,7 +88,9 @@ export const csrf: MiddlewareHandler<AppBindings> = async (c, next) => {
 
 function validationError(error: z.ZodError): ApiError {
   // Field paths and messages only; never echo the submitted values back.
-  const fields = error.issues.slice(0, 20).map((issue) => ({ path: issue.path.join('.'), message: issue.message }));
+  const fields = error.issues
+    .slice(0, 20)
+    .map((issue) => ({ path: issue.path.join('.'), message: issue.message }));
   return new ApiError(422, 'VALIDATION_FAILED', 'Some fields need attention.', { fields });
 }
 
@@ -128,7 +135,8 @@ export const onError: ErrorHandler<AppBindings> = (err, c) => {
   // Domain money rules (for example "room upgrade cannot exceed room charges") are user-safe messages.
   if (err instanceof MoneyError) return body(422, 'INVALID_AMOUNT', err.message);
   const pg = pgErrorOf(err);
-  if (pg?.code === '23505') return body(409, 'CONFLICT', 'This conflicts with an existing record. Refresh and try again.');
+  if (pg?.code === '23505')
+    return body(409, 'CONFLICT', 'This conflicts with an existing record. Refresh and try again.');
   if (pg?.code === '40001' || pg?.code === '40P01') {
     return body(409, 'RETRY', 'Another change was saved at the same moment. Please try again.');
   }

@@ -11,7 +11,9 @@ export default async function setup() {
   const url = new URL(TEST_DATABASE_URL);
   const name = url.pathname.slice(1);
   if (!/_test$/.test(name) || !['localhost', '127.0.0.1', 'postgres'].includes(url.hostname)) {
-    throw new Error(`Refusing to use ${url.hostname}/${name} for tests: it must be a local database ending in _test.`);
+    throw new Error(
+      `Refusing to use ${url.hostname}/${name} for tests: it must be a local database ending in _test.`,
+    );
   }
   const admin = new URL(TEST_DATABASE_URL);
   admin.pathname = '/postgres';

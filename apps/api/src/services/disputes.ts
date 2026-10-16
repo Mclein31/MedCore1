@@ -18,14 +18,16 @@ export interface DisputeInput {
 /** File a dispute on one charge. The encounter lock must already be held. */
 export async function fileDispute(c: AppContext, tx: DbOrTx, encounter: Encounter, input: DisputeInput) {
   if (encounter.voidedAt) throw conflict('STAY_VOIDED', 'This stay was voided.');
-  if (encounter.stage === 'CLEARED') throw conflict('STAY_CLEARED', 'This stay is already settled and cleared. Contact the billing desk.');
+  if (encounter.stage === 'CLEARED')
+    throw conflict('STAY_CLEARED', 'This stay is already settled and cleared. Contact the billing desk.');
   const [charge] = await tx
     .select()
     .from(charges)
     .where(and(eq(charges.id, input.chargeId), eq(charges.encounterId, encounter.id)))
     .for('update');
   if (!charge || charge.removedAt) throw notFound('Charge');
-  if (charge.coverage === 'WAIVED') throw conflict('ALREADY_WAIVED', 'This charge was already removed from the bill.');
+  if (charge.coverage === 'WAIVED')
+    throw conflict('ALREADY_WAIVED', 'This charge was already removed from the bill.');
   if (charge.isDisputed) throw conflict('ALREADY_DISPUTED', 'This charge is already being reviewed.');
 
   const now = c.var.services.now();
@@ -44,7 +46,14 @@ export async function fileDispute(c: AppContext, tx: DbOrTx, encounter: Encounte
     })
     .returning();
   await tx.update(charges).set({ isDisputed: true }).where(eq(charges.id, charge.id));
-  await timeline(c, tx, encounter.id, 'DISPUTE', `Charge questioned: ${charge.description}`, `${formatPeso(charge.grossCents)} is under review.`);
+  await timeline(
+    c,
+    tx,
+    encounter.id,
+    'DISPUTE',
+    `Charge questioned: ${charge.description}`,
+    `${formatPeso(charge.grossCents)} is under review.`,
+  );
   await audit(c, tx, {
     action: 'DISPUTE_FILED',
     resourceType: 'dispute',
@@ -59,7 +68,13 @@ export async function fileDispute(c: AppContext, tx: DbOrTx, encounter: Encounte
  * Resolve a dispute. WAIVE removes the charge from the bill (with separation of
  * duties and a value limit); UPHOLD keeps it. Either way the bill is recomputed.
  */
-export async function resolveDispute(c: AppContext, tx: DbOrTx, disputeId: string, decision: 'WAIVE' | 'UPHOLD', note: string) {
+export async function resolveDispute(
+  c: AppContext,
+  tx: DbOrTx,
+  disputeId: string,
+  decision: 'WAIVE' | 'UPHOLD',
+  note: string,
+) {
   const staff = c.var.staff;
   const [candidate] = await tx
     .select({ encounterId: disputes.encounterId })
@@ -88,21 +103,38 @@ export async function resolveDispute(c: AppContext, tx: DbOrTx, disputeId: strin
     .where(eq(charges.id, charge.id));
   await tx
     .update(disputes)
-    .set({ status: decision === 'WAIVE' ? 'WAIVED' : 'UPHELD', resolvedBy: staff.id, resolutionNote: note, resolvedAt: now })
+    .set({
+      status: decision === 'WAIVE' ? 'WAIVED' : 'UPHELD',
+      resolvedBy: staff.id,
+      resolutionNote: note,
+      resolvedAt: now,
+    })
     .where(eq(disputes.id, dispute.id));
   // Removing a fee also removes any patient-only excess that sat on top of it.
   let current = encounter;
-  if (decision === 'WAIVE' && (charge.category === 'PROFESSIONAL_FEE' || charge.category === 'ROOM_AND_BOARD')) {
+  if (
+    decision === 'WAIVE' &&
+    (charge.category === 'PROFESSIONAL_FEE' || charge.category === 'ROOM_AND_BOARD')
+  ) {
     const remaining = await tx
       .select({ grossCents: charges.grossCents })
       .from(charges)
-      .where(and(eq(charges.encounterId, encounter.id), eq(charges.category, charge.category), eq(charges.coverage, 'COVERED')));
+      .where(
+        and(
+          eq(charges.encounterId, encounter.id),
+          eq(charges.category, charge.category),
+          eq(charges.coverage, 'COVERED'),
+        ),
+      );
     const left = remaining.reduce((sum, line) => sum + line.grossCents, 0);
     const patch =
       charge.category === 'PROFESSIONAL_FEE'
         ? { doctorExcessPfCents: Math.min(encounter.doctorExcessPfCents, left) }
         : { roomUpgradeExcessCents: Math.min(encounter.roomUpgradeExcessCents, left) };
-    await tx.update(encounters).set({ ...patch, updatedAt: now }).where(eq(encounters.id, encounter.id));
+    await tx
+      .update(encounters)
+      .set({ ...patch, updatedAt: now })
+      .where(eq(encounters.id, encounter.id));
     current = { ...encounter, ...patch };
   }
   const ledger = await recalculateLedger(tx, current, now);
@@ -111,7 +143,9 @@ export async function resolveDispute(c: AppContext, tx: DbOrTx, disputeId: strin
     tx,
     encounter.id,
     'DISPUTE',
-    decision === 'WAIVE' ? `Charge removed: ${charge.description}` : `Charge confirmed: ${charge.description}`,
+    decision === 'WAIVE'
+      ? `Charge removed: ${charge.description}`
+      : `Charge confirmed: ${charge.description}`,
     note,
   );
   await audit(c, tx, {

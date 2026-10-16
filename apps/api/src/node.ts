@@ -28,7 +28,10 @@ function main() {
     config,
     logger,
     cipher: new FieldCipher(config.dataEncryptionKey),
-    mailer: config.mail.transport === 'console' ? createConsoleMailer() : createSmtpMailer({ ...config.mail, openSocket: openNodeSocket, logger }),
+    mailer:
+      config.mail.transport === 'console'
+        ? createConsoleMailer()
+        : createSmtpMailer({ ...config.mail, openSocket: openNodeSocket, logger }),
     database: { acquire: async () => ({ db, release: async () => undefined }) },
     now: () => new Date(),
   };
@@ -50,7 +53,9 @@ function main() {
     () => {
       purgeExpired(db, new Date())
         .then((counts) => logger.log('info', 'retention purge', counts))
-        .catch((err: unknown) => logger.log('error', 'retention purge failed', { errorMessage: String(err) }));
+        .catch((err: unknown) =>
+          logger.log('error', 'retention purge failed', { errorMessage: String(err) }),
+        );
     },
     60 * 60 * 1000,
   );

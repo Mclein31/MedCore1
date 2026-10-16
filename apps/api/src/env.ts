@@ -36,7 +36,12 @@ const RawEnv = z.object({
   ALLOWED_ORIGINS: z
     .string()
     .default('')
-    .transform((v) => v.split(',').map((s) => s.trim()).filter(Boolean))
+    .transform((v) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
     .pipe(z.array(origin)),
   PUBLIC_APP_URL: origin.optional(),
   GATE_PASS_SECRET: z.string().min(32, 'must be at least 32 characters (openssl rand -hex 32)'),
@@ -104,8 +109,10 @@ export function loadConfig(source: Record<string, string | undefined>): Config {
   const problems: string[] = [];
 
   if (isProduction) {
-    if (e.MAIL_TRANSPORT === 'console') problems.push('MAIL_TRANSPORT=console is only allowed outside production');
-    if (!e.PUBLIC_APP_URL?.startsWith('https://')) problems.push('PUBLIC_APP_URL must be an https:// origin in production');
+    if (e.MAIL_TRANSPORT === 'console')
+      problems.push('MAIL_TRANSPORT=console is only allowed outside production');
+    if (!e.PUBLIC_APP_URL?.startsWith('https://'))
+      problems.push('PUBLIC_APP_URL must be an https:// origin in production');
     for (const o of e.ALLOWED_ORIGINS) {
       if (!o.startsWith('https://')) problems.push(`ALLOWED_ORIGINS entry ${o} must use https in production`);
     }
@@ -114,7 +121,8 @@ export function loadConfig(source: Record<string, string | undefined>): Config {
   if (e.MAIL_TRANSPORT === 'smtp' && (!e.SMTP_USER || !e.SMTP_PASSWORD)) {
     problems.push('SMTP_USER and SMTP_PASSWORD are required when MAIL_TRANSPORT=smtp');
   }
-  if (e.GATE_PASS_SECRET === e.DATA_ENCRYPTION_KEY) problems.push('GATE_PASS_SECRET and DATA_ENCRYPTION_KEY must differ');
+  if (e.GATE_PASS_SECRET === e.DATA_ENCRYPTION_KEY)
+    problems.push('GATE_PASS_SECRET and DATA_ENCRYPTION_KEY must differ');
   if (problems.length) throw new ConfigError(`Invalid configuration:\n  ${problems.join('\n  ')}`);
 
   const publicAppUrl = e.PUBLIC_APP_URL ?? e.ALLOWED_ORIGINS[0] ?? 'http://localhost:5173';

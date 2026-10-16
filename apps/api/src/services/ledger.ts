@@ -1,7 +1,16 @@
 import { computeWaterfall, settlementPosition, type WaterfallResult } from '@medcore/domain';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import type { DbOrTx } from '../db/client';
-import { charges, encounters, hmoCoverages, ledgers, patients, payments, philhealthClaims, promissoryNotes } from '../db/schema';
+import {
+  charges,
+  encounters,
+  hmoCoverages,
+  ledgers,
+  patients,
+  payments,
+  philhealthClaims,
+  promissoryNotes,
+} from '../db/schema';
 import { notFound } from '../lib/errors';
 
 export type Encounter = typeof encounters.$inferSelect;
@@ -38,7 +47,10 @@ export async function recalculateLedger(tx: DbOrTx, encounter: Encounter, now: D
     .select({ grossCents: charges.grossCents, category: charges.category, coverage: charges.coverage })
     .from(charges)
     .where(and(eq(charges.encounterId, encounter.id), isNull(charges.removedAt)));
-  const [claim] = await tx.select().from(philhealthClaims).where(eq(philhealthClaims.encounterId, encounter.id));
+  const [claim] = await tx
+    .select()
+    .from(philhealthClaims)
+    .where(eq(philhealthClaims.encounterId, encounter.id));
   const [hmo] = await tx.select().from(hmoCoverages).where(eq(hmoCoverages.encounterId, encounter.id));
   const [paid] = await tx
     .select({ total: sql<number>`coalesce(sum(${payments.amountCents}), 0)::bigint` })

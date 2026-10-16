@@ -9,14 +9,16 @@ import { centsToDecimal } from '@medcore/domain';
  * official PhilHealth DTD.
  */
 export function xmlEscape(value: string): string {
-  return value
-    // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return (
+    value
+      // eslint-disable-next-line no-control-regex
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F￾￿]/g, '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;')
+  );
 }
 
 type Node = { tag: string; attrs?: Record<string, string>; text?: string; children?: Node[] };
@@ -32,16 +34,40 @@ function render(node: Node, depth = 0): string {
   return `${pad}<${node.tag}${attrs}>${xmlEscape(node.text ?? '')}</${node.tag}>`;
 }
 
-const el = (tag: string, text: string | number | null | undefined): Node => ({ tag, text: text === null || text === undefined ? '' : String(text) });
+const el = (tag: string, text: string | number | null | undefined): Node => ({
+  tag,
+  text: text === null || text === undefined ? '' : String(text),
+});
 const money = (tag: string, cents: number): Node => el(tag, centsToDecimal(cents));
 
 export interface EsoaInput {
   facility: { name: string; accreditation: string; tin: string; address: string };
-  patient: { fullName: string; philhealthPin: string | null; dateOfBirth: string; sex: string; discountKind: string };
-  encounter: { encounterNumber: string; billNumber: string | null; admittedAt: Date; clearedAt: Date | null; icd10Code: string; diagnosis: string };
+  patient: {
+    fullName: string;
+    philhealthPin: string | null;
+    dateOfBirth: string;
+    sex: string;
+    discountKind: string;
+  };
+  encounter: {
+    encounterNumber: string;
+    billNumber: string | null;
+    admittedAt: Date;
+    clearedAt: Date | null;
+    icd10Code: string;
+    diagnosis: string;
+  };
   claim: { claimNumber: string; caseRateCode: string; hciCents: number; pfCents: number };
   physician: { fullName: string; prcLicense: string | null };
-  charges: { code: string; description: string; category: string; quantity: number; unitPriceCents: number; grossCents: number; coverage: string }[];
+  charges: {
+    code: string;
+    description: string;
+    category: string;
+    quantity: number;
+    unitPriceCents: number;
+    grossCents: number;
+    coverage: string;
+  }[];
   ledger: {
     grossCents: number;
     vatExemptionCents: number;
@@ -55,7 +81,8 @@ export interface EsoaInput {
 export function buildEsoaXml(input: EsoaInput, generatedAt: Date): string {
   const itemized = input.charges.filter((c) => c.coverage !== 'WAIVED');
   const itemTotal = itemized.reduce((sum, c) => sum + c.grossCents, 0);
-  if (itemTotal !== input.ledger.grossCents) throw new Error('eSOA itemized total does not reconcile with the ledger.');
+  if (itemTotal !== input.ledger.grossCents)
+    throw new Error('eSOA itemized total does not reconcile with the ledger.');
 
   const doc: Node = {
     tag: 'eSOA',
@@ -63,7 +90,12 @@ export function buildEsoaXml(input: EsoaInput, generatedAt: Date): string {
     children: [
       {
         tag: 'HealthCareInstitution',
-        children: [el('Name', input.facility.name), el('Accreditation', input.facility.accreditation), el('TIN', input.facility.tin), el('Address', input.facility.address)],
+        children: [
+          el('Name', input.facility.name),
+          el('Accreditation', input.facility.accreditation),
+          el('TIN', input.facility.tin),
+          el('Address', input.facility.address),
+        ],
       },
       {
         tag: 'Member',
@@ -88,16 +120,29 @@ export function buildEsoaXml(input: EsoaInput, generatedAt: Date): string {
       },
       {
         tag: 'Claim',
-        children: [el('ClaimNumber', input.claim.claimNumber), el('CaseRate', input.claim.caseRateCode), money('HCIShare', input.claim.hciCents), money('PFShare', input.claim.pfCents)],
+        children: [
+          el('ClaimNumber', input.claim.claimNumber),
+          el('CaseRate', input.claim.caseRateCode),
+          money('HCIShare', input.claim.hciCents),
+          money('PFShare', input.claim.pfCents),
+        ],
       },
-      { tag: 'Physician', children: [el('Name', input.physician.fullName), el('PRCLicense', input.physician.prcLicense)] },
+      {
+        tag: 'Physician',
+        children: [el('Name', input.physician.fullName), el('PRCLicense', input.physician.prcLicense)],
+      },
       {
         tag: 'Charges',
         attrs: { count: String(itemized.length) },
         children: itemized.map((c) => ({
           tag: 'Item',
           attrs: { code: c.code, category: c.category, coverage: c.coverage },
-          children: [el('Description', c.description), el('Quantity', c.quantity), money('UnitPrice', c.unitPriceCents), money('Amount', c.grossCents)],
+          children: [
+            el('Description', c.description),
+            el('Quantity', c.quantity),
+            money('UnitPrice', c.unitPriceCents),
+            money('Amount', c.grossCents),
+          ],
         })),
       },
       {

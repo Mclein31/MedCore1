@@ -85,7 +85,14 @@ const MATRIX: Record<StaffRole, readonly Permission[]> = {
     'bed:write',
     'analytics:read',
   ],
-  CLAIMS_ENCODER: ['patient:read', 'encounter:read', 'coverage:philhealth', 'claim:read', 'claim:write', 'dispute:read'],
+  CLAIMS_ENCODER: [
+    'patient:read',
+    'encounter:read',
+    'coverage:philhealth',
+    'claim:read',
+    'claim:write',
+    'dispute:read',
+  ],
   HMO_COORDINATOR: ['patient:read', 'encounter:read', 'coverage:hmo', 'discharge:final-loa', 'dispute:read'],
   ATTENDING_PHYSICIAN: ['patient:read', 'encounter:read', 'discharge:declare-mgh', 'discharge:sign-pf'],
   LOBBY_SECURITY: ['gatepass:verify'],
@@ -120,9 +127,13 @@ export function canWaive(
   actor: { id: string; role: StaffRole },
   dispute: { contestedCents: number; filedByStaffId: string | null },
 ): WaiverDecision {
-  if (!can(actor.role, 'dispute:resolve')) return { allowed: false, reason: 'Your role cannot resolve disputes.' };
+  if (!can(actor.role, 'dispute:resolve'))
+    return { allowed: false, reason: 'Your role cannot resolve disputes.' };
   if (dispute.filedByStaffId === actor.id) {
-    return { allowed: false, reason: 'A dispute must be resolved by someone other than the person who filed it.' };
+    return {
+      allowed: false,
+      reason: 'A dispute must be resolved by someone other than the person who filed it.',
+    };
   }
   if (dispute.contestedCents > WAIVER_LIMIT_CENTS && !can(actor.role, 'dispute:waive-unlimited')) {
     return { allowed: false, reason: 'Waivers above ₱5,000.00 need the CFO.' };

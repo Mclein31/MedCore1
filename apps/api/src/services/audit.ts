@@ -8,6 +8,8 @@ export interface AuditEntry {
   resourceId?: string | null;
   facilityId?: string | null;
   detail?: Record<string, unknown>;
+  /** For sign-in steps that happen before a session exists: who the event is about. */
+  actor?: { type: 'STAFF' | 'PATIENT'; id: string; email: string; facilityId: string };
 }
 
 /**
@@ -18,11 +20,23 @@ export interface AuditEntry {
 export async function audit(c: AppContext, db: DbOrTx, entry: AuditEntry): Promise<void> {
   const staff = c.get('staff');
   const patient = c.get('patient');
-  const actor = staff
-    ? { actorType: 'STAFF', actorId: staff.id, actorEmail: staff.email, facilityId: staff.facilityId }
-    : patient
-      ? { actorType: 'PATIENT', actorId: patient.accountId, actorEmail: patient.email, facilityId: patient.facilityId }
-      : { actorType: 'ANON', actorId: null, actorEmail: null, facilityId: null };
+  const actor = entry.actor
+    ? {
+        actorType: entry.actor.type,
+        actorId: entry.actor.id,
+        actorEmail: entry.actor.email,
+        facilityId: entry.actor.facilityId,
+      }
+    : staff
+      ? { actorType: 'STAFF', actorId: staff.id, actorEmail: staff.email, facilityId: staff.facilityId }
+      : patient
+        ? {
+            actorType: 'PATIENT',
+            actorId: patient.accountId,
+            actorEmail: patient.email,
+            facilityId: patient.facilityId,
+          }
+        : { actorType: 'ANON', actorId: null, actorEmail: null, facilityId: null };
   await db.insert(auditLogs).values({
     facilityId: entry.facilityId ?? actor.facilityId,
     actorType: actor.actorType,

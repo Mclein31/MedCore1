@@ -11,7 +11,9 @@ const ALGORITHM = 'pbkdf2-sha256';
 const KEY_BITS = 256;
 
 async function derive(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, [
+    'deriveBits',
+  ]);
   const bits = await crypto.subtle.deriveBits(
     { name: 'PBKDF2', hash: 'SHA-256', salt: salt as BufferSource, iterations },
     key,
@@ -31,7 +33,11 @@ export interface VerifyResult {
   needsRehash: boolean;
 }
 
-export async function verifyPassword(password: string, stored: string, targetIterations: number): Promise<VerifyResult> {
+export async function verifyPassword(
+  password: string,
+  stored: string,
+  targetIterations: number,
+): Promise<VerifyResult> {
   const [algorithm, iterText, saltText, hashText] = stored.split('$');
   const iterations = Number(iterText);
   if (algorithm !== ALGORITHM || !Number.isSafeInteger(iterations) || !saltText || !hashText) {

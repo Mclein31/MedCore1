@@ -51,7 +51,13 @@ export function notifyBillReady(c: AppContext, to: string): void {
   );
 }
 
-export function sendStaffInvite(c: AppContext, to: string, fullName: string, token: string, facilityName: string): void {
+export function sendStaffInvite(
+  c: AppContext,
+  to: string,
+  fullName: string,
+  token: string,
+  facilityName: string,
+): void {
   // The token is in the URL fragment, which browsers never send to servers or in Referer headers.
   const url = `${c.var.services.config.publicAppUrl}/staff/accept-invite#token=${encodeURIComponent(token)}`;
   deliver(
