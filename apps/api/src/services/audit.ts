@@ -63,7 +63,7 @@ export async function timeline(
   detail?: string,
 ): Promise<void> {
   const staff = c.get('staff');
-  const actorLabel = staff ? `${staff.fullName}` : 'Patient portal';
+  const actorLabel = staff ? `${staff.fullName}` : 'Patient (MedCore app)';
   await db.insert(timelineEvents).values({
     encounterId,
     kind,
