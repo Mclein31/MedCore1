@@ -30,8 +30,38 @@ function rng(seed: number) {
   };
 }
 
-const FIRST = ['Maria', 'Jose', 'Ana', 'Juan', 'Rosa', 'Pedro', 'Carmen', 'Luis', 'Elena', 'Ramon', 'Teresa', 'Andres', 'Liza', 'Mark', 'Grace', 'Paolo'];
-const LAST = ['Dela Cruz', 'Santos', 'Reyes', 'Garcia', 'Mendoza', 'Bautista', 'Aquino', 'Ramos', 'Villanueva', 'Castillo', 'Navarro', 'Torres'];
+const FIRST = [
+  'Maria',
+  'Jose',
+  'Ana',
+  'Juan',
+  'Rosa',
+  'Pedro',
+  'Carmen',
+  'Luis',
+  'Elena',
+  'Ramon',
+  'Teresa',
+  'Andres',
+  'Liza',
+  'Mark',
+  'Grace',
+  'Paolo',
+];
+const LAST = [
+  'Dela Cruz',
+  'Santos',
+  'Reyes',
+  'Garcia',
+  'Mendoza',
+  'Bautista',
+  'Aquino',
+  'Ramos',
+  'Villanueva',
+  'Castillo',
+  'Navarro',
+  'Torres',
+];
 const DIAGNOSES: [string, string, string, number, number][] = [
   ['Community-acquired pneumonia, moderate risk', 'J18.9', 'CAP-MR', 1_520_000, 630_000],
   ['Acute gastroenteritis with moderate dehydration', 'A09.0', 'AGE-MD', 600_000, 300_000],
@@ -49,7 +79,9 @@ async function main() {
   const host = new URL(url).hostname;
   const allowed = ['localhost', '127.0.0.1', '::1', ''];
   if (!allowed.includes(host) && process.env.SEED_ALLOW_REMOTE !== host) {
-    throw new Error(`Refusing to seed remote host "${host}". Set SEED_ALLOW_REMOTE=${host} if this is a disposable demo branch.`);
+    throw new Error(
+      `Refusing to seed remote host "${host}". Set SEED_ALLOW_REMOTE=${host} if this is a disposable demo branch.`,
+    );
   }
   if (!password) throw new Error('Set SEED_PASSWORD to the password every demo staff account should use.');
   const policy = checkPassword(password, { email: 'x@example.test' });
@@ -60,7 +92,9 @@ async function main() {
   const pool = createPool(url, { max: 2, statementTimeoutMs: 120_000 });
   const db = createDb(pool);
   try {
-    const [{ count }] = (await db.select({ count: sql<number>`count(*)::int` }).from(s.staffUsers)) as [{ count: number }];
+    const [{ count }] = (await db.select({ count: sql<number>`count(*)::int` }).from(s.staffUsers)) as [
+      { count: number },
+    ];
     if (count > 0) throw new Error('This database already has staff accounts. Seed only an empty database.');
     await seed(db, cipher, password, config.pbkdf2Iterations);
   } finally {
@@ -94,15 +128,36 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
       ['billing2@stjude.example.test', 'Marco Lim', 'BILLING_SPECIALIST', 'Billing Specialist', null],
       ['claims@stjude.example.test', 'Joy Navarro', 'CLAIMS_ENCODER', 'PhilHealth Claims Encoder', null],
       ['hmo@stjude.example.test', 'Ben Aquino', 'HMO_COORDINATOR', 'HMO Coordinator', null],
-      ['dr.cruz@stjude.example.test', 'Dr. Carlos Cruz', 'ATTENDING_PHYSICIAN', 'Internal Medicine', '0123456'],
-      ['dr.lopez@stjude.example.test', 'Dr. Isabel Lopez', 'ATTENDING_PHYSICIAN', 'General Surgery', '0234567'],
+      [
+        'dr.cruz@stjude.example.test',
+        'Dr. Carlos Cruz',
+        'ATTENDING_PHYSICIAN',
+        'Internal Medicine',
+        '0123456',
+      ],
+      [
+        'dr.lopez@stjude.example.test',
+        'Dr. Isabel Lopez',
+        'ATTENDING_PHYSICIAN',
+        'General Surgery',
+        '0234567',
+      ],
       ['lobby@stjude.example.test', 'Rey Bautista', 'LOBBY_SECURITY', 'Lobby Security', null],
     ] as const;
     const ids: Record<string, string> = {};
     for (const [email, fullName, role, title, prc] of staff) {
       const [u] = await tx
         .insert(s.staffUsers)
-        .values({ facilityId: f.id, email, fullName, role, title, prcLicense: prc, passwordHash: hash, passwordChangedAt: now })
+        .values({
+          facilityId: f.id,
+          email,
+          fullName,
+          role,
+          title,
+          prcLicense: prc,
+          passwordHash: hash,
+          passwordChangedAt: now,
+        })
         .returning({ id: s.staffUsers.id });
       ids[email] = u!.id;
     }
@@ -117,19 +172,42 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
       for (let n = 1; n <= 12; n++) {
         const [bed] = await tx
           .insert(s.beds)
-          .values({ facilityId: f.id, code: `${floor}${String(n).padStart(2, '0')}`, ward, floor, roomCategory: category, dailyRateCents: rate })
+          .values({
+            facilityId: f.id,
+            code: `${floor}${String(n).padStart(2, '0')}`,
+            ward,
+            floor,
+            roomCategory: category,
+            dailyRateCents: rate,
+          })
           .returning();
         bedRows.push(bed!);
       }
     }
 
     const stages = [
-      'ADMITTED', 'ADMITTED', 'ADMITTED', 'ADMITTED', 'ADMITTED', 'ADMITTED',
-      'MGH_DECLARED', 'MGH_DECLARED', 'MGH_DECLARED',
-      'DOCTOR_PF_PENDING', 'DOCTOR_PF_PENDING', 'DOCTOR_PF_PENDING',
-      'PHARMACY_RTS_AUDIT', 'PHARMACY_RTS_AUDIT',
-      'HMO_FINAL_LOA', 'HMO_FINAL_LOA', 'HMO_FINAL_LOA',
-      'PENDING_SETTLEMENT', 'PENDING_SETTLEMENT', 'PENDING_SETTLEMENT', 'PENDING_SETTLEMENT', 'PENDING_SETTLEMENT',
+      'ADMITTED',
+      'ADMITTED',
+      'ADMITTED',
+      'ADMITTED',
+      'ADMITTED',
+      'ADMITTED',
+      'MGH_DECLARED',
+      'MGH_DECLARED',
+      'MGH_DECLARED',
+      'DOCTOR_PF_PENDING',
+      'DOCTOR_PF_PENDING',
+      'DOCTOR_PF_PENDING',
+      'PHARMACY_RTS_AUDIT',
+      'PHARMACY_RTS_AUDIT',
+      'HMO_FINAL_LOA',
+      'HMO_FINAL_LOA',
+      'HMO_FINAL_LOA',
+      'PENDING_SETTLEMENT',
+      'PENDING_SETTLEMENT',
+      'PENDING_SETTLEMENT',
+      'PENDING_SETTLEMENT',
+      'PENDING_SETTLEMENT',
     ] as const;
 
     for (let i = 0; i < stages.length; i++) {
@@ -140,7 +218,9 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
       const dob = `${now.getUTCFullYear() - age}-${String(1 + Math.floor(random() * 12)).padStart(2, '0')}-${String(1 + Math.floor(random() * 28)).padStart(2, '0')}`;
       const discount = age >= 60 ? 'SENIOR' : random() < 0.08 ? 'PWD' : 'NONE';
       const phone = `0917${String(1000000 + Math.floor(random() * 8999999))}`;
-      const email = emailBase ? emailBase.replace('@', `+${mrn.toLowerCase()}@`) : `${mrn.toLowerCase()}@patients.example.test`;
+      const email = emailBase
+        ? emailBase.replace('@', `+${mrn.toLowerCase()}@`)
+        : `${mrn.toLowerCase()}@patients.example.test`;
       const pin = String(100000000000 + Math.floor(random() * 899999999999));
       await tx.insert(s.patients).values({
         id: patientId,
@@ -155,7 +235,8 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
         philhealthPinEnc: await cipher.encrypt(pin, `patients.philhealth_pin:${patientId}`),
         philhealthPinLast4: pin.slice(-4),
         discountKind: discount,
-        discountIdEnc: discount === 'NONE' ? null : await cipher.encrypt(`ID-${mrn}`, `patients.discount_id:${patientId}`),
+        discountIdEnc:
+          discount === 'NONE' ? null : await cipher.encrypt(`ID-${mrn}`, `patients.discount_id:${patientId}`),
         discountIdLast4: discount === 'NONE' ? null : mrn.slice(-4),
       });
 
@@ -163,7 +244,8 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
       const [dx, icd, caseRate, hci, pf] = pick(DIAGNOSES);
       const days = 2 + Math.floor(random() * 5);
       const admittedAt = new Date(now.getTime() - (days * 24 + Math.floor(random() * 12)) * 3600_000);
-      const mgh = stage === 'ADMITTED' ? null : new Date(now.getTime() - (5 + Math.floor(random() * 50)) * 60_000);
+      const mgh =
+        stage === 'ADMITTED' ? null : new Date(now.getTime() - (5 + Math.floor(random() * 50)) * 60_000);
       const physicianId = physicians[i % 2]!;
       const [encounter] = await tx
         .insert(s.encounters)
@@ -184,17 +266,69 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
           pfCeilingCents: 1_500_000,
         })
         .returning();
-      await tx.update(s.beds).set({ status: 'OCCUPIED', currentEncounterId: encounter!.id }).where(eq(s.beds.id, bed.id));
+      await tx
+        .update(s.beds)
+        .set({ status: 'OCCUPIED', currentEncounterId: encounter!.id })
+        .where(eq(s.beds.id, bed.id));
 
       const lines: [string, string, ChargeCategory, number, number, 'COVERED' | 'EXCLUDED', string][] = [
-        ['RB-' + bed.roomCategory, `${bed.ward} room and board`, 'ROOM_AND_BOARD', days, bed.dailyRateCents, 'COVERED', 'Your bed, meals and nursing care for each day of your stay.'],
-        ['LAB-CBC', 'Complete blood count', 'LABORATORY', 1 + Math.floor(random() * 3), 45_000, 'COVERED', 'A blood test that checks for infection and anemia.'],
-        ['MED-IV', 'IV fluids and medicines', 'PHARMACY', 1 + Math.floor(random() * 6), 85_000, 'COVERED', 'Medicines and fluids given through your IV line.'],
-        ['SUP-KIT', 'Admission kit (toiletries)', 'SUPPLIES', 1, 35_000, 'EXCLUDED', 'Personal items. Insurers do not cover these, so you pay for them.'],
+        [
+          'RB-' + bed.roomCategory,
+          `${bed.ward} room and board`,
+          'ROOM_AND_BOARD',
+          days,
+          bed.dailyRateCents,
+          'COVERED',
+          'Your bed, meals and nursing care for each day of your stay.',
+        ],
+        [
+          'LAB-CBC',
+          'Complete blood count',
+          'LABORATORY',
+          1 + Math.floor(random() * 3),
+          45_000,
+          'COVERED',
+          'A blood test that checks for infection and anemia.',
+        ],
+        [
+          'MED-IV',
+          'IV fluids and medicines',
+          'PHARMACY',
+          1 + Math.floor(random() * 6),
+          85_000,
+          'COVERED',
+          'Medicines and fluids given through your IV line.',
+        ],
+        [
+          'SUP-KIT',
+          'Admission kit (toiletries)',
+          'SUPPLIES',
+          1,
+          35_000,
+          'EXCLUDED',
+          'Personal items. Insurers do not cover these, so you pay for them.',
+        ],
       ];
-      if (random() < 0.5) lines.push(['IMG-XR', 'Chest X-ray', 'IMAGING', 1, 120_000, 'COVERED', 'An image of your chest to check your lungs.']);
+      if (random() < 0.5)
+        lines.push([
+          'IMG-XR',
+          'Chest X-ray',
+          'IMAGING',
+          1,
+          120_000,
+          'COVERED',
+          'An image of your chest to check your lungs.',
+        ]);
       if (stage !== 'ADMITTED' && stage !== 'MGH_DECLARED' && stage !== 'DOCTOR_PF_PENDING') {
-        lines.push(['PF-ATTENDING', 'Attending physician professional fee', 'PROFESSIONAL_FEE', 1, 1_200_000 + Math.floor(random() * 8) * 100_000, 'COVERED', 'The fee your doctor charged for managing your care.']);
+        lines.push([
+          'PF-ATTENDING',
+          'Attending physician professional fee',
+          'PROFESSIONAL_FEE',
+          1,
+          1_200_000 + Math.floor(random() * 8) * 100_000,
+          'COVERED',
+          'The fee your doctor charged for managing your care.',
+        ]);
       }
       for (const [code, description, category, quantity, unit, coverage, explainer] of lines) {
         await tx.insert(s.charges).values({
@@ -217,7 +351,12 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
         const agreed = pfLine[4];
         await tx
           .update(s.encounters)
-          .set({ agreedPfCents: agreed, doctorExcessPfCents: Math.max(0, agreed - 1_500_000), pfSignedAt: mgh, pfSignedBy: physicianId })
+          .set({
+            agreedPfCents: agreed,
+            doctorExcessPfCents: Math.max(0, agreed - 1_500_000),
+            pfSignedAt: mgh,
+            pfSignedBy: physicianId,
+          })
           .where(eq(s.encounters.id, encounter!.id));
       }
 
@@ -245,24 +384,41 @@ async function seed(db: Database, cipher: FieldCipher, password: string, iterati
         });
       }
       if (progressed && stage !== 'PHARMACY_RTS_AUDIT') {
-        await tx.update(s.encounters).set({ pharmacyClearedAt: mgh }).where(eq(s.encounters.id, encounter!.id));
+        await tx
+          .update(s.encounters)
+          .set({ pharmacyClearedAt: mgh })
+          .where(eq(s.encounters.id, encounter!.id));
       }
       if (stage === 'PENDING_SETTLEMENT') {
         const billNumber = await nextDocumentNumber(tx, f.id, 'SOA', now);
         await tx
           .update(s.encounters)
-          .set({ billState: i % 2 === 0 ? 'SENT' : 'FINALIZED', billNumber, billFinalizedAt: now, billSentAt: i % 2 === 0 ? now : null })
+          .set({
+            billState: i % 2 === 0 ? 'SENT' : 'FINALIZED',
+            billNumber,
+            billFinalizedAt: now,
+            billSentAt: i % 2 === 0 ? now : null,
+          })
           .where(eq(s.encounters.id, encounter!.id));
       }
 
       // The ledger goes through the same engine as live traffic (and its DB reconciliation CHECK).
       const [fresh] = await tx.select().from(s.encounters).where(eq(s.encounters.id, encounter!.id));
       await recalculateLedger(tx, fresh!, now);
-      await tx.insert(s.timelineEvents).values({ encounterId: encounter!.id, kind: 'ADMISSION', title: 'Admitted', detail: `Bed ${bed.code}.`, actorLabel: 'Seed data', createdAt: admittedAt });
+      await tx.insert(s.timelineEvents).values({
+        encounterId: encounter!.id,
+        kind: 'ADMISSION',
+        title: 'Admitted',
+        detail: `Bed ${bed.code}.`,
+        actorLabel: 'Seed data',
+        createdAt: admittedAt,
+      });
     }
   });
   console.warn('Seeded facility SJMC-MNL with 8 staff accounts, 36 beds and 22 stays.');
-  console.warn('Staff sign in with their @stjude.example.test email and SEED_PASSWORD, then set up an authenticator app.');
+  console.warn(
+    'Staff sign in with their @stjude.example.test email and SEED_PASSWORD, then set up an authenticator app.',
+  );
 }
 
 main().catch((err: unknown) => {

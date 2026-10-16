@@ -87,12 +87,15 @@ export function computeWaterfall(input: WaterfallInput): WaterfallResult {
     if (charge.category === 'ROOM_AND_BOARD') room = sumCents(room, amount);
     if (charge.coverage === 'EXCLUDED') excluded = sumCents(excluded, amount);
   }
-  if (excessPf > professional) throw new MoneyError('Excess professional fee cannot exceed the billed professional fee.');
+  if (excessPf > professional)
+    throw new MoneyError('Excess professional fee cannot exceed the billed professional fee.');
   if (roomUpgrade > room) throw new MoneyError('Room upgrade excess cannot exceed the billed room charges.');
 
   const gross = sumCents(hospital, professional);
   const vat = input.seniorOrPwd ? mulRatio(gross, VAT_NUMERATOR, VAT_DENOMINATOR) : 0;
-  const discount = input.seniorOrPwd ? mulRatio(gross - vat, SENIOR_PWD_NUMERATOR, SENIOR_PWD_DENOMINATOR) : 0;
+  const discount = input.seniorOrPwd
+    ? mulRatio(gross - vat, SENIOR_PWD_NUMERATOR, SENIOR_PWD_DENOMINATOR)
+    : 0;
   const base = subCents(gross, sumCents(vat, discount));
 
   // The statutory discounts apply to everything the patient buys, including
@@ -134,7 +137,11 @@ export interface SettlementPosition {
   isSettled: boolean;
 }
 
-export function settlementPosition(netDueCents: number, paidCents: number, financedCents: number): SettlementPosition {
+export function settlementPosition(
+  netDueCents: number,
+  paidCents: number,
+  financedCents: number,
+): SettlementPosition {
   const covered = sumCents(paidCents, financedCents);
   const due = assertCents(netDueCents);
   return {

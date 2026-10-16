@@ -10,7 +10,12 @@ export type DocumentKind = 'ENC' | 'SOA' | 'OR' | 'PN' | 'CLM';
  * by the upsert serializes concurrent callers, and a rolled-back transaction
  * returns its number, so official receipts stay strictly sequential.
  */
-export async function nextDocumentNumber(tx: DbOrTx, facilityId: string, kind: DocumentKind, now: Date): Promise<string> {
+export async function nextDocumentNumber(
+  tx: DbOrTx,
+  facilityId: string,
+  kind: DocumentKind,
+  now: Date,
+): Promise<string> {
   const year = Number(manilaDate(now).slice(0, 4));
   const [row] = await tx
     .insert(documentCounters)

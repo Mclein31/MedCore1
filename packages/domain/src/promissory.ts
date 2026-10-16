@@ -44,5 +44,11 @@ export function buildPromissorySchedule(
   }
   const total = installments.reduce((sum, item) => sum + item.amountCents, 0);
   if (total !== principal) throw new MoneyError('Promissory schedule failed to reconcile.');
-  return { principalCents: principal, interestRateBasisPoints: 0, feeCents: 0, totalRepaymentCents: principal, installments };
+  return {
+    principalCents: principal,
+    interestRateBasisPoints: 0,
+    feeCents: 0,
+    totalRepaymentCents: principal,
+    installments,
+  };
 }

@@ -22,7 +22,13 @@ export async function hotp(secret: Uint8Array, counter: number): Promise<string>
   const view = new DataView(message);
   view.setUint32(0, Math.floor(counter / 2 ** 32));
   view.setUint32(4, counter >>> 0);
-  const key = await crypto.subtle.importKey('raw', secret as BufferSource, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    secret as BufferSource,
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign'],
+  );
   const mac = new Uint8Array(await crypto.subtle.sign('HMAC', key, message));
   const offset = mac[mac.length - 1]! & 0x0f;
   const binary =
@@ -48,13 +54,20 @@ export async function verifyTotp(
   for (let delta = -DRIFT_STEPS; delta <= DRIFT_STEPS; delta++) {
     const candidate = step + delta;
     const expected = await hotp(secret, candidate);
-    if (timingSafeEqual(code, expected) && (lastUsedStep === null || candidate > lastUsedStep)) matched = candidate;
+    if (timingSafeEqual(code, expected) && (lastUsedStep === null || candidate > lastUsedStep))
+      matched = candidate;
   }
   return matched;
 }
 
 export function otpauthUri(secret: string, accountEmail: string, issuer: string): string {
   const label = encodeURIComponent(`${issuer}:${accountEmail}`);
-  const params = new URLSearchParams({ secret, issuer, algorithm: 'SHA1', digits: String(DIGITS), period: String(STEP_SECONDS) });
+  const params = new URLSearchParams({
+    secret,
+    issuer,
+    algorithm: 'SHA1',
+    digits: String(DIGITS),
+    period: String(STEP_SECONDS),
+  });
   return `otpauth://totp/${label}?${params.toString()}`;
 }

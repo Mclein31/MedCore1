@@ -64,7 +64,9 @@ const hmacKeys = new Map<string, Promise<CryptoKey>>();
 function hmacKey(secret: string): Promise<CryptoKey> {
   let key = hmacKeys.get(secret);
   if (!key) {
-    key = crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    key = crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, [
+      'sign',
+    ]);
     hmacKeys.set(secret, key);
   }
   return key;
@@ -100,7 +102,10 @@ export class FieldCipher {
 
   constructor(rawKey: Uint8Array) {
     if (rawKey.length !== 32) throw new Error('Field encryption key must be 32 bytes');
-    this.key = crypto.subtle.importKey('raw', rawKey as BufferSource, 'AES-GCM', false, ['encrypt', 'decrypt']);
+    this.key = crypto.subtle.importKey('raw', rawKey as BufferSource, 'AES-GCM', false, [
+      'encrypt',
+      'decrypt',
+    ]);
   }
 
   async encrypt(plaintext: string, context: string): Promise<string> {

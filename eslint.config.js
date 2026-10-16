@@ -43,7 +43,8 @@ export default tseslint.config(
         'error',
         {
           name: 'localStorage',
-          message: 'Never put credentials or patient data in localStorage. Sessions live in HttpOnly cookies.',
+          message:
+            'Never put credentials or patient data in localStorage. Sessions live in HttpOnly cookies.',
         },
       ],
       'no-restricted-properties': [

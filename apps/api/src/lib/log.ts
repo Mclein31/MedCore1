@@ -32,7 +32,9 @@ export function createLogger(minLevel: Level = 'info'): Logger {
 }
 
 /** Logger for tests: keeps lines in memory. */
-export function createMemoryLogger(): Logger & { lines: { level: Level; msg: string; fields: Record<string, unknown> }[] } {
+export function createMemoryLogger(): Logger & {
+  lines: { level: Level; msg: string; fields: Record<string, unknown> }[];
+} {
   const lines: { level: Level; msg: string; fields: Record<string, unknown> }[] = [];
   return { lines, log: (level, msg, fields = {}) => lines.push({ level, msg, fields: redact(fields) }) };
 }

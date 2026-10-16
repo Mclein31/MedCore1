@@ -63,7 +63,11 @@ export function dotStuff(data: string): string {
   return data.replace(/(^|\r\n)\./g, '$1..');
 }
 
-export function buildMessage(from: { address: string; name: string }, message: MailMessage, now: Date): string {
+export function buildMessage(
+  from: { address: string; name: string },
+  message: MailMessage,
+  now: Date,
+): string {
   assertSafeAddress(from.address);
   assertSafeAddress(message.to);
   const domain = from.address.split('@')[1]!;
@@ -160,7 +164,9 @@ export function createSmtpMailer(options: SmtpOptions): Mailer {
         await session.command('QUIT', 221).catch(() => undefined);
       } catch (err) {
         // Log the failure class only, never the recipient or credentials.
-        options.logger.log('error', 'smtp send failed', { error: err instanceof Error ? err.message : 'unknown' });
+        options.logger.log('error', 'smtp send failed', {
+          error: err instanceof Error ? err.message : 'unknown',
+        });
         throw err instanceof MailError ? err : new MailError('Email could not be sent.');
       } finally {
         await socket.close().catch(() => undefined);

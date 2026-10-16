@@ -70,8 +70,14 @@ describe('crypto', () => {
   it('hashes passwords with a stored, upgradable work factor', async () => {
     const stored = await hashPassword('a long passphrase', 100_000);
     expect(stored).toMatch(/^pbkdf2-sha256\$100000\$/);
-    expect(await verifyPassword('a long passphrase', stored, 100_000)).toEqual({ ok: true, needsRehash: false });
-    expect(await verifyPassword('a long passphrase', stored, 200_000)).toEqual({ ok: true, needsRehash: true });
+    expect(await verifyPassword('a long passphrase', stored, 100_000)).toEqual({
+      ok: true,
+      needsRehash: false,
+    });
+    expect(await verifyPassword('a long passphrase', stored, 200_000)).toEqual({
+      ok: true,
+      needsRehash: true,
+    });
     expect((await verifyPassword('wrong', stored, 100_000)).ok).toBe(false);
     expect((await verifyPassword('x', 'garbage', 100_000)).ok).toBe(false);
   });
@@ -96,9 +102,15 @@ describe('TOTP (RFC 6238 / 4226 test vectors)', () => {
 describe('mailer', () => {
   const from = { address: 'noreply@example.org', name: 'MedCore' };
   it('refuses header injection through addresses and subjects', () => {
-    expect(() => buildMessage(from, { to: 'a@b.test\r\nBcc: x@y.test', subject: 'Hi', text: 'x' }, new Date())).toThrow(MailError);
-    expect(() => buildMessage(from, { to: 'a@b.test', subject: 'Hi\r\nBcc: x@y.test', text: 'x' }, new Date())).toThrow(MailError);
-    expect(() => buildMessage(from, { to: '<a@b.test>', subject: 'Hi', text: 'x' }, new Date())).toThrow(MailError);
+    expect(() =>
+      buildMessage(from, { to: 'a@b.test\r\nBcc: x@y.test', subject: 'Hi', text: 'x' }, new Date()),
+    ).toThrow(MailError);
+    expect(() =>
+      buildMessage(from, { to: 'a@b.test', subject: 'Hi\r\nBcc: x@y.test', text: 'x' }, new Date()),
+    ).toThrow(MailError);
+    expect(() => buildMessage(from, { to: '<a@b.test>', subject: 'Hi', text: 'x' }, new Date())).toThrow(
+      MailError,
+    );
   });
   it('encodes non-ASCII headers and base64 bodies', () => {
     expect(encodeHeader('Plain')).toBe('Plain');
@@ -121,12 +133,42 @@ describe('eSOA XML', () => {
       buildEsoaXml(
         {
           facility: { name: 'F', accreditation: 'A', tin: 'T', address: 'X' },
-          patient: { fullName: 'P', philhealthPin: null, dateOfBirth: '1990-01-01', sex: 'F', discountKind: 'NONE' },
-          encounter: { encounterNumber: 'E', billNumber: null, admittedAt: new Date(), clearedAt: null, icd10Code: 'A00', diagnosis: 'D' },
+          patient: {
+            fullName: 'P',
+            philhealthPin: null,
+            dateOfBirth: '1990-01-01',
+            sex: 'F',
+            discountKind: 'NONE',
+          },
+          encounter: {
+            encounterNumber: 'E',
+            billNumber: null,
+            admittedAt: new Date(),
+            clearedAt: null,
+            icd10Code: 'A00',
+            diagnosis: 'D',
+          },
           claim: { claimNumber: 'C', caseRateCode: 'R', hciCents: 0, pfCents: 0 },
           physician: { fullName: 'Dr', prcLicense: null },
-          charges: [{ code: 'X', description: 'Y', category: 'PHARMACY', quantity: 1, unitPriceCents: 100, grossCents: 100, coverage: 'COVERED' }],
-          ledger: { grossCents: 999, vatExemptionCents: 0, seniorPwdDiscountCents: 0, philhealthCents: 0, hmoCents: 0, netPatientDueCents: 999 },
+          charges: [
+            {
+              code: 'X',
+              description: 'Y',
+              category: 'PHARMACY',
+              quantity: 1,
+              unitPriceCents: 100,
+              grossCents: 100,
+              coverage: 'COVERED',
+            },
+          ],
+          ledger: {
+            grossCents: 999,
+            vatExemptionCents: 0,
+            seniorPwdDiscountCents: 0,
+            philhealthCents: 0,
+            hmoCents: 0,
+            netPatientDueCents: 999,
+          },
         },
         new Date(),
       ),

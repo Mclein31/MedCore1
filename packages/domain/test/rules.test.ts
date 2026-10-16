@@ -22,7 +22,10 @@ describe('money', () => {
   it('formats and round-trips', () => {
     expect(formatPeso(123_456_789)).toBe('₱1,234,567.89');
     expect(formatPeso(5)).toBe('₱0.05');
-    fc.assert(fc.property(fc.integer({ min: 0, max: 10_000_000_000 }), (c) => parsePesos(formatPeso(c)) === c));
+    expect(formatPeso(-0)).toBe('₱0.00');
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 10_000_000_000 }), (c) => parsePesos(formatPeso(c)) === c),
+    );
   });
 
   it('rounds ratios half-up and guards overflow', () => {
@@ -51,13 +54,17 @@ describe('dates', () => {
 describe('promissory schedule', () => {
   it('sums to the principal exactly with zero interest', () => {
     fc.assert(
-      fc.property(fc.integer({ min: 1, max: 1_000_000_000 }), fc.constantFrom(3 as const, 6 as const, 12 as const), (p, m) => {
-        const s = buildPromissorySchedule(p, m, new Date('2026-10-16T02:00:00Z'));
-        expect(s.installments).toHaveLength(m);
-        expect(s.installments.reduce((a, i) => a + i.amountCents, 0)).toBe(p);
-        expect(s.totalRepaymentCents).toBe(p);
-        expect(s.feeCents).toBe(0);
-      }),
+      fc.property(
+        fc.integer({ min: 1, max: 1_000_000_000 }),
+        fc.constantFrom(3 as const, 6 as const, 12 as const),
+        (p, m) => {
+          const s = buildPromissorySchedule(p, m, new Date('2026-10-16T02:00:00Z'));
+          expect(s.installments).toHaveLength(m);
+          expect(s.installments.reduce((a, i) => a + i.amountCents, 0)).toBe(p);
+          expect(s.totalRepaymentCents).toBe(p);
+          expect(s.feeCents).toBe(0);
+        },
+      ),
     );
   });
 
@@ -70,8 +77,14 @@ describe('promissory schedule', () => {
 
 describe('discharge state machine', () => {
   it('walks the happy path with and without an HMO', () => {
-    expect(transition('ADMITTED', 'DECLARE_MGH', { hasHmo: false })).toEqual({ ok: true, to: 'MGH_DECLARED' });
-    expect(transition('PHARMACY_RTS_AUDIT', 'CLEAR_PHARMACY', { hasHmo: true })).toEqual({ ok: true, to: 'HMO_FINAL_LOA' });
+    expect(transition('ADMITTED', 'DECLARE_MGH', { hasHmo: false })).toEqual({
+      ok: true,
+      to: 'MGH_DECLARED',
+    });
+    expect(transition('PHARMACY_RTS_AUDIT', 'CLEAR_PHARMACY', { hasHmo: true })).toEqual({
+      ok: true,
+      to: 'HMO_FINAL_LOA',
+    });
     expect(transition('PHARMACY_RTS_AUDIT', 'CLEAR_PHARMACY', { hasHmo: false })).toEqual({
       ok: true,
       to: 'PENDING_SETTLEMENT',
@@ -119,10 +132,18 @@ describe('access matrix', () => {
   it('enforces separation of duties on waivers', () => {
     const billing = { id: 'a', role: 'BILLING_SPECIALIST' as const };
     expect(canWaive(billing, { contestedCents: 100, filedByStaffId: 'a' }).allowed).toBe(false);
-    expect(canWaive(billing, { contestedCents: WAIVER_LIMIT_CENTS + 1, filedByStaffId: null }).allowed).toBe(false);
-    expect(canWaive(billing, { contestedCents: WAIVER_LIMIT_CENTS, filedByStaffId: null }).allowed).toBe(true);
-    expect(canWaive({ id: 'c', role: 'HOSPITAL_CFO' }, { contestedCents: 10 ** 9, filedByStaffId: null }).allowed).toBe(true);
-    expect(canWaive({ id: 'h', role: 'HMO_COORDINATOR' }, { contestedCents: 1, filedByStaffId: null }).allowed).toBe(false);
+    expect(canWaive(billing, { contestedCents: WAIVER_LIMIT_CENTS + 1, filedByStaffId: null }).allowed).toBe(
+      false,
+    );
+    expect(canWaive(billing, { contestedCents: WAIVER_LIMIT_CENTS, filedByStaffId: null }).allowed).toBe(
+      true,
+    );
+    expect(
+      canWaive({ id: 'c', role: 'HOSPITAL_CFO' }, { contestedCents: 10 ** 9, filedByStaffId: null }).allowed,
+    ).toBe(true);
+    expect(
+      canWaive({ id: 'h', role: 'HMO_COORDINATOR' }, { contestedCents: 1, filedByStaffId: null }).allowed,
+    ).toBe(false);
   });
 });
 
@@ -133,7 +154,9 @@ describe('government IDs', () => {
       normalized: '1234-5678-9012-3456',
       last4: '3456',
     });
-    expect(validateGovernmentId('DRIVERS_LICENSE', 'a01-23-456789')).toMatchObject({ normalized: 'A01-23-456789' });
+    expect(validateGovernmentId('DRIVERS_LICENSE', 'a01-23-456789')).toMatchObject({
+      normalized: 'A01-23-456789',
+    });
     expect(validateGovernmentId('PASSPORT', 'P1234567A').valid).toBe(true);
   });
 
@@ -160,9 +183,13 @@ describe('password policy', () => {
 
 describe('contracts', () => {
   it('normalizes emails and bounds passwords', () => {
-    expect(StaffLoginBody.parse({ email: '  Elena@StJude.TEST ', password: 'x' }).email).toBe('elena@stjude.test');
+    expect(StaffLoginBody.parse({ email: '  Elena@StJude.TEST ', password: 'x' }).email).toBe(
+      'elena@stjude.test',
+    );
     expect(StaffLoginBody.safeParse({ email: 'a@b.test', password: 'x'.repeat(129) }).success).toBe(false);
-    expect(StaffLoginBody.safeParse({ email: 'a@b.test', password: 'x', role: 'HOSPITAL_CFO' }).success).toBe(false);
+    expect(StaffLoginBody.safeParse({ email: 'a@b.test', password: 'x', role: 'HOSPITAL_CFO' }).success).toBe(
+      false,
+    );
   });
 
   it('never accepts card numbers', () => {

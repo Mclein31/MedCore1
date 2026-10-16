@@ -32,7 +32,12 @@ describe('surface', () => {
 
   it('requires a session for every staff and patient route', async () => {
     const anon = h.client();
-    for (const path of ['/api/v1/staff/encounters', '/api/v1/staff/users', '/api/v1/staff/audit-logs', '/api/v1/patient/stays']) {
+    for (const path of [
+      '/api/v1/staff/encounters',
+      '/api/v1/staff/users',
+      '/api/v1/staff/audit-logs',
+      '/api/v1/patient/stays',
+    ]) {
       const res = await anon.get(path);
       expect(res.status, path).toBe(401);
     }
@@ -40,7 +45,11 @@ describe('surface', () => {
 
   it('rejects unknown fields, bad types and oversized bodies', async () => {
     const c = h.client();
-    const extra = await c.post('/api/v1/auth/staff/login', { email: 'a@b.test', password: 'x', role: 'HOSPITAL_CFO' });
+    const extra = await c.post('/api/v1/auth/staff/login', {
+      email: 'a@b.test',
+      password: 'x',
+      role: 'HOSPITAL_CFO',
+    });
     expect(extra.status).toBe(422);
     expect(extra.body.error.code).toBe('VALIDATION_FAILED');
     const big = await c.post('/api/v1/auth/staff/login', { email: 'a@b.test', password: 'x'.repeat(70_000) });
@@ -74,7 +83,10 @@ describe('CSRF', () => {
 describe('staff sign-in', () => {
   it('sets an HttpOnly, SameSite=Strict session cookie and never returns the token', async () => {
     const c = h.client();
-    const res = await c.request('POST', '/api/v1/auth/staff/login', { email: email('CLAIMS_ENCODER'), password: PASSWORD });
+    const res = await c.request('POST', '/api/v1/auth/staff/login', {
+      email: email('CLAIMS_ENCODER'),
+      password: PASSWORD,
+    });
     expect(res.status).toBe(200);
     const cookie = res.headers.getSetCookie().join(';');
     expect(cookie).toMatch(/HttpOnly/i);
@@ -84,8 +96,14 @@ describe('staff sign-in', () => {
 
   it('answers identically for unknown accounts and wrong passwords', async () => {
     const c = h.client();
-    const unknown = await c.post('/api/v1/auth/staff/login', { email: 'nobody@nowhere.example.test', password: PASSWORD });
-    const wrong = await c.post('/api/v1/auth/staff/login', { email: email('HMO_COORDINATOR'), password: 'wrong password here' });
+    const unknown = await c.post('/api/v1/auth/staff/login', {
+      email: 'nobody@nowhere.example.test',
+      password: PASSWORD,
+    });
+    const wrong = await c.post('/api/v1/auth/staff/login', {
+      email: email('HMO_COORDINATOR'),
+      password: 'wrong password here',
+    });
     expect(unknown.status).toBe(401);
     expect(wrong.status).toBe(401);
     expect(unknown.body.error.message).toBe(wrong.body.error.message);
@@ -102,14 +120,21 @@ describe('staff sign-in', () => {
     const cfo = await h.staff('HOSPITAL_CFO');
     const user = h.fixture.staff.find((u) => u.email === target)!;
     expect((await cfo.post(`/api/v1/staff/users/${user.id}/unlock`)).status).toBe(200);
-    expect((await h.client().post('/api/v1/auth/staff/login', { email: target, password: PASSWORD })).status).toBe(200);
+    expect(
+      (await h.client().post('/api/v1/auth/staff/login', { email: target, password: PASSWORD })).status,
+    ).toBe(200);
   });
 
   it('rate-limits login attempts per IP', async () => {
     const c = h.client({ ip: '203.0.113.77' });
     let last = 0;
     for (let i = 0; i < 22; i++) {
-      last = (await c.post('/api/v1/auth/staff/login', { email: `probe${i}@nowhere.example.test`, password: 'whatever pass' })).status;
+      last = (
+        await c.post('/api/v1/auth/staff/login', {
+          email: `probe${i}@nowhere.example.test`,
+          password: 'whatever pass',
+        })
+      ).status;
     }
     expect(last).toBe(429);
   });
@@ -136,13 +161,22 @@ describe('staff sign-in', () => {
   it('enforces the password policy and signs out other sessions on change', async () => {
     const first = await h.staff('LOBBY_SECURITY');
     const second = await h.staff('LOBBY_SECURITY');
-    const weak = await first.post('/api/v1/auth/staff/password', { currentPassword: PASSWORD, newPassword: 'password1234' });
+    const weak = await first.post('/api/v1/auth/staff/password', {
+      currentPassword: PASSWORD,
+      newPassword: 'password1234',
+    });
     expect(weak.status).toBe(422);
-    const changed = await first.post('/api/v1/auth/staff/password', { currentPassword: PASSWORD, newPassword: 'a brand new long passphrase 7' });
+    const changed = await first.post('/api/v1/auth/staff/password', {
+      currentPassword: PASSWORD,
+      newPassword: 'a brand new long passphrase 7',
+    });
     expect(changed.status).toBe(200);
     expect((await second.get('/api/v1/auth/staff/me')).status).toBe(401);
     expect((await first.get('/api/v1/auth/staff/me')).status).toBe(200);
-    await first.post('/api/v1/auth/staff/password', { currentPassword: 'a brand new long passphrase 7', newPassword: PASSWORD });
+    await first.post('/api/v1/auth/staff/password', {
+      currentPassword: 'a brand new long passphrase 7',
+      newPassword: PASSWORD,
+    });
   });
 });
 
@@ -161,7 +195,10 @@ describe('two-step sign-in (TOTP)', () => {
       expect(start.body.otpauthUri).toMatch(/^otpauth:\/\/totp\//);
       const codeAt = async (date: Date) => hotp(base32Decode(start.body.secret), currentStep(date));
 
-      const bad = await c.post('/api/v1/auth/staff/mfa/enroll/confirm', { challenge: login.body.challenge, code: '000000' });
+      const bad = await c.post('/api/v1/auth/staff/mfa/enroll/confirm', {
+        challenge: login.body.challenge,
+        code: '000000',
+      });
       expect(bad.status).toBe(401);
       const confirm = await c.post('/api/v1/auth/staff/mfa/enroll/confirm', {
         challenge: login.body.challenge,
@@ -171,27 +208,59 @@ describe('two-step sign-in (TOTP)', () => {
       expect(confirm.body.recoveryCodes).toHaveLength(10);
       expect((await c.get('/api/v1/auth/staff/me')).body.user.mfaEnabled).toBe(true);
 
+      // Sign-in events happen before a session exists, but must still name the person.
+      const [enrolled] = await strict.db
+        .select()
+        .from(s.auditLogs)
+        .where(sql`${s.auditLogs.action} = 'STAFF_MFA_ENROLLED' and ${s.auditLogs.resourceId} = ${user.id}`);
+      expect(enrolled!.actorType).toBe('STAFF');
+      expect(enrolled!.actorEmail).toBe(user.email);
+
       // The secret is stored encrypted, never in clear.
       const [row] = await strict.db.select().from(s.staffUsers).where(eq(s.staffUsers.id, user.id));
       expect(row!.mfaSecretEnc).toMatch(/^v1\./);
       expect(row!.mfaSecretEnc).not.toContain(start.body.secret);
 
       // Next sign-in needs the code; the one just used cannot be replayed.
-      const again = await strict.client().post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
+      const again = await strict
+        .client()
+        .post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
       expect(again.body.status).toBe('MFA_REQUIRED');
-      const replay = await strict.client().post('/api/v1/auth/staff/mfa/verify', { challenge: again.body.challenge, code: await codeAt(strict.services.now()) });
+      const replay = await strict.client().post('/api/v1/auth/staff/mfa/verify', {
+        challenge: again.body.challenge,
+        code: await codeAt(strict.services.now()),
+      });
       expect(replay.status).toBe(401);
       strict.advance(60_000);
       const fresh = strict.client();
       const login3 = await fresh.post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
-      const ok = await fresh.post('/api/v1/auth/staff/mfa/verify', { challenge: login3.body.challenge, code: await codeAt(strict.services.now()) });
+      const ok = await fresh.post('/api/v1/auth/staff/mfa/verify', {
+        challenge: login3.body.challenge,
+        code: await codeAt(strict.services.now()),
+      });
       expect(ok.status, JSON.stringify(ok.body)).toBe(200);
 
       const recovery = confirm.body.recoveryCodes[0];
-      const l4 = await strict.client().post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
-      expect((await strict.client().post('/api/v1/auth/staff/mfa/verify', { challenge: l4.body.challenge, code: recovery })).status).toBe(200);
-      const l5 = await strict.client().post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
-      expect((await strict.client().post('/api/v1/auth/staff/mfa/verify', { challenge: l5.body.challenge, code: recovery })).status).toBe(401);
+      const l4 = await strict
+        .client()
+        .post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
+      expect(
+        (
+          await strict
+            .client()
+            .post('/api/v1/auth/staff/mfa/verify', { challenge: l4.body.challenge, code: recovery })
+        ).status,
+      ).toBe(200);
+      const l5 = await strict
+        .client()
+        .post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
+      expect(
+        (
+          await strict
+            .client()
+            .post('/api/v1/auth/staff/mfa/verify', { challenge: l5.body.challenge, code: recovery })
+        ).status,
+      ).toBe(401);
     } finally {
       await strict.close();
     }
@@ -205,9 +274,15 @@ describe('two-step sign-in (TOTP)', () => {
       const login = await c.post('/api/v1/auth/staff/login', { email: user.email, password: PASSWORD });
       await c.post('/api/v1/auth/staff/mfa/enroll/start', { challenge: login.body.challenge });
       for (let i = 0; i < 5; i++) {
-        await c.post('/api/v1/auth/staff/mfa/enroll/confirm', { challenge: login.body.challenge, code: String(100000 + i) });
+        await c.post('/api/v1/auth/staff/mfa/enroll/confirm', {
+          challenge: login.body.challenge,
+          code: String(100000 + i),
+        });
       }
-      const after = await c.post('/api/v1/auth/staff/mfa/enroll/confirm', { challenge: login.body.challenge, code: '123456' });
+      const after = await c.post('/api/v1/auth/staff/mfa/enroll/confirm', {
+        challenge: login.body.challenge,
+        code: '123456',
+      });
       expect(after.body.error.code).toBe('CHALLENGE_EXPIRED');
     } finally {
       await strict.close();
@@ -238,7 +313,9 @@ describe('access control', () => {
       const stay = await stayAwaitingSettlement(h, { patientIndex: 5, bedIndex: 5 });
       const outsider = await other.staff('HOSPITAL_CFO');
       expect((await outsider.get(stay.base)).status).toBe(404);
-      expect((await outsider.post(`${stay.base}/void`, { reason: 'Cross-tenant attempt here' })).status).toBe(404);
+      expect((await outsider.post(`${stay.base}/void`, { reason: 'Cross-tenant attempt here' })).status).toBe(
+        404,
+      );
     } finally {
       await other.close();
     }
@@ -246,7 +323,9 @@ describe('access control', () => {
 
   it('audits who opened a patient record', async () => {
     const billing = await h.staff('BILLING_SPECIALIST');
-    const [enc] = (await h.db.execute(sql`select id from encounters where facility_id = ${h.fixture.facility.id} limit 1`)).rows as { id: string }[];
+    const [enc] = (
+      await h.db.execute(sql`select id from encounters where facility_id = ${h.fixture.facility.id} limit 1`)
+    ).rows as { id: string }[];
     await billing.get(`/api/v1/staff/encounters/${enc!.id}`);
     const rows = await h.db
       .select()
@@ -278,13 +357,22 @@ describe('exit pass PIN', () => {
     const lobby = await h.staff('LOBBY_SECURITY');
     const wrong = pass.pin === '000000' ? '111111' : '000000';
     for (let i = 4; i >= 1; i--) {
-      const r = await lobby.post('/api/v1/staff/gate-passes/verify', { passNumber: pass.passNumber, pin: wrong });
+      const r = await lobby.post('/api/v1/staff/gate-passes/verify', {
+        passNumber: pass.passNumber,
+        pin: wrong,
+      });
       expect(r.body.error.code).toBe('WRONG_PIN');
       expect(r.body.error.message).toContain(`${i} attempt`);
     }
-    const fifth = await lobby.post('/api/v1/staff/gate-passes/verify', { passNumber: pass.passNumber, pin: wrong });
+    const fifth = await lobby.post('/api/v1/staff/gate-passes/verify', {
+      passNumber: pass.passNumber,
+      pin: wrong,
+    });
     expect(fifth.body.error.code).toBe('PASS_VOIDED');
-    const right = await lobby.post('/api/v1/staff/gate-passes/verify', { passNumber: pass.passNumber, pin: pass.pin });
+    const right = await lobby.post('/api/v1/staff/gate-passes/verify', {
+      passNumber: pass.passNumber,
+      pin: pass.pin,
+    });
     expect(right.body.error.code).toBe('PASS_NOT_ACTIVE');
   });
 
@@ -296,9 +384,14 @@ describe('exit pass PIN', () => {
       { 'idempotency-key': `k-${crypto.randomUUID()}` },
     );
     const pass = (await stay.billing.get(`${stay.base}/gate-pass`)).body;
-    await h.db.execute(sql`update gate_passes set settled_cents = settled_cents + 1 where pass_number = ${pass.passNumber}`);
+    await h.db.execute(
+      sql`update gate_passes set settled_cents = settled_cents + 1 where pass_number = ${pass.passNumber}`,
+    );
     const lobby = await h.staff('LOBBY_SECURITY');
-    const r = await lobby.post('/api/v1/staff/gate-passes/verify', { passNumber: pass.passNumber, pin: pass.pin });
+    const r = await lobby.post('/api/v1/staff/gate-passes/verify', {
+      passNumber: pass.passNumber,
+      pin: pass.pin,
+    });
     expect(r.body.error.code).toBe('PASS_TAMPERED');
   });
 });

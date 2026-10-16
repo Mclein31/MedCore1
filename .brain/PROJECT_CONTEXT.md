@@ -17,6 +17,7 @@ MedCore is not an HIS or EMR. It is the financial middleware between hospital sy
 - Five AI features: claims preflight scrubber, HMO appeal drafter, executive briefing, Cora, OCR scanner. SMS is a sandbox only.
 
 ## 4. Current state (2026-10-16)
+- **v2 rebuild** lives on branch `rebuild/medcore-v2` (not merged, not deployed): a from-scratch rewrite implementing the full 2026-10-16 audit. See its `README.md`, `DEPLOY.md`, and the v2 entries in `DECISIONS.md` and `TODO.md` §0. Everything below describes `main`.
 - Hosted demo: Vercel dashboard + Cloudflare Worker + Neon Postgres in **Singapore** (project `medcore-sg`). Branch `production` = schema only; branch `demo` = all fictional demo data, used by the hosted app. Moved from Ohio on 2026-10-16: `docs/production/NEON_REGION_MIGRATION.md`.
 - Financial engine verified on 250/250 fixtures with zero centavo drift. Payments are simulated by design (university presentation).
 - **2026-10-16 security and architecture audit** found 3 critical and 10 high issues. Fixed on 2026-10-16: C1, C2 (patient email-code sign-in, old self-registration removed), H5, H9, H10, M4, D12, and rate limits on login, sign-in codes and AI (C3 partly). The rest is in `TODO.md`. Report: `docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`.

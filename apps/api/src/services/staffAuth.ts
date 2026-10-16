@@ -13,13 +13,22 @@ export const RECOVERY_CODE_COUNT = 10;
 export const INVITE_TTL_MS = 72 * 60 * 60 * 1000;
 
 export const invalidCredentials = () =>
-  new ApiError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect, or the account is temporarily locked.');
+  new ApiError(
+    401,
+    'INVALID_CREDENTIALS',
+    'Email or password is incorrect, or the account is temporarily locked.',
+  );
 
 export const mfaSecretContext = (staffUserId: string) => `staff_users.mfa_secret:${staffUserId}`;
 
 export type ChallengeKind = 'MFA_VERIFY' | 'MFA_ENROLL';
 
-export async function issueChallenge(db: DbOrTx, staffUserId: string, kind: ChallengeKind, now: Date): Promise<string> {
+export async function issueChallenge(
+  db: DbOrTx,
+  staffUserId: string,
+  kind: ChallengeKind,
+  now: Date,
+): Promise<string> {
   const token = randomToken(32);
   // One live challenge per user: older unconsumed ones stop working.
   await db
@@ -60,7 +69,12 @@ export async function lockChallenge(tx: DbOrTx, token: string, kind: ChallengeKi
 }
 
 /** Records a wrong code; the challenge burns out after the attempt limit. */
-export async function failChallenge(tx: DbOrTx, challengeId: string, attempts: number, now: Date): Promise<void> {
+export async function failChallenge(
+  tx: DbOrTx,
+  challengeId: string,
+  attempts: number,
+  now: Date,
+): Promise<void> {
   const next = attempts + 1;
   await tx
     .update(authChallenges)
@@ -74,13 +88,15 @@ export async function consumeChallenge(tx: DbOrTx, challengeId: string, now: Dat
     .set({ consumedAt: now })
     .where(and(eq(authChallenges.id, challengeId), isNull(authChallenges.consumedAt)))
     .returning({ id: authChallenges.id });
-  if (consumed.length !== 1) throw new ApiError(401, 'CHALLENGE_EXPIRED', 'This sign-in step expired. Please sign in again.');
+  if (consumed.length !== 1)
+    throw new ApiError(401, 'CHALLENGE_EXPIRED', 'This sign-in step expired. Please sign in again.');
 }
 
 // Recovery codes: no 0/O/1/I/L lookalikes. 12 chars from 31 symbols ≈ 59 bits.
 const RECOVERY_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 
-const recoveryHash = (staffUserId: string, code: string) => sha256Hex(`recovery:${staffUserId}:${code.replace(/-/g, '')}`);
+const recoveryHash = (staffUserId: string, code: string) =>
+  sha256Hex(`recovery:${staffUserId}:${code.replace(/-/g, '')}`);
 
 export async function replaceRecoveryCodes(db: DbOrTx, staffUserId: string, now: Date): Promise<string[]> {
   await db
@@ -92,13 +108,20 @@ export async function replaceRecoveryCodes(db: DbOrTx, staffUserId: string, now:
     const raw = randomFromAlphabet(RECOVERY_ALPHABET, 12);
     const code = `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8)}`;
     codes.push(code);
-    await db.insert(staffRecoveryCodes).values({ staffUserId, codeHash: await recoveryHash(staffUserId, code), createdAt: now });
+    await db
+      .insert(staffRecoveryCodes)
+      .values({ staffUserId, codeHash: await recoveryHash(staffUserId, code), createdAt: now });
   }
   return codes;
 }
 
 /** Single-use: the code is marked used in the same statement that finds it. */
-export async function useRecoveryCode(tx: DbOrTx, staffUserId: string, code: string, now: Date): Promise<boolean> {
+export async function useRecoveryCode(
+  tx: DbOrTx,
+  staffUserId: string,
+  code: string,
+  now: Date,
+): Promise<boolean> {
   const used = await tx
     .update(staffRecoveryCodes)
     .set({ usedAt: now })

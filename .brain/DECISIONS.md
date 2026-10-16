@@ -2,6 +2,17 @@
 
 Newest first. Every durable `[DECISION]` from the former 2,540-line `PROJECT_CONTEXT.md` is here, grouped by topic inside each period. Where a later entry replaced an earlier one, only the later one is kept, with a `Supersedes:` note. Dates are 2026 unless stated. Sections 1–49 of the old file had no dates beyond late Sep to early Oct, so they are grouped as "Sep–early Oct".
 
+## 2026-10-16: v2 rebuild (branch `rebuild/medcore-v2`)
+- [DECISION] MedCore is rebuilt from scratch on branch `rebuild/medcore-v2` as an npm-workspaces monorepo: `packages/domain` (pure rules), `apps/api` (Hono + Drizzle + Postgres, Node and Workers entries), `apps/web` (React 19 + Vite + Tailwind 4; staff console `/staff` and patient portal `/portal` in one app, code-split). The old `apps/server`, `apps/dashboard`, `apps/shared`, `apps/mobile` and `scripts/` are removed from that branch only; `main` keeps them. Implements the whole 2026-10-16 audit by design rather than as patches.
+- [DECISION] Money is integer centavos everywhere (bigint columns, `*Cents` JSON fields). A DB CHECK enforces the waterfall identity on every ledger row. Patient-only amounts (exclusions, room upgrade, excess PF) receive the senior/PWD discount pro rata, so a senior with excluded items no longer throws (supersedes the old "non-covered exceeds base" error).
+- [DECISION] Patients are a separate principal (`patient_accounts` + `patient_account_links`), never a staff role. Sign-in is only the emailed 6-digit code (MRN + date of birth to register; code goes to `patients.email`). No patient passwords.
+- [DECISION] Staff MFA (TOTP + 10 recovery codes) is mandatory and cannot be disabled in production; accounts are created only by emailed invitation (the same link is the admin password reset).
+- [DECISION] Exit-pass PIN is 6 digits derived by HMAC from `GATE_PASS_SECRET` and the pass id, never stored; 5 wrong PINs void the pass; signature is checked before the PIN.
+- [DECISION] Rate limits live in Postgres (`rate_limit_buckets`), not Workers bindings, so they hold across regions and on Node.
+- [DECISION] Official receipt, bill, claim, note and encounter numbers are gap-free per facility and year (`document_counters`); claim and note numbers are unique per facility (a global unique index was a multi-tenant bug caught by tests).
+- [DECISION] Online patient payment is `PATIENT_ONLINE_PAYMENTS=disabled|simulated` (default disabled); simulated payments are flagged `is_simulated` and shown as such to staff only.
+- [DECISION] AI features (Cora, OCR, claims scrubber, appeals, briefing) and the Expo mobile app are not in v2 yet; they are follow-ups on top of the v2 API.
+
 ## 2026-10-16: Security audit (proposed, not implemented)
 - [DECISION] Adopt AdvanCare ADV-AUTH-001 email OTP (Gmail SMTP App Password over `cloudflare:sockets`) for patients, sent to a hospital-recorded `patients.email`. Staff move to AdvanCare-style sessions and CSRF, and later TOTP. Migration `0006_security_hardening.sql` is drafted in the audit report. Audit: `docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`. Phase plan is in `TODO.md`.
 - [DECISION] Singapore database layout (done): project `medcore-sg`, branch `production` = schema only (default, real data goes here), branch `demo` = all fictional demo data and the only branch ever seeded or reset. The hosted app uses `demo`. Refresh with `neon branches reset demo --parent`, then reseed `demo`. Details: `docs/production/NEON_REGION_MIGRATION.md`.

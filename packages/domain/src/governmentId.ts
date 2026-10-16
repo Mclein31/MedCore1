@@ -40,7 +40,8 @@ export const GOVERNMENT_ID_RULES: Record<GovernmentIdType, IdRule> = {
   },
 };
 
-export type GovernmentIdResult = { valid: true; normalized: string; last4: string } | { valid: false; error: string };
+export type GovernmentIdResult =
+  { valid: true; normalized: string; last4: string } | { valid: false; error: string };
 
 export function validateGovernmentId(type: GovernmentIdType, input: string): GovernmentIdResult {
   const rule = GOVERNMENT_ID_RULES[type];

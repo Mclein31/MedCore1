@@ -27,10 +27,18 @@ export async function purgeExpired(db: Database, now: Date) {
     .delete(sessions)
     .where(
       and(
-        or(lt(sessions.expiresAt, monthAgo), and(isNotNull(sessions.revokedAt), lt(sessions.revokedAt, monthAgo))),
+        or(
+          lt(sessions.expiresAt, monthAgo),
+          and(isNotNull(sessions.revokedAt), lt(sessions.revokedAt, monthAgo)),
+        ),
         sql`true`,
       ),
     )
     .returning({ id: sessions.id });
-  return { codes: codes.length, challenges: challenges.length, rateLimitBuckets: buckets.length, sessions: ended.length };
+  return {
+    codes: codes.length,
+    challenges: challenges.length,
+    rateLimitBuckets: buckets.length,
+    sessions: ended.length,
+  };
 }

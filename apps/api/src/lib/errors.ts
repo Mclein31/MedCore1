@@ -18,7 +18,8 @@ export class ApiError extends Error {
 }
 
 export const notFound = (what = 'Record') => new ApiError(404, 'NOT_FOUND', `${what} not found.`);
-export const forbidden = (message = 'You do not have access to this action.') => new ApiError(403, 'FORBIDDEN', message);
+export const forbidden = (message = 'You do not have access to this action.') =>
+  new ApiError(403, 'FORBIDDEN', message);
 export const conflict = (code: string, message: string) => new ApiError(409, code, message);
 export const unauthenticated = () => new ApiError(401, 'UNAUTHENTICATED', 'Please sign in again.');
 export const rateLimited = (retryAfterSeconds: number) =>

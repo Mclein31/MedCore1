@@ -22,7 +22,11 @@ async function register(patientIndex: number, client = h.client()) {
   const req = await client.post(`${AUTH}/code/request`, { purpose: 'REGISTER', ...identity });
   expect(req.status).toBe(202);
   await h.flush();
-  const verify = await client.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: lastCodeTo(p.email!) });
+  const verify = await client.post(`${AUTH}/code/verify`, {
+    purpose: 'REGISTER',
+    ...identity,
+    code: lastCodeTo(p.email!),
+  });
   expect(verify.status, JSON.stringify(verify.body)).toBe(200);
   return client;
 }
@@ -31,15 +35,29 @@ describe('patient email codes', () => {
   it('sends the code only to the hospital-recorded email and answers identically either way', async () => {
     const p = h.fixture.patients[0]!;
     const c = h.client();
-    const matched = await c.post(`${AUTH}/code/request`, { purpose: 'REGISTER', facilityCode: h.fixture.facility.code, mrn: p.mrn, dateOfBirth: p.dateOfBirth });
-    const unmatched = await c.post(`${AUTH}/code/request`, { purpose: 'REGISTER', facilityCode: h.fixture.facility.code, mrn: p.mrn, dateOfBirth: '1901-01-01' });
+    const matched = await c.post(`${AUTH}/code/request`, {
+      purpose: 'REGISTER',
+      facilityCode: h.fixture.facility.code,
+      mrn: p.mrn,
+      dateOfBirth: p.dateOfBirth,
+    });
+    const unmatched = await c.post(`${AUTH}/code/request`, {
+      purpose: 'REGISTER',
+      facilityCode: h.fixture.facility.code,
+      mrn: p.mrn,
+      dateOfBirth: '1901-01-01',
+    });
     const noEmail = await c.post(`${AUTH}/code/request`, {
       purpose: 'REGISTER',
       facilityCode: h.fixture.facility.code,
       mrn: h.fixture.patients[3]!.mrn,
       dateOfBirth: h.fixture.patients[3]!.dateOfBirth,
     });
-    const unknownLogin = await c.post(`${AUTH}/code/request`, { purpose: 'LOGIN', facilityCode: h.fixture.facility.code, email: 'stranger@mail.example.test' });
+    const unknownLogin = await c.post(`${AUTH}/code/request`, {
+      purpose: 'LOGIN',
+      facilityCode: h.fixture.facility.code,
+      email: 'stranger@mail.example.test',
+    });
     for (const r of [matched, unmatched, noEmail, unknownLogin]) {
       expect(r.status).toBe(202);
       expect(r.body).toEqual(matched.body);
@@ -67,12 +85,19 @@ describe('patient email codes', () => {
       const stale = await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: old });
       expect(stale.status).toBe(401);
     }
-    const crossPurpose = await c.post(`${AUTH}/code/verify`, { purpose: 'LOGIN', facilityCode: h.fixture.facility.code, email: p.email, code: fresh });
+    const crossPurpose = await c.post(`${AUTH}/code/verify`, {
+      purpose: 'LOGIN',
+      facilityCode: h.fixture.facility.code,
+      email: p.email,
+      code: fresh,
+    });
     expect(crossPurpose.status).toBe(401);
     const ok = await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: fresh });
     expect(ok.status).toBe(200);
     // Single use.
-    const reuse = await h.client().post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: fresh });
+    const reuse = await h
+      .client()
+      .post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: fresh });
     expect(reuse.status).toBe(401);
   });
 
@@ -84,9 +109,18 @@ describe('patient email codes', () => {
     await h.flush();
     const real = lastCodeTo(p.email!);
     const wrong = real === '000000' ? '111111' : '000000';
-    for (let i = 0; i < 4; i++) expect((await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: wrong })).body.error.code).toBe('CODE_INVALID');
-    expect((await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: wrong })).body.error.code).toBe('CODE_LOCKED');
-    expect((await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: real })).status).toBe(401);
+    for (let i = 0; i < 4; i++)
+      expect(
+        (await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: wrong })).body.error
+          .code,
+      ).toBe('CODE_INVALID');
+    expect(
+      (await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: wrong })).body.error
+        .code,
+    ).toBe('CODE_LOCKED');
+    expect(
+      (await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: real })).status,
+    ).toBe(401);
   });
 
   it('lets only one of two simultaneous verifications win', async () => {
@@ -95,7 +129,9 @@ describe('patient email codes', () => {
     await h.client().post(`${AUTH}/code/request`, { purpose: 'REGISTER', ...identity });
     await h.flush();
     const code = lastCodeTo(p.email!);
-    const results = await Promise.all([1, 2, 3].map(() => h.client().post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code })));
+    const results = await Promise.all(
+      [1, 2, 3].map(() => h.client().post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code })),
+    );
     expect(results.filter((r) => r.status === 200)).toHaveLength(1);
   });
 
@@ -107,7 +143,9 @@ describe('patient email codes', () => {
     await h.flush();
     const code = lastCodeTo(p.email!);
     h.advance(11 * 60 * 1000);
-    expect((await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code })).status).toBe(401);
+    expect((await c.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code })).status).toBe(
+      401,
+    );
   });
 
   it('gives mobile clients a bearer token and web clients only a cookie', async () => {
@@ -116,13 +154,27 @@ describe('patient email codes', () => {
     const web = h.client();
     await web.post(`${AUTH}/code/request`, { purpose: 'REGISTER', ...identity });
     await h.flush();
-    const webRes = await web.post(`${AUTH}/code/verify`, { purpose: 'REGISTER', ...identity, code: lastCodeTo(p.email!) });
+    const webRes = await web.post(`${AUTH}/code/verify`, {
+      purpose: 'REGISTER',
+      ...identity,
+      code: lastCodeTo(p.email!),
+    });
     expect(webRes.body.token).toBeUndefined();
 
     const mobile = h.client();
-    await mobile.post(`${AUTH}/code/request`, { purpose: 'LOGIN', facilityCode: h.fixture.facility.code, email: p.email });
+    await mobile.post(`${AUTH}/code/request`, {
+      purpose: 'LOGIN',
+      facilityCode: h.fixture.facility.code,
+      email: p.email,
+    });
     await h.flush();
-    const mobileRes = await mobile.post(`${AUTH}/code/verify`, { purpose: 'LOGIN', facilityCode: h.fixture.facility.code, email: p.email, code: lastCodeTo(p.email!), client: 'mobile' });
+    const mobileRes = await mobile.post(`${AUTH}/code/verify`, {
+      purpose: 'LOGIN',
+      facilityCode: h.fixture.facility.code,
+      email: p.email,
+      code: lastCodeTo(p.email!),
+      client: 'mobile',
+    });
     expect(mobileRes.body.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     const app = h.client();
     app.bearer = mobileRes.body.token;
@@ -143,7 +195,15 @@ describe('patient portal', () => {
     const item = list.body.items.find((s: { id: string }) => s.id === stay.id);
     expect(item.billReady).toBe(true);
     expect((await stranger.get(`/api/v1/patient/stays/${stay.id}`)).status).toBe(404);
-    expect((await stranger.post(`/api/v1/patient/stays/${stay.id}/payments`, { amountCents: 100, rail: 'GCASH', payerName: 'Thief Name' }, { 'idempotency-key': idem() })).status).toBe(404);
+    expect(
+      (
+        await stranger.post(
+          `/api/v1/patient/stays/${stay.id}/payments`,
+          { amountCents: 100, rail: 'GCASH', payerName: 'Thief Name' },
+          { 'idempotency-key': idem() },
+        )
+      ).status,
+    ).toBe(404);
 
     const detail = await patient.get(`/api/v1/patient/stays/${stay.id}`);
     expect(detail.status).toBe(200);
@@ -154,7 +214,14 @@ describe('patient portal', () => {
 
     const card = await patient.post(
       `/api/v1/patient/stays/${stay.id}/payments`,
-      { amountCents: balance, rail: 'CARD', payerName: 'Pat Seven', cardBrand: 'VISA', cardLast4: '4242', cardNumber: '4242424242424242' },
+      {
+        amountCents: balance,
+        rail: 'CARD',
+        payerName: 'Pat Seven',
+        cardBrand: 'VISA',
+        cardLast4: '4242',
+        cardNumber: '4242424242424242',
+      },
       { 'idempotency-key': idem() },
     );
     expect(card.status).toBe(422);
@@ -191,7 +258,11 @@ describe('patient portal', () => {
   it('refuses online payment when the simulation is switched off', async () => {
     const off = await createHarness({ PATIENT_ONLINE_PAYMENTS: 'disabled' });
     try {
-      const res = await off.client().post(`/api/v1/patient/stays/${crypto.randomUUID()}/payments`, { amountCents: 100, rail: 'GCASH', payerName: 'Some One' });
+      const res = await off.client().post(`/api/v1/patient/stays/${crypto.randomUUID()}/payments`, {
+        amountCents: 100,
+        rail: 'GCASH',
+        payerName: 'Some One',
+      });
       expect(res.status).toBe(401); // not signed in; the switch is checked after auth
     } finally {
       await off.close();

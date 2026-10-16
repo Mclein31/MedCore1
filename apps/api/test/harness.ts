@@ -14,7 +14,14 @@ export const DATABASE_URL = process.env.TEST_DATABASE_URL ?? 'postgres://localho
 export const PASSWORD = 'correct horse battery staple 42';
 export const ORIGIN = 'http://app.test';
 
-const ROLES = ['HOSPITAL_CFO', 'BILLING_SPECIALIST', 'CLAIMS_ENCODER', 'HMO_COORDINATOR', 'ATTENDING_PHYSICIAN', 'LOBBY_SECURITY'] as const;
+const ROLES = [
+  'HOSPITAL_CFO',
+  'BILLING_SPECIALIST',
+  'CLAIMS_ENCODER',
+  'HMO_COORDINATOR',
+  'ATTENDING_PHYSICIAN',
+  'LOBBY_SECURITY',
+] as const;
 type Role = (typeof ROLES)[number];
 
 export interface StaffFixture {
@@ -57,7 +64,11 @@ export async function createHarness(overrides: Record<string, string> = {}) {
   const fixture = await createFixture(db, config);
 
   let ipCounter = Math.floor(Math.random() * 200);
-  const client = (opts: { ip?: string } = {}) => new TestClient(app, opts.ip ?? `10.0.${Math.floor(Math.random() * 250)}.${(ipCounter = (ipCounter + 1) % 250)}`);
+  const client = (opts: { ip?: string } = {}) =>
+    new TestClient(
+      app,
+      opts.ip ?? `10.0.${Math.floor(Math.random() * 250)}.${(ipCounter = (ipCounter + 1) % 250)}`,
+    );
 
   return {
     app,
@@ -93,7 +104,13 @@ async function createFixture(db: Database, config: Config) {
   const cipher = new FieldCipher(config.dataEncryptionKey);
   const [facility] = await db
     .insert(s.facilities)
-    .values({ code: `T-${suffix}`.toUpperCase(), name: `Test Hospital ${suffix}`, tin: '000', philhealthAccreditation: 'H1', address: 'Test St' })
+    .values({
+      code: `T-${suffix}`.toUpperCase(),
+      name: `Test Hospital ${suffix}`,
+      tin: '000',
+      philhealthAccreditation: 'H1',
+      address: 'Test St',
+    })
     .returning();
   const hash = await hashPassword(PASSWORD, config.pbkdf2Iterations);
   const staff: StaffFixture[] = [];
@@ -101,7 +118,14 @@ async function createFixture(db: Database, config: Config) {
     const email = `${role.toLowerCase()}.${staff.length}.${suffix}@staff.example.test`;
     const [u] = await db
       .insert(s.staffUsers)
-      .values({ facilityId: facility!.id, email, fullName: `${role} ${staff.length}`, role, title: role, passwordHash: hash })
+      .values({
+        facilityId: facility!.id,
+        email,
+        fullName: `${role} ${staff.length}`,
+        role,
+        title: role,
+        passwordHash: hash,
+      })
       .returning({ id: s.staffUsers.id });
     staff.push({ id: u!.id, email, role });
   }
@@ -109,7 +133,14 @@ async function createFixture(db: Database, config: Config) {
   for (let i = 0; i < 12; i++) {
     const [bed] = await db
       .insert(s.beds)
-      .values({ facilityId: facility!.id, code: `B${i}`, ward: 'Ward', floor: 1, roomCategory: 'WARD', dailyRateCents: 200_000 })
+      .values({
+        facilityId: facility!.id,
+        code: `B${i}`,
+        ward: 'Ward',
+        floor: 1,
+        roomCategory: 'WARD',
+        dailyRateCents: 200_000,
+      })
       .returning();
     beds.push(bed!);
   }
@@ -133,7 +164,12 @@ async function createFixture(db: Database, config: Config) {
       discountIdEnc: senior ? await cipher.encrypt('SC-1', `patients.discount_id:${id}`) : null,
       discountIdLast4: senior ? 'SC-1' : null,
     });
-    patients.push({ id, mrn: `MRN-${suffix}-${i}`.toUpperCase(), email: i === 3 ? null : `patient${i}.${suffix}@mail.example.test`, dateOfBirth });
+    patients.push({
+      id,
+      mrn: `MRN-${suffix}-${i}`.toUpperCase(),
+      email: i === 3 ? null : `patient${i}.${suffix}@mail.example.test`,
+      dateOfBirth,
+    });
   }
   return { facility: facility!, staff, beds, patients };
 }
@@ -153,13 +189,22 @@ export class TestClient {
     readonly ip: string,
   ) {}
 
-  async request(method: string, path: string, body?: unknown, headers: Record<string, string> = {}): Promise<Response> {
+  async request(
+    method: string,
+    path: string,
+    body?: unknown,
+    headers: Record<string, string> = {},
+  ): Promise<Response> {
     const h = new Headers({ 'x-forwarded-for': this.ip, origin: ORIGIN, 'x-medcore-csrf': '1', ...headers });
     if (body !== undefined) h.set('content-type', 'application/json');
     if (this.cookies.size) h.set('cookie', [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; '));
     if (this.bearer) h.set('authorization', `Bearer ${this.bearer}`);
     for (const [k, v] of Object.entries(headers)) if (v === '') h.delete(k);
-    const res = await this.app.request(path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
+    const res = await this.app.request(path, {
+      method,
+      headers: h,
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
     for (const cookie of res.headers.getSetCookie()) {
       const [pair] = cookie.split(';');
       const [name, value] = pair!.split('=');
@@ -177,15 +222,21 @@ export class TestClient {
   }
 
   get = (path: string, headers?: Record<string, string>) => this.request('GET', path, undefined, headers);
-  post = (path: string, body: unknown = {}, headers?: Record<string, string>) => this.request('POST', path, body, headers);
-  put = (path: string, body: unknown, headers?: Record<string, string>) => this.request('PUT', path, body, headers);
-  patch = (path: string, body: unknown, headers?: Record<string, string>) => this.request('PATCH', path, body, headers);
+  post = (path: string, body: unknown = {}, headers?: Record<string, string>) =>
+    this.request('POST', path, body, headers);
+  put = (path: string, body: unknown, headers?: Record<string, string>) =>
+    this.request('PUT', path, body, headers);
+  patch = (path: string, body: unknown, headers?: Record<string, string>) =>
+    this.request('PATCH', path, body, headers);
 }
 
 export const idem = () => `test-${crypto.randomUUID()}`;
 
 /** Drive a fresh stay all the way to "awaiting settlement" with a finalized bill, through the real API. */
-export async function stayAwaitingSettlement(h: Harness, opts: { patientIndex?: number; bedIndex?: number; withHmo?: boolean } = {}) {
+export async function stayAwaitingSettlement(
+  h: Harness,
+  opts: { patientIndex?: number; bedIndex?: number; withHmo?: boolean } = {},
+) {
   const billing = await h.staff('BILLING_SPECIALIST');
   const claims = await h.staff('CLAIMS_ENCODER');
   const hmo = await h.staff('HMO_COORDINATOR');
@@ -208,16 +259,47 @@ export async function stayAwaitingSettlement(h: Harness, opts: { patientIndex?: 
     expect(r.status, JSON.stringify(r.body)).toBeLessThan(300);
     return r;
   };
-  await ok(billing.post(`${base}/charges`, { code: 'RB-WARD', description: 'Room and board', category: 'ROOM_AND_BOARD', quantity: 3, unitPriceCents: 200_000, coverage: 'COVERED' }));
-  await ok(billing.post(`${base}/charges`, { code: 'LAB-CBC', description: 'Blood count <b>', category: 'LABORATORY', quantity: 2, unitPriceCents: 45_000, coverage: 'COVERED' }));
-  await ok(billing.post(`${base}/charges`, { code: 'SUP-KIT', description: 'Toiletries', category: 'SUPPLIES', quantity: 1, unitPriceCents: 35_000, coverage: 'EXCLUDED' }));
+  await ok(
+    billing.post(`${base}/charges`, {
+      code: 'RB-WARD',
+      description: 'Room and board',
+      category: 'ROOM_AND_BOARD',
+      quantity: 3,
+      unitPriceCents: 200_000,
+      coverage: 'COVERED',
+    }),
+  );
+  await ok(
+    billing.post(`${base}/charges`, {
+      code: 'LAB-CBC',
+      description: 'Blood count <b>',
+      category: 'LABORATORY',
+      quantity: 2,
+      unitPriceCents: 45_000,
+      coverage: 'COVERED',
+    }),
+  );
+  await ok(
+    billing.post(`${base}/charges`, {
+      code: 'SUP-KIT',
+      description: 'Toiletries',
+      category: 'SUPPLIES',
+      quantity: 1,
+      unitPriceCents: 35_000,
+      coverage: 'EXCLUDED',
+    }),
+  );
   await ok(claims.put(`${base}/philhealth`, { caseRateCode: 'CAP-MR', hciCents: 300_000, pfCents: 100_000 }));
-  if (opts.withHmo) await ok(hmo.put(`${base}/hmo`, { providerName: 'Maxicare', memberNumberLast4: '1234', mblCents: 10_000_000 }));
+  if (opts.withHmo)
+    await ok(
+      hmo.put(`${base}/hmo`, { providerName: 'Maxicare', memberNumberLast4: '1234', mblCents: 10_000_000 }),
+    );
   await ok(doctor.post(`${base}/discharge/declare-mgh`));
   await ok(billing.post(`${base}/discharge/start`));
   await ok(doctor.post(`${base}/discharge/sign-pf`, { agreedPfCents: 500_000 }));
   await ok(billing.post(`${base}/discharge/clear-pharmacy`));
-  if (opts.withHmo) await ok(hmo.post(`${base}/discharge/final-loa`, { approvedCents: 200_000, approvalCode: 'LOA-777' }));
+  if (opts.withHmo)
+    await ok(hmo.post(`${base}/discharge/final-loa`, { approvedCents: 200_000, approvalCode: 'LOA-777' }));
   const finalized = await ok(billing.post(`${base}/bill/finalize`));
   return { id, base, billing, claims, hmo, doctor, patient, bed, detail: finalized.body };
 }

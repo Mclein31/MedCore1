@@ -47,7 +47,14 @@ async function assertLinked(db: DbOrTx, c: AppContext, encounterId: string) {
   const [row] = await db
     .select({ id: encounters.id, billState: encounters.billState })
     .from(encounters)
-    .where(and(eq(encounters.id, encounterId), eq(encounters.facilityId, c.var.patient.facilityId), isNull(encounters.voidedAt), linkedCondition(c.var.patient.accountId)));
+    .where(
+      and(
+        eq(encounters.id, encounterId),
+        eq(encounters.facilityId, c.var.patient.facilityId),
+        isNull(encounters.voidedAt),
+        linkedCondition(c.var.patient.accountId),
+      ),
+    );
   // Not linked and does not exist look the same.
   if (!row) throw notFound('Stay');
   return row;
@@ -74,12 +81,23 @@ patientPortalRoutes.get('/stays', async (c) => {
     .from(encounters)
     .innerJoin(patients, eq(patients.id, encounters.patientId))
     .leftJoin(ledgers, eq(ledgers.encounterId, encounters.id))
-    .where(and(eq(encounters.facilityId, c.var.patient.facilityId), isNull(encounters.voidedAt), linkedCondition(c.var.patient.accountId)))
+    .where(
+      and(
+        eq(encounters.facilityId, c.var.patient.facilityId),
+        isNull(encounters.voidedAt),
+        linkedCondition(c.var.patient.accountId),
+      ),
+    )
     .orderBy(desc(encounters.admittedAt));
   return c.json({
     items: rows.map((r) => {
       const visible = (VISIBLE_BILL_STATES as readonly string[]).includes(r.billState);
-      return { ...r, billReady: visible, balanceCents: visible ? r.balanceCents : null, netPatientDueCents: visible ? r.netPatientDueCents : null };
+      return {
+        ...r,
+        billReady: visible,
+        balanceCents: visible ? r.balanceCents : null,
+        netPatientDueCents: visible ? r.netPatientDueCents : null,
+      };
     }),
   });
 });
@@ -89,7 +107,12 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
   const db = c.var.db;
   const stay = await assertLinked(db, c, id);
   const [row] = await db
-    .select({ encounter: encounters, patientName: patients.fullName, discountKind: patients.discountKind, facilityName: facilities.name })
+    .select({
+      encounter: encounters,
+      patientName: patients.fullName,
+      discountKind: patients.discountKind,
+      facilityName: facilities.name,
+    })
     .from(encounters)
     .innerJoin(patients, eq(patients.id, encounters.patientId))
     .innerJoin(facilities, eq(facilities.id, encounters.facilityId))
@@ -165,7 +188,12 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
     .where(eq(disputes.encounterId, id))
     .orderBy(desc(disputes.createdAt));
   const events = await db
-    .select({ kind: timelineEvents.kind, title: timelineEvents.title, detail: timelineEvents.detail, createdAt: timelineEvents.createdAt })
+    .select({
+      kind: timelineEvents.kind,
+      title: timelineEvents.title,
+      detail: timelineEvents.detail,
+      createdAt: timelineEvents.createdAt,
+    })
     .from(timelineEvents)
     .where(eq(timelineEvents.encounterId, id))
     .orderBy(desc(timelineEvents.createdAt))
@@ -195,7 +223,11 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
     disputes: myDisputes,
     timeline: events,
     gatePass: pass
-      ? { passNumber: pass.passNumber, pin: await derivePin(config.gatePassSecret, pass.id), expiresAt: pass.expiresAt }
+      ? {
+          passNumber: pass.passNumber,
+          pin: await derivePin(config.gatePassSecret, pass.id),
+          expiresAt: pass.expiresAt,
+        }
       : null,
     options: {
       onlinePayments: config.patientOnlinePayments === 'simulated',
@@ -210,7 +242,11 @@ patientPortalRoutes.post('/stays/:id/payments', jsonBody(PatientPaymentBody), as
   const key = idempotencyKey(c);
   // No live payment gateway exists. Online payment is a simulation that must be switched on deliberately.
   if (c.var.services.config.patientOnlinePayments !== 'simulated') {
-    throw new ApiError(403, 'ONLINE_PAYMENTS_DISABLED', 'Online payment is not available yet. Please pay at the cashier.');
+    throw new ApiError(
+      403,
+      'ONLINE_PAYMENTS_DISABLED',
+      'Online payment is not available yet. Please pay at the cashier.',
+    );
   }
   await enforce(c, [[LIMITS.patientPayment, c.var.patient.accountId]]);
   const result = await c.var.db.transaction(async (tx) => {
@@ -242,11 +278,18 @@ patientPortalRoutes.post('/stays/:id/promissory-notes', jsonBody(PromissoryBody)
   const id = idParam(c, 'id', 'Stay');
   const body = c.req.valid('json');
   if (!c.var.services.config.patientOnlinePromissory) {
-    throw new ApiError(403, 'ONLINE_NOTES_DISABLED', 'Payment plans are arranged at the billing desk for now.');
+    throw new ApiError(
+      403,
+      'ONLINE_NOTES_DISABLED',
+      'Payment plans are arranged at the billing desk for now.',
+    );
   }
   const note = await c.var.db.transaction(async (tx) => {
     const encounter = await lockLinked(c, tx, id);
-    return createPromissoryNote(c, tx, encounter, { ...body, actor: { kind: 'PATIENT', accountId: c.var.patient.accountId } });
+    return createPromissoryNote(c, tx, encounter, {
+      ...body,
+      actor: { kind: 'PATIENT', accountId: c.var.patient.accountId },
+    });
   });
   return c.json({ noteNumber: note.noteNumber, schedule: note.schedule }, 201);
 });
@@ -257,7 +300,10 @@ patientPortalRoutes.post('/stays/:id/disputes', jsonBody(FileDisputeBody), async
   const dispute = await c.var.db.transaction(async (tx) => {
     const encounter = await lockLinked(c, tx, id);
     if (encounter.billState === 'DRAFT') throw notFound('Stay');
-    return fileDispute(c, tx, encounter, { ...body, filer: { kind: 'PATIENT', accountId: c.var.patient.accountId } });
+    return fileDispute(c, tx, encounter, {
+      ...body,
+      filer: { kind: 'PATIENT', accountId: c.var.patient.accountId },
+    });
   });
   return c.json({ id: dispute.id, status: dispute.status }, 201);
 });

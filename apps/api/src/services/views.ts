@@ -30,10 +30,16 @@ export function staffEncounterScope(staff: StaffPrincipal): SQL {
   const scope = encounterScope(staff.role as StaffRole);
   if (scope === 'NONE') throw forbidden();
   const facility = eq(encounters.facilityId, staff.facilityId);
-  return scope === 'ATTENDING_ONLY' ? and(facility, eq(encounters.attendingPhysicianId, staff.id))! : facility;
+  return scope === 'ATTENDING_ONLY'
+    ? and(facility, eq(encounters.attendingPhysicianId, staff.id))!
+    : facility;
 }
 
-export async function assertStaffCanSee(db: DbOrTx, staff: StaffPrincipal, encounterId: string): Promise<void> {
+export async function assertStaffCanSee(
+  db: DbOrTx,
+  staff: StaffPrincipal,
+  encounterId: string,
+): Promise<void> {
   const [row] = await db
     .select({ id: encounters.id })
     .from(encounters)
@@ -49,7 +55,10 @@ export function sla(
 ) {
   if (!encounter.mghOrderedAt) return { elapsedMinutes: null, status: null };
   const elapsed = minutesBetween(encounter.mghOrderedAt, encounter.clearedAt ?? now);
-  return { elapsedMinutes: elapsed, status: slaStatus(elapsed, facility.slaWarningMinutes, facility.slaBreachMinutes) };
+  return {
+    elapsedMinutes: elapsed,
+    status: slaStatus(elapsed, facility.slaWarningMinutes, facility.slaBreachMinutes),
+  };
 }
 
 export interface ListFilters {
@@ -113,7 +122,12 @@ export async function listEncounters(db: DbOrTx, staff: StaffPrincipal, filters:
 }
 
 /** Everything about one stay, for staff. Sensitive identifiers appear only as last 4 digits. */
-export async function staffEncounterDetail(db: DbOrTx, staff: StaffPrincipal, encounterId: string, now: Date) {
+export async function staffEncounterDetail(
+  db: DbOrTx,
+  staff: StaffPrincipal,
+  encounterId: string,
+  now: Date,
+) {
   const [row] = await db
     .select({ encounter: encounters, patient: patients, facility: facilities })
     .from(encounters)
@@ -128,9 +142,16 @@ export async function staffEncounterDetail(db: DbOrTx, staff: StaffPrincipal, en
     .from(staffUsers)
     .where(eq(staffUsers.id, encounter.attendingPhysicianId));
   const [ledger] = await db.select().from(ledgers).where(eq(ledgers.encounterId, encounter.id));
-  const [claim] = await db.select().from(philhealthClaims).where(eq(philhealthClaims.encounterId, encounter.id));
+  const [claim] = await db
+    .select()
+    .from(philhealthClaims)
+    .where(eq(philhealthClaims.encounterId, encounter.id));
   const [hmo] = await db.select().from(hmoCoverages).where(eq(hmoCoverages.encounterId, encounter.id));
-  const chargeRows = await db.select().from(charges).where(eq(charges.encounterId, encounter.id)).orderBy(asc(charges.postedAt));
+  const chargeRows = await db
+    .select()
+    .from(charges)
+    .where(eq(charges.encounterId, encounter.id))
+    .orderBy(asc(charges.postedAt));
   const paymentRows = await db
     .select({
       id: payments.id,
@@ -162,7 +183,11 @@ export async function staffEncounterDetail(db: DbOrTx, staff: StaffPrincipal, en
     })
     .from(promissoryNotes)
     .where(eq(promissoryNotes.encounterId, encounter.id));
-  const disputeRows = await db.select().from(disputes).where(eq(disputes.encounterId, encounter.id)).orderBy(desc(disputes.createdAt));
+  const disputeRows = await db
+    .select()
+    .from(disputes)
+    .where(eq(disputes.encounterId, encounter.id))
+    .orderBy(desc(disputes.createdAt));
   const passes = await db
     .select({
       id: gatePasses.id,
