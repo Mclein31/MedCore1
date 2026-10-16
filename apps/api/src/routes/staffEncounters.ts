@@ -730,7 +730,7 @@ staffEncounterRoutes.post('/:id/bill/send', requirePermission('bill:send'), asyn
       id,
       'BILLING',
       'Bill sent to patient',
-      'The patient was emailed that the statement is ready in the portal.',
+      'The patient was emailed that the statement is ready in the MedCore app.',
     );
     await audit(c, tx, { action: 'BILL_SENT', resourceType: 'encounter', resourceId: id });
     return patient.email;
@@ -784,7 +784,7 @@ staffEncounterRoutes.post(
   },
 );
 
-/** The desk prints the pass (with PIN) for patients who do not use the portal. Audited. */
+/** The desk prints the pass (with PIN) for patients who do not use the MedCore app. Audited. */
 staffEncounterRoutes.get('/:id/gate-pass', requirePermission('gatepass:read'), async (c) => {
   const id = idParam(c, 'id', 'Stay');
   await staffEncounterDetail(c.var.db, c.var.staff, id, c.var.services.now()); // scope check

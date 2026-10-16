@@ -1,13 +1,11 @@
 import { createBrowserRouter, Navigate } from 'react-router';
-import { Landing } from './pages/Landing';
 import { NotFound } from './pages/NotFound';
 
-// Each area is its own chunk: patients never download the staff console, and vice versa.
+// The web app is the hospital staff console only. Patients use the MedCore mobile app.
 const staff = () => import('./staff/routes');
-const portal = () => import('./portal/routes');
 
 export const router = createBrowserRouter([
-  { path: '/', element: <Landing /> },
+  { path: '/', element: <Navigate to="/staff" replace /> },
   { path: '/staff/login', lazy: async () => ({ Component: (await staff()).StaffLogin }) },
   { path: '/staff/accept-invite', lazy: async () => ({ Component: (await staff()).AcceptInvite }) },
   {
@@ -25,15 +23,6 @@ export const router = createBrowserRouter([
       { path: 'users', lazy: async () => ({ Component: (await staff()).Users }) },
       { path: 'audit', lazy: async () => ({ Component: (await staff()).AuditLog }) },
       { path: 'account', lazy: async () => ({ Component: (await staff()).Account }) },
-    ],
-  },
-  { path: '/portal/sign-in', lazy: async () => ({ Component: (await portal()).PortalSignIn }) },
-  {
-    path: '/portal',
-    lazy: async () => ({ Component: (await portal()).PortalLayout }),
-    children: [
-      { index: true, lazy: async () => ({ Component: (await portal()).PortalStays }) },
-      { path: 'stays/:id', lazy: async () => ({ Component: (await portal()).PortalStay }) },
     ],
   },
   { path: '/login', element: <Navigate to="/staff/login" replace /> },
