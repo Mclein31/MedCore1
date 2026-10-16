@@ -1,4 +1,5 @@
 // Read-only hosted route/storage smoke test. Never dispatches an SMS or runs an AI feature.
+import { seedPassword } from './seedPassword';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 const base = process.env.MEDCORE_SMS_BASE_URL;
@@ -11,7 +12,7 @@ const request = async (path: string, body?: object) => {
 };
 try {
   assert.equal((await request('/notifications/sms-outbox')).status, 401);
-  const login = await request('/auth/login', { email: process.env.MEDCORE_SMS_VERIFY_EMAIL || 'elena.santos@stjude.ph', password: process.env.MEDCORE_SMS_VERIFY_PASSWORD || 'HospitalRCM2026!', facilityCode: 'SJMC-MNL' });
+  const login = await request('/auth/login', { email: process.env.MEDCORE_SMS_VERIFY_EMAIL || 'elena.santos@stjude.ph', password: process.env.MEDCORE_SMS_VERIFY_PASSWORD || seedPassword(), facilityCode: 'SJMC-MNL' });
   assert.equal(login.status, 200); assert.ok(['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(login.data.user.role));
   token = login.data.token; assert.ok(token);
   const outbox = await request('/notifications/sms-outbox'); assert.equal(outbox.status, 200); assert.ok(Array.isArray(outbox.data.items));

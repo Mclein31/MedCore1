@@ -1251,11 +1251,13 @@ encountersApp.patch(
   }
 );
 
-// DELETE /api/v1/encounters/:id - Delete / remove encounter
+// DELETE /api/v1/encounters/:id - Delete / remove encounter.
+// CFO only, and refused once any payment, promissory note or discharge pass exists,
+// so the money trail is never destroyed.
 encountersApp.delete(
   '/:id',
   requireAuth,
-  requireRole(['HOSPITAL_CFO', 'BILLING_SPECIALIST']),
+  requireRole(['HOSPITAL_CFO']),
   async (c) => {
     const id = c.req.param('id');
     if (!id) return apiError(c, 400, 'MISSING_ID', 'A record identifier is required.');
@@ -1273,7 +1275,14 @@ encountersApp.delete(
 
     const enc = encList[0];
 
-    await db.transaction(async (tx) => {
+    const blocked = await db.transaction(async (tx) => {
+      // Lock the encounter first (same order as payments and notes), then check for financial records.
+      await tx.select({ id: encounters.id }).from(encounters).where(eq(encounters.id, enc.id)).for('update');
+      const [payment] = await tx.select({ id: payments.id }).from(payments).where(eq(payments.encounterId, enc.id)).limit(1);
+      const [note] = await tx.select({ id: promissoryNotes.id }).from(promissoryNotes).where(eq(promissoryNotes.encounterId, enc.id)).limit(1);
+      const [pass] = await tx.select({ id: dischargePasses.id }).from(dischargePasses).where(eq(dischargePasses.encounterId, enc.id)).limit(1);
+      if (payment || note || pass) return true;
+
       // Free bed
       if (enc.bedId) {
         await tx
@@ -1305,7 +1314,12 @@ encountersApp.delete(
         ipAddress: getClientIp(c),
         userAgent: c.req.header('user-agent')
       });
+      return false;
     });
+
+    if (blocked) {
+      return apiError(c, 409, 'ENCOUNTER_HAS_FINANCIAL_RECORDS', 'This encounter has payments, promissory notes or discharge passes and cannot be deleted.');
+    }
 
     invalidateEncountersCache();
     return c.json({ success: true, deletedId: enc.id });

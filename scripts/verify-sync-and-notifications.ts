@@ -1,3 +1,4 @@
+import { seedPassword } from './seedPassword';
 import {generateGatePassHmac,resolveGatePassSecret} from '../apps/server/src/services/gatePassService';
 // Real PostgreSQL + authenticated Hono clients. Only a disposable local validation DB.
 // node --import ./node_modules/tsx/dist/loader.mjs scripts/verify-sync-and-notifications.ts
@@ -29,7 +30,7 @@ try {
     const response=await app.request('/api/v1'+path,{method:method||(body?'POST':'GET'),headers:{...(token?{Authorization:`Bearer ${token}`} : {}),...(body?{'Content-Type':'application/json'}:{}),...(key?{'Idempotency-Key':key}:{})},body:body?JSON.stringify(body):undefined},{NODE_ENV:'development',DATABASE_URL:url});
     const data=await response.json();return {status:response.status,data};
   };
-  const login=async(email:string,password='HospitalRCM2026!')=>{
+  const login=async(email:string,password=seedPassword())=>{
     const result=await request('/auth/login',undefined,{email,password,facilityCode:'SJMC-MNL'});
     assert.equal(result.status,200);assert.ok(result.data.token);return result.data.token as string;
   };
