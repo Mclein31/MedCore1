@@ -1,7 +1,7 @@
 import { AdmitBody, DISCHARGE_STAGES, STAGE_LABELS } from '@medcore/domain';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { type FormEvent, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   Alert,
@@ -30,7 +30,13 @@ export function Encounters() {
   const q = params.get('q') ?? '';
   const page = Number(params.get('page') ?? '1') || 1;
   const [search, setSearch] = useState(q);
-  const [admitOpen, setAdmitOpen] = useState(false);
+  // The top-bar search and the Overview "Admit inpatient" button arrive as URL parameters.
+  const [admitOpen, setAdmitOpen] = useState(() => params.get('admit') === '1' && can('encounter:admit'));
+  const [searchedFor, setSearchedFor] = useState(q);
+  if (searchedFor !== q) {
+    setSearchedFor(q);
+    setSearch(q);
+  }
 
   const query = useQuery({
     queryKey: ['encounters', { stage, q, page }],
@@ -55,7 +61,8 @@ export function Encounters() {
   return (
     <>
       <PageHeader
-        title="Stays"
+        title="Encounters & Ledgers"
+        eyebrow="Daily operations"
         subtitle="Every admission, its discharge stage and its bill."
         actions={
           can('encounter:admit') && (

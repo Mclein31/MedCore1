@@ -1,7 +1,7 @@
 import { checkPassword } from '@medcore/domain';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { Logo } from '../components/Logo';
+import { AuthShell } from '../components/AuthShell';
 import { Alert, Button, Field, Input } from '../components/ui';
 import { api, errorMessage } from '../lib/api';
 
@@ -48,10 +48,9 @@ export function AcceptInvite() {
   };
 
   return (
-    <main className="flex min-h-dvh items-center justify-center px-4 py-12">
-      <div className="w-full max-w-sm">
-        <Logo subtitle="Hospital staff" />
-        <div className="mt-8 rounded-xl border border-line bg-surface p-6">
+    <AuthShell>
+      <div>
+        <div>
           {!token ? (
             <Alert>This link is incomplete. Open the link from your invitation email again.</Alert>
           ) : doneEmail ? (
@@ -66,7 +65,7 @@ export function AcceptInvite() {
             </div>
           ) : (
             <form onSubmit={submit} className="flex flex-col gap-4">
-              <h1 className="text-lg font-semibold">Choose your password</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Choose your password</h1>
               <p className="text-sm text-muted">
                 Use at least 12 characters. A short phrase of unrelated words works well.
               </p>
@@ -102,6 +101,6 @@ export function AcceptInvite() {
           )}
         </div>
       </div>
-    </main>
+    </AuthShell>
   );
 }
