@@ -24,6 +24,7 @@
     "db:ai-cache": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiCacheMigration.ts",
     "test:sms": "node --import ./node_modules/tsx/dist/loader.mjs apps/server/test/smsService.test.ts",
     "db:sms": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applySmsMigration.ts",
+    "db:ai-audit": "node --import ./node_modules/tsx/dist/loader.mjs scripts/applyAiAuditMigration.ts",
     "test:sms:ui": "node --import ./node_modules/tsx/dist/loader.mjs scripts/verifySmsUi.mts"
   },
   "dependencies": {

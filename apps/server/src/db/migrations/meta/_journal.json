@@ -43,6 +43,13 @@
       "when": 1791807864158,
       "tag": "0005_sms_dispatches",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792117053844,
+      "tag": "0006_ai_audit_tables",
+      "breakpoints": true
     }
   ]
 }
