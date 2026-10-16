@@ -11,14 +11,17 @@ const TOKEN_KEY = 'medcore_session_token';
 export interface SessionUser {
   id: string; fullName: string; email: string; role: string; facilityName?: string; mobileDemoAdmin?: boolean;
 }
-interface RegisterInput { email: string; password: string; fullName: string; mrn: string; contactNumber: string }
+/** Who the code is for: a linked account's email, or the MRN + phone on the admission slip. */
+export type CodeTarget = { purpose: 'LOGIN'; email: string } | { purpose: 'REGISTER'; mrn: string; contactNumber: string };
+export interface CodeRequestResult { sent: boolean; sentTo?: string; devNote?: string; message?: string }
 interface AuthResponse { success?: boolean; authenticated?: boolean; token?: string; user: SessionUser }
 interface AuthState {
   user: SessionUser | null; token: string | null; loading: boolean; client: ApiClient;
   sessionError: string | null; notice: string | null; retrySession: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
-  forgotPassword: (email: string) => Promise<string>; logout: () => Promise<void>;
+  requestCode: (target: CodeTarget) => Promise<CodeRequestResult>;
+  verifyCode: (target: CodeTarget, otp: string) => Promise<void>;
+  logout: () => Promise<void>;
   selectedPatientId: string | null; selectPatient: (id: string) => void;
 }
 const AuthContext = createContext<AuthState | null>(null);
@@ -137,24 +140,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     await acceptSession(res);
   }, [publicClient, acceptSession]);
-  const register = useCallback(async (input: RegisterInput) => {
-    const res = await publicClient.request<AuthResponse>('/auth/register', {
-      method: 'POST', body: JSON.stringify({ ...input, email: input.email.trim().toLowerCase(), fullName: input.fullName.trim(), mrn: input.mrn.trim(), contactNumber: input.contactNumber.trim(), facilityCode: ENV.facilityCode })
+  const codeBody = (target: CodeTarget) => target.purpose === 'LOGIN'
+    ? { purpose: 'LOGIN', email: target.email.trim().toLowerCase(), facilityCode: ENV.facilityCode }
+    : { purpose: 'REGISTER', mrn: target.mrn.trim(), contactNumber: target.contactNumber.trim(), facilityCode: ENV.facilityCode };
+  // Email sign-in code (audit 2026-10-16 §4). The server answers the same way whether or not
+  // an account matched, so "sent" never confirms that an account exists.
+  const requestCode = useCallback(async (target: CodeTarget) => {
+    return publicClient.request<CodeRequestResult>('/auth/otp/request', { method: 'POST', body: JSON.stringify(codeBody(target)) });
+  }, [publicClient]);
+  const verifyCode = useCallback(async (target: CodeTarget, otp: string) => {
+    const res = await publicClient.request<AuthResponse>('/auth/otp/verify', {
+      method: 'POST', body: JSON.stringify({ ...codeBody(target), otp: otp.trim() })
     });
     await acceptSession(res);
   }, [publicClient, acceptSession]);
-  const forgotPassword = useCallback(async (email: string) => {
-    await publicClient.request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email: email.trim().toLowerCase() }) });
-    return 'Please contact the hospital billing desk to recover your account. Email password reset is not available yet.';
-  }, [publicClient]);
   const logout = useCallback(async () => {
     const previous = await session.get();
     // Remove the protected navigator and patient data immediately, even offline.
     await clearSession();
     if (previous) await new ApiClient(async () => previous).request('/auth/logout', { method: 'POST' }).catch(() => {});
   }, [session, clearSession]);
-  const value = useMemo(() => ({ user, token, loading, client, sessionError, notice, retrySession, login, register, forgotPassword, logout, selectedPatientId, selectPatient }),
-    [user, token, loading, client, sessionError, notice, retrySession, login, register, forgotPassword, logout, selectedPatientId, selectPatient]);
+  const value = useMemo(() => ({ user, token, loading, client, sessionError, notice, retrySession, login, requestCode, verifyCode, logout, selectedPatientId, selectPatient }),
+    [user, token, loading, client, sessionError, notice, retrySession, login, requestCode, verifyCode, logout, selectedPatientId, selectPatient]);
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 export function useAuth(): AuthState {

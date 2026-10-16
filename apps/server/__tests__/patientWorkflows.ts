@@ -443,7 +443,7 @@ await check('presentation directory and selected records remain facility scoped'
 await check('role override headers cannot grant the presentation capability', async () => {
   const principal = { ...user, username: MOBILE_DEMO_USERNAME, role: 'BILLING_SPECIALIST', isActive: true };
   const authDb: any = { select: () => {
-    const query: any = { from: () => query, innerJoin: () => query, where: () => query, limit: async () => [{ sessionId: 'synthetic-id', user: principal }] }; return query;
+    const query: any = { from: () => query, innerJoin: () => query, where: () => query, limit: async () => [{ sessionId: 'synthetic-id', lastSeenAt: new Date(), user: principal }] }; return query;
   } };
   const secured = new Hono(); secured.use('*', authMiddleware);
   secured.get('/probe', c => c.json({ capability: c.get('user').mobileDemoAdmin, role: c.get('user').role }));
