@@ -1,6 +1,6 @@
 import { Context, Next } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { eq, and, gt } from 'drizzle-orm';
+import { eq, and, gt, isNull } from 'drizzle-orm';
 import { db } from '../db';
 import { users, userSessions } from '../db/schema';
 import { hashSessionToken } from '../services/authService';
@@ -22,6 +22,8 @@ export interface AuthUser {
   linkedMrn?: string | null;
   mobileDemoAdmin?: boolean;
 }
+
+const SESSION_TOUCH_MS = 60 * 60 * 1000;
 
 declare module 'hono' {
   interface ContextVariableMap {
@@ -46,6 +48,7 @@ export async function authMiddleware(c: Context, next: Next) {
       const sessionRecords = await db
         .select({
           sessionId: userSessions.id,
+          lastSeenAt: userSessions.lastSeenAt,
           user: users
         })
         .from(userSessions)
@@ -54,13 +57,17 @@ export async function authMiddleware(c: Context, next: Next) {
           and(
             eq(userSessions.tokenHash, tokenHash),
             gt(userSessions.expiresAt, new Date()),
+            isNull(userSessions.revokedAt),
             eq(users.isActive, true)
           )
         )
         .limit(1);
 
       if (sessionRecords.length > 0) {
-        const { sessionId, user } = sessionRecords[0];
+        const { sessionId, lastSeenAt, user } = sessionRecords[0];
+        if (Date.now() - lastSeenAt.getTime() > SESSION_TOUCH_MS) {
+          await db.update(userSessions).set({ lastSeenAt: new Date() }).where(eq(userSessions.id, sessionId));
+        }
 
         // Demo presenter mode: allow role override via X-Demo-Role ONLY in non-production environments
         // for verified authenticated sessions and restricted to valid domain roles.

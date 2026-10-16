@@ -50,7 +50,8 @@ authApp.post('/login', zValidator('json', loginSchema), async (c) => {
     return apiError(c, 403, 'USER_INACTIVE', 'This user account has been deactivated.');
   }
 
-  const passwordValid = await verifyPassword(password, user.passwordHash, user.salt);
+  // Patient accounts created by email code have no password.
+  const passwordValid = Boolean(user.passwordHash && user.salt) && await verifyPassword(password, user.passwordHash!, user.salt!);
   if (!passwordValid) {
     return apiError(c, 401, 'INVALID_CREDENTIALS', 'Invalid email or password.');
   }
@@ -285,7 +286,7 @@ authApp.post('/logout', requireAuth, async (c) => {  const sessionId = c.get('se
   const user = c.get('user');
 
   if (sessionId) {
-    await db.delete(userSessions).where(eq(userSessions.id, sessionId));
+    await db.update(userSessions).set({ revokedAt: new Date() }).where(eq(userSessions.id, sessionId));
   }
 
   const logoutNodeEnv =
