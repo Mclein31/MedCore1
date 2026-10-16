@@ -13,6 +13,7 @@ import { PayScreen } from './screens/PayScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { QuestionChargeScreen } from './screens/QuestionChargeScreen';
 import { SignInScreen } from './screens/SignInScreen';
+import { UpdatesScreen } from './screens/UpdatesScreen';
 import { AppHeader, PillTabBar } from './ui/chrome';
 import { Loading } from './ui/kit';
 import { C } from './ui/theme';
@@ -28,6 +29,7 @@ export type TabParams = {
 export type RootParams = {
   Tabs: NavigatorScreenParams<TabParams>;
   Documents: undefined;
+  Updates: undefined;
   Pay: { stayId: string };
   PaymentPlan: { stayId: string };
   QuestionCharge: { stayId: string; chargeId: string };
@@ -96,6 +98,7 @@ export function RootNavigator() {
           >
             <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
             <Stack.Screen name="Documents" component={DocumentsScreen} options={{ title: 'Documents' }} />
+            <Stack.Screen name="Updates" component={UpdatesScreen} options={{ title: 'Hospital updates' }} />
             <Stack.Group screenOptions={{ presentation: 'modal' }}>
               <Stack.Screen name="Pay" component={PayScreen} options={{ title: 'Pay online' }} />
               <Stack.Screen

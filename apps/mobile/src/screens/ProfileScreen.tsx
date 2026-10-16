@@ -10,7 +10,7 @@ import { day, peso } from '../lib/format';
 import { useSession } from '../lib/session';
 import { useCurrentStay } from '../lib/stays';
 import type { RootParams, TabParams } from '../navigation';
-import { Building2, FileText, Lock, ShieldCheck, User } from '../ui/icons';
+import { Bell, Building2, FileText, Lock, ShieldCheck, User } from '../ui/icons';
 import { Button, Card, GroupLabel, LinkRow, Notice, Screen } from '../ui/kit';
 import { C, R, S, T } from '../ui/theme';
 
@@ -110,6 +110,11 @@ export function ProfileScreen({ navigation }: Props) {
           icon={FileText}
           title="Documents & receipts"
           onPress={() => navigation.navigate('Documents')}
+        />
+        <LinkRow
+          icon={Bell}
+          title="Hospital updates"
+          onPress={() => navigation.navigate('Updates')}
           last={items.length < 2}
         />
         {items.length > 1

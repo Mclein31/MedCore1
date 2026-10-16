@@ -2,7 +2,7 @@ import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { DISCHARGE_STAGES, STAGE_LABELS } from '@medcore/domain';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { day, peso, stageLabel, when } from '../lib/format';
 import { useCurrentStay } from '../lib/stays';
 import type { RootParams, TabParams } from '../navigation';
@@ -121,7 +121,18 @@ export function HomeScreen({ navigation }: Props) {
 
             {(d.timeline?.length ?? 0) > 0 ? (
               <View style={{ gap: S.md, marginTop: S.xl }}>
-                <SectionHeader title="Latest from your hospital" />
+                <SectionHeader
+                  title="Latest from your hospital"
+                  action={
+                    <Pressable
+                      onPress={() => navigation.navigate('Updates')}
+                      accessibilityRole="button"
+                      style={{ minHeight: 44, justifyContent: 'center' }}
+                    >
+                      <Text style={{ color: C.brand, fontWeight: '600' }}>All updates</Text>
+                    </Pressable>
+                  }
+                />
                 {d.timeline!.slice(0, 3).map((t, i) => (
                   <View
                     key={`${t.createdAt}-${i}`}
