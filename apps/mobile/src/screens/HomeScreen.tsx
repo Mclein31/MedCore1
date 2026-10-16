@@ -1,13 +1,14 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { FileText, ReceiptText, ShieldCheck, Wallet } from 'lucide-react-native';
-import { Pressable, Text, View } from 'react-native';
-import { day, firstName, peso, stageLabel, when } from '../lib/format';
+import { DISCHARGE_STAGES, STAGE_LABELS } from '@medcore/domain';
+import { Text, View } from 'react-native';
+import { day, peso, stageLabel, when } from '../lib/format';
 import { useCurrentStay } from '../lib/stays';
 import type { RootParams, TabParams } from '../navigation';
 import { ExitPass } from '../ui/ExitPass';
-import { Badge, Button, Card, LinkRow, Notice, Screen } from '../ui/kit';
+import { Clock, CreditCard, FileText, Receipt, ShieldCheck } from '../ui/icons';
+import { Button, Card, LinkRow, QuickActions, Screen, SectionHeader } from '../ui/kit';
 import { C, R, S, T } from '../ui/theme';
 import { WithStay } from './common';
 
@@ -25,130 +26,197 @@ export function HomeScreen({ navigation }: Props) {
         const cleared = d.stay.stage === 'CLEARED';
         const owe = l?.balanceCents ?? 0;
         const canPay = Boolean(d.options?.onlinePayments) && owe > 0 && !cleared;
-        const actions = [
-          { label: 'Bill', Icon: ReceiptText, go: () => navigation.navigate('Bill') },
-          { label: 'Coverage', Icon: ShieldCheck, go: () => navigation.navigate('Coverage') },
-          { label: 'Payments', Icon: Wallet, go: () => navigation.navigate('Payments') },
-          { label: 'Documents', Icon: FileText, go: () => navigation.navigate('Documents') },
-        ];
+        const stageIndex = DISCHARGE_STAGES.indexOf(d.stay.stage);
         return (
-          <Screen refreshing={refreshing} onRefresh={refresh}>
-            <View>
+          <Screen refreshing={refreshing} onRefresh={refresh} gap={0}>
+            <View style={{ paddingBottom: 20 }}>
               <Text style={T.meta}>Good day,</Text>
-              <Text accessibilityRole="header" style={T.title}>
-                {firstName(d.stay.patientName)}
+              <Text accessibilityRole="header" style={[T.display, { marginTop: 4 }]}>
+                {d.stay.patientName}
               </Text>
-              <Text style={T.meta}>
-                {d.stay.facilityName} · admitted {day(d.stay.admittedAt)}
-              </Text>
+              <Text style={[T.meta, { marginTop: 6 }]}>{d.stay.facilityName}</Text>
             </View>
 
             {d.gatePass ? (
               <ExitPass pass={d.gatePass} />
             ) : (
-              <View style={{ backgroundColor: C.hero, borderRadius: R.hero, padding: S.xl, gap: S.sm }}>
-                <Text style={{ color: C.heroSub, fontSize: 15 }}>
-                  {d.stay.billReady ? 'Left to pay' : 'Your bill'}
+              <View style={{ backgroundColor: C.surface, borderRadius: R.hero, padding: 22, gap: 8 }}>
+                <Text style={[T.meta, { fontWeight: '500' }]}>
+                  {d.stay.billReady ? 'Remaining hospital balance' : 'Your hospital bill'}
                 </Text>
-                <Text
-                  accessibilityRole="header"
-                  style={{ color: '#FFFFFF', fontSize: 36, fontWeight: '700', fontVariant: ['tabular-nums'] }}
-                >
+                <Text accessibilityRole="header" style={T.display}>
                   {d.stay.billReady ? peso(owe) : 'Being prepared'}
                 </Text>
-                <Text style={{ color: C.heroSub, fontSize: 14 }}>
+                <Text style={T.meta}>
                   {d.stay.billReady
-                    ? 'After PhilHealth, HMO, discounts and payments.'
-                    : `Status: ${stageLabel(d.stay.stage)}. We will email you when it is ready.`}
+                    ? 'After coverage, discounts and recorded payments.'
+                    : 'We will email you when your final bill is ready.'}
                 </Text>
-                <View style={{ marginTop: S.md }}>
-                  {canPay ? (
+                {d.stay.billReady ? (
+                  <View style={{ marginTop: 8 }}>
                     <Button
-                      title="Pay balance"
-                      onPress={() => navigation.navigate('Pay', { stayId: row.id })}
+                      title={canPay ? 'Pay balance' : 'Review bill'}
+                      onPress={() =>
+                        canPay ? navigation.navigate('Pay', { stayId: row.id }) : navigation.navigate('Bill')
+                      }
                     />
-                  ) : d.stay.billReady ? (
-                    <Button title="Review bill" onPress={() => navigation.navigate('Bill')} />
-                  ) : null}
-                </View>
+                  </View>
+                ) : null}
               </View>
             )}
 
-            <View style={{ flexDirection: 'row', gap: S.sm }}>
-              {actions.map(({ label, Icon, go }) => (
-                <Pressable
-                  key={label}
-                  onPress={go}
-                  accessibilityRole="button"
-                  style={({ pressed }) => [
-                    {
-                      flex: 1,
-                      backgroundColor: C.surface,
-                      borderRadius: R.card,
-                      paddingVertical: S.md,
-                      alignItems: 'center',
-                      gap: 6,
-                    },
-                    pressed && { opacity: 0.7 },
-                  ]}
-                >
-                  <Icon color={C.brandDark} size={22} />
-                  <Text style={{ fontSize: 12, color: C.ink, fontWeight: '500' }}>{label}</Text>
-                </Pressable>
-              ))}
+            <View style={{ marginTop: S.md }}>
+              <QuickActions
+                actions={[
+                  { label: 'Bill', icon: Receipt, onPress: () => navigation.navigate('Bill') },
+                  { label: 'Coverage', icon: ShieldCheck, onPress: () => navigation.navigate('Coverage') },
+                  { label: 'Payments', icon: CreditCard, onPress: () => navigation.navigate('Payments') },
+                  { label: 'Documents', icon: FileText, onPress: () => navigation.navigate('Documents') },
+                ]}
+              />
             </View>
 
-            <Card title="Discharge status">
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={T.body}>{stageLabel(d.stay.stage)}</Text>
-                {cleared ? <Badge tone="good" label="Cleared" /> : <Badge label="In progress" />}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Clock size={17} color={C.brandDark} />
+              <Text style={[T.meta, { flex: 1 }]}>{statusLine(d.stay.stage, d.stay.billReady, owe)}</Text>
+            </View>
+            <Text style={[T.meta, { marginTop: 8 }]}>
+              {d.stay.encounterNumber} · Admitted {day(d.stay.admittedAt)}
+            </Text>
+
+            {l ? (
+              <View style={{ gap: S.md, marginTop: S.xl }}>
+                <SectionHeader title="Coverage applied to your bill" />
+                <Card flush>
+                  <LinkRow
+                    title="PhilHealth"
+                    subtitle={l.philhealthCents > 0 ? 'Applied' : 'Not applied'}
+                    value={peso(l.philhealthCents)}
+                    onPress={() => navigation.navigate('Coverage')}
+                  />
+                  <LinkRow
+                    title="HMO"
+                    subtitle={l.hmoCents > 0 ? 'HMO approved' : 'No HMO coverage on this bill'}
+                    value={peso(l.hmoCents)}
+                    onPress={() => navigation.navigate('Coverage')}
+                    last
+                  />
+                </Card>
               </View>
-              <Text style={[T.meta, { marginTop: S.xs }]}>
-                Stay {d.stay.encounterNumber}
-                {d.stay.billNumber ? ` · bill ${d.stay.billNumber}` : ''}
-              </Text>
-              {d.disputes?.some((x) => x.status === 'OPEN') ? (
-                <View style={{ marginTop: S.md }}>
-                  <Notice tone="info">A charge you questioned is being reviewed by billing.</Notice>
-                </View>
-              ) : null}
-            </Card>
+            ) : null}
+
+            <View style={{ gap: S.md, marginTop: S.xl }}>
+              <SectionHeader title="Your discharge journey" />
+              <View>
+                {DISCHARGE_STAGES.filter((s) => s !== 'ADMITTED').map((stage, i, all) => {
+                  const index = DISCHARGE_STAGES.indexOf(stage);
+                  const state =
+                    index < stageIndex || cleared ? 'done' : index === stageIndex ? 'now' : 'todo';
+                  return (
+                    <Step key={stage} title={STAGE_LABELS[stage]} state={state} last={i === all.length - 1} />
+                  );
+                })}
+              </View>
+            </View>
 
             {(d.timeline?.length ?? 0) > 0 ? (
-              <Card title="Latest updates">
-                {d.timeline!.slice(0, 4).map((t, i, all) => (
+              <View style={{ gap: S.md, marginTop: S.xl }}>
+                <SectionHeader title="Latest from your hospital" />
+                {d.timeline!.slice(0, 3).map((t, i) => (
                   <View
                     key={`${t.createdAt}-${i}`}
-                    style={{
-                      paddingVertical: S.sm,
-                      borderBottomWidth: i === all.length - 1 ? 0 : 1,
-                      borderBottomColor: C.border,
-                    }}
+                    style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.border }}
                   >
-                    <Text style={T.label}>{t.title}</Text>
-                    <Text style={T.small}>{when(t.createdAt)}</Text>
+                    <Text style={T.cardTitle}>{t.title}</Text>
+                    {t.detail ? <Text style={[T.meta, { marginTop: 4 }]}>{t.detail}</Text> : null}
+                    <Text style={[T.meta, { marginTop: 4 }]}>{when(t.createdAt)}</Text>
                   </View>
                 ))}
-              </Card>
+              </View>
             ) : null}
 
             {items.length > 1 ? (
-              <Card title="Your stays" flush>
-                {items.map((s, i) => (
-                  <LinkRow
-                    key={s.id}
-                    title={`${s.patientName}${s.id === row.id ? ' (showing)' : ''}`}
-                    subtitle={`Admitted ${day(s.admittedAt)} · ${s.encounterNumber}`}
-                    value={s.billReady ? peso(s.balanceCents) : undefined}
-                    onPress={() => select(s.id)}
-                    last={i === items.length - 1}
-                  />
-                ))}
-              </Card>
+              <View style={{ gap: S.md, marginTop: S.xl }}>
+                <SectionHeader title="Recent stays" />
+                <Card flush>
+                  {items.map((s, i) => (
+                    <LinkRow
+                      key={s.id}
+                      title={`${s.encounterNumber}${s.id === row.id ? ' · showing' : ''}`}
+                      subtitle={`${day(s.admittedAt)} · ${s.patientName}`}
+                      value={s.billReady ? peso(s.balanceCents) : undefined}
+                      onPress={() => select(s.id)}
+                      last={i === items.length - 1}
+                    />
+                  ))}
+                </Card>
+              </View>
             ) : null}
           </Screen>
         );
       }}
     </WithStay>
+  );
+}
+
+function statusLine(stage: string, billReady: boolean, owe: number) {
+  if (stage === 'CLEARED') return 'You are cleared to go home. Show your exit pass at the lobby.';
+  if (stage === 'PENDING_SETTLEMENT')
+    return owe > 0 ? 'Your bill is ready for settlement.' : 'Waiting for the hospital to finish clearance.';
+  if (!billReady) return `${stageLabel(stage)}. Your bill is still being prepared.`;
+  return `${stageLabel(stage)}.`;
+}
+
+/** Vertical journey: a rail connects the steps so patients see where they are (v1 Stepper). */
+function Step({ title, state, last }: { title: string; state: 'done' | 'now' | 'todo'; last: boolean }) {
+  const color = state === 'todo' ? C.border : C.brand;
+  return (
+    <View
+      style={{ flexDirection: 'row', gap: 14 }}
+      accessible
+      accessibilityLabel={`${title}, ${state === 'done' ? 'done' : state === 'now' ? 'in progress' : 'upcoming'}`}
+    >
+      <View style={{ alignItems: 'center', width: 18 }}>
+        <View
+          style={{
+            width: 18,
+            height: 18,
+            borderRadius: 9,
+            borderWidth: 2,
+            borderColor: color,
+            backgroundColor: state === 'done' ? C.brand : C.surface,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {state === 'now' ? (
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: C.brand }} />
+          ) : null}
+          {state === 'done' ? (
+            <Text style={{ color: '#FFFFFF', fontSize: 10, fontWeight: '800' }}>✓</Text>
+          ) : null}
+        </View>
+        {!last ? (
+          <View
+            style={{
+              flex: 1,
+              width: 2,
+              backgroundColor: state === 'done' ? C.brand : C.border,
+              minHeight: 18,
+            }}
+          />
+        ) : null}
+      </View>
+      <Text
+        style={[
+          T.row,
+          { paddingBottom: 18, marginTop: -1 },
+          state === 'now' && { fontWeight: '700' },
+          state === 'todo' && { color: C.faint },
+        ]}
+      >
+        {title}
+      </Text>
+    </View>
   );
 }
