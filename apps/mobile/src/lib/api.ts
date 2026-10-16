@@ -22,6 +22,8 @@ export class ApiError extends Error {
 function patientFriendlyMessage(status: number, code: string | undefined, fallback: string, isAiRequest: boolean): string {
   if (code === 'INVALID_CREDENTIALS') return 'Check your email and password, then try again.';
   if (code === 'PATIENT_NOT_LINKED' || code === 'PATIENT_NOT_FOUND') return fallback;
+  // Sign-in code errors carry a patient-ready message (wrong/expired code, too many tries, email down).
+  if (code && /^(CODE_|TOO_MANY_CODES|RATE_LIMITED|EMAIL_|ACCOUNT_DISABLED|USER_EXISTS)/.test(code) && fallback) return fallback;
   if (status === 0) return 'We could not connect. Please check your connection and try again.';
   if (status === 401) return 'Your session expired. Please log in again.';
   if (status === 403) return 'You do not have access to this information.';
