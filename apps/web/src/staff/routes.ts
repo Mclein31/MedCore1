@@ -12,3 +12,6 @@ export { Encounters } from './pages/Encounters';
 export { Lobby } from './pages/Lobby';
 export { Patients } from './pages/Patients';
 export { Users } from './pages/Users';
+export { DischargeBoard } from './pages/DischargeBoard';
+export { Estimator } from './pages/Estimator';
+export { Rules } from './pages/Rules';
