@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   BedDouble,
   Building2,
+  Calculator,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -13,7 +14,9 @@ import {
   Home,
   Layers,
   LogOut,
+  QrCode,
   Search,
+  Settings,
   ShieldAlert,
   ShieldCheck,
   User,
@@ -44,11 +47,17 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { to: '/staff', label: 'Overview', icon: Home, permission: 'encounter:read', end: true },
       {
+        to: '/staff/discharge',
+        label: 'Discharge Clearance',
+        icon: DoorOpen,
+        permission: 'encounter:read',
+        badge: 'clearance',
+      },
+      {
         to: '/staff/encounters',
         label: 'Encounters & Ledgers',
         icon: Layers,
         permission: 'encounter:read',
-        badge: 'clearance',
       },
       {
         to: '/staff/disputes',
@@ -59,7 +68,8 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       },
       { to: '/staff/patients', label: 'Patients', icon: Users, permission: 'patient:read' },
       { to: '/staff/beds', label: 'Census & Beds', icon: BedDouble, permission: 'bed:read' },
-      { to: '/staff/lobby', label: 'Lobby Exit Check', icon: DoorOpen, permission: 'gatepass:verify' },
+      { to: '/staff/estimator', label: 'Cost Estimator', icon: Calculator, permission: 'encounter:read' },
+      { to: '/staff/lobby', label: 'Lobby Exit Check', icon: QrCode, permission: 'gatepass:verify' },
     ],
   },
   {
@@ -69,6 +79,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: 'Governance & Admin',
     items: [
+      { to: '/staff/rules', label: 'Settings & Rules', icon: Settings },
       { to: '/staff/users', label: 'Staff Accounts', icon: UserRoundCog, permission: 'staff:manage' },
       { to: '/staff/audit', label: 'Audit Log', icon: FileText, permission: 'audit:read' },
       { to: '/staff/account', label: 'My Account', icon: ShieldCheck },

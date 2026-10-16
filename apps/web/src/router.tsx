@@ -13,6 +13,9 @@ export const router = createBrowserRouter([
     lazy: async () => ({ Component: (await staff()).StaffLayout }),
     children: [
       { index: true, lazy: async () => ({ Component: (await staff()).Dashboard }) },
+      { path: 'discharge', lazy: async () => ({ Component: (await staff()).DischargeBoard }) },
+      { path: 'estimator', lazy: async () => ({ Component: (await staff()).Estimator }) },
+      { path: 'rules', lazy: async () => ({ Component: (await staff()).Rules }) },
       { path: 'encounters', lazy: async () => ({ Component: (await staff()).Encounters }) },
       { path: 'encounters/:id', lazy: async () => ({ Component: (await staff()).EncounterPage }) },
       { path: 'patients', lazy: async () => ({ Component: (await staff()).Patients }) },
