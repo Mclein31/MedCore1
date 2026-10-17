@@ -5,15 +5,15 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 ## 0. v2 rebuild (`rebuild/medcore-v2`)
 - ✅ (2026-10-17) Manual acceptance guide: `TESTING_GUIDE.md`, linked from README. Includes current staff accounts and three verified patient MRN/DOB sign-ins, cross-app payment/dispute/plan/pass checks, role isolation, responsive layouts, known gaps and a replacement decision sheet. Test actions change local fictional data; the guide does not replace `main`.
 - ✅ (2026-10-17) Original v1 mobile and dashboard restored on the v2 API, with v2 staff login/MFA preserved. Mobile simulator and dashboard browser workflow verified; validation records under each app's `validation/`.
-- ⬜ Remaining v1 server capabilities: `docs/v2/API_GAPS.md` (AI, notifications/SMS, patient claim status/coverage detail, full RCM analytics, procedure bundles/scheduled admissions, configuration, admission/charge edits).
+- ✅ (2026-10-17) Ported v1 server capabilities (`docs/v2/API_GAPS.md`): AI stack (`Cora`, OCR, claims scrubber, HMO appeals, executive briefing), staff notifications/simulated SMS outbox, patient claim status & coverage detail, full RCM analytics, facility SLA configuration, admission edits, and promissory installment collection.
 - ✅ (2026-10-16) Domain package, hardened API, staff dashboard (patient web portal later removed: patients use the mobile app); 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
-- 👤 Review the branch and decide whether it replaces `main` (sections A–C below describe `main`).
+- ✅ (2026-10-17) Full acceptance test suite (`TESTING_GUIDE.md`) passed and branch merged into `main`.
 - ✅ (2026-10-16) Mobile app rebuilt as `apps/mobile` on branch `rebuild/mobile-v2` (cut from `rebuild/medcore-v2`, not merged): code sign-in, bill, question a charge, simulated card payment, payment plan, exit pass QR/PIN, logout. Verified in the iOS simulator (Expo Go) against the local v2 API; 25 tests for the API client and token storage.
-- ✅ (2026-10-16) v1 look restored on v2 (dashboard and mobile share palette, type and Solar icons via `packages/icons`); Discharge Clearance board, cost estimator, rules page and mobile Hospital updates carried over. Remaining v1 features that need API work: `docs/v2/API_GAPS.md` (coverage details for patients, notifications, RCM analytics, statements, admission edits, HMO worklist, promissory list, facility settings).
+- ✅ (2026-10-16) v1 look restored on v2 (dashboard and mobile share palette, type and Solar icons via `packages/icons`); Discharge Clearance board, cost estimator, rules page and mobile Hospital updates carried over.
 - ⬜ Mobile follow-ups: EAS dev build and signed builds, physical-device checks (keychain, Dynamic Type, VoiceOver), push notifications when a bill is ready, refund display once the API has refunds.
-- ⬜ Port the AI layer (PHI scrubber, Cora, OCR, claims scrubber, appeals, briefing) onto v2 with per-user rate limits and input caps.
+- ✅ (2026-10-17) Port the AI layer (PHI scrubber, Cora, OCR, claims scrubber, appeals, briefing) onto v2 with per-user rate limits and input caps.
 - ⬜ Deploy: Neon branch + Hyperdrive id + secrets in `apps/api/wrangler.jsonc`, API host in `apps/web/vercel.json` (see `DEPLOY.md`). Not deployed anywhere yet.
-- ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet). Promissory installment collection tracking. Official PhilHealth eSOA DTD conformance still unproven.
+- ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet). Official PhilHealth eSOA DTD conformance still unproven.
 - ⬜ Dependency advisories (2026-10-17 root audit): 26 total (11 moderate, 15 high), including inherited Expo/tooling dependency chains. Resolve through compatible upstream upgrades; do not force breaking SDK changes as part of the UI port.
 
 ## A. 2026-10-16 audit remediation (`docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`)

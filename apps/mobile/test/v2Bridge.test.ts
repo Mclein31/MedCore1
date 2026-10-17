@@ -441,11 +441,17 @@ describe('bridge routes', () => {
     });
   });
 
-  it('reports AI as unavailable without calling the server', async () => {
-    const { call } = fakeV2({});
-    const res = await bridge('/ai/cora/chat', 'POST', {}, call);
-    expect(res.status).toBe(503);
-    expect(call).not.toHaveBeenCalled();
+  it('forwards AI requests to /patient/ai/*', async () => {
+    const { call, calls } = fakeV2({
+      'POST /patient/ai/cora/chat': () => [200, { reply: 'Hello from Cora!' }],
+    });
+    const res = await bridge('/ai/cora/chat', 'POST', { message: 'Explain my bill' }, call);
+    expect(res.status).toBe(200);
+    expect(calls[0]).toMatchObject({
+      method: 'POST',
+      path: '/patient/ai/cora/chat',
+      body: { message: 'Explain my bill' },
+    });
   });
 });
 

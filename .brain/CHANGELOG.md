@@ -2,6 +2,12 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
+## [2026-10-17] v2 AI suite, operational parity, and acceptance test sign-off
+- Full `TESTING_GUIDE.md` acceptance suite executed and verified (`PASS`) across mobile simulator and web dashboard.
+- Ported the complete Gemini AI stack (`coraService`, `claimsForensicService`, `hmoAppealService`, `executiveBriefingService`, `ocrService`, `phiScrubber`, `aiResultCache`, `coraScope`, `coraLanguage`) to `apps/api/src/services/ai/` and mounted `/api/v1/staff/ai/*` and `/api/v1/patient/ai/*` with per-user/IP rate limits, RA 10173 PHI scrubbing, and audit logging.
+- Added operational v2 API endpoints: patient coverage details (`GET /api/v1/patient/stays/:id` with `philhealth` and `hmo` objects plus `bedCode`/`roomCategory`), admission edits (`PATCH /api/v1/staff/encounters/:id`), simulated SMS/billing notifications (`POST /api/v1/staff/encounters/:id/notify`, `GET /api/v1/staff/notifications`, `POST /api/v1/staff/notifications/mark-read`, `GET /api/v1/staff/notifications/sms-outbox`), facility SLA settings (`GET/PUT /api/v1/staff/facility`), and promissory installment payment (`POST /api/v1/staff/promissory-notes/:id/installments/:seq/pay`).
+- Restored RCM Analytics (`RcmAnalyticsPage`), Claims & eSOA AI scrubber (`ClaimsEsoaPage`), Executive AI Briefing (`CommandCenterPage`), HMO appeal drafter (`EncountersLedgerPage`), HMO roster (`CoverageApprovalsPage`), and Facility SLA settings (`ConfigurationPage`) across web and mobile `v2Bridge.ts` while keeping v1 security anti-patterns (demo role switching, patient password login) retired.
+
 ## [2026-10-17] Original v1 UI restored on v2
 - Mobile uses the original screens and assets through `apps/mobile/src/lib/v2Bridge.ts`; verified email-code/MRN+DOB sign-in, disputes, card/bank payments, receipts, payment plan, exit pass, onboarding and unavailable AI in the iOS simulator. Mobile commit: `7b8ecc3`.
 - Dashboard uses `apps/web/src/v1/` and its API bridge, retaining v2 staff login, invitations, MFA/account, patients, staff administration and audit log. No role switching or mock financial/analytics results. The API/security routes are unchanged.

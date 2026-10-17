@@ -819,3 +819,121 @@ staffEncounterRoutes.post(
     return respondWithDetail(c, id);
   },
 );
+
+// ---------------------------------------------------------------- admission edits & notifications
+const UpdateEncounterBody = z.strictObject({
+  bedId: z.uuid().optional(),
+  attendingPhysicianId: z.uuid().optional(),
+  primaryDiagnosis: z.string().trim().min(3).max(300).optional(),
+  icd10Code: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]\d{2}(?:\.\d{1,4})?$/)
+    .optional(),
+});
+
+staffEncounterRoutes.patch(
+  '/:id',
+  requirePermission('encounter:admit'),
+  jsonBody(UpdateEncounterBody),
+  async (c) => {
+    const id = idParam(c, 'id', 'Stay');
+    const body = c.req.valid('json');
+    const staff = c.var.staff;
+    const now = c.var.services.now();
+    await c.var.db.transaction(async (tx) => {
+      const encounter = await lockForStaff(c, tx, id);
+      assertEditable(encounter);
+      const updates: Partial<typeof encounters.$inferInsert> = { updatedAt: now };
+
+      if (body.attendingPhysicianId && body.attendingPhysicianId !== encounter.attendingPhysicianId) {
+        const [physician] = await tx
+          .select({ id: staffUsers.id })
+          .from(staffUsers)
+          .where(
+            and(
+              eq(staffUsers.id, body.attendingPhysicianId),
+              eq(staffUsers.facilityId, staff.facilityId),
+              eq(staffUsers.role, 'ATTENDING_PHYSICIAN'),
+              eq(staffUsers.isActive, true),
+            ),
+          );
+        if (!physician) throw new ApiError(422, 'INVALID_PHYSICIAN', 'Choose an active attending physician.');
+        updates.attendingPhysicianId = physician.id;
+      }
+
+      if (body.bedId && body.bedId !== encounter.bedId) {
+        const [newBed] = await tx
+          .select()
+          .from(beds)
+          .where(and(eq(beds.id, body.bedId), eq(beds.facilityId, staff.facilityId)))
+          .for('update');
+        if (!newBed) throw notFound('Bed');
+        if (newBed.status !== 'AVAILABLE') {
+          throw conflict('BED_UNAVAILABLE', `Bed ${newBed.code} is not available.`);
+        }
+        if (encounter.bedId) {
+          await tx
+            .update(beds)
+            .set({ status: 'AVAILABLE', currentEncounterId: null, updatedAt: now })
+            .where(and(eq(beds.id, encounter.bedId), eq(beds.currentEncounterId, id)));
+        }
+        await tx
+          .update(beds)
+          .set({ status: 'OCCUPIED', currentEncounterId: id, updatedAt: now })
+          .where(eq(beds.id, newBed.id));
+        updates.bedId = newBed.id;
+        updates.bedCode = newBed.code;
+        updates.roomCategory = newBed.roomCategory;
+      }
+
+      if (body.primaryDiagnosis) updates.primaryDiagnosis = body.primaryDiagnosis;
+      if (body.icd10Code) updates.icd10Code = body.icd10Code;
+
+      await tx.update(encounters).set(updates).where(eq(encounters.id, id));
+      await audit(c, tx, {
+        action: 'ENCOUNTER_UPDATED',
+        resourceType: 'encounter',
+        resourceId: id,
+        detail: body,
+      });
+    });
+    return respondWithDetail(c, id);
+  },
+);
+
+const NotifyBody = z.strictObject({
+  kind: z.enum(['PATIENT_SMS', 'DOCTOR_NUDGE']),
+  message: z.string().trim().max(500).optional(),
+});
+
+staffEncounterRoutes.post(
+  '/:id/notify',
+  requirePermission('encounter:read'),
+  jsonBody(NotifyBody),
+  async (c) => {
+    const id = idParam(c, 'id', 'Stay');
+    const body = c.req.valid('json');
+    await c.var.db.transaction(async (tx) => {
+      const encounter = await lockForStaff(c, tx, id);
+      const title =
+        body.kind === 'DOCTOR_NUDGE'
+          ? 'Attending physician PF reminder sent'
+          : 'Patient discharge SMS dispatch logged';
+      const detail =
+        body.message ??
+        (body.kind === 'DOCTOR_NUDGE'
+          ? `Reminder sent for ${encounter.encounterNumber} professional fee sign-off.`
+          : `Discharge billing update logged for ${encounter.encounterNumber}.`);
+      await timeline(c, tx, id, 'NOTIFICATION', title, detail);
+      await audit(c, tx, {
+        action: body.kind === 'DOCTOR_NUDGE' ? 'DOCTOR_PF_NUDGED' : 'PATIENT_SMS_LOGGED',
+        resourceType: 'encounter',
+        resourceId: id,
+        detail: { encounterNumber: encounter.encounterNumber, message: detail },
+      });
+    });
+    return respondWithDetail(c, id);
+  },
+);

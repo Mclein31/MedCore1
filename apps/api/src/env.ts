@@ -60,9 +60,21 @@ const RawEnv = z.object({
   TRUST_PROXY: z.enum(['none', 'cloudflare', 'x-forwarded-for']).default('none'),
   HOST: z.string().default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(8787),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
+  GEMINI_BACKUP_MODEL: z.string().default('gemini-2.5-flash-lite'),
+  GEMINI_PRO_MODEL: z.string().default('gemini-2.5-pro'),
 });
 
 export type AppEnv = 'production' | 'development' | 'test';
+
+export interface AiConfig {
+  enabled: boolean;
+  apiKey: string | null;
+  model: string;
+  backupModel: string;
+  proModel: string;
+}
 
 export interface Config {
   env: AppEnv;
@@ -91,6 +103,7 @@ export interface Config {
   host: string;
   port: number;
   cookies: { staff: string; patient: string; secure: boolean };
+  ai: AiConfig;
 }
 
 export class ConfigError extends Error {
@@ -126,6 +139,11 @@ export function loadConfig(source: Record<string, string | undefined>): Config {
   if (problems.length) throw new ConfigError(`Invalid configuration:\n  ${problems.join('\n  ')}`);
 
   const publicAppUrl = e.PUBLIC_APP_URL ?? e.ALLOWED_ORIGINS[0] ?? 'http://localhost:5173';
+  const rawApiKey = e.GEMINI_API_KEY?.trim() ?? '';
+  const hasValidApiKey =
+    rawApiKey.length >= 20 &&
+    !['your_api_key_here', 'placeholder', 'none', 'disabled'].includes(rawApiKey.toLowerCase());
+
   return {
     env: e.APP_ENV,
     isProduction,
@@ -157,5 +175,12 @@ export function loadConfig(source: Record<string, string | undefined>): Config {
     cookies: isProduction
       ? { staff: '__Host-mc_staff', patient: '__Host-mc_patient', secure: true }
       : { staff: 'mc_staff', patient: 'mc_patient', secure: false },
+    ai: {
+      enabled: hasValidApiKey,
+      apiKey: hasValidApiKey ? rawApiKey : null,
+      model: e.GEMINI_MODEL.trim() || 'gemini-2.5-flash',
+      backupModel: e.GEMINI_BACKUP_MODEL.trim() || 'gemini-2.5-flash-lite',
+      proModel: e.GEMINI_PRO_MODEL.trim() || 'gemini-2.5-pro',
+    },
   };
 }

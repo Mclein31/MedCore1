@@ -7,6 +7,7 @@ import type { AppBindings, Services } from './context';
 import { ApiError } from './lib/errors';
 import { staffAuth } from './middleware/auth';
 import { accessLog, clientIp, csrf, noStore, onError, requestId } from './middleware/http';
+import { patientAiRoutes, staffAiRoutes } from './routes/ai';
 import { patientAuthRoutes } from './routes/patientAuth';
 import { patientPortalRoutes } from './routes/patientPortal';
 import { staffAdminRoutes, staffDirectoryRoutes } from './routes/staffAdmin';
@@ -56,14 +57,20 @@ export function createApp(services: Services, options: AppOptions = {}) {
       maxAge: 600,
     }),
   );
-  app.use(
-    '/api/*',
-    bodyLimit({
-      maxSize: 64 * 1024,
-      onError: () => {
-        throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'That request is too large.');
-      },
-    }),
+  const standardBodyLimit = bodyLimit({
+    maxSize: 64 * 1024,
+    onError: () => {
+      throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'That request is too large.');
+    },
+  });
+  const ocrBodyLimit = bodyLimit({
+    maxSize: 8 * 1024 * 1024,
+    onError: () => {
+      throw new ApiError(413, 'PAYLOAD_TOO_LARGE', 'That image is too large.');
+    },
+  });
+  app.use('/api/*', async (c, next) =>
+    c.req.path.endsWith('/ai/ocr/extract-card') ? ocrBodyLimit(c, next) : standardBodyLimit(c, next),
   );
   app.use('/api/*', async (c, next) => {
     c.set('ip', clientIp(c, options.peerAddress?.(c) ?? null));
@@ -97,9 +104,11 @@ export function createApp(services: Services, options: AppOptions = {}) {
   staff.route('/encounters', staffEncounterRoutes);
   staff.route('/users', staffAdminRoutes);
   staff.route('/directory', staffDirectoryRoutes);
+  staff.route('/ai', staffAiRoutes);
   staff.route('/', staffOperationRoutes);
   app.route('/api/v1/staff', staff);
 
+  app.route('/api/v1/patient/ai', patientAiRoutes);
   app.route('/api/v1/patient', patientPortalRoutes);
 
   app.notFound((c) =>

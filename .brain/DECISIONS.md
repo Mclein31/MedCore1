@@ -13,7 +13,7 @@ Newest first. Every durable `[DECISION]` from the former 2,540-line `PROJECT_CON
 - [DECISION] Rate limits live in Postgres (`rate_limit_buckets`), not Workers bindings, so they hold across regions and on Node.
 - [DECISION] Official receipt, bill, claim, note and encounter numbers are gap-free per facility and year (`document_counters`); claim and note numbers are unique per facility (a global unique index was a multi-tenant bug caught by tests).
 - [DECISION] Online patient payment is `PATIENT_ONLINE_PAYMENTS=disabled|simulated` (default disabled); simulated payments are flagged `is_simulated` and shown as such to staff only.
-- [DECISION] AI features (Cora, OCR, claims scrubber, appeals, briefing) are not in v2 yet; they are follow-ups on top of the v2 API.
+- [DECISION] AI features (Cora, card OCR, claims preflight scrubber, HMO appeal drafter, executive briefing) are ported onto `@medcore/api` under `/api/v1/staff/ai/*` and `/api/v1/patient/ai/*` with RA 10173 PHI scrubbing, Postgres-backed rate limits (`ai-staff`, `ai-cora`, `ai-ocr`), in-memory deduplicated TTL cache (`aiResultCache`), and audit logging. Supersedes the earlier "AI features are not in v2 yet" note. (2026-10-17)
 - [DECISION] The v2 mobile app (`apps/mobile`) keeps its session only as a bearer token in expo-secure-store (this device only, unlocked only); never AsyncStorage (lint-enforced). It validates forms with the same `@medcore/domain` contracts as the API, and the API client copies only whitelisted payment fields so no full card number can ever be sent.
 - [DECISION] The staff console and patient portal use the shield badge (`logo/MedCore_Badge_Logo.png`) as the logo and favicon, matching the mobile app.
 
