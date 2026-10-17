@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 import type { Permission } from '@medcore/domain';
 import { useQuery } from '@tanstack/react-query';
 import { useOutletContext } from 'react-router';
@@ -15,8 +16,11 @@ export function useStaffMeQuery() {
 }
 
 /** The signed-in staff member, provided by StaffLayout to every page under /staff. */
+export const StaffContext = createContext<StaffMe | null>(null);
 export function useStaff() {
-  const me = useOutletContext<StaffMe>();
+  const provided = useContext(StaffContext);
+  const outlet = useOutletContext<StaffMe>();
+  const me = provided ?? outlet;
   const can = (permission: Permission) => me.permissions.includes(permission);
   return { ...me, can };
 }

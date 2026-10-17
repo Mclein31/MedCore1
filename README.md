@@ -5,7 +5,7 @@ deduction waterfall to the centavo, runs discharge clearance as a strict state m
 plain-language bill they can question, pay, or put on a 0% interest promissory note (RA 9439).
 
 This branch (`rebuild/medcore-v2`) is a ground-up rewrite. The previous implementation, including the AI
-features, remains on `main`.
+features, remains on `main`. Both apps now use the original v1 UI through client adapters to the v2 API; the dashboard keeps v2 staff sign-in and MFA.
 
 ## Layout
 
@@ -38,8 +38,31 @@ Port 8787 is also the v1 Worker's port (`wrangler dev` on `main`). If it is take
 `PORT=8788` in `.env`, then start the dashboard with `API_PORT=8788 npm run dev -w @medcore/web` and the app with
 `EXPO_PUBLIC_API_PORT=8788 npm run ios -w @medcore/mobile`.
 
+To run beside existing servers on 8787/8790/5173, use three terminals from this checkout (do not reseed an existing database):
+
+```bash
+# API
+cd apps/api
+PORT=8788 ALLOWED_ORIGINS=http://localhost:5174 PUBLIC_APP_URL=http://localhost:5174 npm run start
+```
+
+```bash
+# Dashboard (open http://localhost:5174)
+cd apps/web
+API_PORT=8788 npx vite --port 5174 --strictPort
+```
+
+```bash
+# Mobile (then open exp://localhost:8081 in Expo Go)
+cd apps/mobile
+EXPO_PUBLIC_API_PORT=8788 npx expo start --port 8081
+xcrun simctl openurl booted exp://localhost:8081
+```
+
+The commands above retain MFA. For the local fictional database only, `STAFF_MFA_REQUIRED=false` can be added to the API command to permit unenrolled seed accounts; enrolled accounts still require their authenticator. Never change production defaults.
+
 Staff sign in at http://localhost:5173 with `cfo@`, `billing@`, `claims@`, `hmo@`, `dr.cruz@`, `lobby@` …
-`stjude.example.test` and `SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app: "First time",
+`stjude.example.test` and `SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app: "First time here? Link your hospital stay" (MRN + DOB),
 a seeded MRN (for example `MRN-240118`) and date of birth, then the 6-digit code printed in the API log.
 
 The app calls `http://localhost:8787` (`10.0.2.2` on the Android emulator). For a phone on your network set

@@ -24,6 +24,7 @@ interface RequestOptions {
   body?: unknown;
   idempotencyKey?: string;
   signal?: AbortSignal;
+  responseType?: 'json' | 'text';
 }
 
 export const UNAUTHENTICATED_EVENT = 'medcore:unauthenticated';
@@ -80,7 +81,7 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
       error?.details?.fields,
     );
   }
-  return data as T;
+  return (options.responseType === 'text' ? text : data) as T;
 }
 
 function safeJson(text: string): unknown {
