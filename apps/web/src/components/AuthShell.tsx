@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react';
 import badge from '../assets/logo-badge.png';
+import wordmark from '../assets/logo-text.png';
 
 /** The v1 split sign-in layout: a quiet context column on the left, the form on the right. */
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh w-full flex-col bg-white lg:flex-row">
       <aside className="flex flex-col border-b border-line bg-canvas px-6 py-6 sm:px-10 lg:w-[40%] lg:max-w-xl lg:border-r lg:border-b-0 lg:px-12 lg:py-12">
-        <div className="flex items-center gap-3">
-          <img src={badge} alt="" aria-hidden className="h-9 w-auto object-contain" />
-          <span className="text-lg font-bold tracking-tight">MedCore</span>
+        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+          <img src={badge} alt="" aria-hidden className="h-20 w-auto shrink-0 object-contain sm:h-24" />
+          <div className="min-w-0">
+            <img src={wordmark} alt="MedCore" className="w-44 max-w-full object-contain sm:w-56" />
+          </div>
         </div>
         <div className="my-auto hidden py-16 lg:block">
           <p className="max-w-[16ch] text-[2rem] leading-[1.15] font-bold tracking-tight">
