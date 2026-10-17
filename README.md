@@ -72,6 +72,8 @@ What v1 had that v2 does not yet: [`docs/v2/API_GAPS.md`](docs/v2/API_GAPS.md).
 
 ## Checks
 
+For a manual walkthrough with staff accounts, three patient sign-ins, expected results and replacement criteria, use [TESTING_GUIDE.md](TESTING_GUIDE.md). It does not merge or replace `main`.
+
 ```bash
 npm run check                 # typecheck + lint + all tests
 npm run format:check
