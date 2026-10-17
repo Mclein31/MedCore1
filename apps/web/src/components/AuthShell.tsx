@@ -7,9 +7,9 @@ export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh w-full flex-col bg-white lg:flex-row">
       <aside className="flex flex-col border-b border-line bg-canvas px-6 py-6 sm:px-10 lg:w-[40%] lg:max-w-xl lg:border-r lg:border-b-0 lg:px-12 lg:py-12">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+        <div className="flex min-w-0 items-center">
           <img src={badge} alt="" aria-hidden className="h-20 w-auto shrink-0 object-contain sm:h-24" />
-          <div className="min-w-0">
+          <div className="-ml-4 min-w-0">
             <img src={wordmark} alt="MedCore" className="w-44 max-w-full object-contain sm:w-56" />
           </div>
         </div>
