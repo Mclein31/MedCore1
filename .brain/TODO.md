@@ -3,6 +3,7 @@
 Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order.
 
 ## 0. v2 rebuild (`rebuild/medcore-v2`)
+- ✅ (2026-10-17) Manual acceptance guide: `TESTING_GUIDE.md`, linked from README. Includes current staff accounts and three verified patient MRN/DOB sign-ins, cross-app payment/dispute/plan/pass checks, role isolation, responsive layouts, known gaps and a replacement decision sheet. Test actions change local fictional data; the guide does not replace `main`.
 - ✅ (2026-10-17) Original v1 mobile and dashboard restored on the v2 API, with v2 staff login/MFA preserved. Mobile simulator and dashboard browser workflow verified; validation records under each app's `validation/`.
 - ⬜ Remaining v1 server capabilities: `docs/v2/API_GAPS.md` (AI, notifications/SMS, patient claim status/coverage detail, full RCM analytics, procedure bundles/scheduled admissions, configuration, admission/charge edits).
 - ✅ (2026-10-16) Domain package, hardened API, staff dashboard (patient web portal later removed: patients use the mobile app); 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
