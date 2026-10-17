@@ -5,8 +5,16 @@ import { useMedCore } from '@/v1/context/MedCoreContext';
 import { ActionableExceptionsWorklist } from '@/v1/features/analytics/components/ActionableExceptionsWorklist';
 import type { AnalyticsFilterState } from '@/v1/features/analytics/components/AnalyticsFilterStrip';
 import { AnalyticsFilterStrip } from '@/v1/features/analytics/components/AnalyticsFilterStrip';
+import { ArAgingProfileCard } from '@/v1/features/analytics/components/ArAgingProfileCard';
+import { ClaimsScrutinyPipeline } from '@/v1/features/analytics/components/ClaimsScrutinyPipeline';
+import { CommercialCarrierLedger } from '@/v1/features/analytics/components/CommercialCarrierLedger';
+import { DepartmentExceptionMatrix } from '@/v1/features/analytics/components/DepartmentExceptionMatrix';
+import { DepartmentTurnaroundBottleneckChart } from '@/v1/features/analytics/components/DepartmentTurnaroundBottleneckChart';
 import { ExecutiveReportModal } from '@/v1/features/analytics/components/ExecutiveReportModal';
 import { HospitalFinancingWaterfall } from '@/v1/features/analytics/components/HospitalFinancingWaterfall';
+import { MacroRevenueScorecard } from '@/v1/features/analytics/components/MacroRevenueScorecard';
+import { PatientOopDriverCard } from '@/v1/features/analytics/components/PatientOopDriverCard';
+import { TrappedCapitalPareto } from '@/v1/features/analytics/components/TrappedCapitalPareto';
 import { matchesEncounterSearch } from '@/v1/utils/encounterSearch';
 import {
   computeArAgingSummary,
@@ -39,7 +47,7 @@ export const RcmAnalyticsPage: React.FC = () => {
 
   // Cross-filtering focus states
   const [selectedFrictionCategory, setSelectedFrictionCategory] = useState<string | null>(null);
-  const [_activeMetricFocus, setActiveMetricFocus] = useState<string | undefined>(undefined);
+  const [activeMetricFocus, setActiveMetricFocus] = useState<string | undefined>(undefined);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const handleFilterChange = (newFilters: Partial<AnalyticsFilterState>) => {
@@ -139,11 +147,11 @@ export const RcmAnalyticsPage: React.FC = () => {
     () => computeCommercialCarrierMetrics(filteredEncounters),
     [filteredEncounters],
   );
-  const _trappedPareto = useMemo(() => computeTrappedCapitalPareto(filteredEncounters), [filteredEncounters]);
-  const _deptMetrics = useMemo(() => computeDepartmentMetrics(filteredEncounters), [filteredEncounters]);
-  const _claimMetrics = useMemo(() => computeClaimsScrutinyMetrics(filteredEncounters), [filteredEncounters]);
-  const _oopDrivers = useMemo(() => computePatientOopDrivers(filteredEncounters), [filteredEncounters]);
-  const _arAging = useMemo(() => computeArAgingSummary(), []);
+  const trappedPareto = useMemo(() => computeTrappedCapitalPareto(filteredEncounters), [filteredEncounters]);
+  const deptMetrics = useMemo(() => computeDepartmentMetrics(filteredEncounters), [filteredEncounters]);
+  const claimMetrics = useMemo(() => computeClaimsScrutinyMetrics(filteredEncounters), [filteredEncounters]);
+  const oopDrivers = useMemo(() => computePatientOopDrivers(filteredEncounters), [filteredEncounters]);
+  const arAging = useMemo(() => computeArAgingSummary(), []);
   const actionableExceptions = useMemo(
     () => extractActionableExceptions(filteredEncounters),
     [filteredEncounters],
@@ -191,7 +199,21 @@ export const RcmAnalyticsPage: React.FC = () => {
             <ExecutiveAiBriefingCard />
 
             {/* Level 1: Macro Revenue Scorecard (Bento Grid) */}
-            <UnavailablePanel title="Revenue performance metrics" />
+            <MacroRevenueScorecard
+              metrics={kpis}
+              activeMetricFocus={activeMetricFocus}
+              onSelectMetric={(key) => {
+                if (key === 'TRAPPED_CAPITAL') {
+                  handleFilterChange({ severity: 'EXCEPTIONS' });
+                } else if (key === 'CLEAN_CLAIMS') {
+                  handleFilterChange({ claimStatus: 'CLEAN' });
+                } else if (key === 'PROBLEM_CENSUS') {
+                  handleFilterChange({ severity: 'EXCEPTIONS' });
+                } else {
+                  setActiveMetricFocus((prev) => (prev === key ? undefined : key));
+                }
+              }}
+            />
 
             {/* Level 2: Multi-Payer Financing Waterfall & Elevated AR Aging Profile (7 cols / 5 cols) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
@@ -199,37 +221,57 @@ export const RcmAnalyticsPage: React.FC = () => {
                 <HospitalFinancingWaterfall waterfall={waterfall} />
               </div>
               <div className="xl:col-span-5">
-                <UnavailablePanel title="Accounts receivable aging" />
+                <ArAgingProfileCard agingBuckets={arAging} />
               </div>
             </div>
 
             {/* Level 3: Department Discharge Bottleneck Radar & Pre-Flight Claims (7 cols / 5 cols) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
-                <UnavailablePanel title="Department turnaround" />
+                <DepartmentTurnaroundBottleneckChart />
               </div>
               <div className="xl:col-span-5">
-                <UnavailablePanel title="Claims preflight scrutiny" />
+                <ClaimsScrutinyPipeline
+                  metrics={claimMetrics}
+                  selectedStatus={filters.claimStatus}
+                  onSelectStatus={(status) =>
+                    handleFilterChange({
+                      claimStatus: status === 'ALL' ? 'All Statuses' : status,
+                    })
+                  }
+                />
               </div>
             </div>
 
             {/* Level 4: Operational Friction Pareto & Department Matrix (6 cols / 6 cols) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-6">
-                <UnavailablePanel title="Trapped capital analysis" />
+                <TrappedCapitalPareto
+                  drivers={trappedPareto}
+                  selectedCategory={selectedFrictionCategory}
+                  onSelectCategory={setSelectedFrictionCategory}
+                />
               </div>
               <div className="xl:col-span-6">
-                <UnavailablePanel title="Department exceptions" />
+                <DepartmentExceptionMatrix
+                  departments={deptMetrics}
+                  selectedDepartment={filters.department}
+                  onSelectDepartment={(dept) => handleFilterChange({ department: dept })}
+                />
               </div>
             </div>
 
             {/* Level 5: Commercial HMO Carrier Ledger & Patient Out-of-Pocket Breakdown (7 cols / 5 cols) */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
               <div className="xl:col-span-7">
-                <UnavailablePanel title="Commercial carrier performance" />
+                <CommercialCarrierLedger
+                  carriers={carrierMetrics}
+                  selectedCarrier={filters.payer}
+                  onSelectCarrier={(carrier) => handleFilterChange({ payer: carrier })}
+                />
               </div>
               <div className="xl:col-span-5">
-                <UnavailablePanel title="Patient out-of-pocket allocation" />
+                <PatientOopDriverCard oopData={oopDrivers} />
               </div>
             </div>
 
@@ -258,15 +300,3 @@ export const RcmAnalyticsPage: React.FC = () => {
 };
 
 export const RcmAnalyticsView = RcmAnalyticsPage;
-
-function UnavailablePanel({ title }: { title: string }) {
-  return (
-    <section className="bg-white rounded-xl border border-slate-200 shadow-2xs p-5 min-h-32">
-      <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-      <p className="text-xs text-slate-500 mt-3">
-        Not available yet. The v2 API does not provide the history and source metrics required for this
-        analysis.
-      </p>
-    </section>
-  );
-}

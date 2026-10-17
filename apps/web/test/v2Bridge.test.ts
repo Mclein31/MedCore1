@@ -98,7 +98,8 @@ describe('v1 dashboard boundary', () => {
     const e = mapEncounter(detail());
     expect(e.waterfall.grossTotal).toBe(123.45);
     expect(e.stage).toBe('CLEARED_GATE_PASS');
-    expect(e.items[0]?.allocationAvailable).toBe(false);
+    expect(e.items[0]?.allocationAvailable).toBe(true);
+    expect(e.items[0]?.patientOop).toBe(123.45);
     expect(e.paymentHistory?.[0]).toMatchObject({
       timestamp: '2026-01-02T00:00:00Z',
       channelReference: 'REF-1',
@@ -202,12 +203,23 @@ describe('v1 dashboard boundary', () => {
       dischargePass: { exitPin: '123456', qrPayload: 'GP-1' },
     });
   });
-  it('fails unsupported features without fake success', async () => {
-    await expect(bridge('/ai/cora/chat', { method: 'POST' })).rejects.toThrow(
-      'AI is temporarily unavailable',
-    );
-    await expect(bridge('/analytics/rcm-metrics')).rejects.toThrow('not available');
-    expect(await bridge('/notifications')).toMatchObject({ available: false, notifications: [] });
-    expect(transport).not.toHaveBeenCalled();
+  it('routes AI, analytics and notifications to v2 staff endpoints while blocking legacy role switching', async () => {
+    await expect(bridge('/auth/switch-role', { method: 'POST' })).rejects.toThrow('not available');
+    transport.mockResolvedValueOnce({ data: { reply: 'Hello' } });
+    expect(
+      await bridge('/ai/cora/chat', {
+        method: 'POST',
+        body: JSON.stringify({ encounterId: 'enc', message: 'Hi' }),
+      }),
+    ).toEqual({ data: { reply: 'Hello' } });
+    expect(transport).toHaveBeenCalledWith('/v1/staff/ai/cora/chat', {
+      method: 'POST',
+      body: { encounterId: 'enc', message: 'Hi' },
+    });
+    transport.mockResolvedValueOnce({ items: [{ id: 'n1', read: false }] });
+    expect(await bridge('/notifications')).toMatchObject({
+      available: true,
+      unreadCount: 1,
+    });
   });
 });

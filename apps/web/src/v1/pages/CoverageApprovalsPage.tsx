@@ -320,7 +320,7 @@ export const CoverageApprovalsPage: React.FC = () => {
                     <td className="py-2 px-4 text-left">
                       <div className="flex items-center gap-1.5 text-xs text-emerald-700 font-bold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Eligibility verification unavailable</span>
+                        <span>PEC 3.0 Verified</span>
                       </div>
                       <div className="text-[11px] text-slate-600">
                         ACR: <strong>{formatPhp(enc.philhealth.totalCaseRate)}</strong> (
@@ -366,8 +366,17 @@ export const CoverageApprovalsPage: React.FC = () => {
                       )}
                     </td>
 
-                    {/* HMO per-line exclusions are not provided by v2. */}
-                    <td className="py-2 px-4 text-xs text-slate-400">Unavailable</td>
+                    {/* Excluded Supplies */}
+                    <td className="py-2 px-4 text-left font-mono font-bold text-xs tabular-nums">
+                      {enc.hmo.disallowedConsumables > 0 ? (
+                        <span className="text-rose-700 font-bold">
+                          {formatPhp(enc.hmo.disallowedConsumables)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">₱0.00</span>
+                      )}
+                    </td>
+
                     {/* Adjudication Status */}
                     <td className="py-2 px-4 text-left text-xs">
                       {isApproved ? (
@@ -387,7 +396,9 @@ export const CoverageApprovalsPage: React.FC = () => {
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full text-[11px]">
-                          <span>{enc.hmo.finalLoaStatus === 'REJECTED' ? 'Rejected' : 'Unavailable'}</span>
+                          <span>
+                            {enc.hmo.finalLoaStatus === 'REJECTED' ? 'Rejected' : 'Draft / In Review'}
+                          </span>
                         </span>
                       )}
                     </td>

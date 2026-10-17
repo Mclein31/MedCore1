@@ -8,10 +8,12 @@ import {
   disputes,
   encounters,
   facilities,
+  hmoCoverages,
   ledgers,
   patientAccountLinks,
   patients,
   payments,
+  philhealthClaims,
   promissoryNotes,
   receipts,
   timelineEvents,
@@ -125,6 +127,8 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
     patientName: row!.patientName,
     facilityName: row!.facilityName,
     admittedAt: e.admittedAt,
+    bedCode: e.bedCode,
+    roomCategory: e.roomCategory,
     stage: e.stage,
     billState: e.billState,
     billNumber: billReady ? e.billNumber : null,
@@ -135,6 +139,29 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
   if (!billReady) return c.json({ stay: summary });
 
   const [ledger] = await db.select().from(ledgers).where(eq(ledgers.encounterId, id));
+  const [claim] = await db
+    .select({
+      id: philhealthClaims.id,
+      claimNumber: philhealthClaims.claimNumber,
+      caseRateCode: philhealthClaims.caseRateCode,
+      hciCents: philhealthClaims.hciCents,
+      pfCents: philhealthClaims.pfCents,
+      status: philhealthClaims.status,
+      transmittedAt: philhealthClaims.transmittedAt,
+    })
+    .from(philhealthClaims)
+    .where(eq(philhealthClaims.encounterId, id));
+  const [hmo] = await db
+    .select({
+      providerName: hmoCoverages.providerName,
+      memberNumberLast4: hmoCoverages.memberNumberLast4,
+      mblCents: hmoCoverages.mblCents,
+      approvedCents: hmoCoverages.approvedCents,
+      loaStatus: hmoCoverages.loaStatus,
+      approvalCode: hmoCoverages.approvalCode,
+    })
+    .from(hmoCoverages)
+    .where(eq(hmoCoverages.encounterId, id));
   const lineItems = await db
     .select({
       id: charges.id,
@@ -217,6 +244,8 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
           creditCents: ledger.creditCents,
         }
       : null,
+    philhealth: claim ?? null,
+    hmo: hmo ?? null,
     charges: lineItems,
     payments: paid,
     promissoryNotes: notes,

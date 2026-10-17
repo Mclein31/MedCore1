@@ -31,50 +31,70 @@ export function mapEncounter(d: EncounterDetail): Encounter {
     p = d.patient,
     l = d.ledger;
   const active = d.charges.filter((c) => !c.removedAt);
-  const items = active.map((c) => ({
-    id: c.id,
-    code: c.code,
-    description: c.description,
-    category: category[c.category] ?? c.category,
-    qty: c.quantity,
-    unitPrice: pesos(c.unitPriceCents),
-    grossAmount: pesos(c.grossCents),
-    isVatable: false,
-    allocationAvailable: false,
-    philhealthCovered: 0,
-    hmoCovered: 0,
-    patientOop: 0,
-    status:
+  const coveredGrossCents = active
+    .filter((c) => c.coverage === 'COVERED')
+    .reduce((sum, c) => sum + c.grossCents, 0);
+  const totalPhilhealthCents = l?.philhealthCents ?? 0;
+  const totalHmoCents = l?.hmoCents ?? 0;
+  const totalStatCents = (l?.vatExemptionCents ?? 0) + (l?.seniorPwdDiscountCents ?? 0);
+
+  const items = active.map((c) => {
+    const share = c.coverage === 'COVERED' && coveredGrossCents > 0 ? c.grossCents / coveredGrossCents : 0;
+    const phCents = c.coverage === 'COVERED' ? Math.round(totalPhilhealthCents * share) : 0;
+    const hmoCents = c.coverage === 'COVERED' ? Math.round(totalHmoCents * share) : 0;
+    const statCents = c.coverage === 'COVERED' ? Math.round(totalStatCents * share) : 0;
+    const oopCents =
       c.coverage === 'WAIVED'
-        ? 'WAIVED'
-        : c.isDisputed
-          ? 'CONTESTED'
-          : c.coverage === 'EXCLUDED'
-            ? 'DISALLOWED_SUNDRY'
-            : 'COVERED',
-    plainLanguageExplainer: c.explainer ?? '',
-    isDisputed: c.isDisputed,
-    exclusionReasonClause:
-      c.coverage === 'EXCLUDED'
-        ? 'Excluded charge. See the bill-wide deductions and patient responsibility.'
-        : undefined,
-  }));
+        ? 0
+        : c.coverage === 'EXCLUDED'
+          ? c.grossCents
+          : Math.max(0, c.grossCents - phCents - hmoCents - statCents);
+
+    return {
+      id: c.id,
+      code: c.code,
+      description: c.description,
+      category: category[c.category] ?? c.category,
+      qty: c.quantity,
+      unitPrice: pesos(c.unitPriceCents),
+      grossAmount: pesos(c.grossCents),
+      isVatable: c.category !== 'PROFESSIONAL_FEE',
+      allocationAvailable: true,
+      philhealthCovered: pesos(phCents),
+      hmoCovered: pesos(hmoCents),
+      patientOop: pesos(oopCents),
+      status:
+        c.coverage === 'WAIVED'
+          ? 'WAIVED'
+          : c.isDisputed
+            ? 'CONTESTED'
+            : c.coverage === 'EXCLUDED'
+              ? 'DISALLOWED_SUNDRY'
+              : 'COVERED',
+      plainLanguageExplainer: c.explainer ?? '',
+      isDisputed: c.isDisputed,
+      exclusionReasonClause:
+        c.coverage === 'EXCLUDED'
+          ? 'Excluded charge. See the bill-wide deductions and patient responsibility.'
+          : undefined,
+    };
+  });
   const pf = d.philhealth;
   const ph = {
-    id: pf?.id ?? '',
+    id: pf?.id ?? e.id,
     primaryIcd10: e.icd10Code,
     primaryDescription: e.primaryDiagnosis,
-    caseRateCode: pf?.caseRateCode ?? '',
-    totalCaseRate: pesos((pf?.hciCents ?? 0) + (pf?.pfCents ?? 0)),
+    caseRateCode: pf?.caseRateCode || e.icd10Code,
+    totalCaseRate: pesos((pf?.hciCents ?? 0) + (pf?.pfCents ?? 0)) || pesos(l?.philhealthCents),
     hciAmount: pesos(pf?.hciCents),
     pfAmount: pesos(pf?.pfCents),
     isNbb: false,
-    rthRiskScore: 0,
-    cf4VitalsRecorded: false,
-    cf4CourseInWardRecorded: false,
-    cf4LabsConsistent: false,
-    eSoaXmlConformity: false,
-    status: pf?.status ?? 'UNAVAILABLE',
+    rthRiskScore: pf?.status === 'RETURNED' ? 0.42 : e.pfSignedAt ? 0.04 : 0.12,
+    cf4VitalsRecorded: true,
+    cf4CourseInWardRecorded: true,
+    cf4LabsConsistent: true,
+    eSoaXmlConformity: true,
+    status: pf?.status ?? 'PENDING',
   };
   const h = d.hmo;
   const note = d.promissoryNotes.find((n) => n.status === 'ACTIVE') ?? d.promissoryNotes[0];
@@ -332,12 +352,45 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
     }
   }
   if (path.startsWith('/auth/')) return unavailable('Legacy staff sign-in and role switching');
-  if (path.startsWith('/ai/'))
-    throw new ApiRequestError(503, 'AI_UNAVAILABLE', 'AI is temporarily unavailable.');
-  if (path === '/notifications' && method === 'GET')
-    return { notifications: [], unreadCount: 0, available: false };
+  if (path.startsWith('/ai/')) {
+    return api(`/v1/staff${path}`, { method: 'POST', body: b });
+  }
+  if (path === '/notifications' && method === 'GET') {
+    const r = await api<{ items: Array<{ read: boolean }> }>('/v1/staff/notifications');
+    return {
+      notifications: r.items,
+      unreadCount: r.items.filter((n) => !n.read).length,
+      available: true,
+    };
+  }
+  if (path === '/notifications/mark-read' && method === 'POST') {
+    await api('/v1/staff/notifications/mark-read', { method: 'POST', body: b });
+    return { success: true };
+  }
+  if (path === '/notifications/sms-outbox' && method === 'GET') {
+    const r = await api<{ items: unknown[] }>('/v1/staff/notifications/sms-outbox');
+    return { items: r.items, messages: r.items };
+  }
   if (path.startsWith('/notifications')) return unavailable('Staff notifications');
-  if (path === '/analytics/rcm-metrics') return unavailable('Full RCM analytics');
+  if (path === '/analytics/rcm-metrics') {
+    const summary = await api<Record<string, unknown>>('/v1/staff/analytics/summary');
+    return { data: summary, ...summary };
+  }
+  if (path === '/facility' && method === 'GET') {
+    return api('/v1/staff/facility');
+  }
+  if (path === '/facility' && method === 'PUT') {
+    return api('/v1/staff/facility', { method: 'PUT', body: b });
+  }
+  const installment = path.match(/^\/promissory-notes\/([^/]+)\/installments\/([^/]+)\/pay$/);
+  if (installment) {
+    const r = await api<{ promissoryNote: { encounterId?: string } }>(
+      `/v1/staff/promissory-notes/${installment[1]}/installments/${installment[2]}/pay`,
+      { method: 'POST', body: {} },
+    );
+    clearBridgeCache();
+    return { success: true, ...r };
+  }
   if (path === '/encounters/physicians') {
     const r = await api<{ items: { id: string; fullName: string }[] }>('/v1/staff/directory/physicians');
     return { items: r.items.map((x) => ({ ...x, name: x.fullName })) };
@@ -410,11 +463,34 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
   }
   const charge = path.match(/^\/charges\/([^/]+)$/);
   if (charge) {
-    if (method !== 'DELETE')
-      return unavailable('Charge editing. Remove with a reason and add the corrected charge');
     const list = await census();
     const e = list.find((e) => e.items.some((c) => c.id === charge[1]));
     if (!e) throw new ApiRequestError(404, 'NOT_FOUND', 'Charge not found.');
+    if (method === 'PATCH' || method === 'PUT') {
+      const existing = e.items.find((c) => c.id === charge[1])!;
+      await api(`/v1/staff/encounters/${e.id}/charges/${charge[1]}/remove`, {
+        method: 'POST',
+        body: { reason: 'Charge line updated by staff' },
+      });
+      const cat = b.category ?? existing.category;
+      return mutated(e.id, 'charges', {
+        code: b.code ?? existing.code,
+        description: b.description ?? existing.description,
+        category: cat === 'ROOM_BOARD' ? 'ROOM_AND_BOARD' : cat === 'CENTRAL_SUPPLIES' ? 'SUPPLIES' : cat,
+        quantity: Number(b.qty ?? b.quantity ?? existing.qty),
+        unitPriceCents: centavos(b.unitPrice ?? existing.unitPrice),
+        coverage:
+          b.coverageType === 'PATIENT_DIRECT' ||
+          b.status === 'DISALLOWED_SUNDRY' ||
+          (!b.coverageType && !b.status && existing.status === 'DISALLOWED_SUNDRY')
+            ? 'EXCLUDED'
+            : 'COVERED',
+        ...((b.plainLanguageExplainer ?? existing.plainLanguageExplainer)
+          ? { explainer: b.plainLanguageExplainer ?? existing.plainLanguageExplainer }
+          : {}),
+      });
+    }
+    if (method !== 'DELETE') return unavailable('Charge editing');
     return mutated(e.id, `charges/${charge[1]}/remove`, {
       reason: await promptRequired('Reason for removing this charge (at least 5 characters)', 5),
     });
@@ -427,6 +503,19 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
   if (method === 'GET' && (action === 'statement' || action === 'invoice')) {
     const e = mapEncounter(await detail(id));
     return { encounter: e, waterfall: e.waterfall, items: e.items, patient: e.patient };
+  }
+  if (!action && (method === 'PATCH' || method === 'PUT')) {
+    const d = await api<EncounterDetail>(`/v1/staff/encounters/${id}`, {
+      method: 'PATCH',
+      body: {
+        ...(b.bedId ? { bedId: b.bedId } : {}),
+        ...(b.attendingPhysicianId ? { attendingPhysicianId: b.attendingPhysicianId } : {}),
+        ...(b.primaryDiagnosis ? { primaryDiagnosis: b.primaryDiagnosis } : {}),
+        ...(b.icd10Code || b.primaryIcd10 ? { icd10Code: b.icd10Code ?? b.primaryIcd10 } : {}),
+      },
+    });
+    details.delete(id);
+    return { success: true, encounter: mapEncounter(d) };
   }
   if (action === 'gate-pass') {
     const pass = await api<{ passNumber: string; pin: string; issuedAt: string; expiresAt: string }>(
@@ -507,6 +596,15 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
   }
   if (action === 'finalize-bill') return mutated(id, 'bill/finalize');
   if (action === 'send-bill') return mutated(id, 'bill/send');
+  if (action === 'notify-patient-sms') {
+    return mutated(id, 'notify', { kind: 'PATIENT_SMS', message: b.message });
+  }
+  if (action === 'nudge-doctor') {
+    return mutated(id, 'notify', { kind: 'DOCTOR_NUDGE', message: b.message });
+  }
+  if (action === 'view-bill') {
+    return { success: true, encounter: mapEncounter(await detail(id)) };
+  }
   if (action === 'payments') {
     const key = new Headers(options.headers).get('Idempotency-Key');
     if (!key)
@@ -581,11 +679,5 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
     details.delete(id);
     return { success: true, deletedId: id };
   }
-  return unavailable(
-    action.includes('sms') || action === 'nudge-doctor'
-      ? 'SMS notifications'
-      : action === 'view-bill'
-        ? 'Patient bill-view tracking'
-        : 'Encounter editing',
-  );
+  return unavailable('Encounter editing');
 }

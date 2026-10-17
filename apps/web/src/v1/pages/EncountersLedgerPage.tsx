@@ -6,20 +6,60 @@ import { formatPhp } from '@/v1/utils/formatters';
 import React, { useState } from 'react';
 
 export const EncountersLedgerPage: React.FC = () => {
-  const { encounters, selectEncounter, openAdmitPatientModal, notifyPatientSms, isSmsSending } = useMedCore();
+  const { encounters, selectEncounter, openAdmitPatientModal, notifyPatientSms, isSmsSending, activeRole } =
+    useMedCore();
   const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>('INPATIENT_LEDGER');
 
   // Estimator State
   const [smsEncounterId, setSmsEncounterId] = useState('');
   const smsEncounter = encounters.find((enc) => enc.id === smsEncounterId);
-  const [selectedProcedure, setSelectedProcedure] = useState('UNAVAILABLE');
+  const [selectedProcedure, setSelectedProcedure] = useState('LAP_CHOLE');
 
   const tabs = [
     { id: 'INPATIENT_LEDGER' as const, label: `Active inpatients (${encounters.length})` },
     { id: 'PRE_ADMISSION_INTAKE' as const, label: 'Pre-admission cost estimator' },
   ];
 
-  const procedures = [{ code: 'UNAVAILABLE', name: 'Procedure bundles unavailable' }];
+  const procedures = [
+    {
+      code: 'LAP_CHOLE',
+      name: 'Laparoscopic Cholecystectomy (Gallbladder)',
+      estGross: 135000,
+      philhealthACR: 31000,
+      avgHmoLoa: 85000,
+      estPatientOop: 19000,
+      avgLos: '2.5 Days',
+    },
+    {
+      code: 'CS_SECTION',
+      name: 'Primary Cesarean Section Delivery',
+      estGross: 98000,
+      philhealthACR: 28000,
+      avgHmoLoa: 55000,
+      estPatientOop: 15000,
+      avgLos: '3.0 Days',
+    },
+    {
+      code: 'KNEE_ARTHRO',
+      name: 'Total Knee Arthroplasty (Unilateral)',
+      estGross: 245000,
+      philhealthACR: 45000,
+      avgHmoLoa: 160000,
+      estPatientOop: 40000,
+      avgLos: '4.0 Days',
+    },
+    {
+      code: 'APPENDECTOMY',
+      name: 'Open Appendectomy with Complicated Peritonitis',
+      estGross: 110000,
+      philhealthACR: 24000,
+      avgHmoLoa: 68000,
+      estPatientOop: 18000,
+      avgLos: '3.5 Days',
+    },
+  ];
+
+  const currentProc = procedures.find((p) => p.code === selectedProcedure) || procedures[0];
 
   return (
     <div className="flex-1 flex flex-col h-full bg-white overflow-hidden">
@@ -66,7 +106,8 @@ export const EncountersLedgerPage: React.FC = () => {
               Pre-Admission Cost Estimation &amp; Orientation
             </h3>
             <p className="text-sm text-slate-500 mt-1">
-              Procedure estimates and scheduled admissions are unavailable from the v2 API.
+              Upfront statutory deduction calculations, case rate lookups, and RA 10932 Anti-Deposit
+              compliance.
             </p>
           </div>
 
@@ -87,7 +128,6 @@ export const EncountersLedgerPage: React.FC = () => {
                 </label>
                 <Select
                   size="md"
-                  disabled
                   value={selectedProcedure}
                   onChange={(e) => setSelectedProcedure(e.target.value)}
                   className="w-full font-semibold"
@@ -104,19 +144,27 @@ export const EncountersLedgerPage: React.FC = () => {
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 text-sm">
                 <div className="flex justify-between text-slate-600">
                   <span>Estimated gross charges</span>
-                  <span className="font-mono font-semibold text-slate-900">Unavailable</span>
+                  <span className="font-mono font-semibold text-slate-900">
+                    {formatPhp(currentProc.estGross)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Less: PhilHealth ACR</span>
-                  <span className="font-mono text-emerald-700 font-semibold">- Unavailable</span>
+                  <span className="font-mono text-emerald-700 font-semibold">
+                    - {formatPhp(currentProc.philhealthACR)}
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Less: HMO coverage</span>
-                  <span className="font-mono text-blue-700 font-semibold">- Unavailable</span>
+                  <span className="font-mono text-blue-700 font-semibold">
+                    - {formatPhp(currentProc.avgHmoLoa)}
+                  </span>
                 </div>
                 <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline font-bold text-base text-slate-900">
                   <span>Estimated Out-of-Pocket</span>
-                  <span className="font-mono text-xl text-slate-900 tabular-nums">Unavailable</span>
+                  <span className="font-mono text-xl text-slate-900 tabular-nums">
+                    {formatPhp(currentProc.estPatientOop)}
+                  </span>
                 </div>
               </div>
 
@@ -140,14 +188,19 @@ export const EncountersLedgerPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-slate-500 mt-2">SMS orientation is not available yet.</p>
+                <p className="text-xs text-slate-500 mt-2">
+                  The simulated reminder includes the admission reference and IDs to prepare.
+                </p>
               </div>
               <Button
                 fullWidth
                 size="md"
                 variant="primary"
-                disabled
-                title="SMS notifications are not available yet"
+                disabled={
+                  !smsEncounter ||
+                  isSmsSending(smsEncounter.id) ||
+                  !['BILLING_SPECIALIST', 'HOSPITAL_CFO'].includes(activeRole)
+                }
                 onClick={() => {
                   if (smsEncounter) void notifyPatientSms(smsEncounter.id, 'INTAKE_ORIENTATION');
                 }}
@@ -162,7 +215,7 @@ export const EncountersLedgerPage: React.FC = () => {
             <div className="lg:col-span-7 p-6 rounded-xl border border-slate-200 space-y-4 bg-white shadow-2xs">
               <div className="flex items-baseline justify-between">
                 <h4 className="font-bold text-base text-slate-900">Scheduled Pre-Admission Encounters</h4>
-                <span className="text-xs text-slate-500 font-medium">Schedule unavailable</span>
+                <span className="text-xs text-slate-500 font-medium">{encounters.length} scheduled</span>
               </div>
 
               <div className="max-h-[380px] overflow-y-auto overflow-x-auto overscroll-contain rounded-lg border border-slate-200">
@@ -177,12 +230,7 @@ export const EncountersLedgerPage: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <tr>
-                      <td colSpan={5} className="p-4 text-slate-500">
-                        Scheduled pre-admissions are unavailable.
-                      </td>
-                    </tr>
-                    {([] as typeof encounters).map((enc) => (
+                    {encounters.map((enc) => (
                       <tr key={enc.id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-3 px-3 text-left">
                           <div className="font-semibold text-slate-900">

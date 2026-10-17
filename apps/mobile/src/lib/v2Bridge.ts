@@ -100,6 +100,8 @@ export interface V2StayDetail {
     clearedAt: string | null;
     discountKind: 'NONE' | 'SENIOR' | 'PWD';
     billReady: boolean;
+    bedCode?: string | null;
+    roomCategory?: string | null;
   };
   ledger?: V2Ledger | null;
   charges?: V2Charge[];
@@ -108,6 +110,23 @@ export interface V2StayDetail {
   disputes?: V2Dispute[];
   timeline?: { kind: string; title: string; detail: string | null; createdAt: string }[];
   gatePass?: { passNumber: string; pin: string; expiresAt: string } | null;
+  philhealth?: {
+    id: string;
+    claimNumber: string;
+    caseRateCode: string;
+    hciCents: number;
+    pfCents: number;
+    status: string;
+    transmittedAt: string | null;
+  } | null;
+  hmo?: {
+    providerName: string;
+    memberNumberLast4: string;
+    mblCents: number;
+    approvedCents: number;
+    loaStatus: string;
+    approvalCode: string | null;
+  } | null;
   options?: { onlinePayments: boolean; onlinePromissory: boolean };
 }
 export interface V2Me {
@@ -137,8 +156,17 @@ function itemStatus(c: V2Charge): string {
 /** v1 category keys used by the bill screen. */
 const V1_CATEGORY: Record<string, string> = { ROOM_AND_BOARD: 'ROOM_BOARD', SUPPLIES: 'CENTRAL_SUPPLIES' };
 
-export function toBillItem(c: V2Charge): BillItem {
+export function toBillItem(
+  c: V2Charge,
+  coveredPoolCents = 0,
+  philhealthPoolCents = 0,
+  hmoPoolCents = 0,
+): BillItem {
   const excluded = c.coverage === 'EXCLUDED';
+  const ratio = !excluded && coveredPoolCents > 0 ? c.grossCents / coveredPoolCents : 0;
+  const philCents = Math.min(c.grossCents, Math.round(philhealthPoolCents * ratio));
+  const hmoCents = Math.min(Math.max(0, c.grossCents - philCents), Math.round(hmoPoolCents * ratio));
+  const oopCents = excluded ? c.grossCents : Math.max(0, c.grossCents - philCents - hmoCents);
   return {
     id: c.id,
     code: '',
@@ -147,11 +175,10 @@ export function toBillItem(c: V2Charge): BillItem {
     qty: c.quantity,
     unitPrice: pesos(c.unitPriceCents),
     grossAmount: pesos(c.grossCents),
-    // v2 allocates coverage to the bill, not to individual lines.
-    allocationAvailable: false,
-    philhealthCovered: 0,
-    hmoCovered: 0,
-    patientOop: excluded ? pesos(c.grossCents) : 0,
+    allocationAvailable: coveredPoolCents > 0,
+    philhealthCovered: pesos(philCents),
+    hmoCovered: pesos(hmoCents),
+    patientOop: pesos(oopCents),
     status: itemStatus(c),
     exclusionReasonClause: excluded ? 'Not covered by PhilHealth or your HMO.' : undefined,
     plainLanguageExplainer: c.explainer ?? '',
@@ -165,16 +192,20 @@ export function toEncounter(d: V2StayDetail): PatientEncounter {
   const charges = (d.charges ?? []).filter((c) => c.coverage !== 'WAIVED');
   const pf = charges.filter((c) => c.category === 'PROFESSIONAL_FEE').reduce((n, c) => n + c.grossCents, 0);
   const excluded = charges.filter((c) => c.coverage === 'EXCLUDED').reduce((n, c) => n + c.grossCents, 0);
+  const coveredGrossCents = charges
+    .filter((c) => c.coverage === 'COVERED')
+    .reduce((n, c) => n + c.grossCents, 0);
   const gross = l?.grossCents ?? 0;
   const activeNote = (d.promissoryNotes ?? []).find((n) => n.status === 'ACTIVE') ?? d.promissoryNotes?.[0];
   const chargeName = new Map((d.charges ?? []).map((c) => [c.id, c.description]));
+  const phil = d.philhealth ?? null;
+  const hmo = d.hmo ?? null;
   return {
     id: s.id,
     uuid: s.id,
     encounterNumber: s.encounterNumber,
-    // Bed, physician and diagnosis are staff-only in v2; empty values are hidden by the screens.
-    roomBed: '',
-    roomCategory: '',
+    roomBed: s.bedCode ?? '',
+    roomCategory: s.roomCategory ?? '',
     admissionDate: s.admittedAt,
     mghOrderTimestamp: '',
     attendingDoctor: '',
@@ -188,8 +219,8 @@ export function toEncounter(d: V2StayDetail): PatientEncounter {
       vatExemption: pesos(l?.vatExemptionCents),
       seniorPwdDiscount: pesos(l?.seniorPwdDiscountCents),
       netVatDiscountedBase: pesos(gross - (l?.vatExemptionCents ?? 0) - (l?.seniorPwdDiscountCents ?? 0)),
-      philhealthHci: pesos(l?.philhealthCents),
-      philhealthPf: 0,
+      philhealthHci: pesos(phil ? phil.hciCents : l?.philhealthCents),
+      philhealthPf: pesos(phil ? phil.pfCents : 0),
       philhealthTotal: pesos(l?.philhealthCents),
       hmoApprovedAmount: pesos(l?.hmoCents),
       netPatientDue: pesos(l?.netPatientDueCents),
@@ -198,29 +229,29 @@ export function toEncounter(d: V2StayDetail): PatientEncounter {
       doctorExcessPf: 0,
       patientPaid: pesos(l?.paidCents),
     },
-    items: charges.map(toBillItem),
+    items: charges.map((c) => toBillItem(c, coveredGrossCents, l?.philhealthCents ?? 0, l?.hmoCents ?? 0)),
     hmo: {
-      providerName: (l?.hmoCents ?? 0) > 0 ? 'Your HMO' : 'None',
-      cardMasked: '',
-      policyMbl: 0,
-      mblRemaining: 0,
+      providerName: hmo?.providerName ?? ((l?.hmoCents ?? 0) > 0 ? 'Your HMO' : 'None'),
+      cardMasked: hmo?.memberNumberLast4 ? `****-${hmo.memberNumberLast4}` : '',
+      policyMbl: pesos(hmo?.mblCents),
+      mblRemaining: pesos(Math.max(0, (hmo?.mblCents ?? 0) - (l?.hmoCents ?? 0))),
       dailyRoomAllowance: 0,
-      initialLoaApproved: (l?.hmoCents ?? 0) > 0,
-      finalLoaStatus: (l?.hmoCents ?? 0) > 0 ? 'APPROVED' : 'NONE',
+      initialLoaApproved: hmo ? hmo.loaStatus !== 'NONE' : (l?.hmoCents ?? 0) > 0,
+      finalLoaStatus: hmo?.loaStatus ?? ((l?.hmoCents ?? 0) > 0 ? 'APPROVED' : 'NONE'),
       approvedAmount: pesos(l?.hmoCents),
       disallowedConsumables: pesos(excluded),
     },
     philhealth: {
-      id: '',
+      id: phil?.id ?? '',
       primaryIcd10: '',
       primaryDescription: '',
-      caseRateCode: '',
+      caseRateCode: phil?.caseRateCode ?? '',
       totalCaseRate: pesos(l?.philhealthCents),
-      hciAmount: pesos(l?.philhealthCents),
-      pfAmount: 0,
+      hciAmount: pesos(phil ? phil.hciCents : l?.philhealthCents),
+      pfAmount: pesos(phil ? phil.pfCents : 0),
       isNbb: false,
       rthRiskScore: 0,
-      status: 'UNAVAILABLE',
+      status: phil?.status ?? ((l?.philhealthCents ?? 0) > 0 ? 'READY' : 'UNAVAILABLE'),
     },
     dischargePass: d.gatePass
       ? {
@@ -571,9 +602,10 @@ export async function bridge(
     return json(r.status, r.data);
   }
 
-  // ----- AI (not in v2 yet) -----
+  // ----- AI (Cora chat, explainer, OCR) -----
   if (route.startsWith('/ai/')) {
-    return fail(503, 'AI_UNAVAILABLE', 'AI is temporarily unavailable right now. Please try again shortly.');
+    const r = await call(method, `/patient${route}`, body, idempotencyKey);
+    return json(r.status, r.data);
   }
   if (route === '/patient/demo/patients') {
     return fail(403, 'FORBIDDEN', 'Hospital patient browsing is not available to this account.');
@@ -622,8 +654,21 @@ export async function bridge(
         return json(200, { items, total: items.length, pushSupported: false });
       }
       case '/patient/me/claims':
-        // Claim status is staff-only in v2 (docs/v2/API_GAPS.md item 9).
-        return list([]);
+        return list(
+          details
+            .filter((d) => d.philhealth)
+            .map((d) => ({
+              id: d.philhealth!.id,
+              claimNumber: d.philhealth!.claimNumber,
+              encounterNumber: d.stay.encounterNumber,
+              caseRateCode: d.philhealth!.caseRateCode,
+              totalCaseRate: pesos(d.philhealth!.hciCents + d.philhealth!.pfCents),
+              hciAmount: pesos(d.philhealth!.hciCents),
+              pfAmount: pesos(d.philhealth!.pfCents),
+              status: d.philhealth!.status,
+              transmittedAt: d.philhealth!.transmittedAt,
+            })),
+        );
     }
     return fail(404, 'NOT_FOUND', 'We could not find that record.');
   }

@@ -1,5 +1,6 @@
 import {
   CreatePatientBody,
+  formatPeso,
   PageQuery,
   ResolveDisputeBody,
   UpdateBedBody,
@@ -17,10 +18,15 @@ import {
   disputes,
   encounters,
   facilities,
+  gatePasses,
   ledgers,
   patients,
+  payments,
   philhealthClaims,
+  promissoryNotes,
+  receipts,
   staffUsers,
+  timelineEvents,
 } from '../db/schema';
 import { ApiError, conflict, notFound } from '../lib/errors';
 import { idParam } from '../lib/params';
@@ -549,5 +555,389 @@ staffOperationRoutes.get(
       .limit(pageSize)
       .offset((page - 1) * pageSize);
     return c.json({ items: rows, page, pageSize });
+  },
+);
+
+// ---------------------------------------------------------------- notifications & sms outbox
+const readNotificationsByStaff = new Map<string, Set<string>>();
+
+staffOperationRoutes.get('/notifications', async (c) => {
+  const staff = c.var.staff;
+  if (staff.role === 'LOBBY_SECURITY') {
+    return c.json({ items: [] });
+  }
+  const db = c.var.db;
+  const readSet = readNotificationsByStaff.get(staff.id) ?? new Set<string>();
+  const scope = staffEncounterScope(staff);
+
+  const recentPayments = await db
+    .select({
+      id: payments.id,
+      encounterId: encounters.id,
+      encounterNumber: encounters.encounterNumber,
+      patientName: patients.fullName,
+      amountCents: payments.amountCents,
+      rail: payments.rail,
+      createdAt: payments.createdAt,
+      orNumber: receipts.officialReceiptNumber,
+    })
+    .from(payments)
+    .innerJoin(encounters, eq(encounters.id, payments.encounterId))
+    .innerJoin(patients, eq(patients.id, encounters.patientId))
+    .innerJoin(receipts, eq(receipts.paymentId, payments.id))
+    .where(and(scope, isNull(encounters.voidedAt)))
+    .orderBy(desc(payments.createdAt))
+    .limit(12);
+
+  const recentDisputes = await db
+    .select({
+      id: disputes.id,
+      encounterId: encounters.id,
+      encounterNumber: encounters.encounterNumber,
+      patientName: patients.fullName,
+      chargeDescription: charges.description,
+      contestedCents: disputes.contestedCents,
+      status: disputes.status,
+      createdAt: disputes.createdAt,
+    })
+    .from(disputes)
+    .innerJoin(encounters, eq(encounters.id, disputes.encounterId))
+    .innerJoin(patients, eq(patients.id, encounters.patientId))
+    .innerJoin(charges, eq(charges.id, disputes.chargeId))
+    .where(and(scope, isNull(encounters.voidedAt)))
+    .orderBy(desc(disputes.createdAt))
+    .limit(10);
+
+  const recentPasses = await db
+    .select({
+      id: gatePasses.id,
+      encounterId: encounters.id,
+      encounterNumber: encounters.encounterNumber,
+      patientName: patients.fullName,
+      passNumber: gatePasses.passNumber,
+      status: gatePasses.status,
+      issuedAt: gatePasses.issuedAt,
+    })
+    .from(gatePasses)
+    .innerJoin(encounters, eq(encounters.id, gatePasses.encounterId))
+    .innerJoin(patients, eq(patients.id, encounters.patientId))
+    .where(and(scope, isNull(encounters.voidedAt)))
+    .orderBy(desc(gatePasses.issuedAt))
+    .limit(10);
+
+  const recentTimeline = await db
+    .select({
+      id: timelineEvents.id,
+      encounterId: encounters.id,
+      encounterNumber: encounters.encounterNumber,
+      patientName: patients.fullName,
+      kind: timelineEvents.kind,
+      title: timelineEvents.title,
+      detail: timelineEvents.detail,
+      createdAt: timelineEvents.createdAt,
+    })
+    .from(timelineEvents)
+    .innerJoin(encounters, eq(encounters.id, timelineEvents.encounterId))
+    .innerJoin(patients, eq(patients.id, encounters.patientId))
+    .where(and(scope, isNull(encounters.voidedAt)))
+    .orderBy(desc(timelineEvents.createdAt))
+    .limit(15);
+
+  const items: Array<{
+    id: string;
+    encounterId: string;
+    type: string;
+    title: string;
+    message: string;
+    read: boolean;
+    timestamp: string;
+  }> = [];
+
+  for (const p of recentPayments) {
+    const id = `pay-${p.id}`;
+    items.push({
+      id,
+      encounterId: p.encounterNumber,
+      type: 'PAYMENT_RECEIVED',
+      title: `Payment Recorded (${p.rail})`,
+      message: `${p.patientName} settled ${formatPeso(p.amountCents)} — OR ${p.orNumber}.`,
+      read: readSet.has(id),
+      timestamp: p.createdAt.toISOString(),
+    });
+  }
+
+  for (const d of recentDisputes) {
+    const id = `disp-${d.id}`;
+    items.push({
+      id,
+      encounterId: d.encounterNumber,
+      type: d.status === 'OPEN' ? 'DISPUTE_FILED' : 'DISPUTE_RESOLVED',
+      title:
+        d.status === 'OPEN'
+          ? `Open Dispute: ${d.chargeDescription}`
+          : `Dispute ${d.status}: ${d.chargeDescription}`,
+      message: `${d.patientName} (${d.encounterNumber}) — ${formatPeso(d.contestedCents)}.`,
+      read: readSet.has(id),
+      timestamp: d.createdAt.toISOString(),
+    });
+  }
+
+  for (const g of recentPasses) {
+    const id = `gp-${g.id}`;
+    items.push({
+      id,
+      encounterId: g.encounterNumber,
+      type: 'GATE_PASS_ISSUED',
+      title: `Exit Pass ${g.passNumber} (${g.status})`,
+      message: `${g.patientName} (${g.encounterNumber}) cleared for lobby exit.`,
+      read: readSet.has(id),
+      timestamp: g.issuedAt.toISOString(),
+    });
+  }
+
+  for (const t of recentTimeline) {
+    const id = `tl-${t.id}`;
+    items.push({
+      id,
+      encounterId: t.encounterNumber,
+      type: t.kind,
+      title: `${t.title} — ${t.patientName}`,
+      message: t.detail ?? `${t.encounterNumber} updated.`,
+      read: readSet.has(id),
+      timestamp: t.createdAt.toISOString(),
+    });
+  }
+
+  items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return c.json({ items: items.slice(0, 30) });
+});
+
+const MarkReadBody = z.object({
+  id: z.string().optional(),
+  notificationIds: z.array(z.string()).optional(),
+});
+
+staffOperationRoutes.post('/notifications/mark-read', jsonBody(MarkReadBody), async (c) => {
+  const body = c.req.valid('json');
+  const staffId = c.var.staff.id;
+  let readSet = readNotificationsByStaff.get(staffId);
+  if (!readSet) {
+    readSet = new Set<string>();
+    readNotificationsByStaff.set(staffId, readSet);
+  }
+  if (body.id) readSet.add(body.id);
+  if (body.notificationIds) {
+    for (const id of body.notificationIds) readSet.add(id);
+  }
+  if (!body.id && !body.notificationIds?.length) {
+    // Mark all current notifications read
+    const db = c.var.db;
+    const scope = staffEncounterScope(c.var.staff);
+    const [pays, disps, passes, tls] = await Promise.all([
+      db
+        .select({ id: payments.id })
+        .from(payments)
+        .innerJoin(encounters, eq(encounters.id, payments.encounterId))
+        .where(scope)
+        .limit(30),
+      db
+        .select({ id: disputes.id })
+        .from(disputes)
+        .innerJoin(encounters, eq(encounters.id, disputes.encounterId))
+        .where(scope)
+        .limit(30),
+      db
+        .select({ id: gatePasses.id })
+        .from(gatePasses)
+        .innerJoin(encounters, eq(encounters.id, gatePasses.encounterId))
+        .where(scope)
+        .limit(30),
+      db
+        .select({ id: timelineEvents.id })
+        .from(timelineEvents)
+        .innerJoin(encounters, eq(encounters.id, timelineEvents.encounterId))
+        .where(scope)
+        .limit(30),
+    ]);
+    for (const r of pays) readSet.add(`pay-${r.id}`);
+    for (const r of disps) readSet.add(`disp-${r.id}`);
+    for (const r of passes) readSet.add(`gp-${r.id}`);
+    for (const r of tls) readSet.add(`tl-${r.id}`);
+  }
+  return c.json({ ok: true });
+});
+
+staffOperationRoutes.get('/notifications/sms-outbox', requirePermission('encounter:read'), async (c) => {
+  const rows = await c.var.db
+    .select({
+      id: auditLogs.id,
+      action: auditLogs.action,
+      resourceId: auditLogs.resourceId,
+      detail: auditLogs.detail,
+      createdAt: auditLogs.createdAt,
+    })
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.facilityId, c.var.staff.facilityId),
+        sql`${auditLogs.action} IN ('PATIENT_SMS_LOGGED', 'DOCTOR_PF_NUDGED', 'BILL_SENT')`,
+      ),
+    )
+    .orderBy(desc(auditLogs.id))
+    .limit(25);
+
+  return c.json({
+    items: rows.map((r) => {
+      const detailObj = (r.detail ?? {}) as Record<string, unknown>;
+      return {
+        id: String(r.id),
+        encounterId: String(detailObj.encounterNumber ?? r.resourceId ?? ''),
+        recipient: r.action === 'DOCTOR_PF_NUDGED' ? 'Attending Physician' : 'Patient / Guarantor',
+        message: String(detailObj.message ?? `${r.action} dispatched`),
+        status: 'DELIVERED',
+        sentAt: r.createdAt.toISOString(),
+      };
+    }),
+  });
+});
+
+// ---------------------------------------------------------------- facility settings
+staffOperationRoutes.get('/facility', requirePermission('encounter:read'), async (c) => {
+  const [facility] = await c.var.db
+    .select()
+    .from(facilities)
+    .where(eq(facilities.id, c.var.staff.facilityId));
+  if (!facility) throw notFound('Facility');
+  const { config } = c.var.services;
+  return c.json({
+    facility: {
+      id: facility.id,
+      code: facility.code,
+      name: facility.name,
+      tin: facility.tin,
+      philhealthAccreditation: facility.philhealthAccreditation,
+      address: facility.address,
+      slaWarningMinutes: facility.slaWarningMinutes,
+      slaBreachMinutes: facility.slaBreachMinutes,
+    },
+    runtime: {
+      aiEnabled: config.ai.enabled,
+      aiModel: config.ai.model,
+      onlinePayments: config.patientOnlinePayments,
+      onlinePromissory: config.patientOnlinePromissory,
+      mailTransport: config.mail.transport,
+      staffMfaRequired: config.staffMfaRequired,
+    },
+  });
+});
+
+const UpdateFacilityBody = z.strictObject({
+  name: z.string().trim().min(2).max(200).optional(),
+  address: z.string().trim().min(2).max(300).optional(),
+  tin: z.string().trim().min(3).max(20).optional(),
+  philhealthAccreditation: z.string().trim().min(2).max(32).optional(),
+  slaWarningMinutes: z.number().int().min(5).max(240).optional(),
+  slaBreachMinutes: z.number().int().min(10).max(480).optional(),
+});
+
+staffOperationRoutes.put(
+  '/facility',
+  requirePermission('staff:manage'),
+  jsonBody(UpdateFacilityBody),
+  async (c) => {
+    const body = c.req.valid('json');
+    const facilityId = c.var.staff.facilityId;
+    const updated = await c.var.db.transaction(async (tx) => {
+      const [current] = await tx.select().from(facilities).where(eq(facilities.id, facilityId)).for('update');
+      if (!current) throw notFound('Facility');
+      const warn = body.slaWarningMinutes ?? current.slaWarningMinutes;
+      const breach = body.slaBreachMinutes ?? current.slaBreachMinutes;
+      if (warn >= breach) {
+        throw new ApiError(
+          422,
+          'INVALID_SLA_THRESHOLDS',
+          'The SLA warning threshold must be lower than the breach threshold.',
+        );
+      }
+      const [next] = await tx
+        .update(facilities)
+        .set({
+          ...(body.name ? { name: body.name } : {}),
+          ...(body.address ? { address: body.address } : {}),
+          ...(body.tin ? { tin: body.tin } : {}),
+          ...(body.philhealthAccreditation ? { philhealthAccreditation: body.philhealthAccreditation } : {}),
+          slaWarningMinutes: warn,
+          slaBreachMinutes: breach,
+        })
+        .where(eq(facilities.id, facilityId))
+        .returning();
+      await audit(c, tx, {
+        action: 'FACILITY_SETTINGS_UPDATED',
+        resourceType: 'facility',
+        resourceId: facilityId,
+        detail: body,
+      });
+      return next!;
+    });
+    return c.json({ facility: updated });
+  },
+);
+
+// ---------------------------------------------------------------- promissory installment settlement
+staffOperationRoutes.post(
+  '/promissory-notes/:id/installments/:seq/pay',
+  requirePermission('payment:record'),
+  async (c) => {
+    const id = idParam(c, 'id', 'Promissory note');
+    const seq = Number(c.req.param('seq'));
+    if (!Number.isInteger(seq) || seq < 1) {
+      throw new ApiError(422, 'INVALID_INSTALLMENT', 'Select a valid installment number.');
+    }
+    const now = c.var.services.now();
+    const updated = await c.var.db.transaction(async (tx) => {
+      const [note] = await tx
+        .select()
+        .from(promissoryNotes)
+        .where(and(eq(promissoryNotes.id, id), eq(promissoryNotes.facilityId, c.var.staff.facilityId)))
+        .for('update');
+      if (!note) throw notFound('Promissory note');
+      const schedule = Array.isArray(note.schedule)
+        ? (note.schedule as Array<{
+            sequence?: number;
+            installmentNumber?: number;
+            dueDate: string;
+            amountCents?: number;
+            amount?: number;
+            status?: string;
+            paidAt?: string | null;
+          }>)
+        : [];
+      const idx = schedule.findIndex((s, i) => (s.sequence ?? s.installmentNumber ?? i + 1) === seq);
+      if (idx === -1) throw notFound('Installment');
+      const target = schedule[idx]!;
+      if (target.status === 'PAID') {
+        throw conflict('INSTALLMENT_ALREADY_PAID', 'This installment is already marked paid.');
+      }
+      const nextSchedule = schedule.map((item, i) =>
+        i === idx ? { ...item, status: 'PAID', paidAt: now.toISOString() } : item,
+      );
+      const allPaid = nextSchedule.every((item) => item.status === 'PAID');
+      const [saved] = await tx
+        .update(promissoryNotes)
+        .set({
+          schedule: nextSchedule,
+          status: allPaid ? 'SETTLED' : note.status,
+        })
+        .where(eq(promissoryNotes.id, id))
+        .returning();
+      await audit(c, tx, {
+        action: 'PROMISSORY_INSTALLMENT_PAID',
+        resourceType: 'promissory_note',
+        resourceId: id,
+        detail: { sequence: seq, allPaid },
+      });
+      return saved!;
+    });
+    return c.json({ promissoryNote: updated });
   },
 );
