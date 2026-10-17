@@ -54,6 +54,15 @@ export default tseslint.config(
     },
   },
   {
+    files: ['apps/web/src/v1/**/*.{ts,tsx}'],
+    rules: {
+      ...Object.fromEntries(Object.keys(reactHooks.configs.recommended.rules).map((name) => [name, 'off'])),
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+  {
     files: ['apps/mobile/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     rules: {

@@ -3,18 +3,14 @@
 Compared: every route in `main:apps/server/src/routes/*` (56) and every page and screen of the v1 dashboard and mobile
 app, against `apps/api/src/routes/*` on `rebuild/mobile-v2` (68 routes).
 
-## Already carried over (no API work was needed)
+## Already carried over (2026-10-17 original UI port)
 
-| v1 feature                              | Where it is in v2                                                   |
-| --------------------------------------- | ------------------------------------------------------------------- |
-| Dashboard look, sidebar groups, top bar | `apps/web/src/staff/StaffLayout.tsx`, `src/index.css`               |
-| Overview priority tiles + metric cards  | `apps/web/src/staff/pages/Dashboard.tsx`                            |
-| Discharge Clearance board               | `apps/web/src/staff/pages/DischargeBoard.tsx` (`/staff/discharge`)  |
-| Pre-admission cost estimator            | `apps/web/src/staff/pages/Estimator.tsx`, now on `computeWaterfall` |
-| Settings & Rules (read-only)            | `apps/web/src/staff/pages/Rules.tsx`                                |
-| Solar icons in both apps                | `packages/icons` (`@medcore/icons`)                                 |
-| Mobile look and all tabs                | `apps/mobile/src/ui/*`, `apps/mobile/src/screens/*`                 |
-| Mobile "Hospital updates"               | `apps/mobile/src/screens/UpdatesScreen.tsx` (from the stay timeline) |
+- Dashboard: original `main:apps/dashboard` interface under `apps/web/src/v1`, with `api/v2Bridge.ts` using the v2 staff routes. Existing v2 login, invite/MFA, patients, accounts, audit and lobby remain.
+- Mobile: original screens, assets, onboarding, multi-step payment flow, receipt details and documents under `apps/mobile`; `src/lib/v2Bridge.ts` adapts v2 patient routes.
+- Solar icons: `packages/icons` (`@medcore/icons`).
+- Staff HMO roster and promissory list can be built from paginated encounter details; dedicated worklist endpoints would avoid those extra reads.
+- Existing patient timeline supplies hospital record updates, but notifications/SMS/push remain unavailable. Claims status is unavailable to patients.
+- The original procedure estimator keeps an unavailable state: v2 has no procedure bundle/pricing or scheduled pre-admission source. No sample prices are shown as actual hospital estimates.
 
 ## Missing from the v2 API (build these)
 
@@ -81,8 +77,6 @@ Ordered by how much they block the demo. "Shape" is a suggestion that fits the e
   both.
 - v1 Settings integration toggles ("Live CDC Active", HITP gateway): they were mock-ups with no backend.
 
-## Mobile items that need no API but are not done yet
+## Mobile UI restoration completed
 
-- Onboarding carousel (3 screens) and the animated launch screen.
-- The multi-step payment flow with GCash/Maya/QR Ph provider logos (v1 assets in `main:apps/mobile/assets/icons`).
-- Official receipt detail sheet (all data is already in the stay payments list).
+Onboarding, original provider-logo payment flow and receipt/document screens are restored. Simulator verification is recorded in `apps/mobile/validation/v2-original-ui.md`; physical-device and signed-build checks remain follow-ups.

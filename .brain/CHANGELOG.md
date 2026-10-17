@@ -2,6 +2,12 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
+## [2026-10-17] Original v1 UI restored on v2
+- Mobile uses the original screens and assets through `apps/mobile/src/lib/v2Bridge.ts`; verified email-code/MRN+DOB sign-in, disputes, card/bank payments, receipts, payment plan, exit pass, onboarding and unavailable AI in the iOS simulator. Mobile commit: `7b8ecc3`.
+- Dashboard uses `apps/web/src/v1/` and its API bridge, retaining v2 staff login, invitations, MFA/account, patients, staff administration and audit log. No role switching or mock financial/analytics results. The API/security routes are unchanged.
+- Browser verification: local admission → charge → MGH/start → CFO PF sign with reason → pharmacy → finalize/send → QR Ph settlement → six-digit exit pass → one-time lobby verification. Claims XML, unavailable AI/notifications, all sidebar pages and restricted lobby navigation checked. Laptop/desktop responsiveness checked; tall dialogs scroll safely.
+- Validation records: `apps/mobile/validation/v2-original-ui.md`, `apps/web/validation/v2-original-ui.md`. Unimplemented server features remain in `docs/v2/API_GAPS.md`.
+
 ## [2026-10-16] v1 look restored on v2 (branch `rebuild/mobile-v2`)
 - Dashboard: v1 tokens (SF font at 90%, #087F70 teal, mint selection), floating top bar, grouped sidebar with badges, split sign-in, Overview tiles and cards. New pages from v1: Discharge Clearance board, pre-admission estimator (now on `computeWaterfall`), read-only Settings & Rules.
 - Mobile: badge + wordmark header, floating pill tab bar, round shortcuts, teal bill card on a mint band, grouped Profile, Hospital updates.
