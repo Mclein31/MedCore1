@@ -12,7 +12,7 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 - ✅ (2026-10-16) v1 look restored on v2 (dashboard and mobile share palette, type and Solar icons via `packages/icons`); Discharge Clearance board, cost estimator, rules page and mobile Hospital updates carried over.
 - ⬜ Mobile follow-ups: EAS dev build and signed builds, physical-device checks (keychain, Dynamic Type, VoiceOver), push notifications when a bill is ready, refund display once the API has refunds.
 - ✅ (2026-10-17) Port the AI layer (PHI scrubber, Cora, OCR, claims scrubber, appeals, briefing) onto v2 with per-user rate limits and input caps.
-- ⬜ Deploy: Neon branch + Hyperdrive id + secrets in `apps/api/wrangler.jsonc`, API host in `apps/web/vercel.json` (see `DEPLOY.md`). Not deployed anywhere yet.
+- ✅ (2026-10-17) Deploy: Neon `demo` branch migrated and seeded with v2 schema, Hyperdrive id (`b611eac58efa4966b649dfa7d1631b2a`) + secrets deployed on Cloudflare Worker `medcore-backend` (`f6062a1e-d871-49e0-ba0a-55ee1a48ac3f`), and Vercel `https://med-core1.vercel.app` connected via root `vercel.json`.
 - ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet). Official PhilHealth eSOA DTD conformance still unproven.
 - ⬜ Dependency advisories (2026-10-17 root audit): 26 total (11 moderate, 15 high), including inherited Expo/tooling dependency chains. Resolve through compatible upstream upgrades; do not force breaking SDK changes as part of the UI port.
 
@@ -42,7 +42,7 @@ Run in fresh sessions. Test migrations on a Neon branch first, and never seed or
 
 ## B. Database
 - ⬜ Reconcile migration drift (audit D12): AI tables now exist (0007). Still record 0004–0007 in `drizzle.__drizzle_migrations` on `demo` before running `drizzle-kit migrate`.
-- 👤 Delete the git-ignored `.env.ohio-backup`, `.env.ohio-direct` and `.env.migration` now that the switch is confirmed. Delete the Ohio Neon project after the rollback window (permanent).
+- 👤 Delete the Ohio Neon project after the rollback window (permanent). (Local Ohio `.env` backups deleted 2026-10-22.)
 - ⬜ For a real pilot, point Hyperdrive at the `production` branch (schema only, 0 rows).
 
 ## C. Release gates for the patient mobile app (prototype only today)
