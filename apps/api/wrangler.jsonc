@@ -7,7 +7,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "hyperdrive": [
     // Point at the Neon DIRECT (unpooled) endpoint with caching disabled: money must never be served stale.
-    { "binding": "HYPERDRIVE", "id": "b611eac58efa4966b649dfa7d1631b2a" }
+    { "binding": "HYPERDRIVE", "id": "b611eac58efa4966b649dfa7d1631b2a" },
   ],
   "vars": {
     "APP_ENV": "production",
@@ -22,9 +22,9 @@
     "GEMINI_BACKUP_MODEL": "gemini-3.1-flash-lite",
     "GEMINI_PRO_MODEL": "gemini-3.1-flash-lite",
     // Workers caps PBKDF2 at 100,000 iterations.
-    "PASSWORD_PBKDF2_ITERATIONS": "100000"
+    "PASSWORD_PBKDF2_ITERATIONS": "100000",
   },
   // Hourly purge of expired codes, challenges, rate-limit buckets and old sessions.
   "triggers": { "crons": ["17 * * * *"] },
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
 }
