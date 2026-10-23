@@ -90,7 +90,7 @@ export function mapEncounter(d: EncounterDetail): Encounter {
     pfAmount: pesos(pf?.pfCents),
     isNbb: false,
     rthRiskScore:
-      pf?.rthRiskScore != null
+      pf?.rthRiskScore !== undefined && pf.rthRiskScore !== null
         ? Number(pf.rthRiskScore)
         : pf?.status === 'RETURNED'
           ? 0.42
