@@ -121,16 +121,16 @@ Important sources:
 - `MedCore_Vault/PROJECT.md`, `PRODUCT/problems.md`, `PRODUCT/users.md`, `PRODUCT/value_proposition.md`, `PRODUCT/workflows.md`, `SYSTEM/architecture.md`, and relevant `DECISIONS/` notes.
 - Actual source under `apps/dashboard/src`, `apps/mobile/src`, `apps/server/src`, and `apps/shared`.
 - `apps/dashboard/src/index.css`, `apps/dashboard/tailwind.config.js`, shared controls and actual chart components, and `apps/mobile/src/components/theme.ts` — visual authority.
-- `UI_SCREENSHOTS/` — current dashboard/mobile screen set, including authentic AI-result screenshots. `docs/media/assets/ui/` is refreshed from this set for the portable handoff; browser captures are screenshots, while the separate MP4 clips provide interactive source footage.
+- `docs/media/assets/ui/` — current dashboard/mobile screen set, including authentic AI-result screenshots; browser captures are screenshots, while the separate MP4 clips provide interactive source footage.
 - `docs/media/assets/team/manifest.json` — confirmed portrait mapping and deck roles.
 
-The current `UI_SCREENSHOTS/` set was refreshed for this production pass; it deliberately excludes the removed patient-portal feature. `docs/media/assets/ui/` mirrors the refreshed captures for the portable handoff. The older `docs/market/MedCore.pptx` contains unrelated template text about LakbayPoints and transport; the current supplied PDF is the presentation authority. Never carry those template artifacts, fake website addresses, misspelled placeholder headings, or unrelated slides into this film.
+The current `docs/media/assets/ui/` set was refreshed for this production pass; it deliberately excludes the removed patient-portal feature. The older `docs/market/MedCore.pptx` contains unrelated template text about LakbayPoints and transport; the current supplied PDF is the presentation authority. Never carry those template artifacts, fake website addresses, misspelled placeholder headings, or unrelated slides into this film.
 
 Original inspiration clips:
 
-- `product video inspo/ScreenRecording_10-13-2026 08-56-13_1.mov` — approximately 47.67 seconds; vertical screen recording of a filmed motion-graphics demo.
-- `product video inspo/v1c044g50000db56tbnog65qn3crcb1g.MP4` — approximately 64.03 seconds; horizontal UI-led product demo.
-- `product video inspo/4f3c9ad208b25464c6dae075f0ffb153.MP4` — approximately 18.46 seconds; newer short filmed motion showcase. Use only relevant reveal/settle rhythm; do not import its abstract effects.
+- `docs/media/assets/references/video-inspo/ScreenRecording_10-13-2026 08-56-13_1.mov` — approximately 47.67 seconds; vertical screen recording of a filmed motion-graphics demo.
+- `docs/media/assets/references/video-inspo/v1c044g50000db56tbnog65qn3crcb1g.MP4` — approximately 64.03 seconds; horizontal UI-led product demo.
+- `docs/media/assets/references/video-inspo/4f3c9ad208b25464c6dae075f0ffb153.MP4` — approximately 18.46 seconds; newer short filmed motion showcase. Use only relevant reveal/settle rhythm; do not import its abstract effects.
 
 Their visual contact sheets are in `docs/media/assets/references/`. These are private style references, not footage to insert into the MedCore film. Review the actual clips when available. Do not reproduce another product’s logo, text, numbers, characters, claim, music, social interface, watermark, or literal shot sequence.
 

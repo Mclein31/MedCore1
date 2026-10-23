@@ -156,6 +156,8 @@ export interface EncounterDetail {
     hciCents: number;
     pfCents: number;
     status: string;
+    rthRiskScore?: number | string | null;
+    rthReadiness?: string | null;
   } | null;
   hmo: {
     providerName: string;

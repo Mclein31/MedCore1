@@ -36,8 +36,8 @@ MedCore resolves seven billing conflicts among patients, hospitals and insurers:
 
 ## 7. Documentation pointers
 - Audit 2026-10-16: `docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`. Earlier audits: `docs/audits/2026-10-09/`, `docs/audits/2026-10-10/`.
-- Singapore database: `docs/production/NEON_REGION_MIGRATION.md`. Hosted vs local API: `docs/implementation/hosted-and-local-api.md`. Simulated payments: `docs/implementation/simulated-payments.md`. Mobile admin: `docs/implementation/mobile-admin-demo.md`. Government IDs: `docs/implementation/government-id-validation.md`.
+- Singapore database: `docs/production/NEON_REGION_MIGRATION.md`. Simulated payments: `docs/implementation/simulated-payments.md`. Mobile admin: `docs/implementation/mobile-admin-demo.md`. Government IDs: `docs/implementation/government-id-validation.md`.
 - Validation evidence: `docs/validation/{cora-language,ai-cache,sms-sandbox,sms-clean-presentation,ui-polish,cora-mascot}/`, `apps/mobile/{AUDIT.md,README.md,validation/*}`, `apps/dashboard/validation/*`.
 - Product: `MedCore_Vault/` (README index, `ONTOLOGY.md`, `BUSINESS/competitive_landscape.md`, `RESEARCH/market.md`, `RESEARCH/mobile_ui_patterns.md`, `RESEARCH/mobile_reference_mapping.md`, `DECISIONS/product_decisions.md` including ADR-008).
-- Media: `docs/media/` (V3 prompt, README, assets), `SCREEN_RECORDING_GUIDE.md`, `UI_SCREENSHOTS/`, `logo/CORA_MASCOT.md`.
+- Media: `docs/media/` (V3 prompt, README, assets), `SCREEN_RECORDING_GUIDE.md`, `docs/media/assets/ui/` (screenshots), `docs/media/assets/logos/` (brand sources, `CORA_MASCOT.md`).
 - Workflow note: independent code-reviewer agents audited each major change; the primary agent maintains the brain (no separate Brain Keeper agent).

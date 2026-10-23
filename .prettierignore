@@ -3,17 +3,15 @@ dist
 coverage
 MedCore_Vault
 docs
-UI_SCREENSHOTS
-logo
 .brain
-.agents
-.claude
 .obsidian
-product video inspo
 apps/api/drizzle
 package-lock.json
-skills-lock.json
 
 # Generated Solar icon geometry
 packages/icons/src/data.ts
 packages/icons/sources.json
+
+# Generated native project (expo prebuild)
+apps/mobile/ios
+apps/mobile/android

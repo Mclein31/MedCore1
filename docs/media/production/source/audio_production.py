@@ -1,132 +1,151 @@
 #!/usr/bin/env python3
-"""Reproducible local speech, original deterministic score, effects, SRT and mix.
-Run --prepare, run returned say commands, then run --render. Requires numpy and ffmpeg.
+"""V4 audio: synthesized SFX library + an original 120 BPM music bed (no licensing risk).
+  python3 audio_production.py --sfx     -> audio/sfx/*.wav
+  python3 audio_production.py --music   -> audio/music-bed.wav (297.5 s: tense pain half, driving solution half)
+Swap the bed for a licensed track if preferred; keep the same 120 BPM grid so the slides land on the beat.
 """
-import csv,json,re,sys,subprocess,wave, pathlib,shlex
+import pathlib, sys, wave
 import numpy as np
-ROOT=pathlib.Path(__file__).resolve().parents[2]
-OUT=ROOT/'production/audio'; OUT.mkdir(exist_ok=True,parents=True)
-FF='/private/tmp/medcore-film-deps/imageio_ffmpeg/binaries/ffmpeg-macos-aarch64-v7.1'
-SR=48000; DUR=290
 
-def secs(x):
- m,s=map(int,x.split(':'));return m*60+s
+OUT = pathlib.Path(__file__).resolve().parents[1] / 'audio'
+SR = 48000
+rng = np.random.default_rng(7)
 
-def phrases(t):
- parts=re.split(r'(?<=[.!?])\s+|(?<=,)\s+',t)
- result=[]
- for p in parts:
-  words=p.split()
-  while len(words)>12:
-   cut=next((i for i in range(min(12,len(words)-1),5,-1) if words[i] in ['and','or','for','with','into','the','to']),11)
-   result.append(' '.join(words[:cut]));words=words[cut:]
-  if words:result.append(' '.join(words))
- return result
 
-def prepare():
- rows=list(csv.DictReader((ROOT/'MEDCORE_PRODUCT_VIDEO_NARRATION_CUES.csv').open()))
- data=[];commands=[]
- for r in rows:
-  t=r['narration']
-  if r['start']=='02:02':t='Cora offers English, Taglish, Tagalog, and Ilokano language options. The important question stays simple: what do I owe, and why?'
-  if r['start']=='03:06':t='Documents keep the statement of account close at hand. Discharge passes require the recorded clearances.'
-  p=phrases(t)
-  item={'start':secs(r['start']),'end':secs(r['end']),'text':t,'phrases':[]}
-  for text in p:
-   idx=sum(len(i['phrases']) for i in data)+len(item['phrases'])
-   name=f'phrase-{idx:03d}.aiff'
-   speech=text.replace('MedCore','Med Core').replace('HMO','H M O').replace('QR Ph','Q R P H').replace('DTI’s','D T I’s').replace('NCR','N C R').replace('ClaimReady','Claim Ready')
-   item['phrases'].append({'text':text,'file':name,'rate_wpm':140})
-   commands.append('say -v Samantha -r 140 -o '+shlex.quote(str(OUT/name))+' '+shlex.quote(speech))
-  data.append(item)
- (OUT/'narration-plan.json').write_text(json.dumps(data,indent=2))
- (OUT/'synthesis-commands.json').write_text(json.dumps(commands,indent=2))
- (OUT/'narration-final.txt').write_text('\n\n'.join(x['text'] for x in data if x['text']))
- print(json.dumps(commands))
+def write(path, a):
+    if a.ndim == 1:
+        a = np.repeat(a[:, None], 2, axis=1)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), 'wb') as f:
+        f.setnchannels(2); f.setsampwidth(2); f.setframerate(SR)
+        f.writeframes((np.clip(a, -1, 1) * 32767).astype('<i2').tobytes())
 
-def decode(path):
- b=subprocess.check_output([FF,'-v','error','-i',str(path),'-f','f32le','-ar',str(SR),'-ac','1','-'])
- a=np.frombuffer(b,dtype='<f4').copy(); active=np.where(abs(a)>.003)[0]
- if len(active):a=a[max(0,active[0]-int(.07*SR)):min(len(a),active[-1]+int(.12*SR))]
- return a
 
-def wav(name,a):
- with wave.open(str(OUT/name),'wb') as f:
-  f.setnchannels(2);f.setsampwidth(2);f.setframerate(SR);f.writeframes((np.clip(a,-.999,.999)*32767).astype('<i2').tobytes())
+def t(sec):
+    return np.arange(int(sec * SR)) / SR
 
-def stamp(t):
- v=int(round(t*1000));return f'{v//3600000:02}:{v//60000%60:02}:{v//1000%60:02},{v%1000:03}'
 
-def render():
- n=SR*DUR;voice=np.zeros(n,dtype=np.float32);music=np.zeros((n,2),dtype=np.float32);fx=np.zeros((n,2),dtype=np.float32)
- data=json.loads((OUT/'narration-plan.json').read_text());caps=[];rng=np.random.default_rng(2718)
- for cue in data:
-  arr=[decode(OUT/p['file']) for p in cue['phrases']]
-  if not arr:continue
-  gap=.12; total=sum(len(a)/SR for a in arr)+gap*(len(arr)-1)
-  available=cue['end']-cue['start']-.3; factor=max(1,total/available)
-  cue['time_compression']=factor;cue['effective_rate_wpm']=140*factor
-  at=cue['start']+.12
-  for p,a in zip(cue['phrases'],arr):
-   if factor>1:
-    proc=subprocess.run([FF,'-v','error','-f','f32le','-ar',str(SR),'-ac','1','-i','-','-af',f'atempo={factor:.7f}','-f','f32le','-'],input=a.astype('<f4').tobytes(),stdout=subprocess.PIPE,check=True)
-    a=np.frombuffer(proc.stdout,dtype='<f4')
-   begin=int(at*SR);voice[begin:begin+len(a)]+=a
-   p.update(start=at,end=at+len(a)/SR);caps.append(p);at+=len(a)/SR+gap/factor
- peak=max(abs(voice));voice*=.72/peak
- # Original C major / A minor / F / G soft-key progression. 96 BPM.
- beat=60/96;bar=4*beat
- chords=[[48,52,55,59],[45,48,52,55],[41,45,48,52],[43,47,50,55]]
- def note(dest,at,midi,duration,gain,pan=0,kind='key'):
-  count=min(int(duration*SR),n-int(at*SR))
-  if count<=0:return
-  t=np.arange(count)/SR;freq=440*2**((midi-69)/12)
-  env=(1-np.exp(-t/.018))*np.exp(-t/(duration/3))*np.minimum(1,(duration-t)/.12)
-  if kind=='bass':env=(1-np.exp(-t/.035))*np.exp(-t/.55)
-  signal=(np.sin(2*np.pi*freq*t)+.16*np.sin(2*np.pi*freq*2*t)+.045*np.sin(2*np.pi*freq*3*t))*env*gain
-  i=int(at*SR);dest[i:i+count,0]+=signal*np.sqrt((1-pan)/2);dest[i:i+count,1]+=signal*np.sqrt((1+pan)/2)
- for b in range(116):
-  at=b*bar;c=chords[b%4]
-  if 52<=at<54 or at>=284:continue
-  story=12<=at<54;dense=74<=at<234
-  for k,m in enumerate(c):note(music,at+.035*k,m+12,3,.018 if story else .024,(k-1.5)*.23)
-  if not story:
-   note(music,at,c[0]-12,1.7,.022,0,'bass')
-   for k in range(4):note(music,at+k*beat+.31,c[(k+b)%4]+24,.75,.009,(-1)**k*.35)
-  if dense:
-   for k in [0,2]:note(music,at+k*beat,31,.16,.015,0,'bass')
-   for k in range(4):
-    i=int((at+k*beat+.31)*SR);size=int(.045*SR);noise=rng.normal(0,.0019,size)*np.exp(-np.arange(size)/(SR*.009));music[i:i+size,0]+=noise;music[i:i+size,1]+=noise
- for k,m in enumerate([48,55,60,64,67]):note(music,284+k*.045,m,5.8,.024,(k-2)*.18)
- # Selective quiet editorial paper, alignment, and interface clicks.
- effect_events=[]
- for at in [1.1,2.4,18.2,26.2,43.2,54.3,74.5,85.5,96.5,107.5,117.4,134.5,145.5,158.3,177.2,187.0,198.0,209.0,222.0,254.2,264.2]:
-  i=int(at*SR);size=int(.065*SR);a=rng.normal(0,1,size);a=np.convolve(a,np.ones(7)/7,mode='same')*.011*np.exp(-np.arange(size)/(SR*.013));fx[i:i+size]+=a[:,None];effect_events.append({'seconds':at,'type':'soft editorial tick/paper'})
- for at in [54.15,161.0,281.8]:
-  note(fx,at,76,.5,.013,-.1);note(fx,at+.16,79,.7,.010,.1);effect_events.append({'seconds':at,'type':'warm alignment / simulated result / close'})
- # Smooth speech sidechain, with quiet music approximately 20dB below speech.
- active=(abs(voice)>.002).astype(np.float32)
- block=2400;env=np.array([max(active[i:i+block]) for i in range(0,n,block)])
- env=np.convolve(env,np.ones(9)/9,mode='same');duck=np.interp(np.arange(n),np.arange(len(env))*block,env).astype(np.float32)
- music*= (1-.50*duck[:,None]);fx*= (1-.25*duck[:,None])
- # Both score and effects leave an intentionally almost silent 52-54s breath.
- for a in [music,fx]:
-  a[52*SR:54*SR]*=.015
-  a[:SR]*=np.linspace(0,1,SR)[:,None]
-  a[-SR:]*=np.linspace(1,0,SR)[:,None]
- stereo=np.repeat(voice[:,None],2,axis=1)
- wav('narration.wav',stereo);wav('music.wav',music);wav('effects.wav',fx);wav('mix-premaster.wav',stereo+music+fx)
- srt=[]
- for i,p in enumerate(caps,1):
-  words=p['text'].split();lines=['']
-  for w in words:
-   if len(lines[-1])+len(w)+1>43 and len(lines)<2:lines.append(w)
-   else:lines[-1]+=(' ' if lines[-1] else '')+w
-  srt.append(f"{i}\n{stamp(p['start'])} --> {stamp(p['end'])}\n"+'\n'.join(lines)+'\n')
- (ROOT/'production/captions.srt').write_text('\n'.join(srt))
- (OUT/'narration-timing.json').write_text(json.dumps(data,indent=2));(OUT/'effects-cues.json').write_text(json.dumps(effect_events,indent=2))
- subprocess.run([FF,'-y','-v','info','-i',str(OUT/'mix-premaster.wav'),'-af','loudnorm=I=-16:TP=-1:LRA=9:print_format=json','-ar','48000','-ac','2',str(OUT/'mix.wav')],stderr=open(OUT/'loudness-render.log','w'),check=True)
- print('Completed stems, mix, captions. Maximum time compression',max(r.get('time_compression',1) for r in data))
-if __name__=='__main__':
- if '--prepare' in sys.argv:prepare()
- elif '--render' in sys.argv:render()
+def env(x, attack=0.002, decay=0.05):
+    return (1 - np.exp(-x / attack)) * np.exp(-x / decay)
+
+
+def lowpass(a, k):
+    return np.convolve(a, np.ones(k) / k, mode='same')
+
+
+def sfx():
+    lib = {}
+    x = t(0.05); lib['click'] = (lowpass(rng.normal(0, 1, len(x)), 3) * env(x, .0005, .006) + np.sin(2 * np.pi * 2400 * x) * env(x, .0003, .004)) * .6
+    x = t(0.05); lib['tap'] = np.sin(2 * np.pi * 1800 * x) * env(x, .0005, .008) * .45
+    x = t(0.45); sweep = lowpass(rng.normal(0, 1, len(x)), 6) * np.sin(np.pi * x / x[-1]) ** 2
+    lib['whoosh'] = sweep * (0.25 + 0.75 * x / x[-1]) * .35
+    x = t(0.12); f = 900 * np.exp(-x * 18) + 500; lib['pop'] = np.sin(2 * np.pi * np.cumsum(f) / SR) * env(x, .001, .03) * .5
+    x = t(0.25); lib['thud'] = (np.sin(2 * np.pi * 70 * x) * env(x, .002, .08) + lowpass(rng.normal(0, 1, len(x)), 30) * env(x, .001, .02) * .4) * .8
+    x = t(0.08); lib['tick'] = (np.sin(2 * np.pi * 1250 * x) + .5 * np.sin(2 * np.pi * 2900 * x)) * env(x, .0004, .012) * .4
+    x = t(0.9)
+    lib['chime'] = (np.sin(2 * np.pi * 1318.5 * x) * env(x, .002, .35) + np.where(x > .09, np.sin(2 * np.pi * 1975.5 * (x - .09)) * env(np.maximum(x - .09, 0), .002, .4), 0)) * .3
+    x = t(1.2); shimmer = sum(np.sin(2 * np.pi * f0 * x) * env(x, .003, .5) for f0 in (2093, 2637, 3136, 4186)) / 4
+    lib['cash'] = (shimmer + np.sin(2 * np.pi * 1046.5 * x) * env(x, .002, .25)) * .35
+    x = t(3.0); lib['riser'] = lowpass(rng.normal(0, 1, len(x)), 4) * (x / x[-1]) ** 2.5 * .4
+    x = t(1.5); lib['impact'] = (np.sin(2 * np.pi * 45 * x) * env(x, .002, .45) + lowpass(rng.normal(0, 1, len(x)), 12) * env(x, .001, .06) * .6) * .9
+    x = t(0.3); lib['paper'] = lowpass(rng.normal(0, 1, len(x)), 2) * np.sin(np.pi * x / x[-1]) * .15
+    x = t(0.25); lib['stamp'] = lib['thud'][:len(x)] * .8 + lowpass(rng.normal(0, 1, len(x)), 3) * env(x, .001, .015) * .3
+    x = t(1.6); ring = np.sin(2 * np.pi * 440 * x) * np.sin(2 * np.pi * 480 * x) * (np.sin(2 * np.pi * 20 * x) > 0)
+    lib['phone'] = ring * np.where(x < 1.0, 1, 0) * .25
+    for name, a in lib.items():
+        write(OUT / 'sfx' / f'{name}.wav', a)
+    print('SFX:', ', '.join(sorted(lib)))
+
+
+BPM, DUR = 120, 297.5   # film length, rev. C
+BEAT = 60 / BPM
+PAIN_END = 74          # S1–S3 tense half-time; riser 71–74; drop on the logo at 74 s (01:14)
+OUTRO = 284.5          # S14: lighter arrangement, resolve at the end
+
+
+def music(pain_end=None, outro=None, dur=None, out=None):
+    """pain_end/outro/dur default to the constants above; compose_audio.py passes the film's real timeline."""
+    PAIN_END = pain_end or globals()['PAIN_END']
+    OUTRO = outro or globals()['OUTRO']
+    DUR = dur or globals()['DUR']
+    n = int(SR * DUR)
+    mix = np.zeros((n, 2))
+
+    def add(at, a, gain=1.0, pan=0.0):
+        i = int(at * SR)
+        if i >= n:
+            return
+        a = a[: n - i] * gain
+        mix[i:i + len(a), 0] += a * np.sqrt((1 - pan) / 2) * 1.41
+        mix[i:i + len(a), 1] += a * np.sqrt((1 + pan) / 2) * 1.41
+
+    def tone(freq, dur, attack=.005, decay=.3, harm=(1, .3, .1)):
+        x = t(dur)
+        return sum(h * np.sin(2 * np.pi * freq * (k + 1) * x) for k, h in enumerate(harm)) * env(x, attack, decay)
+
+    def midi(m):
+        return 440 * 2 ** ((m - 69) / 12)
+
+    kick = (lambda x: np.sin(2 * np.pi * np.cumsum(150 * np.exp(-x * 30) + 45) / SR) * env(x, .001, .18))(t(.4))
+    clap = lowpass(rng.normal(0, 1, int(.15 * SR)), 2) * env(t(.15), .001, .04)
+    hat = (lambda a: a - lowpass(a, 4))(rng.normal(0, 1, int(.05 * SR))) * env(t(.05), .0005, .012)
+    minor = [[57, 60, 64], [53, 57, 60], [55, 59, 62], [52, 55, 59]]     # Am F G Em (pain)
+    major = [[60, 64, 67], [55, 59, 62], [57, 60, 64], [53, 57, 60]]     # C G Am F (solution)
+    hook = [72, 76, 79, 76, 74, 72, 74, 76]                                 # plucked eighth-note motif
+
+    bar = 4 * BEAT
+    # Pain bars run on a grid from 0:00; solution bars restart on the drop so the groove lands on the logo hit.
+    times = [b * bar for b in range(int(PAIN_END / bar) + 1)] + [PAIN_END + k * bar for k in range(int((DUR - PAIN_END) / bar) + 1)]
+    for b, at in enumerate(times):
+        if at >= DUR:
+            break
+        if at < PAIN_END - 3:                       # --- pain: sub pulse, ticking hats, muted stabs
+            ch = minor[b % 4]
+            add(at, tone(midi(ch[0] - 24), bar, .02, 1.2, (1, .2)), .22)
+            for k in range(8):
+                add(at + k * BEAT / 2, hat, .05 if k % 2 else .08)
+            if b % 2 == 0:
+                for m in ch:
+                    add(at + 2 * BEAT, tone(midi(m), .5, .004, .12), .05)
+            continue
+        if at < PAIN_END:                           # riser bars are handled below
+            continue
+        ch = major[b % 4]
+        light = at >= OUTRO
+        for k in range(4):                          # four-on-the-floor + claps on 2 and 4
+            if not light or k == 0:
+                add(at + k * BEAT, kick, .55)
+            if k in (1, 3):
+                add(at + k * BEAT, clap, .18 if not light else .1)
+            add(at + k * BEAT + BEAT / 2, hat, .07)
+        bass = tone(midi(ch[0] - 24), BEAT * .9, .005, .25, (1, .5, .2))
+        for k in range(8):                          # off-beat side-chained bass
+            add(at + k * BEAT / 2 + .02, bass[: int(BEAT / 2 * SR)], .28 if k % 2 else .16)
+        for m in ch:                                # pad, ducked by the kick
+            pad = tone(midi(m), bar, .08, 3, (1, .25, .08))
+            pump = 0.45 + 0.55 * np.minimum(1, ((t(bar) % BEAT) / (BEAT * .6)))
+            add(at, pad * pump, .045, (m - 64) / 20)
+        if not light or b % 2 == 0:
+            for k, m in enumerate(hook):            # plucked hook
+                add(at + k * BEAT / 2, tone(midi(m + (0 if b % 8 < 4 else 2)), .35, .002, .09, (1, .4, .2, .1)), .07, .25 if k % 2 else -.25)
+
+    x = t(3)                                        # riser into the drop + impact on the logo
+    add(PAIN_END - 3, lowpass(rng.normal(0, 1, len(x)), 4) * (x / 3) ** 2.5, .18)
+    for k in range(12):
+        add(PAIN_END - 3 + k * 0.25 * (1 - k / 30), clap, .05 + k * .01)
+    add(PAIN_END, (lambda x: np.sin(2 * np.pi * 45 * x) * env(x, .002, .5))(t(1.5)), .6)
+    for m in (60, 67, 72, 76):                      # final resolve chord
+        add(DUR - 4, tone(midi(m), 4, .01, 1.6), .06)
+
+    mix[:SR] *= np.linspace(0, 1, SR)[:, None]
+    mix[-2 * SR:] *= np.linspace(1, 0, 2 * SR)[:, None]
+    mix *= 0.6 / max(1e-9, np.abs(mix).max())
+    write(out or OUT / 'music-bed.wav', mix)
+    print(f'Music bed: {DUR} s at {BPM} BPM, drop at {PAIN_END} s')
+
+
+if __name__ == '__main__':
+    if '--sfx' in sys.argv:
+        sfx()
+    if '--music' in sys.argv:
+        music()

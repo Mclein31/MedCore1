@@ -1,0 +1,86 @@
+[
+  {
+    "upload_order": 1,
+    "name": "McLein Jei G. Onza",
+    "role": "Student",
+    "file": "mclein-jei-g-onza-student.png",
+    "source_path": "/Users/mclein/Library/Application Support/com.vorssaint.utils/ShelfFiles/A72459C3-53D5-4F75-983C-5449EB08A5D2/51e068f9-2d88-488e-8274-853896e5af1a.png",
+    "dimensions": [
+      1087,
+      1447
+    ],
+    "sha256": "07f895d2c489daa5ead73098e62e78b2c7e370e66acbf1e33a3d7aa360e1a63a",
+    "identity_source": "Explicit user mapping, October 13, 2026",
+    "role_source": "MedCore_CagHaxx-2.pdf, page 7"
+  },
+  {
+    "upload_order": 2,
+    "name": "Micoh Jeremy C. Montenegro",
+    "role": "Student",
+    "file": "micoh-jeremy-c-montenegro-student.png",
+    "source_path": "/Users/mclein/Library/Application Support/com.vorssaint.utils/ShelfFiles/30366AEA-F32E-4905-8F8D-0886131D4C20/7fa2e730-d40f-4594-96a3-47ecc32c3999.png",
+    "dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "bde357c5ba3853e1c8784178eaaec3df7bac2c34bd7df41d864f5999f9ea4af1",
+    "identity_source": "Explicit user mapping, October 13, 2026",
+    "role_source": "MedCore_CagHaxx-2.pdf, page 7"
+  },
+  {
+    "upload_order": 3,
+    "name": "Marc Andre Nicolas M. Callueng",
+    "role": "Student",
+    "file": "marc-andre-nicolas-m-callueng-student.png",
+    "source_path": "/Users/mclein/Documents/Miscellaneous/Screenshots/Screenshot 2026-10-13 at 9.13.11 AM.png",
+    "dimensions": [
+      337,
+      353
+    ],
+    "sha256": "215d43d77507fda89ef1ee3a3279738206dbe9576e24c2ac44b9d4d2cfb31b97",
+    "identity_source": "Explicit user mapping, October 13, 2026",
+    "role_source": "MedCore_CagHaxx-2.pdf, page 7"
+  },
+  {
+    "upload_order": 4,
+    "name": "Prof. Fernando M. Jaminola Jr., MIT",
+    "role": "Coach",
+    "file": "prof-fernando-m-jaminola-jr-coach.jpg",
+    "source_path": "/Users/mclein/Library/Application Support/com.vorssaint.utils/ShelfFiles/BBE374C4-11F1-479A-8DA8-1723E614F12C/844068143_957099776947510_5682337032043858289_n.jpg",
+    "dimensions": [
+      688,
+      693
+    ],
+    "sha256": "6311c6f6f979844ca685b69c9dfdb9b79aa3ae0be949efab8a10dd007a21cc37",
+    "identity_source": "Explicit user mapping, October 13, 2026",
+    "role_source": "MedCore_CagHaxx-2.pdf, page 7"
+  },
+  {
+    "upload_order": 5,
+    "name": "Dr. Romiro Babaran",
+    "role": "Hospital Administrator, Divine Mercy Wellness Center",
+    "file": "dr-romiro-babaran-hospital-administrator.jpg",
+    "source_path": "/Users/mclein/Library/Application Support/com.vorssaint.utils/ShelfFiles/5FA02C43-82DB-49C6-9639-9BDDA2143F8A/846346251_2511611909323854_6462621339250746346_n.jpg",
+    "dimensions": [
+      235,
+      235
+    ],
+    "sha256": "3dc654d12befaf5dda7f6c61f38c4168a4f4278432544dc3606070a20d65434c",
+    "identity_source": "Explicit user mapping corrected October 13, 2026: uploads 5 and 6 swapped",
+    "role_source": "MedCore_CagHaxx-2.pdf, page 7"
+  },
+  {
+    "upload_order": 6,
+    "name": "Dr. Charmie S. Calvo",
+    "role": "College Dean, College of Information and Computing Science",
+    "file": "dr-charmie-s-calvo-college-dean.png",
+    "source_path": "/Users/mclein/Documents/Miscellaneous/Screenshots/Screenshot 2026-10-13 at 9.11.16 AM.png",
+    "dimensions": [
+      349,
+      439
+    ],
+    "sha256": "80dd892c77d9390de867eebc85bc198e233e3e2c0e405604fada98d392da2797",
+    "identity_source": "Explicit user mapping corrected October 13, 2026: uploads 5 and 6 swapped",
+    "role_source": "MedCore_CagHaxx-2.pdf, page 7"
+  }
+]

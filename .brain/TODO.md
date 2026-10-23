@@ -65,6 +65,16 @@ Run in fresh sessions. Test migrations on a Neon branch first, and never seed or
 
 ## E. Publication and media
 - 👤 Dashboard and mobile source changes from Oct 11–14 need normal publication: Vercel rebuild for the dashboard (explicit appeal Regenerate flag, SMS toast copy) and a Metro reload or rebuild for mobile.
-- ⬜ Product video: render the final V3 film and corrected Ilokano narration audio, then re-check the handoff ZIP integrity, cue timeline and 18 source clips. No finished film exists yet.
+- ⬜ Product video V4 (`docs/media/production/README.md`). Done 2026-10-22/23: script rev. B, all clips, SFX and music bed, and the compositor (`source/compose*.py`), which renders the full 4:50 cut to `render/medcore-v4.mp4` with the clip fixes, transitions, touch dots, click SFX, ducked mix and −14 LUFS master. Remaining:
+  1. 👤 **Approve script rev. B** (`script/MEDCORE_SCRIPT_V4.md`), especially the reworded S8 narration (no SMS claim), and review the rendered cut.
+  2. ✅ Voice-over (2026-10-23): ElevenLabs takes made by the owner in the website (free plan; library voices are API-blocked): Tala for Mara S1–S2, Neil narrating S3–S14, saved as `audio/vo/S1.mp3` … `S14.mp3`. Rev. D re-cut every scene to its take with phrase-level timing (film now 4:31). Free-plan terms: check commercial-use and attribution before publishing.
+  3. ✅ Four illustrations made by the owner in the Gemini app (2026-10-23) and placed in `characters/`. The S1 time-lapse spins the clock painted in `s1-ready-bed.png`. Re-render pending, done together with the voice-over.
+  4. ✅ Music: keep the procedural bed (`audio/music-bed.wav`), decided 2026-10-23.
+  5. ⬜ Regenerate the storyboard (`source/storyboard.py`); its frames predate the re-shoot. Low priority now that stills come from `compose.py --still`.
+  6. 👤 **Review** `render/medcore-v4.mp4` (rendered 2026-10-23: 4:31, synced to the voice-over, real voices, illustrations, BizBox and KCCI MedSys logos in S12, YEP photos in S14) against the competition checklist and honesty notes.
+  7. ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): wanted, after the final cut.
+  8. ✅ `render/`, `footage/` and `audio/` under `docs/media/production/` are git-ignored (kept locally only).
+- 👤 Gemini key is on the free tier (15 RPM for Flash Lite). Cora makes ~3 calls per answer, so it stalls or 503s under light load. Set up billing before the Dec 10 pitch, and replace the dead `GEMINI_PRO_MODEL=gemini-1.5-pro-latest` fallback in `.env`.
+- ⬜ Fix rough edges found while filming: "View discharge pass"/"View Gate Pass" open Documents instead of the pass; the appeal letter prints a raw ISO deadline and the admission date; the analytics AR aging (₱39.0 M) is inconsistent with ₱442.8 K billings; the clearance header labels the encounter number as MRN; the Home draft-bill state overlaps the patient name; Cora's money explanations vary between calls (once ₱350 → ₱3,500, once said the HMO ₱5,000 made up the balance), so ground the reply's numbers in the ledger; RN warning "Unsupported dashed / dotted border style".
 - ⬜ Dashboard main JS chunk is 570 KB (Vite 500 KB warning); consider further splitting.
 - 👤 PGC Digital Innovation Challenge presentation 2026-12-10, SP Session Hall, Capitol Compound, Tuguegarao City (12-slide deck `MedCore_Presentation_Deck.pptx`, 5-minute pitch and 10-minute defense).

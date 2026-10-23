@@ -1,0 +1,29 @@
+MEDCORE — CLEAR THE WAY FOR CARE
+AI narration script — V3 — 04:50 target
+Read only the narration paragraphs. Scene headings are not spoken.
+Ilokano remains one spoken word; configure pronunciation separately using the V3 brief. Never read phonetic directions or spell syllables as letters.
+Place phrases using MEDCORE_PRODUCT_VIDEO_NARRATION_CUES.csv; do not read demo paragraphs continuously.
+
+Scene 1 — Hook | 00:00–00:12 | 12 seconds
+The care is done. Why is the bill still unclear? Meet MedCore: financial clarity for families, and a discharge target under forty-five minutes, not eight hours.
+
+Scene 2 — Personal experience with fictional characters | 00:12–00:54 | 42 seconds
+Before MedCore, there was a family trying to understand a bill. A senior citizen, covered by PhilHealth for thirty-nine years, also had a private HMO. The quoted bill: thirty-six thousand five hundred pesos. The unexpected personal share: eight thousand three hundred. Coverage existed. Clarity was missing. A later review brought the balance down to one thousand three hundred. Why did understanding the bill take extra help? That question became the reason to build MedCore.
+
+Scene 3 — Proposed solution | 00:54–01:14 | 20 seconds
+MedCore brings charges, eligible benefits, and approved coverage into one explainable ledger. Alongside existing hospital systems, AI helps explain, review, and summarize recorded information. Guide. Verify. Reward. Report. Improve. A clearer picture for staff, and for the patient’s phone.
+
+Scene 4 — GUIDE + VERIFY + patient clarity | 01:14–02:14 | 60 seconds
+Guide starts with an estimate. AI-assisted card scanning can help staff review benefit details and explain costs early. Verify organizes coverage and authorization records. AI can draft an HMO appeal for staff review. The reconciled ledger shows how charges, eligible adjustments, PhilHealth, and approved HMO coverage arrive at the patient’s responsibility. On mobile, that picture becomes easier to follow: the remaining balance, an itemized bill, and the benefits already recorded. Cora, our AI billing assistant, explains recorded account information in English, Taglish, Tagalog, or Ilokano. The important question stays simple: what do I owe, and why?
+
+Scene 5 — REWARD + clearance + ClaimReady + REPORT / IMPROVE | 02:14–03:54 | 100 seconds
+When the final bill is ready, the next step is clear. Choose from GCash, Maya, QR Ph, card, and bank options. Review the amount, choose a method, and confirm. A receipt records the payment, and the balance updates so the next step is clear. For eligible accounts, an approved zero-interest arrangement offers another supported path. After the required clearances, a digital pass provides a QR code and private exit PIN. Staff follow clearance stages and prepare SMS updates. One click opens the message preview. ClaimReady combines pre-flight checks with an AI-assisted audit, helping staff review issues before submission. AI briefings explain financial patterns. Report and Improve help teams examine recurring issues. Clearer bills. Better coordination. Fewer avoidable delays.
+
+Scene 6 — Target users, market, and existing solutions | 03:54–04:14 | 20 seconds
+Built for patients and families, billing and claims teams, and hospital leaders. Our starting focus includes NCR, Calabarzon, Cebu, and Cagayan Valley. Existing hospital systems remain essential. MedCore adds a focused layer for financial clarity and coordination.
+
+Scene 7 — Team composition | 04:14–04:34 | 20 seconds
+The people behind MedCore bring together student development, coaching, academic guidance, and healthcare administration. Different perspectives, focused on one purpose: making hospital finances easier to understand, and the path through them easier to follow.
+
+Scene 8 — Recognition, pilot direction, and close | 04:34–04:50 | 16 seconds
+Best Pitch at DTI’s Be Your Own Boss program. Next: a proposed Cagayan Valley pilot. MedCore. Clear the Way for Care.
