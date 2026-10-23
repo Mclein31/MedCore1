@@ -48,38 +48,38 @@ function validateOcrImage(imageBase64: string): boolean {
   return decodedBytes > 0 && decodedBytes <= MAX_OCR_IMAGE_BYTES;
 }
 
+const CoraTurnSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  content: z.string().min(1).max(2000),
+});
+
 const CoraChatBody = z.object({
-  encounterId: z.string().min(1).max(64),
-  message: z.string().min(1).max(1500),
+  encounterId: z.string().min(1).max(64).optional(),
+  message: z.string().min(1).max(2000),
   language: z.enum(CORA_LANGUAGE_IDS).optional().default('fil'),
   mode: z
     .enum(['GENERAL', 'WHY_DO_I_OWE', 'DISCHARGE_STATUS', 'PROMISSORY_ASSISTANCE', 'DISPUTE_DRAFT'])
     .optional()
     .default('GENERAL'),
-  conversationHistory: z
-    .array(
-      z.object({
-        role: z.enum(['user', 'assistant']),
-        content: z.string().min(1).max(2000),
-      }),
-    )
-    .max(6)
-    .optional()
-    .default([]),
+  conversationHistory: z.array(CoraTurnSchema).max(8).optional(),
+  conversation: z.array(CoraTurnSchema).max(8).optional(),
   forceRefresh: z.boolean().optional(),
 });
 
 const ScrubClaimBody = z.object({
   encounterId: z.string().min(1).max(64),
   forceRefresh: z.boolean().optional(),
+  forceEscalation: z.boolean().optional(),
   customCf4Text: z.string().max(12000).optional(),
 });
 
 const HmoAppealBody = z.object({
   encounterId: z.string().min(1).max(64),
-  deniedItemDescription: z.string().min(1).max(500),
+  deniedItemDescription: z.string().min(1).max(1000).optional(),
+  deniedItem: z.string().min(1).max(1000).optional(),
   deniedAmount: z.number().positive(),
-  hmoProviderName: z.string().max(120).optional(),
+  hmoProviderName: z.string().max(200).optional(),
+  hmoId: z.string().max(100).optional(),
   justificationNotes: z.string().max(6000).optional(),
   forceRefresh: z.boolean().optional(),
 });
@@ -131,6 +131,7 @@ export const staffAiRoutes = new Hono<AppBindings>();
 
 staffAiRoutes.post('/cora/chat', requirePermission('encounter:read'), jsonBody(CoraChatBody), async (c) => {
   const body = c.req.valid('json');
+  if (!body.encounterId) throw new ApiError(400, 'INVALID_AI_REQUEST', 'Encounter ID is required.');
   const resolvedId = await resolveStaffEncounter(c, body.encounterId);
   try {
     const result = await observeAiCache(
@@ -144,7 +145,7 @@ staffAiRoutes.post('/cora/chat', requirePermission('encounter:read'), jsonBody(C
           message: body.message,
           language: body.language,
           mode: body.mode,
-          conversationHistory: body.conversationHistory,
+          conversationHistory: body.conversationHistory ?? body.conversation ?? [],
           forceRefresh: body.forceRefresh,
           aiConfig: c.var.services.config.ai,
         }),
@@ -155,7 +156,7 @@ staffAiRoutes.post('/cora/chat', requirePermission('encounter:read'), jsonBody(C
       resourceId: resolvedId,
       detail: { language: body.language, mode: body.mode, modelUsed: result.modelUsed },
     });
-    return c.json({ data: result });
+    return c.json(result);
   } catch (err) {
     rethrowAiError(err, 'Cora is temporarily unavailable.');
   }
@@ -178,7 +179,7 @@ staffAiRoutes.post(
             encounterId: resolvedId,
             facilityId: c.var.staff.facilityId,
             userId: c.var.staff.id,
-            forceRefresh: body.forceRefresh,
+            forceRefresh: body.forceRefresh ?? body.forceEscalation,
             customCf4Text: body.customCf4Text,
             aiConfig: c.var.services.config.ai,
           }),
@@ -193,7 +194,7 @@ staffAiRoutes.post(
           modelUsed: result.modelUsed,
         },
       });
-      return c.json({ data: result });
+      return c.json(result);
     } catch (err) {
       rethrowAiError(err, 'Claims pre-flight scrubber is temporarily unavailable.');
     }
@@ -206,6 +207,10 @@ staffAiRoutes.post(
   jsonBody(HmoAppealBody),
   async (c) => {
     const body = c.req.valid('json');
+    const deniedItemDescription = (body.deniedItemDescription ?? body.deniedItem ?? '').trim();
+    if (!deniedItemDescription) {
+      throw new ApiError(400, 'INVALID_AI_REQUEST', 'A denied item description is required.');
+    }
     const resolvedId = await resolveStaffEncounter(c, body.encounterId);
     try {
       const result = await observeAiCache(
@@ -215,9 +220,9 @@ staffAiRoutes.post(
             db: c.var.db,
             encounterId: resolvedId,
             facilityId: c.var.staff.facilityId,
-            deniedItemDescription: body.deniedItemDescription,
+            deniedItemDescription,
             deniedAmount: body.deniedAmount,
-            hmoProviderName: body.hmoProviderName,
+            hmoProviderName: body.hmoProviderName ?? body.hmoId,
             justificationNotes: body.justificationNotes,
             userId: c.var.staff.id,
             forceRefresh: body.forceRefresh,
@@ -230,7 +235,7 @@ staffAiRoutes.post(
         resourceId: resolvedId,
         detail: { referenceNumber: result.referenceNumber, modelUsed: result.modelUsed },
       });
-      return c.json({ data: result });
+      return c.json(result);
     } catch (err) {
       rethrowAiError(err, 'HMO appeal letter generator is temporarily unavailable.');
     }
@@ -261,7 +266,7 @@ staffAiRoutes.post(
         resourceId: c.var.staff.facilityId,
         detail: { modelUsed: result.modelUsed },
       });
-      return c.json({ data: result });
+      return c.json(result);
     } catch (err) {
       rethrowAiError(err, 'Executive RCM briefing generator is temporarily unavailable.');
     }
@@ -298,7 +303,7 @@ staffAiRoutes.post('/ocr/extract-card', jsonBody(ExtractCardBody), async (c) => 
       resourceId: c.var.staff.facilityId,
       detail: { cardType: result.cardType, modelUsed: result.modelUsed },
     });
-    return c.json({ data: result });
+    return c.json(result);
   } catch (err) {
     rethrowAiError(err, 'Card OCR service is temporarily unavailable.');
   }
@@ -330,12 +335,14 @@ patientAiRoutes.post('/cora/chat', jsonBody(CoraChatBody), async (c) => {
     .orderBy(desc(encounters.admittedAt));
 
   const target =
-    rows.find(
-      (r) =>
-        r.id === body.encounterId ||
-        r.encounterNumber === body.encounterId ||
-        r.patientId === body.encounterId,
-    ) ?? rows[0];
+    (body.encounterId
+      ? rows.find(
+          (r) =>
+            r.id === body.encounterId ||
+            r.encounterNumber === body.encounterId ||
+            r.patientId === body.encounterId,
+        )
+      : undefined) ?? rows[0];
 
   if (!target || !VISIBLE_BILL_STATES.has(target.billState)) {
     throw notFound('Stay');
@@ -353,7 +360,7 @@ patientAiRoutes.post('/cora/chat', jsonBody(CoraChatBody), async (c) => {
           message: body.message,
           language: body.language,
           mode: body.mode,
-          conversationHistory: body.conversationHistory,
+          conversationHistory: body.conversationHistory ?? body.conversation ?? [],
           forceRefresh: body.forceRefresh,
           aiConfig: c.var.services.config.ai,
         }),
@@ -364,7 +371,7 @@ patientAiRoutes.post('/cora/chat', jsonBody(CoraChatBody), async (c) => {
       resourceId: target.id,
       detail: { language: body.language, mode: body.mode, modelUsed: result.modelUsed },
     });
-    return c.json({ data: result });
+    return c.json(result);
   } catch (err) {
     rethrowAiError(err, 'Cora is temporarily unavailable.');
   }
@@ -392,7 +399,7 @@ patientAiRoutes.post('/ocr/extract-card', jsonBody(ExtractCardBody), async (c) =
       resourceId: patient.facilityId,
       detail: { cardType: result.cardType, modelUsed: result.modelUsed },
     });
-    return c.json({ data: result });
+    return c.json(result);
   } catch (err) {
     rethrowAiError(err, 'Card OCR service is temporarily unavailable.');
   }

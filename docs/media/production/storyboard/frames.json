@@ -1,0 +1,242 @@
+[
+  {
+    "id": "01",
+    "scene": "S1",
+    "time": "00:00–00:09",
+    "vo": "\"The doctor said Tatay could go home at eight… At four in the afternoon, we were still waiting.\"",
+    "sfx": "Clock tick, sub drone, whoosh",
+    "image": "frames/01-S1.png"
+  },
+  {
+    "id": "02",
+    "scene": "S1",
+    "time": "00:12–00:14",
+    "vo": "\"Not for care. For the bill.\"",
+    "sfx": "Low boom + paper flick",
+    "image": "frames/02-S1.png"
+  },
+  {
+    "id": "03",
+    "scene": "S2",
+    "time": "00:14–00:24",
+    "vo": "\"Tatay Ramon had paid into PhilHealth for thirty-nine years… also a private HMO. The quoted bill: ₱36,500.\"",
+    "sfx": "Card pop ×2, paper slide",
+    "image": "frames/03-S2.png"
+  },
+  {
+    "id": "04",
+    "scene": "S2",
+    "time": "00:24–00:34",
+    "vo": "\"The share we were told to pay: ₱8,300. Hours of asking, waiting, and asking again…\"",
+    "sfx": "Stamp thud, phone ring, calculator clicks",
+    "image": "frames/04-S2.png"
+  },
+  {
+    "id": "05",
+    "scene": "S2",
+    "time": "00:34–00:44",
+    "vo": "\"…a manual review brought it down to ₱1,300. The coverage was there. The explanation wasn't.\"",
+    "sfx": "Strike swipe → soft pluck; music drops out",
+    "image": "frames/05-S2.png"
+  },
+  {
+    "id": "06",
+    "scene": "S3",
+    "time": "00:44–01:07",
+    "vo": "\"And it isn't one family…\" five pain cards stack in",
+    "sfx": "Whoosh + pop ×5 on the beat",
+    "image": "frames/06-S3.png"
+  },
+  {
+    "id": "07",
+    "scene": "S3",
+    "time": "01:07–01:14",
+    "vo": "\"Five pain points, one root cause: nobody can see the money clearly.\"",
+    "sfx": "Riser builds",
+    "image": "frames/07-S3.png"
+  },
+  {
+    "id": "08",
+    "scene": "S4",
+    "time": "01:14–01:20",
+    "vo": "\"So we built MedCore…\"",
+    "sfx": "Impact + music drop, double whoosh",
+    "image": "frames/08-S4.png"
+  },
+  {
+    "id": "09",
+    "scene": "S4",
+    "time": "01:20–01:30",
+    "vo": "\"…one explainable ledger, calculated to the centavo. AI explains and drafts. It never decides the money.\"",
+    "sfx": "Three ticks on the beat, soft chime",
+    "image": "frames/09-S4.png"
+  },
+  {
+    "id": "10",
+    "scene": "S5",
+    "time": "01:30 (1.5 s)",
+    "vo": "\"Pain 1: …\"",
+    "sfx": "Whoosh + low thud",
+    "image": "frames/10-S5.png"
+  },
+  {
+    "id": "11",
+    "scene": "S5",
+    "time": "01:31–01:45",
+    "vo": "\"Every encounter has a live ledger… applied in legal order.\"",
+    "sfx": "Click, panel slide, tick per row",
+    "image": "frames/11-S5.png"
+  },
+  {
+    "id": "12",
+    "scene": "S5",
+    "time": "01:45–01:53",
+    "vo": "\"The same ledger reaches the family's phone, itemized and in plain language.\"",
+    "sfx": "Tap, whoosh",
+    "image": "frames/12-S5.png"
+  },
+  {
+    "id": "13",
+    "scene": "S5",
+    "time": "01:53–02:08",
+    "vo": "\"Cora… explains their own bill in English, Taglish, Tagalog, or Ilokano.\"",
+    "sfx": "Tap, keyboard clicks, typing blip, chime",
+    "image": "frames/13-S5.png"
+  },
+  {
+    "id": "14",
+    "scene": "S6",
+    "time": "02:08 (1.5 s)",
+    "vo": "\"Pain 2: …\"",
+    "sfx": "Whoosh + low thud",
+    "image": "frames/14-S6.png"
+  },
+  {
+    "id": "15",
+    "scene": "S6",
+    "time": "02:09–02:17",
+    "vo": "\"Every pending letter of authorization in one roster.\"",
+    "sfx": "Click ×2, list cascade",
+    "image": "frames/15-S6.png"
+  },
+  {
+    "id": "16",
+    "scene": "S6",
+    "time": "02:17–02:32",
+    "vo": "\"AI drafts the appeal letter from the recorded facts, for staff to review.\"",
+    "sfx": "Click, shimmer, paper-out swoosh",
+    "image": "frames/16-S6.png"
+  },
+  {
+    "id": "17",
+    "scene": "S7",
+    "time": "02:32 (1.5 s)",
+    "vo": "\"Pain 3: …\"",
+    "sfx": "Whoosh + low thud",
+    "image": "frames/17-S7.png"
+  },
+  {
+    "id": "18",
+    "scene": "S7",
+    "time": "02:33–02:52",
+    "vo": "\"ClaimReady scores every claim… catches a coding mismatch, explains the fix.\"",
+    "sfx": "Click, scan sweep, soft alarm, pop",
+    "image": "frames/18-S7.png"
+  },
+  {
+    "id": "19",
+    "scene": "S8",
+    "time": "02:54 (1.5 s)",
+    "vo": "\"Pain 4: …\"",
+    "sfx": "Whoosh + low thud",
+    "image": "frames/19-S8.png"
+  },
+  {
+    "id": "20",
+    "scene": "S8",
+    "time": "02:55–03:10",
+    "vo": "\"…six stages, from the discharge order to the gate pass, with live timers.\"",
+    "sfx": "Six ticks on the beat",
+    "image": "frames/20-S8.png"
+  },
+  {
+    "id": "21",
+    "scene": "S8",
+    "time": "03:10–03:22",
+    "vo": "\"Staff see exactly who is blocked and why.\"",
+    "sfx": "Click, notification chime",
+    "image": "frames/21-S8.png"
+  },
+  {
+    "id": "22",
+    "scene": "S9",
+    "time": "03:22 (1.5 s)",
+    "vo": "\"Pain 5: …\"",
+    "sfx": "Whoosh + low thud",
+    "image": "frames/22-S9.png"
+  },
+  {
+    "id": "23",
+    "scene": "S9",
+    "time": "03:23–03:37",
+    "vo": "\"Families pay from their phone… and get a receipt on the spot.\"",
+    "sfx": "Tap, list cascade, success chime",
+    "image": "frames/23-S9.png"
+  },
+  {
+    "id": "24",
+    "scene": "S9",
+    "time": "03:37–03:44",
+    "vo": "\"Can't pay in full? A zero-interest promissory note.\"",
+    "sfx": "Tap, schedule rows tick",
+    "image": "frames/24-S9.png"
+  },
+  {
+    "id": "25",
+    "scene": "S9",
+    "time": "03:44–03:52",
+    "vo": "\"…the exit pass is already on their phone.\"",
+    "sfx": "Shimmer, soft unlock",
+    "image": "frames/25-S9.png"
+  },
+  {
+    "id": "26",
+    "scene": "S10",
+    "time": "03:52–04:04",
+    "vo": "\"RCM analytics and an AI executive briefing show where money and time get stuck.\"",
+    "sfx": "Click, shimmer, scroll ticks",
+    "image": "frames/26-S10.png"
+  },
+  {
+    "id": "27",
+    "scene": "S11",
+    "time": "04:04–04:14",
+    "vo": "\"Five pain points. Five fixes…\"",
+    "sfx": "Card flip per row, chorus lift",
+    "image": "frames/27-S11.png"
+  },
+  {
+    "id": "28",
+    "scene": "S12",
+    "time": "04:14–04:28",
+    "vo": "\"Built for families, billing and claims teams, and hospital leaders…\"",
+    "sfx": "Bars grow, soft ticks",
+    "image": "frames/28-S12.png"
+  },
+  {
+    "id": "29",
+    "scene": "S13",
+    "time": "04:28–04:37",
+    "vo": "\"Three student developers, guided by our coach, our college dean, and a hospital administrator.\"",
+    "sfx": "Staggered pops",
+    "image": "frames/29-S13.png"
+  },
+  {
+    "id": "30",
+    "scene": "S14",
+    "time": "04:37–04:50",
+    "vo": "\"Best Pitch at DTI's Be Your Own Boss. Next: a pilot in Cagayan Valley… MedCore. Clear the way for care.\"",
+    "sfx": "Pop, pin drop, final hit",
+    "image": "frames/30-S14.png"
+  }
+]

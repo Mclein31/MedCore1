@@ -107,11 +107,14 @@ export class ClaimsAiApi {
     forceEscalation: boolean = false,
     signal?: AbortSignal,
   ): Promise<ClaimsAuditResult> {
-    return this.client.request<ClaimsAuditResult>('/ai/claims/preflight-scrub', {
+    const result = await this.client.request<ClaimsAuditResult>('/ai/claims/preflight-scrub', {
       method: 'POST',
       signal,
       body: JSON.stringify({ encounterId, forceEscalation }),
     });
+    const { clearBridgeCache } = await import('./v2Bridge');
+    clearBridgeCache();
+    return result;
   }
 }
 

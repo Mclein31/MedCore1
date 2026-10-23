@@ -24,13 +24,13 @@ Provider artwork provenance and display rules: [payment sources](payments/SOURCE
 
 ## MedCore branding
 
-| Purpose                         | Filename                 | Path            | Size / format                                                                           |
-| ------------------------------- | ------------------------ | --------------- | --------------------------------------------------------------------------------------- |
-| Cora concierge mascot           | `cora-mascot.png`        | `assets/brand/` | 1254×1254 transparent RGBA PNG; original and generation prompt in `logo/CORA_MASCOT.md` |
-| Original transparent badge      | `MedCore_Badge_Logo.png` | `assets/brand/` | 380×356 PNG, byte-identical to `logo/`                                                  |
-| Original transparent wordmark   | `MedCore_Text_logo.png`  | `assets/brand/` | 3244×1280 PNG, byte-identical to `logo/`                                                |
-| Opaque launcher canvas          | `app-icon.png`           | `assets/brand/` | 1024×1024 RGB PNG                                                                       |
-| Transparent adaptive foreground | `adaptive-icon.png`      | `assets/brand/` | 1024×1024 RGBA PNG                                                                      |
+| Purpose                         | Filename                 | Path            | Size / format                                                                                              |
+| ------------------------------- | ------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------- |
+| Cora concierge mascot           | `cora-mascot.png`        | `assets/brand/` | 1254×1254 transparent RGBA PNG; original and generation prompt in `docs/media/assets/logos/CORA_MASCOT.md` |
+| Original transparent badge      | `MedCore_Badge_Logo.png` | `assets/brand/` | 380×356 PNG, byte-identical to `docs/media/assets/logos/`                                                  |
+| Original transparent wordmark   | `MedCore_Text_logo.png`  | `assets/brand/` | 3244×1280 PNG, byte-identical to `docs/media/assets/logos/`                                                |
+| Opaque launcher canvas          | `app-icon.png`           | `assets/brand/` | 1024×1024 RGB PNG                                                                                          |
+| Transparent adaptive foreground | `adaptive-icon.png`      | `assets/brand/` | 1024×1024 RGBA PNG                                                                                         |
 
 In-app branding uses `contain` sizing and the original PNGs through the registry. Native splash/favicon references use the original badge. Launcher canvases center the supplied badge without redrawing it; regenerate with `node scripts/prepare-brand.cjs`. Native configuration also registers these paths directly in `app.json` as Expo requires.
 

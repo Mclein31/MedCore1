@@ -9,3 +9,9 @@ coverage/
 .dev.vars
 *.tsbuildinfo
 .neon
+
+# Product video V4: large media kept out of git (stored locally)
+docs/media/production/render/
+docs/media/production/footage/
+docs/media/production/audio/
+__pycache__/

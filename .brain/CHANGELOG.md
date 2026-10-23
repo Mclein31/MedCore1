@@ -2,11 +2,21 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
-## [2026-10-17] v2 AI suite, operational parity, and acceptance test sign-off
-- Full `TESTING_GUIDE.md` acceptance suite executed and verified (`PASS`) across mobile simulator and web dashboard.
+## [2026-10-23] Product video V4 first full cut
+- Built the compositor (`docs/media/production/source/compose*.py`) and rendered the 4:50 film to `render/medcore-v4.mp4` (1920×1080, 30 fps, −14.8 LUFS): all 14 scenes, script clip fixes, slide transitions, touch dots, click SFX and a ducked music bed. The cut uses a temporary voice-over and four illustrations cropped from existing art.
+
+## [2026-10-22] Product video V4 pre-production (`docs/media/production/`)
+- Remade the production package around five pain points, each answered by the working feature: script V4 (4:50, 14 scenes, `script/MEDCORE_SCRIPT_V4.md`), narration and cue sheet, 30-frame storyboard in desktop and iPhone 17 Pro frames, V4 cast (Tatay Ramon, Mara, Lina).
+- Recorded 7 dashboard clips with a scripted cursor and click log, plus 13 new dashboard screenshots (local fictional data; disposable account `film.capture@stjude.example.test`). Synthesized SFX library plus an original 120 BPM music bed. No film rendered yet, per the owner.
+- V3 film, renders, audio, captions and legacy clips moved to `docs/media/archive/production-v3-2026-10-14/`.
+- Re-shot all 7 dashboard clips after a full dry run, and recorded all 6 iPhone clips (bill, Cora in Ilokano, question, plan, pay, pass) on a Release build through Xcode DeviceHub with OCR-verified taps; Cora was shot on `gemini-3.1-flash-lite` after the 3.5 Flash Lite free-tier quota ran out. Script rev. B now matches the footage (Grace Reyes thread, Ramon Santos as the single HMO-LOA breach, clip crop notes). Local demo data re-dated to realistic discharge minutes.
+
+## [2026-10-17] v2 AI suite, operational parity, acceptance test sign-off, and live deployment
+- Full `TESTING_GUIDE.md` acceptance suite executed and verified (`PASS`) across mobile simulator and web dashboard; merged `rebuild/medcore-v2` into `main`.
 - Ported the complete Gemini AI stack (`coraService`, `claimsForensicService`, `hmoAppealService`, `executiveBriefingService`, `ocrService`, `phiScrubber`, `aiResultCache`, `coraScope`, `coraLanguage`) to `apps/api/src/services/ai/` and mounted `/api/v1/staff/ai/*` and `/api/v1/patient/ai/*` with per-user/IP rate limits, RA 10173 PHI scrubbing, and audit logging.
 - Added operational v2 API endpoints: patient coverage details (`GET /api/v1/patient/stays/:id` with `philhealth` and `hmo` objects plus `bedCode`/`roomCategory`), admission edits (`PATCH /api/v1/staff/encounters/:id`), simulated SMS/billing notifications (`POST /api/v1/staff/encounters/:id/notify`, `GET /api/v1/staff/notifications`, `POST /api/v1/staff/notifications/mark-read`, `GET /api/v1/staff/notifications/sms-outbox`), facility SLA settings (`GET/PUT /api/v1/staff/facility`), and promissory installment payment (`POST /api/v1/staff/promissory-notes/:id/installments/:seq/pay`).
 - Restored RCM Analytics (`RcmAnalyticsPage`), Claims & eSOA AI scrubber (`ClaimsEsoaPage`), Executive AI Briefing (`CommandCenterPage`), HMO appeal drafter (`EncountersLedgerPage`), HMO roster (`CoverageApprovalsPage`), and Facility SLA settings (`ConfigurationPage`) across web and mobile `v2Bridge.ts` while keeping v1 security anti-patterns (demo role switching, patient password login) retired.
+- Deployed v2 stack to production/demo cloud: migrated and seeded Singapore Neon `demo` (`br-small-hall-azzh041j`, 8 staff accounts, 36 beds, 22 stays, patient email aliases `mcleinonza0531+…@gmail.com`), uploaded `DATA_ENCRYPTION_KEY`, `GATE_PASS_SECRET`, and `GEMINI_API_KEY` to Cloudflare Worker `medcore-backend` (version `f6062a1e-d871-49e0-ba0a-55ee1a48ac3f`), and restored root `vercel.json` for `https://med-core1.vercel.app` (`/api/health` verified 200 OK).
 
 ## [2026-10-17] Original v1 UI restored on v2
 - Mobile uses the original screens and assets through `apps/mobile/src/lib/v2Bridge.ts`; verified email-code/MRN+DOB sign-in, disputes, card/bank payments, receipts, payment plan, exit pass, onboarding and unavailable AI in the iOS simulator. Mobile commit: `7b8ecc3`.

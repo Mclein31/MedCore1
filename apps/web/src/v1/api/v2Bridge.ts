@@ -89,7 +89,14 @@ export function mapEncounter(d: EncounterDetail): Encounter {
     hciAmount: pesos(pf?.hciCents),
     pfAmount: pesos(pf?.pfCents),
     isNbb: false,
-    rthRiskScore: pf?.status === 'RETURNED' ? 0.42 : e.pfSignedAt ? 0.04 : 0.12,
+    rthRiskScore:
+      pf?.rthRiskScore != null
+        ? Number(pf.rthRiskScore)
+        : pf?.status === 'RETURNED'
+          ? 0.42
+          : e.pfSignedAt
+            ? 0.04
+            : 0.12,
     cf4VitalsRecorded: true,
     cf4CourseInWardRecorded: true,
     cf4LabsConsistent: true,

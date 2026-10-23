@@ -93,8 +93,8 @@ These authentic generated-output captures are retained from the previous AI capt
 
 ## Recorded walkthroughs
 
-- [Dashboard walkthrough](../../../../UI_SCREENSHOTS/recordings/dashboard-walkthrough.webm)
-- [Mobile walkthrough](../../../../UI_SCREENSHOTS/recordings/mobile-walkthrough.webm)
+- [Dashboard walkthrough](recordings/dashboard-walkthrough.webm)
+- [Mobile walkthrough](recordings/mobile-walkthrough.webm)
 
 Record the current UI with `node scripts/recordUiWalkthroughs.mjs`. Both captures use synthetic local data.
 
