@@ -70,7 +70,7 @@ Run in fresh sessions. Test migrations on a Neon branch first, and never seed or
   3. ✅ Four illustrations made by the owner in the Gemini app (2026-10-23) and placed in `characters/`. The S1 time-lapse spins the clock painted in `s1-ready-bed.png`. Re-render pending, done together with the voice-over.
   4. ✅ Music: keep the procedural bed (`audio/music-bed.wav`), decided 2026-10-23.
   5. ⬜ Regenerate the storyboard (`source/storyboard.py`); its frames predate the re-shoot. Low priority now that stills come from `compose.py --still`.
-  6. 👤 **Review** `render/medcore-v4.mp4` (rendered 2026-10-23: 4:31, synced to the voice-over, real voices, illustrations, BizBox and KCCI MedSys logos in S12, YEP photos in S14) against the competition checklist and honesty notes.
+  6. 👤 **Review** `render/medcore-v4.mp4` (re-rendered 2026-10-24: 4:30, new narrator, new type and motion pass; previous cut kept as `render/medcore-v4-before-2026-10-24.mp4`. Earlier render 2026-10-23: 4:31, synced to the voice-over, real voices, illustrations, BizBox and KCCI MedSys logos in S12, YEP photos in S14) against the competition checklist and honesty notes.
   7. ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): wanted, after the final cut.
   8. ✅ `render/`, `footage/` and `audio/` under `docs/media/production/` are git-ignored (kept locally only).
 - 👤 Gemini key is on the free tier (15 RPM for Flash Lite). Cora makes ~3 calls per answer, so it stalls or 503s under light load. Set up billing before the Dec 10 pitch, and replace the dead `GEMINI_PRO_MODEL=gemini-1.5-pro-latest` fallback in `.env`.

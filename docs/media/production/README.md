@@ -2,7 +2,7 @@
 
 Rebuilt 2026-10-22 around one idea: **every pain point is answered on screen by the feature that fixes it.** The V3 package (4:50 "Clear the Way for Care", 18 legacy clips, old renders) is preserved in `../archive/production-v3-2026-10-14/`.
 
-Status (2026-10-23): the compositor is built and the full 4:50 cut renders to `render/medcore-v4.mp4` (1920×1080, 30 fps, H.264, −14 LUFS). Two inputs are still temporary and swap in without code changes:
+Status (2026-10-24): the cut is **4:30** with the new male narrator (S3–S14) and the motion and type pass; see `.brain/CHANGELOG.md`. Earlier status (2026-10-23): the compositor is built and the full 4:50 cut renders to `render/medcore-v4.mp4` (1920×1080, 30 fps, H.264, −14 LUFS). Two inputs are still temporary and swap in without code changes:
 
 - **Illustrations:** `s1-ready-bed`, `s1-window`, `s2-lina-overload` and `s14-going-home` fall back to crops of the existing art. `source/illustrations.py` generates them once the Gemini key has image quota (the free tier has none on any image model).
 
@@ -50,8 +50,9 @@ The capture signs in as a disposable local staff account, `film.capture@stjude.e
 |---|---|
 | `source/frames.py` | Desktop display and iPhone 17 Pro frames, shared by the storyboard and the final compositor |
 | `source/cursor.js` | Injected cursor (520 ms glide, press scale, teal ripple) |
+| `source/fonts/` | Film type palette (SIL OFL, licences included): Bricolage Grotesque display/condensed/semibold, Instrument Serif (upright), JetBrains Mono, and Material Symbols icons (Apache 2.0; `storyboard.icon()`). Picked per role with `face=` in `storyboard.text` and `chip`; Avenir Next stays for body text |
 | `source/compose.py` | Film driver: assembles the timeline (checks every scene start against the cue sheet), renders frames with 420 ms slide transitions, then mixes and masters. `--still 95.5` renders one frame to `render/stills/`; `--audio` re-mixes only |
-| `source/compose_lib.py` · `compose_shots.py` | Clip readers with trims and speed changes, device chrome, camera push-ins, touch dots, overlays, shot types |
+| `source/compose_lib.py` · `compose_shots.py` | Clip readers with trims and speed changes, device chrome, camera push-ins, touch dots, shot types. `Overlay` is a static text box with a short fade/rise entrance (text never bounces or floats) |
 | `source/compose_act1.py` · `compose_act3.py` · `compose_act4.py` | The shot lists for S1–S4, S5–S10 and S11–S14. Act III segments apply the "Clip fixes for the edit" (gateway strip, appeal deadline and AR aging kept out of frame; scrubber, briefing and Cora loading trimmed; Documents step skipped in `mob-pass`) |
 | `source/compose_audio.py` | Music bed with a −6 dB side-chain duck under the voice, per-scene voice placement, SFX from each shot's cue list and the dashboard click log, `loudnorm` to −14 LUFS / −1 dBTP |
 | `source/illustrations.py` | Gemini image generation for the four new illustrations (`IMAGE_MODEL` overrides the model) |

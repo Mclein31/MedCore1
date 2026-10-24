@@ -4,14 +4,26 @@ Text drawing, chips and pain cards come from storyboard.py so the film and the s
 import pathlib
 from PIL import Image, ImageOps
 from compose_lib import W, H, Chrome, Clip, crop_zoom, ease_out, ease_io, lerp_rect, touch_dot
-from storyboard import text, chip, pain_card, NAVY, MUTED, BG, CREAM
+from storyboard import text, chip, pain_card, NAVY, MUTED, BG, CREAM, PAIN_COLORS
 
 PROD = pathlib.Path(__file__).resolve().parents[1]
 BGS = {'pain': '#0B1F38', 'solution': BG, 'story': CREAM, 'black': '#05080F', 'white': '#FFFFFF'}
 
 
+def comp(layer, im, x, y):
+    """alpha_composite that clips at the frame edges (PIL refuses negative offsets)."""
+    x, y = int(x), int(y)
+    sx, sy = max(0, -x), max(0, -y)
+    if sx >= im.width or sy >= im.height or x >= layer.width or y >= layer.height:
+        return
+    if sx or sy:
+        im = im.crop((sx, sy, im.width, im.height))
+    layer.alpha_composite(im, (x + sx, y + sy))
+
+
 class Overlay:
-    """A static drawing that rises 24 px and fades in over 280 ms at t0, and fades out over 200 ms at t1."""
+    """A static drawing that rises a few px and fades in over 280 ms at t0, and fades out over 200 ms at t1.
+    Text never bounces, floats or sways (owner's call, 2026-10-24): the entertainment comes from graphics instead."""
 
     def __init__(self, t0, t1, fn, rise=24):
         self.t0, self.t1, self.fn, self.rise, self.img = t0, t1, fn, rise, None
@@ -30,19 +42,19 @@ class Overlay:
         if a < 1:
             im = im.copy()
             im.putalpha(im.getchannel('A').point(lambda v: int(v * a)))
-        layer.alpha_composite(im, (self.at[0], int(self.at[1] + self.rise * (1 - p))))
+        comp(layer, im, self.at[0], self.at[1] + self.rise * (1 - p))
 
 
-def caption(t0, t1, s, xy=(90, 40), size=44, color=NAVY, width=1700):
-    return Overlay(t0, t1, lambda im: text(im, xy, s, size, color, True, width=width))
+def caption(t0, t1, s, xy=(90, 40), size=44, color=NAVY, width=1700, face='display'):
+    return Overlay(t0, t1, lambda im: text(im, xy, s, size, color, True, width=width, spacing=6, face=face))
 
 
 def proof(t0, t1, s):
-    return Overlay(t0, t1, lambda im: chip(im, (90, 990), '✔ ' + s, size=28), rise=0)
+    return Overlay(t0, t1, lambda im: chip(im, (90, 990), '✔ ' + s, size=30, face='semi'), rise=0)
 
 
-def tag(t0, t1, s, xy, fill=NAVY, size=28):
-    return Overlay(t0, t1, lambda im: chip(im, xy, s, fill=fill, size=size))
+def tag(t0, t1, s, xy, fill=NAVY, size=28, face='mono'):
+    return Overlay(t0, t1, lambda im: chip(im, xy, s, fill=fill, size=size, face=face))
 
 
 class Shot:
@@ -136,12 +148,29 @@ class DesktopShot(Shot):
         layer.alpha_composite(self.chrome.paste(screen), self.pos)
 
 
-_PHONE = []
+_PHONE, _GLOW = [], []
+
+
+def glow():
+    """A soft teal light behind the phone, for depth."""
+    if not _GLOW:
+        from PIL import ImageDraw, ImageFilter
+        g = Image.new('RGBA', (1100, 1100), (17, 128, 109, 0))
+        ImageDraw.Draw(g).ellipse((200, 200, 900, 900), fill=(17, 128, 109, 60))
+        _GLOW.append(g.filter(ImageFilter.GaussianBlur(120)))
+    return _GLOW[0]
 
 
 def phone_chrome():
     if not _PHONE:
-        _PHONE.append(Chrome('iphone', 1000))
+        c = Chrome('iphone', 1000)
+        # The drop shadow runs to the image edge; feather it out so the edge never shows once the phone tilts.
+        from PIL import ImageDraw, ImageFilter
+        m = Image.new('L', c.img.size, 0)
+        ImageDraw.Draw(m).rectangle((24, 24, c.img.width - 25, c.img.height - 25), fill=255)
+        m = m.filter(ImageFilter.GaussianBlur(14))
+        c.img.putalpha(Image.composite(c.img.getchannel('A'), Image.new('L', m.size, 0), m))
+        _PHONE.append(c)
     return _PHONE[0]
 
 
@@ -159,12 +188,15 @@ class PhoneShot(Shot):
         self.pos = (1180, 30)
         hdr = []
         if title:
-            hdr.append(Overlay(0.15, dur, lambda im: text(im, (140, 300), title, 72, NAVY, True, width=900)))
+            hdr.append(Overlay(0.15, dur, lambda im: text(im, (140, 290), title, 84, NAVY, True, width=980, spacing=0, face='display'),
+                               rise=50))
         if sub:
-            hdr.append(Overlay(0.3, dur, lambda im: text(im, (144, 520), sub, 34, MUTED, width=860)))
+            hdr.append(Overlay(0.4, dur, lambda im: text(im, (144, 520), sub, 34, MUTED, width=860), rise=30))
         self.overlays = hdr + self.overlays
 
     def base(self, layer, t):
+        g = glow()
+        comp(layer, g, 1460 - g.width / 2, 540 - g.height / 2)
         dev = self.chrome.paste(self.clip.frame())
         bx, by = self.chrome.box[:2]
         sw, sh = self.chrome.screen
@@ -173,8 +205,11 @@ class PhoneShot(Shot):
         layer.alpha_composite(dev, self.pos)
 
 
-def pain_overlay(n, quote, stat):
-    return Overlay(0, 99, lambda im: pain_card(im, n, quote, stat, x=570, y=330), rise=0)
+def pain_overlays(n, quote, stat):
+    """A giant numeral in the pain's color beside its card; nothing overlaps the number."""
+    numeral = Overlay(0, 99, lambda im: text(im, (390, 150), str(n), 640, PAIN_COLORS[n], face='display'))
+    card = Overlay(.08, 99, lambda im: pain_card(im, n, quote, stat, x=820, y=330))
+    return [numeral, card]
 
 
 def phone_clip(name, segments):
