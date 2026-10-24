@@ -2,6 +2,13 @@
 
 Newest first, condensed. Detail for each entry lives in `docs/validation/`, `docs/audits/`, `docs/implementation/` and `apps/*/validation/`. Decisions are in `DECISIONS.md`.
 
+## [2026-10-24] Product video: new narrator, 4:30 cut, motion and type pass
+- New male narrator for S3–S14 (owner's ElevenLabs takes) replaces Neil; Mara (S1–S2) unchanged. Every scene's cues re-timed to the new takes' phrases; total exactly 4:30 (270.0 s), with the extra breathing room after the voice in S4, S11 and the S14 logo hold.
+- Motion, revised the same day after owner review: text, text boxes, phones, monitor and photos are **static** again (a plain fade/rise entrance; no bounce, float or sway; an earlier overshoot-and-float pass was rejected). Entertainment now comes from graphics: Material Symbols icons (Apache 2.0, `source/fonts/`) on pain cards, the S3 list, S4 diagram, S11 rows, S12 audience cards and every dashboard caption; count-up stats in S3; S4 arrows that draw in with dots flowing along them; S2's montage as one-word beats ("Ask. Wait. Ask again. Wait."); a teal glow behind the phone.
+- Color: one accent per pain point (`storyboard.PAIN_COLORS`: coral, amber, violet, sky, pink) across S3, the Act III pain screens (big numeral beside the card, icon badge) and S11. No edge stripes on cards.
+- Type: film palette in `source/fonts/` (SIL OFL, licences beside the files): Bricolage Grotesque (display, condensed for money), Instrument Serif upright (the family's lines), JetBrains Mono (labels, timestamps, sources); Avenir Next stays for UI-style body text. `storyboard.text/chip` take an optional `face`.
+- Fixed S11's highlight tint, which drew as solid teal (RGBA fills don't blend on an RGBA layer).
+
 ## [2026-10-24] Repository cleanup
 - Removed the duplicate `UI_SCREENSHOTS/` (identical to `docs/media/assets/ui/`; its WebM walkthroughs moved to `docs/media/assets/ui/recordings/`). Brand sources from `logo/` now live in `docs/media/assets/logos/`; `product video inspo/` moved to `docs/media/assets/references/video-inspo/`. References, ESLint and Prettier ignores updated; `.claude/` and `.agents/` removed and added to `.gitignore`.
 - Removed stale docs: `handoff.md` (completed v1-UI port), `skills-lock.json`, the V2 and canonical video prompts (byte-identical to V3), `docs/architecture/API_CONTRACTS.md` (v1 API spec) and `docs/implementation/hosted-and-local-api.md` (v1 `apps/server` deploy state). Untracked v1 leftovers (`apps/dashboard`, `apps/server`, empty `packages/shared`) moved to the macOS Trash.

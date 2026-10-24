@@ -22,46 +22,86 @@ def font(n, bold=False):
     return ImageFont.truetype(FONT, n, index=0 if bold else 7)
 
 
-def _fonts_for(part, size, bold):
-    # Avenir Next has no peso sign; draw it with Helvetica at the same size and weight.
+# Film type palette (SIL OFL, source/fonts/). 'ui' is Avenir Next, the product's own voice.
+FONTS = pathlib.Path(__file__).parent / 'fonts'
+FACES = {'display': 'Bricolage-Display.ttf',      # headlines, kinetic titles
+         'cond': 'Bricolage-Condensed.ttf',       # money and big stats (has ₱)
+         'semi': 'Bricolage-SemiBold.ttf',        # sub-heads
+         'serif': 'InstrumentSerif-Regular.ttf',  # the family's voice: emotional lines in Act I and the close (upright: no italics)
+         'serif-r': 'InstrumentSerif-Regular.ttf',
+         'mono': 'JetBrainsMono-Bold.ttf',        # labels, timestamps, sources: the ledger's voice
+         'mono-m': 'JetBrainsMono-Medium.ttf'}
+NO_PESO = ('serif', 'serif-r', 'mono', 'mono-m')  # these faces borrow ₱ from Bricolage
+_CACHE = {}
+
+
+def face_font(face, size):
+    k = (face, size)
+    if k not in _CACHE:
+        _CACHE[k] = ImageFont.truetype(str(FONTS / FACES[face]), size)
+    return _CACHE[k]
+
+
+# One accent per pain point, carried from the S3 list through each Act III pain card to the S11 before/after rows.
+PAIN_COLORS = {1: '#FF6B70', 2: '#F5A524', 3: '#A78BFA', 4: '#38BDF8', 5: '#F472B6'}
+PAIN_ICONS = {1: 'receipt_long', 2: 'call', 3: 'assignment_return', 4: 'hourglass_bottom', 5: 'point_of_sale'}
+_ICONS = {}
+
+
+def icon(im, xy, name, size, color):
+    """Draw a filled Material Symbols icon (Apache 2.0, source/fonts/) with its top-left at xy."""
+    if not _ICONS:
+        for ln in (FONTS / 'MaterialSymbolsRounded.codepoints').read_text().split('\n'):
+            if ln:
+                k, v = ln.split()
+                _ICONS[k] = chr(int(v, 16))
+    k = ('icons', size)
+    if k not in _CACHE:
+        _CACHE[k] = ImageFont.truetype(str(FONTS / 'MaterialSymbols-Filled.ttf'), size)
+    ImageDraw.Draw(im).text(xy, _ICONS[name], font=_CACHE[k], fill=color)
+
+
+def _fonts_for(part, size, bold, face='ui'):
     if part == '₱':
-        return ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc', size, index=1 if bold else 0)
+        if face == 'ui':  # Avenir Next has no peso sign; draw it with Helvetica at the same size and weight.
+            return ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc', size, index=1 if bold else 0)
+        return face_font('cond' if face in NO_PESO else face, size)
     if part in SYMBOLS:
         return ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial Unicode.ttf', size)
-    return font(size, bold)
+    return font(size, bold) if face == 'ui' else face_font(face, size)
 
 
 SYMBOLS = '→✔≈↑'
 SPLIT = re.compile('([₱→✔≈↑])')
 
 
-def run_len(d, s, size, bold):
-    return sum(d.textlength(p, font=_fonts_for(p, size, bold)) for p in SPLIT.split(s) if p)
+def run_len(d, s, size, bold, face='ui'):
+    return sum(d.textlength(p, font=_fonts_for(p, size, bold, face)) for p in SPLIT.split(s) if p)
 
 
-def run(d, xy, s, size, bold, fill):
+def run(d, xy, s, size, bold, fill, face='ui'):
     x, y = xy
     for p in SPLIT.split(s):
         if not p:
             continue
-        f = _fonts_for(p, size, bold)
+        f = _fonts_for(p, size, bold, face)
         d.text((x, y), p, font=f, fill=fill)
         x += d.textlength(p, font=f)
 
 
-def text(im, xy, s, size, color=INK, bold=False, width=None, spacing=10):
+def text(im, xy, s, size, color=INK, bold=False, width=None, spacing=10, face='ui'):
     d = ImageDraw.Draw(im); x, y = xy
     for para in s.split('\n'):
         words, line, lines = para.split(), '', []
         for w in words:
             c = (line + ' ' + w).strip()
-            if width and run_len(d, c, size, bold) > width and line:
+            if width and run_len(d, c, size, bold, face) > width and line:
                 lines.append(line); line = w
             else:
                 line = c
         lines.append(line)
         for ln in lines:
-            run(d, (x, y), ln, size, bold, color); y += size + spacing
+            run(d, (x, y), ln, size, bold, color, face); y += size + spacing
     return y
 
 
@@ -87,19 +127,27 @@ def char(name, im, dim=0):
         im.alpha_composite(Image.new('RGBA', (W, H), (11, 31, 56, dim)))
 
 
-def chip(im, xy, s, fill=TEAL, color='white', size=30):
-    d = ImageDraw.Draw(im); w = run_len(d, s, size, True)
+def chip(im, xy, s, fill=TEAL, color='white', size=30, face='ui'):
+    d = ImageDraw.Draw(im); w = run_len(d, s, size, True, face)
     x, y = xy
     d.rounded_rectangle((x, y, x + w + 48, y + size + 30), (size + 30) // 2, fill=fill)
-    run(d, (x + 24, y + 13), s, size, True, color)
+    run(d, (x + 24, y + 13 + (3 if face != 'ui' else 0)), s, size, True, color, face)
 
 
 def pain_card(im, n, quote, stat, x=1040, y=300):
     d = ImageDraw.Draw(im)
-    d.rounded_rectangle((x, y, x + 780, y + 380), 28, fill='#13294A', outline='#24406A', width=2)
-    text(im, (x + 44, y + 36), f'PAIN {n}', 24, '#FF8A8E', True)
-    text(im, (x + 44, y + 84), quote, 46, 'white', True, width=690)
-    text(im, (x + 44, y + 280), stat, 30, '#FFB4B6', True, width=690)
+    quote = re.sub(r'"([^"]*)"', '“\\1”', quote)
+    end = text(Image.new('RGBA', im.size), (x + 44, y + 100), quote, 72, 'white', width=600, spacing=0, face='serif')
+    accent = PAIN_COLORS[int(n)]
+    d.rounded_rectangle((x, y, x + 780, end + 120), 28, fill='#13294A', outline='#24406A', width=2)
+    tw = run_len(d, f'PAIN {n}', 24, True, 'mono')
+    d.rounded_rectangle((x + 44, y + 36, x + 76 + tw, y + 76), 10, fill=accent)
+    text(im, (x + 60, y + 41), f'PAIN {n}', 24, '#0B1F38', True, face='mono')
+    d.ellipse((x + 660, y + 28, x + 752, y + 120), fill=accent)  # icon badge
+    icon(im, (x + 682, y + 50), PAIN_ICONS[int(n)], 48, '#0B1F38')
+    end = text(im, (x + 44, y + 100), quote, 72, 'white', width=600, spacing=0, face='serif')
+    d.line((x + 46, end + 26, x + 126, end + 26), fill=accent, width=4)
+    text(im, (x + 44, end + 50), stat, 28, accent, width=700, face='mono-m')
 
 
 def placeholder(im):

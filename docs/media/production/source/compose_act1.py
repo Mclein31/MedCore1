@@ -1,9 +1,10 @@
 """V4 shots for Act I (S1–S3, the pain) and S4 (the MedCore reveal). Times are scene-local; see script/MEDCORE_SCRIPT_V4.md."""
-import math
+import math, re
 from PIL import Image, ImageDraw
 from compose_lib import W, H, ease_out, ease_io
+from compose_shots import comp
 from compose_shots import Overlay, DrawShot, ArtShot, caption, tag, art, crop_zoom
-from storyboard import text, chip, run_len, NAVY, MUTED, TEAL, RED
+from storyboard import text, chip, run_len, icon, NAVY, MUTED, TEAL, RED, PAIN_COLORS, PAIN_ICONS
 
 
 def slide_in(t, t0, dur=.42):
@@ -73,8 +74,8 @@ def s1():
         layer.alpha_composite(Image.new('RGBA', (W, H), (11, 31, 56, 90)))
         h, mm = int(m // 60), int(m % 60)
         s = f'{(h - 1) % 12 + 1}:{mm:02d} {"AM" if h < 12 else "PM"}'
-        chip(layer, (110, 120), 'Discharge order · 8:02 AM', fill=NAVY, size=34)
-        text(layer, (110, 230), s, 120, 'white' if p < 1 else '#FF8A8E', True)
+        chip(layer, (110, 120), 'Discharge order · 8:02 AM', fill=NAVY, size=34, face='mono')
+        text(layer, (110, 230), s, 132, 'white' if p < 1 else '#FF8A8E', True, face='mono')
 
     c = DrawShot(1.2, 'pain', timelapse, enter='cut')  # "At four in the afternoon"
     c.at(0, 'whoosh', .7)
@@ -82,17 +83,13 @@ def s1():
         c.at(k * .14, 'tick', .35 + k * .05)
 
     d = ArtShot(1.25, window, dim=120, enter='cut',  # "we were still waiting"
-                overlays=[caption(.1, 9, 'Still waiting.', (110, 140), 96, 'white'),
+                overlays=[caption(.1, 9, 'Still waiting.', (110, 120), 150, 'white', face='serif'),
                           tag(.05, 9, '4:12 PM', (110, 300), fill='#E5484D', size=34)])
 
-    def title(layer, t):
-        p = ease_out(t / .3)
-        text(layer, (160, 360 + int(30 * (1 - p))), 'The care was done.', 104, 'white', True)
-        if t > 1.1:  # "For the bill"
-            q = ease_out((t - 1.1) / .3)
-            text(layer, (160, 510 + int(30 * (1 - q))), "The bill wasn't.", 104, '#FF8A8E', True)
-
-    e = DrawShot(3.05, 'pain', title, enter='cut')  # "Not for care. For the bill."
+    # "Not for care. For the bill.": the quiet line in the family's serif, then the bill punches in, heavy and red.
+    e = DrawShot(3.05, 'pain', lambda layer, t: None, enter='cut', overlays=[
+        caption(0, 9, 'The care was done.', (160, 300), 130, 'white', face='serif'),
+        Overlay(1.1, 9, lambda im: text(im, (160, 480), "The bill wasn't.", 150, '#FF6B70', True, face='display'), rise=70)])
     e.at(0, 'impact', .8).at(1.1, 'paper', 1)
     return [a, b, c, d, e]
 
@@ -107,34 +104,37 @@ def left_panel(im, w=860):
 def s2():
     def quoted(im):
         card(im, (110, 420), (520, 190))
-        text(im, (145, 445), 'Quoted bill', 30, MUTED)
-        text(im, (145, 500), '₱36,500', 76, NAVY, True)
+        text(im, (145, 440), 'QUOTED BILL', 26, MUTED, face='mono')
+        text(im, (143, 484), '₱36,500', 100, NAVY, True, face='cond')
 
     # Cues are the S2 take's phrases (vo_align.py): PhilHealth 0.3, HMO 3.9, ₱36,500 7.5, ₱8,300 12.0, review 15.8, coverage 21.1.
     f = ArtShot(10.3, art('waiting', 'waiting.png'), overlays=[
-        hold(.5, lambda im: chip(im, (110, 160), 'PhilHealth · 39 years', fill=NAVY, size=34)),
-        hold(3.9, lambda im: chip(im, (110, 260), 'Private HMO', fill=NAVY, size=34)),
+        hold(.5, lambda im: chip(im, (110, 160), 'PhilHealth · 39 years', fill=NAVY, size=34, face='mono')),
+        hold(3.9, lambda im: chip(im, (110, 260), 'Private HMO', fill=NAVY, size=34, face='mono')),
         hold(7.4, quoted, rise=60)])
     f.at(0, 'whoosh', .8, .5).at(.5, 'pop', .7).at(3.9, 'pop', .7).at(7.4, 'paper', 1)
 
     def share(im):
         card(im, (110, 110), (640, 230))
-        text(im, (150, 135), '"Your share"', 34, MUTED)
-        text(im, (148, 190), '₱8,300', 100, RED, True)
+        text(im, (150, 128), '“Your share”', 48, MUTED, face='serif')
+        text(im, (146, 186), '₱8,300', 124, RED, True, face='cond')
 
-    g = ArtShot(3.7, art('question', 'question.png'), overlays=[hold(1.75, share, rise=0)])
+    g = ArtShot(3.7, art('question', 'question.png'), overlays=[hold(1.75, share, rise=80)])
     g.at(0, 'whoosh', .7, .5).at(1.75, 'stamp', 1)
 
-    ask = Overlay(-1, 999, lambda im: chip(im, (110, 960), 'Ask. Wait. Ask again.', fill=NAVY, size=34), rise=0)
     montage = [
         (art('s2-lina-overload', 'question.png', (.8, .5), 2.0), 'phone'),
         (art('calc', 'question.png', (.6, .8), 2.4), 'tick'),
         (art('forms', 'review.png', (.82, .82), 2.4), 'paper'),
         (art('mara-ask', 'question.png', (.42, .42), 2.0), 'paper'),
     ]
+    BEATS = [('Ask.', (120, 760)), ('Wait.', (980, 140)), ('Ask again.', (120, 160)), ('Wait.', (1000, 760))]
     shots = [f, g]
     for k, (img, fx) in enumerate(montage):
-        m = ArtShot(.9, img, dim=20, overlays=[ask] if k else [hold(0, lambda im: chip(im, (110, 960), 'Ask. Wait. Ask again.', fill=NAVY, size=34), rise=0)])
+        # Kinetic beat on "asking, waiting, and asking again": one word per cut, each landing somewhere new.
+        word, xy = BEATS[k]
+        m = ArtShot(.9, img, dim=70, overlays=[Overlay(0, 999, lambda im, w=word, xy=xy: text(im, xy, w, 170, 'white', True, face='display'),
+                                                       rise=60)])
         m.at(0, 'whoosh', .5, .5)
         if fx == 'tick':
             for j in range(5):
@@ -145,35 +145,42 @@ def s2():
 
     def before(im):
         card(im, (110, 110), (900, 270))
-        text(im, (150, 140), '₱8,300', 72, '#94A3B8', True)
+        text(im, (150, 128), '₱8,300', 96, '#94A3B8', True, face='cond')
 
     def strike(im):
-        w = run_len(ImageDraw.Draw(im), '₱8,300', 72, True)
-        ImageDraw.Draw(im).line((148, 185, 152 + w, 185), fill=RED, width=7)
+        w = run_len(ImageDraw.Draw(im), '₱8,300', 96, True, 'cond')
+        ImageDraw.Draw(im).line((144, 190, 156 + w, 182), fill=RED, width=9)
 
     def after(im):
-        text(im, (430, 140), '→  ₱1,300', 72, TEAL, True)
-        text(im, (150, 275), 'After manual review', 32, MUTED, True)
+        text(im, (430, 128), '→  ₱1,300', 96, TEAL, True, face='cond')
+        text(im, (150, 285), 'AFTER MANUAL REVIEW', 26, MUTED, face='mono')
 
-    i = ArtShot(3.4, art('review', 'review.png'), overlays=[hold(.2, before, 0), hold(1.9, strike, 0), hold(2.5, after)])
+    i = ArtShot(3.4, art('review', 'review.png'), overlays=[Overlay(.2, 999, before, 0), Overlay(1.9, 999, strike, 0),
+                                                       Overlay(2.5, 999, after, 40)])
     i.at(0, 'whoosh', .6, .5).at(1.9, 'paper', .9).at(2.5, 'chime', .5)
 
     j = ArtShot(5.5, art('review', 'review.png'), push=1.08, enter='cut', overlays=[
-        hold(.1, lambda im: text(im, (110, 90), 'The coverage was there.', 68, NAVY, True)),
-        hold(2.15, lambda im: text(im, (110, 180), "The explanation wasn't.", 68, RED, True))])
+        hold(.1, lambda im: text(im, (110, 70), 'The coverage was there.', 96, NAVY, face='serif')),
+        Overlay(2.15, 999, lambda im: text(im, (110, 180), "The explanation wasn't.", 92, RED, True, face='display'), rise=60)])
     return shots + [i, j]
 
 
-# ---------------- S3 · The five pain points (29 s) ----------------
+# ---------------- S3 · The five pain points (27.7 s) ----------------
 PAINS = [
-    ('1', '"Why do I owe this much?"', 'Bills nobody can explain', '42.7 %', 'of health spending paid out of pocket · PSA 2024'),
+    ('1', '“Why do I owe this much?”', 'Bills nobody can explain', '42.7 %', 'of health spending paid out of pocket · PSA 2024'),
     ('2', 'Approvals lost between portals', 'HMO LOAs by portal, phone, fax', '+33.8 %', 'IC complaints against HMOs · 2022→2023'),
     ('3', 'Claims sent back', 'Missing CF4 details, coding mismatches', '15–20 %', 'private-hospital claims returned · PHAPi'),
     ('4', 'Hours to leave', 'Clearance runs desk to desk', '4–8+ h', 'discharge in private tertiary hospitals'),
     ('5', 'The cashier queue', 'Pay in person before you can leave', '1 window', 'cash or card, at the end of the day'),
 ]
-CARD_AT = [2.3, 7.7, 12.1, 15.9, 19.2]  # each card on the start of its sentence in the S3 take
-S3_FIVE, S3_ROOT = 22.95, 24.45        # "Five pain points", "one root cause"
+CARD_AT = [2.7, 7.6, 11.9, 15.4, 17.7]  # each card on the start of its sentence in the S3 take
+S3_FIVE, S3_ROOT = 21.5, 22.85        # "Five pain points", "one root cause"
+
+
+def count_up(s, p):
+    """s with every number scaled by eased progress p, keeping its decimals ('42.7 %' → '21.4 %' at half way)."""
+    p = ease_out(p)
+    return re.sub(r'\d+(\.\d+)?', lambda m: f'{float(m.group()) * p:.{len(m.group(1) or ".")-1}f}', s)
 
 
 def s3():
@@ -181,29 +188,35 @@ def s3():
         out = ease_io((t - (S3_FIVE - .25)) / .6) if t > S3_FIVE - .25 else 0  # cards collapse
         d = ImageDraw.Draw(layer)
         if out < 1:
-            text(layer, (110, 50 - int(300 * out)), "It isn't one family.", 60, 'white', True)
+            text(layer, (110, 46 - int(300 * out)), "It isn't one family.", 76, 'white', face='serif')
             for i, (n, title, sub, stat, src) in enumerate(PAINS):
-                p = slide_in(t, CARD_AT[i])
-                if not p:
+                if t < CARD_AT[i]:
                     continue
-                x = 110 + int((1 - p) * W) - int(out * W * 1.2)
+                p = ease_out((t - CARD_AT[i]) / .55)
+                x = 110 + int((1 - p) * W * .6) - int(out * W * 1.2)
                 y = 160 + i * 172 - int(out * 120 * (i + 1))
+                c = PAIN_COLORS[int(n)]
                 d.rounded_rectangle((x, y, x + 1700, y + 150), 24, fill='#13294A', outline='#24406A', width=2)
-                text(layer, (x + 40, y + 38), n, 56, '#FF8A8E', True)
-                text(layer, (x + 130, y + 30), title, 42, 'white', True)
-                text(layer, (x + 130, y + 90), sub, 26, '#94A3B8')
-                sw = run_len(d, stat, 56, True)
-                text(layer, (x + 1660 - sw, y + 22), stat, 56, '#FF6B70', True)
-                sw = run_len(d, src, 22, False)
-                text(layer, (x + 1660 - sw, y + 100), src, 22, '#94A3B8')
+                text(layer, (x + 38, y + 26), n, 84, c, face='display')
+                d.ellipse((x + 120, y + 37, x + 196, y + 113), fill=c)
+                icon(layer, (x + 138, y + 55), PAIN_ICONS[int(n)], 40, '#0B1F38')
+                text(layer, (x + 224, y + 26), title, 44, 'white', face='display')
+                text(layer, (x + 226, y + 92), sub, 26, '#94A3B8')
+                shown = count_up(stat, (t - CARD_AT[i] - .15) / .9)  # the figure counts up as the row lands
+                sw = run_len(d, stat, 72, True, 'cond')  # right edge fixed by the final figure
+                text(layer, (x + 1660 - sw, y + 8), shown, 72, c, True, face='cond')
+                sw = run_len(d, src, 20, False, 'mono-m')
+                text(layer, (x + 1660 - sw, y + 108), src, 20, '#94A3B8', face='mono-m')
         if t > S3_FIVE:
-            q = ease_out((t - S3_FIVE) / .4)
-            text(layer, (160, 340 + int(40 * (1 - q))), 'Five pain points.', 96, 'white', True)
+            q = ease_out((t - S3_FIVE) / .5)
+            text(layer, (160, 300 + int(60 * (1 - q))), 'Five pain points.', 150, 'white', face='display')
         if t > S3_ROOT:
-            q = ease_out((t - S3_ROOT) / .4)
-            text(layer, (160, 500 + int(40 * (1 - q))), 'One root cause:\nnobody can see the money clearly.', 68, '#FF8A8E', True)
+            q = ease_out((t - S3_ROOT) / .45)
+            y = 500 + int(40 * (1 - q))
+            text(layer, (166, y), 'ONE ROOT CAUSE', 30, '#FF8A8E', face='mono')
+            text(layer, (160, y + 54), 'Nobody can see the money clearly.', 100, '#FFB4B6', face='serif')
 
-    s = DrawShot(29, 'pain', fn)
+    s = DrawShot(27.7, 'pain', fn)
     s.at(0, 'whoosh', .6)
     for t0 in CARD_AT:
         s.at(t0, 'whoosh', .6, .6).at(t0 + .3, 'pop', .7)
@@ -211,7 +224,7 @@ def s3():
     return [s]
 
 
-# ---------------- S4 · Meet MedCore (21.5 s; voice enters at 0.8 s) ----------------
+# ---------------- S4 · Meet MedCore (20.8 s; voice enters at 0.8 s) ----------------
 def s4(logo_badge, logo_text, desk_chrome, phone_chrome, desk_clip, phone_clip):
     def reveal(layer, t):
         z = .9 + .1 * ease_out(t / .6)
@@ -222,57 +235,73 @@ def s4(logo_badge, logo_text, desk_chrome, phone_chrome, desk_clip, phone_clip):
         r = 170 + 70 * ring
         d.ellipse((cx - r, cy - r, cx + r, cy + r), outline=(17, 128, 109, int(160 * (1 - ring))), width=6)
         layer.alpha_composite(b, (cx - b.width // 2, cy - b.height // 2))
-        layer.alpha_composite(logo_text, (cx - logo_text.width // 2, cy + 270))
+        q = ease_out((t - .35) / .6) if t > .35 else 0
+        if q:
+            layer.alpha_composite(logo_text, (cx - logo_text.width // 2, cy + 270 + int(40 * (1 - q))))
         if t < .5:
             layer.alpha_composite(Image.new('RGBA', (W, H), (255, 255, 255, int(255 * (1 - t / .5)))))
 
-    k = DrawShot(2.75, 'solution', reveal, enter='cut')  # "So we built MedCore"
+    k = DrawShot(2.9, 'solution', reveal, enter='cut')  # "So we built MedCore"
     k.at(0, 'impact', 1)
 
     def devices(layer, t):
         p = slide_in(t, .1)
         dx = desk_chrome.paste(desk_clip.frame())
-        layer.alpha_composite(dx, (40 - int((1 - p) * 1400), 150))
+        comp(layer, dx, 40 - int((1 - p) * 1400), 150)
         ph = phone_chrome.paste(phone_clip.frame())
-        layer.alpha_composite(ph, (1360 + int((1 - p) * 800), 90))
-        if t > .6:
-            chip(layer, (440, 990), 'For the hospital', fill=NAVY, size=30)
-            chip(layer, (1440, 990), 'For the family', fill=TEAL, size=30)
+        comp(layer, ph, 1360 + int((1 - p) * 800), 90)
+        for x0, label, fill, t0 in ((440, 'For the hospital', NAVY, .6), (1440, 'For the family', TEAL, .8)):
+            if t > t0:
+                q = ease_out((t - t0) / .5)
+                chip(layer, (x0, 990 + int(50 * (1 - q))), label, fill=fill, size=32, face='semi')
 
-    l = DrawShot(4.9, 'solution', devices, enter='cut')  # "a financial clarity layer on top of the hospital systems"
+    l = DrawShot(4.45, 'solution', devices, enter='cut')  # "a financial clarity layer on top of the hospital systems"
     l.at(.1, 'whoosh', .7, -.7).at(.1, 'whoosh', .7, .7).at(.6, 'pop', .5)
 
-    boxes = [('Hospital systems', 'BizBox · Medsys · Comlogik', 'white'),
-             ('MedCore ledger', 'Statutory waterfall, to the centavo', '#E7F4F0'),
-             ('PhilHealth · HMOs · Patient’s phone', 'Claims · LOAs · bills', 'white')]
+    boxes = [('Hospital systems', 'BizBox · Medsys · Comlogik', 'white', NAVY, 'local_hospital'),
+             ('MedCore ledger', 'Statutory waterfall, to the centavo', '#E7F4F0', TEAL, 'receipt_long'),
+             ('PhilHealth · HMOs · Patient’s phone', 'Claims · LOAs · bills', 'white', '#F5A524', 'family_restroom')]
 
-    # Diagram cues, from the S4 take: "connects charges" 0, "PhilHealth" 2.5, "explainable ledger" 5.0, "AI explains" 9.1.
-    box_at = [.1, 5.0, 2.5]
-    AI_AT = 9.1
+    # Diagram cues, from the S4 take: "connects charges" 0, "PhilHealth" 1.5, "explainable ledger" 4.1, "AI explains" 8.2.
+    box_at = [.1, 4.1, 1.5]
+    AI_AT = 8.2
 
     def diagram(layer, t):
         if t > box_at[1]:
-            text(layer, (110, 110), 'One explainable ledger, to the centavo.', 64, NAVY, True)
+            q = ease_out((t - box_at[1]) / .55)
+            text(layer, (110, 96 + int(50 * (1 - q))), 'One explainable ledger,', 84, NAVY, face='display')
+            text(layer, (114, 196 + int(50 * (1 - q))), 'to the centavo.', 64, TEAL, face='serif')
         d = ImageDraw.Draw(layer)
         shown = []
-        for i, (title, sub, fill) in enumerate(boxes):
-            p = slide_in(t, box_at[i])
-            shown.append(p > 0)
-            if not p:
+        for i, (title, sub, fill, accent, glyph) in enumerate(boxes):
+            shown.append(t >= box_at[i])
+            if t < box_at[i]:
                 continue
-            x, y = 110 + i * 610, 380 + int(40 * (1 - p))
-            d.rounded_rectangle((x, y, x + 480, y + 260), 26, fill=fill, outline=TEAL if i == 1 else '#CBD5E1', width=4 if i == 1 else 2)
-            text(layer, (x + 36, y + 46), title, 40, NAVY, True, width=420)
-            text(layer, (x + 36, y + 180), sub, 26, MUTED, width=420)
-        for i in (1, 2):  # arrow once both ends are on screen
+            p = ease_out((t - box_at[i]) / .55)
+            x, y = 110 + i * 610, 380 + int(70 * (1 - p))
+            d.rounded_rectangle((x, y, x + 480, y + 260), 26, fill=fill, outline=accent if i == 1 else '#CBD5E1', width=4 if i == 1 else 2)
+            d.ellipse((x + 380, y + 30, x + 450, y + 100), fill=accent)
+            icon(layer, (x + 396, y + 46), glyph, 38, 'white')
+            text(layer, (x + 36, y + 40), title, 40, NAVY, width=330, spacing=2, face='display')
+            text(layer, (x + 36, y + 186), sub, 22, MUTED, width=420, face='mono-m')
+        for i in (1, 2):  # the arrow draws itself once both ends are on screen, then money flows along it
             if shown[i - 1] and shown[i]:
+                a0 = max(box_at[i - 1], box_at[i]) + .3
+                g = ease_out((t - a0) / .5) if t > a0 else 0
                 ax = 110 + i * 610 - 110
-                d.line((ax, 510, ax + 90, 510), fill=TEAL, width=6)
-                d.polygon([(ax + 90, 496), (ax + 112, 510), (ax + 90, 524)], fill=TEAL)
+                if g:
+                    d.line((ax, 510, ax + int(90 * g), 510), fill=TEAL, width=6)
+                if g >= 1:
+                    d.polygon([(ax + 90, 496), (ax + 112, 510), (ax + 90, 524)], fill=TEAL)
+                    for k in range(3):
+                        f = ((t - a0) * .8 + k / 3) % 1
+                        cx = ax - 40 + f * 170
+                        d.ellipse((cx - 7, 503, cx + 7, 517), fill='#F5A524' if k == 1 else TEAL)
         if t > AI_AT:
-            chip(layer, (110, 790), 'AI explains and drafts. It never computes the money.', fill=NAVY, size=34)
+            q = ease_out((t - AI_AT) / .5)
+            chip(layer, (110, 800 + int(50 * (1 - q))), 'AI explains and drafts. It never computes the money.', fill=NAVY, size=36, face='semi')
 
-    m = DrawShot(13.85, 'solution', diagram)
+    m = DrawShot(13.45, 'solution', diagram)
     m.at(0, 'whoosh', .6)
     for t0 in box_at:
         m.at(t0, 'tick', .8)
