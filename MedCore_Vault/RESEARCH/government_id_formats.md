@@ -22,4 +22,4 @@ Use one shared, dependency-free rule module for the mobile app, dashboard and AP
 
 No invented checksum, issuer match, expiry or fraud score is applied. Existing historical notes are not rewritten. Existing valid formatted IDs can recover the same note after an equivalent normalized retry; historical malformed IDs need hospital review rather than automatic re-execution. Non-Philippine passport formats are outside the existing Philippine-ID selector and require a separate issuer/country workflow in the future.
 
-Implementation and verification: [Government ID validation](../../docs/implementation/government-id-validation.md).
+Implementation: [`packages/domain/src/governmentId.ts`](../../packages/domain/src/governmentId.ts).

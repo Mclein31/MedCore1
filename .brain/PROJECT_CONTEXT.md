@@ -1,6 +1,6 @@
 # AQROMED / MedCore: Project Context (Operational Brain)
 
-> Last synchronized: 2026-10-16. Read this first, then follow the links. The previous 2,540-line file was split into the files below.
+> Mobile runtime and v2 status updated: 2026-10-27; other sections last synchronized 2026-10-16. Read this first, then follow the links. The previous 2,540-line file was split into the files below.
 
 ## 1. Identification
 - **Project:** AQROMED (formerly MedCore / MedCore1), an intelligent financial reconciliation and patient engagement platform for Philippine hospitals. Demo prototype, not production.
@@ -17,10 +17,11 @@ MedCore is not an HIS or EMR. It is the financial middleware between hospital sy
 - Five AI features: claims preflight scrubber, HMO appeal drafter, executive briefing, Cora, OCR scanner. SMS is a sandbox only.
 
 ## 4. Current state (2026-10-16)
-- **v2 rebuild** lives on branch `rebuild/medcore-v2` (not merged, not deployed): a from-scratch rewrite implementing the full 2026-10-16 audit. See its `README.md`, `DEPLOY.md`, and the v2 entries in `DECISIONS.md` and `TODO.md` §0. Everything below describes `main`.
-- Hosted demo: Vercel dashboard + Cloudflare Worker + Neon Postgres in **Singapore** (project `medcore-sg`). Branch `production` = schema only; branch `demo` = all fictional demo data, used by the hosted app. Moved from Ohio on 2026-10-16: `docs/production/NEON_REGION_MIGRATION.md`.
+- **v2 rebuild** was merged into `main` and deployed on 2026-10-17. Current code is `apps/web`, `apps/api`, `apps/mobile`, `packages/domain` and `packages/icons`; use `README.md`, `DEPLOY.md` and `TODO.md` §0 for current behavior. Older v1 paths and audit details below remain historical context.
+- **Mobile runtime (2026-10-27):** Expo SDK 58 / React Native 0.88.0 / React 19.3.0. Both apps share the exact React runtime through root npm overrides. Expo Go on a physical iPhone requires an SDK 58-compatible version and the same Expo account as the Mac. README has the phone setup; set `EXPO_PUBLIC_API_BASE_URL`, not `EXPO_PUBLIC_API_URL`.
+- Hosted demo: Vercel dashboard + Cloudflare Worker + Neon Postgres in **Singapore** (project `medcore-sg`). Branch `production` = schema only; branch `demo` = all fictional demo data, used by the hosted app. Moved from Ohio on 2026-10-16.
 - Financial engine verified on 250/250 fixtures with zero centavo drift. Payments are simulated by design (university presentation).
-- **2026-10-16 security and architecture audit** found 3 critical and 10 high issues. Fixed on 2026-10-16: C1, C2 (patient email-code sign-in, old self-registration removed), H5, H9, H10, M4, D12, and rate limits on login, sign-in codes and AI (C3 partly). The rest is in `TODO.md`. Report: `docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`.
+- **2026-10-16 security and architecture audit** found 3 critical and 10 high issues. Fixed on 2026-10-16: C1, C2 (patient email-code sign-in, old self-registration removed), H5, H9, H10, M4, D12, and rate limits on login, sign-in codes and AI (C3 partly). The rest is in `TODO.md`.
 - Patients sign in with a 6-digit email code sent from `medcore1.noreply@gmail.com` (Gmail App Password in Worker secrets). Demo patient emails are `+` aliases of the owner's Gmail.
 - Known gaps: `__drizzle_migrations` out of sync on `demo` (0004–0007 applied by scripts), unverified official PhilHealth DTD conformance, no signed native builds, product video not yet rendered. See `TODO.md`.
 - Seed accounts take their password from `SEED_PASSWORD`; never record the value in the brain.

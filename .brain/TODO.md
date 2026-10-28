@@ -4,8 +4,8 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 
 ## 0. v2 rebuild (`rebuild/medcore-v2`)
 - ✅ (2026-10-17) Manual acceptance guide: `TESTING_GUIDE.md`, linked from README. Includes current staff accounts and three verified patient MRN/DOB sign-ins, cross-app payment/dispute/plan/pass checks, role isolation, responsive layouts, known gaps and a replacement decision sheet. Test actions change local fictional data; the guide does not replace `main`.
-- ✅ (2026-10-17) Original v1 mobile and dashboard restored on the v2 API, with v2 staff login/MFA preserved. Mobile simulator and dashboard browser workflow verified; validation records under each app's `validation/`.
-- ✅ (2026-10-17) Ported v1 server capabilities (`docs/v2/API_GAPS.md`): AI stack (`Cora`, OCR, claims scrubber, HMO appeals, executive briefing), staff notifications/simulated SMS outbox, patient claim status & coverage detail, full RCM analytics, facility SLA configuration, admission edits, and promissory installment collection.
+- ✅ (2026-10-17) Original v1 mobile and dashboard restored on the v2 API, with v2 staff login/MFA preserved. Mobile simulator and dashboard browser workflow verified.
+- ✅ (2026-10-17) Ported v1 server capabilities: AI stack (`Cora`, OCR, claims scrubber, HMO appeals, executive briefing), staff notifications/simulated SMS outbox, patient claim status & coverage detail, full RCM analytics, facility SLA configuration, admission edits, and promissory installment collection.
 - ✅ (2026-10-16) Domain package, hardened API, staff dashboard (patient web portal later removed: patients use the mobile app); 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
 - ✅ (2026-10-17) Full acceptance test suite (`TESTING_GUIDE.md`) passed and branch merged into `main`.
 - ✅ (2026-10-16) Mobile app rebuilt as `apps/mobile` on branch `rebuild/mobile-v2` (cut from `rebuild/medcore-v2`, not merged): code sign-in, bill, question a charge, simulated card payment, payment plan, exit pass QR/PIN, logout. Verified in the iOS simulator (Expo Go) against the local v2 API; 25 tests for the API client and token storage.
@@ -16,14 +16,14 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 - ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet). Official PhilHealth eSOA DTD conformance still unproven.
 - ⬜ Dependency advisories (2026-10-17 root audit): 26 total (11 moderate, 15 high), including inherited Expo/tooling dependency chains. Resolve through compatible upstream upgrades; do not force breaking SDK changes as part of the UI port.
 
-## A. 2026-10-16 audit remediation (`docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md`)
+## A. 2026-10-16 audit remediation
 Run in fresh sessions. Test migrations on a Neon branch first, and never seed or reset anything but `demo`.
 
 **Phase 0: close the open doors**
 - ✅ C1 (2026-10-16): rotate hosted passwords, remove the dashboard login prefill, make the seed read `SEED_PASSWORD` from the env and refuse remote hosts, put the demo principal behind a flag. The shared seed password is probably live on the hosted DB and a CFO account can browse all patients.
 - ✅ H5 (2026-10-16): blank `.env.example`. Rotate `GATE_PASS_SECRET` if it was ever used.
 - ⬜ H8: confirm ownership of the hard-coded Vercel origins, then move them to `ALLOWED_ORIGINS`.
-- ⬜ C3: rate limiters on login, sign-in codes and AI are done (`PATIENT_AUTH_LIMITER`, `AI_LIMITER`). Still to do: PIN verify limiter and DB lockout on login and PIN.
+- ⬜ C3: Postgres rate limits on login, sign-in codes and MFA are done (`services/rateLimit.ts`). v2 has no per-user AI limit (2026-10-28 check); AI cost is bounded by `ai_result_cache` and the model cooldown only. Still to do: PIN verify limiter and DB lockout on login and PIN.
 - ⬜ H4: add `env.ts` with a production default. `GATE_PASS_SECRET` is required outside explicit development. Remove the public fallback secret.
 - ✅ H9 (2026-10-16): disable encounter hard-delete (409 once any payment, note or pass exists). H10: scope physician sign-off to the attending physician (both done).
 - ⬜ H2 quick part: `SameSite=Strict`, since the dashboard is already same-origin.
@@ -65,15 +65,12 @@ Run in fresh sessions. Test migrations on a Neon branch first, and never seed or
 
 ## E. Publication and media
 - 👤 Dashboard and mobile source changes from Oct 11–14 need normal publication: Vercel rebuild for the dashboard (explicit appeal Regenerate flag, SMS toast copy) and a Metro reload or rebuild for mobile.
-- ⬜ Product video V4 (`docs/media/production/README.md`). Done 2026-10-22/23: script rev. B, all clips, SFX and music bed, and the compositor (`source/compose*.py`), which renders the full 4:50 cut to `render/medcore-v4.mp4` with the clip fixes, transitions, touch dots, click SFX, ducked mix and −14 LUFS master. Remaining:
-  1. 👤 **Approve script rev. B** (`script/MEDCORE_SCRIPT_V4.md`), especially the reworded S8 narration (no SMS claim), and review the rendered cut.
-  3. ✅ Four illustrations made by the owner in the Gemini app (2026-10-23) and placed in `characters/`. The S1 time-lapse spins the clock painted in `s1-ready-bed.png`. Re-render pending, done together with the voice-over.
-  4. ✅ Music: keep the procedural bed (`audio/music-bed.wav`), decided 2026-10-23.
-  5. ⬜ Regenerate the storyboard (`source/storyboard.py`); its frames predate the re-shoot. Low priority now that stills come from `compose.py --still`.
-  6. 👤 **Review** `render/medcore-v4.mp4` (re-rendered 2026-10-24: 4:30, new narrator, new type and motion pass; previous cut kept as `render/medcore-v4-before-2026-10-24.mp4`. Earlier render 2026-10-23: 4:31, synced to the voice-over, real voices, illustrations, BizBox and KCCI MedSys logos in S12, YEP photos in S14) against the competition checklist and honesty notes.
-  7. ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): wanted, after the final cut.
-  8. ✅ `render/`, `footage/` and `audio/` under `docs/media/production/` are git-ignored (kept locally only).
-- 👤 Gemini key is on the free tier (15 RPM for Flash Lite). Cora makes ~3 calls per answer, so it stalls or 503s under light load. Set up billing before the Dec 10 pitch, and replace the dead `GEMINI_PRO_MODEL=gemini-1.5-pro-latest` fallback in `.env`.
+- ✅ Product video (2026-10-29): final cut `docs/media/production/medcore-final.mp4` (V6, about 4:40) with `MEDCORE_SCRIPT_FINAL.md`. The production sources are not included, so the film cannot be re-rendered from the current files.
+  1. 👤 Watch the final cut end to end with sound against the competition checklist and honesty notes before submitting.
+  2. ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): would need to be cut from `medcore-final.mp4`.
+- ⬜ Trapped capital differs between RCM Analytics (₱65,250 tile) and the Overview briefing (₱21,350); align the definitions.
+- 👤 (2026-10-28) Redeploy the Worker (`npm run deploy -w @medcore/api`) for one-call Cora and the cooldown fallback fix (3.1-primary deploy went out 13:34 UTC; hosted Cora then timed out on the 3-call flow). The rate-limit and cooldown deploy went out 2026-10-28 13:29 UTC; hosted Cora verified (correct ₱350 answer, 29 s on 3.5).
+- 👤 Gemini key is on the free tier (15 RPM for Flash Lite). Cora now makes 1 call per answer (was ~3). Set up billing before the Dec 10 pitch. (Local `.env` `GEMINI_PRO_MODEL` set to `gemini-3.1-flash-lite` on 2026-10-28.)
 - ⬜ Fix rough edges found while filming: "View discharge pass"/"View Gate Pass" open Documents instead of the pass; the appeal letter prints a raw ISO deadline and the admission date; the analytics AR aging (₱39.0 M) is inconsistent with ₱442.8 K billings; the clearance header labels the encounter number as MRN; the Home draft-bill state overlaps the patient name; Cora's money explanations vary between calls (once ₱350 → ₱3,500, once said the HMO ₱5,000 made up the balance), so ground the reply's numbers in the ledger; RN warning "Unsupported dashed / dotted border style".
 - ⬜ Dashboard main JS chunk is 570 KB (Vite 500 KB warning); consider further splitting.
 - 👤 PGC Digital Innovation Challenge presentation 2026-12-10, SP Session Hall, Capitol Compound, Tuguegarao City (12-slide deck `MedCore_Presentation_Deck.pptx`, 5-minute pitch and 10-minute defense).
