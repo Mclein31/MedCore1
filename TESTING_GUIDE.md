@@ -1,21 +1,21 @@
 # MedCore v2: mobile and dashboard acceptance test
 
-Prepared 2026-10-17. Use this guide to decide whether the rebuilt apps are ready to replace the current `main` implementation. Completing this guide does **not** merge, deploy, or replace `main`.
+Prepared 2026-10-17; checkout instructions updated 2026-10-29. Use this guide to check the rebuilt apps, now merged into `main`. Completing this guide does **not** merge or deploy changes.
 
 Allow about 60–90 minutes, plus any authenticator setup. Use fictional local data only. Payments in this guide are simulated; no real card or transfer is needed.
 
 ## 1. Use the right folder
 
-Use this existing worktree, already on `rebuild/medcore-v2`:
+Use the project checkout on `main`:
 
 ```bash
-cd /Users/mclein/Documents/Developer/Personal_Projects/MedCore1/.worktrees/medcore-v2
+cd /Users/mclein/Documents/Developer/Personal_Projects/MedCore1
 git branch --show-current
 ```
 
-Expected branch: `rebuild/medcore-v2`.
+Expected branch: `main`.
 
-Do not run from the top-level `MedCore1` folder: that checkout is the old app on `main`. Do not switch branches, reseed the existing database, or merge into `main` during testing.
+Do not switch branches, reseed the existing database, or merge changes during testing.
 
 The existing local database is shared by your local API processes. A payment, waiver, signed plan, admission, or pass verification changes that database. Record your results before moving to the next patient; these are not reset by refreshing a page.
 
