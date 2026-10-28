@@ -92,7 +92,10 @@ export class HmoAppealService {
       JSON.stringify({
         facility: { name: facility.name, address: facility.address },
         referenceNumber: referenceNumberPlaceholder,
-        admissionDate: enc.admittedAt.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'long' }),
+        admissionDate: enc.admittedAt.toLocaleDateString('en-PH', {
+          timeZone: 'Asia/Manila',
+          dateStyle: 'long',
+        }),
         loaNumber: hmo?.approvalCode ?? 'Not recorded',
         reconsiderationDeadline: reconsiderationDeadlinePlaceholder,
         items: activeItems
@@ -167,7 +170,10 @@ export class HmoAppealService {
           });
           return {
             ...parsed,
-            appealLetterMarkdown: parsed.appealLetterMarkdown.replaceAll(reconsiderationDeadline, readableDeadline),
+            appealLetterMarkdown: parsed.appealLetterMarkdown.replaceAll(
+              reconsiderationDeadline,
+              readableDeadline,
+            ),
             modelUsed: response.modelUsed,
           };
         },
