@@ -808,7 +808,8 @@ export const ActiveDischargeRadar: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-xs text-slate-600 mt-0.5 truncate">
-                        <strong className="text-slate-800">{currentSelectedEncounter.roomBed}</strong> · MRN:{' '}
+                        <strong className="text-slate-800">{currentSelectedEncounter.roomBed}</strong> ·
+                        Encounter:{' '}
                         <span className="font-mono">{currentSelectedEncounter.encounterNumber}</span> ·{' '}
                         {currentSelectedEncounter.attendingDoctor} ·{' '}
                         {currentSelectedEncounter.primaryDiagnosis}

@@ -790,35 +790,42 @@ export function computePatientOopDrivers(encounters: Encounter[]): PatientOopDri
   };
 }
 
-export function computeArAgingSummary(): ArAgingSummary[] {
-  return [
-    {
-      bucket: 'Current (0–30 Days)',
-      amount: 28400000,
-      percentage: 72.8,
-      status: 'Healthy Active Claims Pipeline',
-      isStatutoryRisk: false,
-    },
+// Outstanding receivables from the encounters themselves: PhilHealth and HMO amounts (no payer payment is recorded
+// yet) plus the patient's unpaid share, bucketed by days since admission.
+export function computeArAgingSummary(encounters: Encounter[], now: Date = new Date()): ArAgingSummary[] {
+  const buckets: ArAgingSummary[] = [
+    { bucket: 'Current (0–30 Days)', amount: 0, percentage: 0, status: 'Healthy Active Claims Pipeline' },
     {
       bucket: '31–60 Days',
-      amount: 7210000,
-      percentage: 18.5,
+      amount: 0,
+      percentage: 0,
       status: 'PhilHealth Audit (Approaching 60-Day Cutoff)',
       isStatutoryRisk: true,
     },
-    {
-      bucket: '61–90 Days',
-      amount: 2420000,
-      percentage: 6.2,
-      status: 'HMO Reconsiderations & Inner Limit Reviews',
-      isStatutoryRisk: false,
-    },
+    { bucket: '61–90 Days', amount: 0, percentage: 0, status: 'HMO Reconsiderations & Inner Limit Reviews' },
     {
       bucket: '90+ Days',
-      amount: 980000,
-      percentage: 2.5,
+      amount: 0,
+      percentage: 0,
       status: 'Circular 2025-0015 Refilings & Bad Debt Reserve',
-      isStatutoryRisk: false,
     },
   ];
+
+  for (const enc of encounters) {
+    const w = enc.waterfall;
+    const patientOpen =
+      enc.remainingBalance ?? Math.max(0, w.netPatientDue - (enc.amountPaid ?? w.patientPaid ?? 0));
+    const outstanding = w.philhealthTotal + w.hmoApprovedAmount + patientOpen;
+    const admitted = new Date(enc.admissionDate).getTime();
+    const days = Number.isFinite(admitted) ? Math.max(0, (now.getTime() - admitted) / 86_400_000) : 0;
+    const idx = days <= 30 ? 0 : days <= 60 ? 1 : days <= 90 ? 2 : 3;
+    buckets[idx].amount += outstanding;
+  }
+
+  const total = buckets.reduce((acc, b) => acc + b.amount, 0);
+  for (const b of buckets) {
+    b.amount = Math.round(b.amount * 100) / 100;
+    b.percentage = total ? Number(((b.amount / total) * 100).toFixed(1)) : 0;
+  }
+  return buckets;
 }

@@ -151,7 +151,7 @@ export const RcmAnalyticsPage: React.FC = () => {
   const deptMetrics = useMemo(() => computeDepartmentMetrics(filteredEncounters), [filteredEncounters]);
   const claimMetrics = useMemo(() => computeClaimsScrutinyMetrics(filteredEncounters), [filteredEncounters]);
   const oopDrivers = useMemo(() => computePatientOopDrivers(filteredEncounters), [filteredEncounters]);
-  const arAging = useMemo(() => computeArAgingSummary(), []);
+  const arAging = useMemo(() => computeArAgingSummary(filteredEncounters), [filteredEncounters]);
   const actionableExceptions = useMemo(
     () => extractActionableExceptions(filteredEncounters),
     [filteredEncounters],

@@ -1,4 +1,5 @@
 import { claimsApi } from '@/v1/api';
+import { ApiError } from '@/v1/api/client';
 import { ClaimsPreflightScrubberModal } from '@/v1/components/ai/ClaimsPreflightScrubberModal';
 import { Button, IconButton, SegmentedTabs } from '@/v1/components/common';
 import {
@@ -29,6 +30,7 @@ export const ClaimsEsoaPage: React.FC = () => {
   const [xmlError, setXmlError] = useState<string | null>(null);
   const [xmlRetry, setXmlRetry] = useState(0);
   const [xmlLoading, setXmlLoading] = useState(false);
+  const [xmlPending, setXmlPending] = useState<string | null>(null);
 
   const [claimPage, setClaimPage] = useState(1);
   const claimPageSize = 8;
@@ -67,6 +69,7 @@ export const ClaimsEsoaPage: React.FC = () => {
     setServerXml(null);
     setCopied(false);
     setXmlError(null);
+    setXmlPending(null);
     if (!claim?.id) return;
     setXmlLoading(true);
     claimsApi
@@ -78,7 +81,9 @@ export const ClaimsEsoaPage: React.FC = () => {
         setServerXml({ key: xmlKey, xml });
       })
       .catch((error) => {
-        if (active) setXmlError(error instanceof Error ? error.message : 'Could not load the hospital XML.');
+        if (!active) return;
+        if (error instanceof ApiError && error.code === 'BILL_NOT_FINAL') setXmlPending(error.message);
+        else setXmlError(error instanceof Error ? error.message : 'Could not load the hospital XML.');
       })
       .finally(() => {
         if (active) setXmlLoading(false);
@@ -593,7 +598,7 @@ export const ClaimsEsoaPage: React.FC = () => {
           <pre className="p-4 rounded-lg bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto max-h-[340px] leading-relaxed">
             {xmlLoading
               ? 'Loading hospital XML…'
-              : eSoaXmlString || 'XML is unavailable. Retry before exporting.'}
+              : eSoaXmlString || xmlPending || 'XML is unavailable. Retry before exporting.'}
           </pre>
         </div>
       </div>
@@ -709,7 +714,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                 <pre className="font-mono text-xs text-emerald-400 overflow-x-auto max-h-[420px] leading-relaxed select-all">
                   {xmlLoading
                     ? 'Loading hospital XML…'
-                    : eSoaXmlString || 'XML is unavailable. Retry before exporting.'}
+                    : eSoaXmlString || xmlPending || 'XML is unavailable. Retry before exporting.'}
                 </pre>
               </div>
             </div>
