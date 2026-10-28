@@ -44,7 +44,7 @@ Open <http://localhost:5174> in Safari or Chrome.
 **Terminal 3 — mobile**
 
 ```bash
-EXPO_PUBLIC_API_PORT=8788 npm run ios -w @medcore/mobile -- --port 8081
+EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8788 npm run ios -w @medcore/mobile -- --port 8081
 ```
 
 This should open the iOS simulator and Expo Go. If necessary, press `i` in Terminal 3. You can also run this from another terminal:
@@ -328,7 +328,7 @@ These are known gaps, not completed features. Accepting them is an explicit prod
 | Signed PDFs, official receipt/tax certification, official PhilHealth schema conformance | A UI record/XML export is not proof of these capabilities                                                      |
 | Refund payout and later plan installment collection                                     | No operational collection/refund flow yet; do not promise those workflows                                      |
 
-If you need any of these working at replacement time, the release is **not ready for your needs**, even if the supported workflows pass. See [the API gap list](docs/v2/API_GAPS.md).
+If you need any of these working at replacement time, the release is **not ready for your needs**, even if the supported workflows pass.
 
 ## 13. Automated checks
 

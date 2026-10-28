@@ -1,8 +1,0 @@
-{
-  "checks": [
-    "Staff login 1440px: rendered, contained, corrected dark metadata",
-    "Staff login 390px: rendered, contained, corrected dark metadata",
-    "Mobile 844x390 landscape: auth, Home reachable payment action, Coverage"
-  ],
-  "errors": []
-}

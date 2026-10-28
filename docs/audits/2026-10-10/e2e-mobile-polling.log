@@ -1,1 +1,0 @@
-{"passed":5,"results":["foreground interval accepts only confirmed refreshed balance","background polling pauses and foreground resumes immediately","failed refresh retains the last authoritative balance","old account replies are discarded and cannot clear the new pending request","logout hides patient state and removes polling and AppState listeners"]}

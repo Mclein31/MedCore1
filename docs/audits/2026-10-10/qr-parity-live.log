@@ -1,7 +1,0 @@
-<-- POST /api/v1/auth/login
---> POST /api/v1/auth/login 200 43ms
-<-- GET /api/v1/encounters/enc-1155
---> GET /api/v1/encounters/enc-1155 200 48ms
-<-- GET /api/v1/patient/me/overview
---> GET /api/v1/patient/me/overview 200 25ms
-LIVE_QR_PARITY_PASS: staff/mobile payload and complete matrix identical for the same active pass; no billing mutation

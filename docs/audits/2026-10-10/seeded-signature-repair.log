@@ -1,2 +1,0 @@
-{"database":"local aqromed","repairedFixtureSignatures":81,"encounters":250,"changedFields":["discharge_passes.hmac_signature"],"preserved":["pass number","exit PIN","balances","fees","clinical stage","held Juan QuickSign"]}
-{"database":"local aqromed","repairedFixtureSignatures":2,"encounters":250,"changedFields":["discharge_passes.hmac_signature"],"preserved":["pass number","exit PIN","balances","fees","clinical stage","held Juan QuickSign"]}

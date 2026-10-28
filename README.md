@@ -14,11 +14,11 @@ features, remains on `main`. Both apps now use the original v1 UI through client
 | `packages/domain` | Pure business rules shared by API and web: money, waterfall, promissory schedules, discharge state machine, permission matrix, request contracts. No I/O. |
 | `apps/api`        | Hono + Drizzle + PostgreSQL. Runs on Node (`src/node.ts`) and Cloudflare Workers (`src/worker.ts`).                                                       |
 | `apps/web`        | React 19 + Vite + Tailwind 4. Hospital staff dashboard only. Patients use the mobile app.                                                                 |
-| `apps/mobile`     | Expo (SDK 57) patient app: bill, coverage, payments, questions, exit pass. Bearer token in the OS keychain.                                               |
+| `apps/mobile`     | Expo (SDK 58) patient app: bill, coverage, payments, questions, exit pass. Bearer token in the OS keychain.                                               |
 
 ## Run it locally
 
-Requires Node 22+, PostgreSQL 15+ and, for the mobile app, Xcode with an iOS simulator (Expo Go installs itself).
+Requires a supported Node version (22.13+, 24.3+, or 26+; odd-numbered releases below 27 are unsupported), PostgreSQL 15+ and, for the mobile simulator, Xcode (Expo Go installs itself).
 Run every command from the repository root.
 
 ```bash
@@ -28,15 +28,18 @@ createdb medcore              # or point DATABASE_URL at another empty database
 npm run db:migrate
 npm run db:seed               # fictional demo hospital SJMC-MNL
 npm run dev                   # API on :8787, staff dashboard on http://localhost:5173
-npm run ios -w @medcore/mobile   # second terminal: patient app in the iOS simulator
+EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8787 npm run ios -w @medcore/mobile   # second terminal: patient app on the local API
 ```
+
+Without `EXPO_PUBLIC_API_BASE_URL` the app uses the hosted API, which works from any phone on any network
+(Expo Go on a physical phone, a different Wi-Fi, mobile data). The local API is reachable only from this Mac.
 
 Set `PATIENT_ONLINE_PAYMENTS=simulated` and `PATIENT_ONLINE_PROMISSORY=true` in `.env` to try payments and payment
 plans from the app.
 
 Port 8787 is also the v1 Worker's port (`wrangler dev` on `main`). If it is taken, move v2:
 `PORT=8788` in `.env`, then start the dashboard with `API_PORT=8788 npm run dev -w @medcore/web` and the app with
-`EXPO_PUBLIC_API_PORT=8788 npm run ios -w @medcore/mobile`.
+`EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8788 npm run ios -w @medcore/mobile`.
 
 To run beside existing servers on 8787/8790/5173, use three terminals from this checkout (do not reseed an existing database):
 
@@ -55,7 +58,7 @@ API_PORT=8788 npx vite --port 5174 --strictPort
 ```bash
 # Mobile (then open exp://localhost:8081 in Expo Go)
 cd apps/mobile
-EXPO_PUBLIC_API_PORT=8788 npx expo start --port 8081
+EXPO_PUBLIC_API_BASE_URL=http://127.0.0.1:8788 npx expo start --port 8081
 xcrun simctl openurl booted exp://localhost:8081
 ```
 
@@ -65,10 +68,18 @@ Staff sign in at http://localhost:5173 with `cfo@`, `billing@`, `claims@`, `hmo@
 `stjude.example.test` and `SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app: "First time here? Link your hospital stay" (MRN + DOB),
 a seeded MRN (for example `MRN-240118`) and date of birth, then the 6-digit code printed in the API log.
 
-The app calls `http://localhost:8787` (`10.0.2.2` on the Android emulator). For a phone on your network set
-`EXPO_PUBLIC_API_URL=http://<your-mac-ip>:8787` and start the API with `HOST=0.0.0.0`.
+The app defaults to `http://127.0.0.1:8787`. For a phone on your network, start the API with
+`HOST=0.0.0.0` and set `EXPO_PUBLIC_API_BASE_URL` to your Mac's Wi-Fi address:
 
-What v1 had that v2 does not yet: [`docs/v2/API_GAPS.md`](docs/v2/API_GAPS.md).
+```bash
+EXPO_PUBLIC_API_BASE_URL=http://<your-mac-ip>:8787 npm run start -w @medcore/mobile -- --clear
+```
+
+Install [Expo Go](https://expo.dev/go) on your phone and connect it to the same Wi-Fi as your Mac.
+On a physical iPhone, sign in to the same Expo account in Expo Go and on your Mac (`npx expo login`
+from `apps/mobile`), then scan the terminal QR code with the iPhone Camera and open it in Expo Go.
+Expo Go must support SDK 58. The dashboard and mobile app share React 19.3.0, pinned in the root
+overrides to match React Native's renderer and avoid duplicate React runtimes.
 
 ## Checks
 

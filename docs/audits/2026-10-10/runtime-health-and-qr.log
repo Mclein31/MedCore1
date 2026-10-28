@@ -1,1 +1,0 @@
-{"backend":200,"database":{"status":"CONNECTED","driver":"DIRECT_POSTGRES","latencyMs":9,"encountersCount":250},"dashboard":200,"mobileWeb":200,"mobileBundle":200,"storedSignaturesVerified":83,"staffPatientQrParity":"PASS","clinicalAndFinancialWrites":0}

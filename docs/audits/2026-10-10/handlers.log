@@ -1,7 +1,0 @@
-{"step":"2.2","expected":403,"actual":403,"balance":"100.00","stage":"DOCTOR_PF_PENDING","writes":0,"payments":0,"receipts":0,"auditLogs":0}
-{"step":"7.1","role":"PATIENT_GUARANTOR","expected":409,"actual":409,"balance":"100.00","stage":"MGH_DECLARED","writes":0,"payments":0,"receipts":0,"auditLogs":0}
-{"step":"7.1","role":"BILLING_SPECIALIST","expected":"no early-stage ledger writes","actual":409,"balance":"100.00","stage":"MGH_DECLARED","writes":0,"payments":0,"receipts":0,"auditLogs":0}
-{"step":"8.1","expected":400,"actual":400,"body":{"error":{"code":"INVALID_IDEMPOTENCY_KEY","message":"Idempotency-Key header cannot exceed 128 characters.","timestamp":"2026-10-10T05:00:56.577Z"}},"balance":"100.00","stage":"PENDING_SETTLEMENT","writes":0,"payments":0,"receipts":0,"auditLogs":0}
-{"step":"8.2","expected":200,"actual":200,"balance":"75.00","stage":"PENDING_SETTLEMENT","writes":6,"payments":1,"receipts":1,"auditLogs":1}
-{"step":"8.3","expected":200,"actual":200,"cached":true,"samePayment":true,"balance":"75.00","stage":"PENDING_SETTLEMENT","writes":6,"payments":1,"receipts":1,"auditLogs":1}
-MASTER_HANDLER_PROBES_DONE; all isolated compliance assertions passed
