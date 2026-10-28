@@ -1,10 +1,10 @@
+export const HOSTED_API_ROOT = 'https://medcore-backend.mcleinonza0531.workers.dev';
+
 export function resolveApiConfig(
   raw: string | undefined,
   development: boolean,
-  devPort = '8787',
 ): { root: string; error: string | null } {
-  const value = raw?.trim() || (development ? `http://127.0.0.1:${devPort}` : '');
-  if (!value) return { root: '', error: 'The app’s API address is not configured. Please contact support.' };
+  const value = raw?.trim() || HOSTED_API_ROOT;
   try {
     const url = new URL(value);
     if (url.username || url.password || url.search || url.hash || !['http:', 'https:'].includes(url.protocol))

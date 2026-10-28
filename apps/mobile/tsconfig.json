@@ -9,7 +9,7 @@
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
     "types": [],
-    // The web app hoists a newer React to the root; this app is pinned to the version React Native ships with.
+    // Resolve app-local React types first when npm installs them here; otherwise use the shared copy.
     "paths": {
       "react": ["./node_modules/@types/react"],
       "react/*": ["./node_modules/@types/react/*"]

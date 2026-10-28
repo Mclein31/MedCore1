@@ -7,11 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/brand/app-icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/brand/MedCore_Badge_Logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0F2A4A"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ph.medcore.patient",
@@ -39,7 +34,16 @@
           "microphonePermission": false
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/brand/MedCore_Badge_Logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0F2A4A"
+        }
+      ]
     ]
   }
 }

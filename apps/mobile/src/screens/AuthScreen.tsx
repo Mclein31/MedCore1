@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { TextInput } from 'react-native';
+import type { ScrollViewInstance, TextInputInstance } from 'react-native';
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { ASSETS } from '../lib/assets';
 import { useAuth, type CodeTarget } from '../lib/auth';
@@ -22,13 +22,13 @@ const COPY: Record<Mode, { title: string; body: string }> = {
 
 export default function AuthScreen() {
   const { login, requestCode, verifyCode, notice } = useAuth();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const fields = {
-    email: useRef<TextInput>(null),
-    password: useRef<TextInput>(null),
-    mrn: useRef<TextInput>(null),
-    dateOfBirth: useRef<TextInput>(null),
-    code: useRef<TextInput>(null),
+    email: useRef<TextInputInstance>(null),
+    password: useRef<TextInputInstance>(null),
+    mrn: useRef<TextInputInstance>(null),
+    dateOfBirth: useRef<TextInputInstance>(null),
+    code: useRef<TextInputInstance>(null),
   };
   const [mode, setMode] = useState<Mode>('email');
   const [back, setBack] = useState<Mode>('email');

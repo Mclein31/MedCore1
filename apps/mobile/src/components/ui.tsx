@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { TextInputProps } from 'react-native';
+import type { TextInputInstance, TextInputProps } from 'react-native';
 
 import { C, Radius } from './theme';
 export { C, Spacing, Radius } from './theme';
@@ -431,7 +431,7 @@ export function Field({
   hideLabel?: boolean;
   placeholder?: string;
   trailingIcon?: string;
-  inputRef?: React.Ref<TextInput>;
+  inputRef?: React.Ref<TextInputInstance>;
   autoComplete?: TextInputProps['autoComplete'];
   autoCapitalize?: TextInputProps['autoCapitalize'];
 }) {

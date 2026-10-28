@@ -4,8 +4,6 @@ const { getDefaultConfig } = require('expo/metro-config');
 
 const config = getDefaultConfig(__dirname);
 
-// The web app hoists a newer React to the root. React Native's renderer must use the exact
-// React it ships with, and shared libraries (React Query, React Navigation) must see the same copy.
 const resolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   if (moduleName === 'react' || moduleName.startsWith('react/')) {

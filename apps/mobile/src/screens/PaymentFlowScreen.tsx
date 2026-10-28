@@ -10,6 +10,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHeaderHeight } from '@react-navigation/elements';
@@ -183,7 +184,7 @@ export default function PaymentFlowScreen({
   const currentEncounter =
     encounters.find((enc) => enc.uuid === (pending?.encounterId || selectedId.current)) ?? null;
   const [step, setStep] = useState<CheckoutStep>(route.params?.startAtMethod ? 'method' : 'amount');
-  const checkoutScroll = useRef<ScrollView>(null);
+  const checkoutScroll = useRef<ScrollViewInstance>(null);
   const [mode, setMode] = useState<Mode>('FULL');
   const [partial, setPartial] = useState('');
   const [rail, setRail] = useState('GCASH');

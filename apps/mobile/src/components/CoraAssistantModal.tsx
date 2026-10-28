@@ -4,6 +4,7 @@ import { CORA_LANGUAGE_LABELS, CORA_LANGUAGE_OPTIONS, type CoraLanguage } from '
 import { ModalOverlay } from './ModalOverlay';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mic, Send, X, ChevronRight } from './SolarIcons';
 import { CoraAvatar } from './CoraAvatar';
@@ -66,7 +67,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
   const [speechNotice, setSpeechNotice] = useState<string | null>(null);
   const pendingRequest = useRef<AbortController | null>(null);
   const recognitionRef = useRef<any>(null);
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
 
   const activeContext = useRef({ client, encounterId: encounter?.uuid, language, visible });
   activeContext.current = { client, encounterId: encounter?.uuid, language, visible };

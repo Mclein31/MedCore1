@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GradientSurface from './GradientSurface';
 import { Icon } from './icons';
@@ -29,7 +30,7 @@ export default function PaymentAmountEntry({
   onRetry?: () => void;
 }) {
   const [keyboard, setKeyboard] = useState(false);
-  const input = useRef<TextInput>(null);
+  const input = useRef<TextInputInstance>(null);
   const { width, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const keySize = Math.min(78, (Math.min(width, 720) - 48) / 4 - 6);
