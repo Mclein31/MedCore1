@@ -112,7 +112,7 @@ export class ClaimsForensicService {
         charges: lines,
         ledger,
       },
-      new Date(),
+      enc.clearedAt ?? enc.admittedAt,
     );
 
     const itemTotalCents = lines
@@ -210,11 +210,34 @@ export class ClaimsForensicService {
         remediation: rehydrateText(f.remediation, scrubbed.tokenMap),
       }));
 
+      const mismatch = caseRateMismatch(claimForXml.caseRateCode, enc.icd10Code);
+      if (mismatch) {
+        const risk = Math.min(0.99, Math.max(auditResult.rthRiskScore, 0.5));
+        hydratedFlags.unshift({
+          category: 'DIAGNOSTIC_DISCREPANCY',
+          severity: 'CRITICAL',
+          field: 'CF2.caseRateCode / CF4.primaryIcd10',
+          description: `Case rate ${claimForXml.caseRateCode} covers ${mismatch} (ICD-10 ${CASE_RATE_ICD10[claimForXml.caseRateCode]}*), but the primary diagnosis is ${enc.primaryDiagnosis} (ICD-10 ${enc.icd10Code}). PhilHealth returns claims whose case rate does not match the primary diagnosis.`,
+          regulatoryCitation: 'PhilHealth Circular 2023-0026 (eClaims 3.0 data validation)',
+          remediation: `Confirm the final diagnosis with the attending physician, then either correct the ICD-10 code or re-select the case rate for ${enc.icd10Code} before transmission.`,
+        });
+        Object.assign(auditResult, {
+          rthRiskScore: risk,
+          riskLevel: 'CRITICAL',
+          passThreshold: false,
+          cleanClaimReadiness: Math.round((1 - risk) * 100),
+        });
+      }
+
       return {
         ...auditResult,
         esoaXmlConformity: esoaConformity,
         clinicalSummary: hydratedSummary,
-        suggestedDoctorAddendum: hydratedAddendum,
+        suggestedDoctorAddendum:
+          hydratedAddendum ??
+          (mismatch
+            ? `Chart addendum for attending physician review: Please confirm the final primary diagnosis for this confinement. The chart records ${enc.primaryDiagnosis} (ICD-10 ${enc.icd10Code}), while the claim case rate is ${claimForXml.caseRateCode} (${mismatch}). If ${mismatch} was the treated condition, document the supporting findings and update the primary ICD-10; otherwise confirm ${enc.icd10Code} so billing can re-select the matching case rate.`
+            : null),
         flags: hydratedFlags,
         claimContext: {
           encounterId: enc.encounterNumber,
@@ -228,6 +251,30 @@ export class ClaimsForensicService {
       clearTokenMap(scrubbed.tokenMap);
     }
   }
+}
+
+const CASE_RATE_ICD10: Record<string, string> = {
+  'CAP-MR': 'J18',
+  'HPN-U': 'I10',
+  'AGE-MD': 'A09',
+  UTI: 'N39',
+  DENGUE: 'A90',
+  APPX: 'K35',
+};
+const CASE_RATE_NAMES: Record<string, string> = {
+  'CAP-MR': 'community-acquired pneumonia',
+  'HPN-U': 'hypertensive urgency',
+  'AGE-MD': 'acute gastroenteritis',
+  UTI: 'urinary tract infection',
+  DENGUE: 'dengue fever',
+  APPX: 'acute appendicitis',
+};
+
+/** The covered condition's name when the case rate does not cover the ICD-10 code; null when they agree or the rate is unknown. */
+export function caseRateMismatch(caseRateCode: string, icd10: string): string | null {
+  const prefix = CASE_RATE_ICD10[caseRateCode];
+  if (!prefix || icd10.toUpperCase().startsWith(prefix)) return null;
+  return CASE_RATE_NAMES[caseRateCode] ?? caseRateCode;
 }
 
 export const claimsForensicService = new ClaimsForensicService();

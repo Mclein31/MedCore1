@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import * as s from '../src/db/schema';
 import { base32Decode } from '../src/lib/crypto';
 import { currentStep, hotp } from '../src/lib/totp';
+import { LIMITS } from '../src/services/rateLimit';
 import { createHarness, PASSWORD, stayAwaitingSettlement, type Harness } from './harness';
 
 let h: Harness;
@@ -125,18 +126,21 @@ describe('staff sign-in', () => {
     ).toBe(200);
   });
 
-  it('rate-limits login attempts per IP', async () => {
+  it('rate-limits login attempts per IP without locking out a shared network', async () => {
     const c = h.client({ ip: '203.0.113.77' });
-    let last = 0;
-    for (let i = 0; i < 22; i++) {
-      last = (
-        await c.post('/api/v1/auth/staff/login', {
-          email: `probe${i}@nowhere.example.test`,
-          password: 'whatever pass',
-        })
-      ).status;
+    const statuses: number[] = [];
+    for (let i = 0; i < LIMITS.staffLoginIp.limit + 2; i++) {
+      statuses.push(
+        (
+          await c.post('/api/v1/auth/staff/login', {
+            email: `probe${i}@nowhere.example.test`,
+            password: 'whatever pass',
+          })
+        ).status,
+      );
     }
-    expect(last).toBe(429);
+    expect(statuses.slice(0, 25)).not.toContain(429);
+    expect(statuses.at(-1)).toBe(429);
   });
 
   it('expires idle sessions and ends them on deactivation', async () => {

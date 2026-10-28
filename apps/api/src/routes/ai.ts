@@ -97,9 +97,16 @@ const ExtractCardBody = z.object({
   forceRefresh: z.boolean().optional(),
 });
 
-function rethrowAiError(err: unknown, fallbackMessage: string): never {
+function rethrowAiError(err: unknown, fallbackMessage: string, c: AppContext): never {
   if (err instanceof ApiError) throw err;
   if (err instanceof AiInferenceError) {
+    c.var.services.logger.log('warn', 'AI inference failed', {
+      requestId: c.var.requestId,
+      errorCode: err.code,
+      providerStatus: err.providerFailure?.httpStatus,
+      providerReason: err.providerFailure?.reason,
+      model: err.providerFailure?.model,
+    });
     throw new ApiError(err.status as 400 | 422 | 502 | 503, err.code, err.message);
   }
   if (err instanceof Error && /not found/i.test(err.message)) {
@@ -111,6 +118,13 @@ function rethrowAiError(err: unknown, fallbackMessage: string): never {
   ) {
     throw new ApiError(400, 'INVALID_AI_REQUEST', err.message);
   }
+  const cause = (err as { cause?: unknown } | null)?.cause ?? err;
+  const pgState = (cause as { code?: unknown } | null)?.code;
+  c.var.services.logger.log('error', 'AI request failed', {
+    requestId: c.var.requestId,
+    errorName: err instanceof Error ? err.name : 'unknown',
+    pgState: typeof pgState === 'string' && /^[0-9A-Z]{5}$/.test(pgState) ? pgState : undefined,
+  });
   throw new ApiError(502, 'AI_UNAVAILABLE', fallbackMessage);
 }
 
@@ -158,7 +172,7 @@ staffAiRoutes.post('/cora/chat', requirePermission('encounter:read'), jsonBody(C
     });
     return c.json(result);
   } catch (err) {
-    rethrowAiError(err, 'Cora is temporarily unavailable.');
+    rethrowAiError(err, 'Cora is temporarily unavailable.', c);
   }
 });
 
@@ -196,7 +210,7 @@ staffAiRoutes.post(
       });
       return c.json(result);
     } catch (err) {
-      rethrowAiError(err, 'Claims pre-flight scrubber is temporarily unavailable.');
+      rethrowAiError(err, 'Claims pre-flight scrubber is temporarily unavailable.', c);
     }
   },
 );
@@ -237,7 +251,7 @@ staffAiRoutes.post(
       });
       return c.json(result);
     } catch (err) {
-      rethrowAiError(err, 'HMO appeal letter generator is temporarily unavailable.');
+      rethrowAiError(err, 'HMO appeal letter generator is temporarily unavailable.', c);
     }
   },
 );
@@ -268,7 +282,7 @@ staffAiRoutes.post(
       });
       return c.json(result);
     } catch (err) {
-      rethrowAiError(err, 'Executive RCM briefing generator is temporarily unavailable.');
+      rethrowAiError(err, 'Executive RCM briefing generator is temporarily unavailable.', c);
     }
   },
 );
@@ -305,7 +319,7 @@ staffAiRoutes.post('/ocr/extract-card', jsonBody(ExtractCardBody), async (c) => 
     });
     return c.json(result);
   } catch (err) {
-    rethrowAiError(err, 'Card OCR service is temporarily unavailable.');
+    rethrowAiError(err, 'Card OCR service is temporarily unavailable.', c);
   }
 });
 
@@ -373,7 +387,7 @@ patientAiRoutes.post('/cora/chat', jsonBody(CoraChatBody), async (c) => {
     });
     return c.json(result);
   } catch (err) {
-    rethrowAiError(err, 'Cora is temporarily unavailable.');
+    rethrowAiError(err, 'Cora is temporarily unavailable.', c);
   }
 });
 
@@ -401,6 +415,6 @@ patientAiRoutes.post('/ocr/extract-card', jsonBody(ExtractCardBody), async (c) =
     });
     return c.json(result);
   } catch (err) {
-    rethrowAiError(err, 'Card OCR service is temporarily unavailable.');
+    rethrowAiError(err, 'Card OCR service is temporarily unavailable.', c);
   }
 });

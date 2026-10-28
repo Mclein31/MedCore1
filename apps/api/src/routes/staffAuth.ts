@@ -149,7 +149,10 @@ staffAuthRoutes.post('/login', jsonBody(StaffLoginBody), async (c) => {
 
 staffAuthRoutes.post('/mfa/verify', jsonBody(MfaVerifyBody), async (c) => {
   const { challenge: token, code } = c.req.valid('json');
-  await enforce(c, [[LIMITS.mfaVerify, c.var.ip]]);
+  await enforce(c, [
+    [LIMITS.mfaVerify, token],
+    [LIMITS.mfaVerifyIp, c.var.ip],
+  ]);
   const { cipher, now: clock } = c.var.services;
   const now = clock();
 
@@ -200,7 +203,10 @@ staffAuthRoutes.post('/mfa/verify', jsonBody(MfaVerifyBody), async (c) => {
 
 staffAuthRoutes.post('/mfa/enroll/start', jsonBody(MfaEnrollStartBody), async (c) => {
   const { challenge: token } = c.req.valid('json');
-  await enforce(c, [[LIMITS.mfaVerify, c.var.ip]]);
+  await enforce(c, [
+    [LIMITS.mfaVerify, token],
+    [LIMITS.mfaVerifyIp, c.var.ip],
+  ]);
   const { cipher, now: clock } = c.var.services;
   const now = clock();
   return c.var.db.transaction(async (tx) => {
@@ -223,7 +229,10 @@ staffAuthRoutes.post('/mfa/enroll/start', jsonBody(MfaEnrollStartBody), async (c
 
 staffAuthRoutes.post('/mfa/enroll/confirm', jsonBody(MfaEnrollConfirmBody), async (c) => {
   const { challenge: token, code } = c.req.valid('json');
-  await enforce(c, [[LIMITS.mfaVerify, c.var.ip]]);
+  await enforce(c, [
+    [LIMITS.mfaVerify, token],
+    [LIMITS.mfaVerifyIp, c.var.ip],
+  ]);
   const { cipher, now: clock } = c.var.services;
   const now = clock();
 

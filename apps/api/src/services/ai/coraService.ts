@@ -20,7 +20,7 @@ import {
 import type { AiConfig } from '../../env';
 import { AI_CACHE_TTL, cachedAiResult } from './aiResultCache';
 import { coraLanguageCachePolicy, generateLocalizedCoraReply } from './coraLanguage';
-import { checkCoraScope, coraPolicyNotice } from './coraScope';
+import { coraPolicyNotice, obviousRestrictedRequest } from './coraScope';
 import { clearTokenMap, rehydrateText, scrubPatientData } from './phiScrubber';
 import {
   buildCoraPrompt,
@@ -289,11 +289,10 @@ export class CoraService {
         validate: validateAiResult(CoraResponseSchema.extend({ modelUsed: z.string().min(1) })),
         generate: async () => {
           const deadline = Date.now() + 40000;
-          const scope = await checkCoraScope(scrubbedMessage.scrubbedText, scrubbedHistory, aiConfig);
-          if (scope !== 'ALLOW') {
+          if (obviousRestrictedRequest(scrubbedMessage.scrubbedText)) {
             return {
-              scopeDecision: scope,
-              reply: coraPolicyNotice(scope, language),
+              scopeDecision: 'RESTRICTED' as const,
+              reply: coraPolicyNotice('RESTRICTED', language),
               mode,
               suggestedActions: [],
               modelUsed: 'policy-guard',

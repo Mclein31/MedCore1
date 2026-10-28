@@ -92,7 +92,7 @@ export class HmoAppealService {
       JSON.stringify({
         facility: { name: facility.name, address: facility.address },
         referenceNumber: referenceNumberPlaceholder,
-        admissionDate: enc.admittedAt.toISOString(),
+        admissionDate: enc.admittedAt.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', dateStyle: 'long' }),
         loaNumber: hmo?.approvalCode ?? 'Not recorded',
         reconsiderationDeadline: reconsiderationDeadlinePlaceholder,
         items: activeItems
@@ -160,7 +160,16 @@ export class HmoAppealService {
               'The generated letter did not preserve its appeal reference and requested response date. Please regenerate it.',
             );
           }
-          return { ...parsed, modelUsed: response.modelUsed };
+          const readableDeadline = new Date(reconsiderationDeadline).toLocaleString('en-PH', {
+            timeZone: 'Asia/Manila',
+            dateStyle: 'long',
+            timeStyle: 'short',
+          });
+          return {
+            ...parsed,
+            appealLetterMarkdown: parsed.appealLetterMarkdown.replaceAll(reconsiderationDeadline, readableDeadline),
+            modelUsed: response.modelUsed,
+          };
         },
       });
 

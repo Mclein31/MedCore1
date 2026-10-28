@@ -17,15 +17,16 @@ export interface LimitRule {
 }
 
 export const LIMITS = {
-  staffLoginIp: { name: 'staff-login-ip', limit: 20, windowSeconds: 300 },
+  staffLoginIp: { name: 'staff-login-ip', limit: 200, windowSeconds: 300 },
   staffLoginEmail: { name: 'staff-login-email', limit: 10, windowSeconds: 900 },
   mfaVerify: { name: 'mfa-verify', limit: 10, windowSeconds: 300 },
-  codeRequestIp: { name: 'code-request-ip', limit: 10, windowSeconds: 600 },
+  mfaVerifyIp: { name: 'mfa-verify-ip', limit: 300, windowSeconds: 300 },
+  codeRequestIp: { name: 'code-request-ip', limit: 100, windowSeconds: 600 },
   codeRequestIdentity: { name: 'code-request-identity', limit: 5, windowSeconds: 3600 },
-  codeVerifyIp: { name: 'code-verify-ip', limit: 30, windowSeconds: 600 },
+  codeVerifyIp: { name: 'code-verify-ip', limit: 300, windowSeconds: 600 },
   gatePassVerify: { name: 'gate-pass-verify', limit: 30, windowSeconds: 300 },
   patientPayment: { name: 'patient-payment', limit: 10, windowSeconds: 600 },
-  inviteAccept: { name: 'invite-accept', limit: 10, windowSeconds: 3600 },
+  inviteAccept: { name: 'invite-accept', limit: 100, windowSeconds: 3600 },
 } satisfies Record<string, LimitRule>;
 
 export async function consume(

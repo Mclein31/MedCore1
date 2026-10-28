@@ -39,11 +39,18 @@ export type AiErrorCode =
   | 'AI_CACHE_LEASE_EXPIRED'
   | 'AI_GENERATION_PENDING';
 
+export interface AiProviderFailure {
+  model: string;
+  httpStatus: number;
+  reason?: string;
+}
+
 export class AiInferenceError extends Error {
   constructor(
     public readonly code: AiErrorCode,
     message: string,
     public readonly status = 502,
+    public readonly providerFailure?: AiProviderFailure,
   ) {
     super(message);
     this.name = 'AiInferenceError';
@@ -70,8 +77,17 @@ export function isAiEnabled(explicit?: AiConfig): boolean {
   return resolveAiConfig(explicit).enabled;
 }
 
+const MODEL_COOLDOWN_MS = 60_000;
+
+function warrantsCooldown(err: unknown): boolean {
+  if (!(err instanceof AiInferenceError)) return true;
+  if (err.code === 'AI_TIMEOUT' || err.code === 'AI_RATE_LIMITED') return true;
+  return (err.providerFailure?.httpStatus ?? 0) >= 500;
+}
+
 export class GeminiClient {
-  private readonly baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+  private readonly interactionsUrl = 'https://generativelanguage.googleapis.com/v1beta/interactions';
+  private readonly coolingUntil = new Map<string, number>();
 
   async generate(options: GeminiGenerateOptions): Promise<GeminiGenerateResponse> {
     const config = resolveAiConfig(options.aiConfig);
@@ -90,14 +106,20 @@ export class GeminiClient {
     const timeoutMs = options.timeoutMs ?? 20000;
 
     let lastError: Error | null = null;
+    const now = Date.now();
+    const isCooling = (model: string) => (this.coolingUntil.get(model) ?? 0) > now;
+    const ordered = [...modelsToTry.filter((model) => !isCooling(model)), ...modelsToTry.filter(isCooling)];
 
-    for (const model of modelsToTry) {
+    for (const model of ordered) {
       try {
-        return await this.callModel(model, config.apiKey, options, timeoutMs);
+        const response = await this.callModel(model, config.apiKey, options, timeoutMs);
+        this.coolingUntil.delete(model);
+        return response;
       } catch (err) {
         if (err instanceof AiInferenceError && err.code === 'AI_INVALID_RESPONSE') {
           throw err;
         }
+        if (warrantsCooldown(err)) this.coolingUntil.set(model, Date.now() + MODEL_COOLDOWN_MS);
         lastError = err instanceof Error ? err : new Error('AI provider request failed.');
       }
     }
@@ -116,54 +138,38 @@ export class GeminiClient {
     options: GeminiGenerateOptions,
     timeoutMs: number,
   ): Promise<GeminiGenerateResponse> {
-    const url = `${this.baseUrl}/${model}:generateContent`;
-
-    const contentsParts: GeminiPart[] =
-      options.parts && options.parts.length > 0 ? options.parts : [{ text: options.prompt }];
+    const input =
+      options.parts && options.parts.length > 0 ? options.parts.map(toInteractionContent) : options.prompt;
 
     const generationConfig: Record<string, unknown> = {
       temperature: options.temperature ?? 0.2,
-      maxOutputTokens: options.maxOutputTokens ?? 2048,
+      max_output_tokens: options.maxOutputTokens ?? 2048,
+      thinking_level: model.includes('pro') ? 'low' : 'minimal',
     };
-    if (model.startsWith('gemini-2.5')) {
-      generationConfig.thinkingConfig = {
-        thinkingBudget: model.includes('pro') ? 128 : 0,
-      };
-    }
-
-    if (options.responseMimeType) {
-      generationConfig.responseMimeType = options.responseMimeType;
-    }
-
-    if (options.responseSchema) {
-      generationConfig.responseSchema = options.responseSchema;
-    }
-
-    if (options.responseJsonSchema) {
-      generationConfig.responseJsonSchema = options.responseJsonSchema;
-    }
 
     const payload: Record<string, unknown> = {
-      contents: [
-        {
-          role: 'user',
-          parts: contentsParts,
-        },
-      ],
-      generationConfig,
+      model,
+      input,
+      store: false,
+      generation_config: generationConfig,
     };
 
     if (options.systemInstruction) {
-      payload.systemInstruction = {
-        parts: [{ text: options.systemInstruction }],
-      };
+      payload.system_instruction = options.systemInstruction;
+    }
+
+    const jsonSchema =
+      options.responseJsonSchema ??
+      (options.responseSchema ? toJsonSchema(options.responseSchema) : undefined);
+    if (jsonSchema) {
+      payload.response_format = jsonSchema;
     }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const response = await fetch(url, {
+      const response = await fetch(this.interactionsUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -174,25 +180,57 @@ export class GeminiClient {
       });
 
       if (!response.ok) {
+        const parsed: unknown = await response.json().catch(() => null);
+        const body = (Array.isArray(parsed) ? parsed[0] : parsed) as {
+          error?: { code?: unknown; status?: unknown; details?: Array<{ reason?: unknown }> };
+        } | null;
+        const details = Array.isArray(body?.error?.details) ? body.error.details : [];
+        const rawReason =
+          typeof body?.error?.code === 'string'
+            ? body.error.code
+            : (details.find((detail) => typeof detail?.reason === 'string')?.reason ?? body?.error?.status);
+        const reason = typeof rawReason === 'string' ? rawReason.toUpperCase() : undefined;
+        const providerFailure: AiProviderFailure = {
+          model,
+          httpStatus: response.status,
+          ...(reason && /^[A-Z][A-Z0-9_]{0,79}$/.test(reason) ? { reason } : {}),
+        };
         if (response.status === 429) {
           throw new AiInferenceError(
             'AI_RATE_LIMITED',
             'The AI service is rate-limited right now. Please wait a moment and try again.',
             503,
+            providerFailure,
           );
         }
-        throw new AiInferenceError('AI_UNAVAILABLE', 'The AI provider rejected or failed the request.', 502);
+        throw new AiInferenceError(
+          'AI_UNAVAILABLE',
+          'The AI provider rejected or failed the request.',
+          502,
+          providerFailure,
+        );
       }
 
       const data = (await response.json()) as {
-        candidates?: Array<{
-          content?: {
-            parts?: Array<{ text?: string }>;
-          };
+        status?: string;
+        steps?: Array<{
+          type?: string;
+          content?: Array<{ type?: string; text?: string }>;
         }>;
       };
-      const candidate = data?.candidates?.[0];
-      const text = candidate?.content?.parts?.map((p) => p.text ?? '').join('') ?? '';
+      if (data?.status === 'failed' || data?.status === 'cancelled') {
+        throw new AiInferenceError('AI_UNAVAILABLE', 'The AI provider rejected or failed the request.', 502, {
+          model,
+          httpStatus: response.status,
+          reason: `INTERACTION_${data.status.toUpperCase()}`,
+        });
+      }
+      const text =
+        data?.steps
+          ?.filter((step) => step.type === 'model_output')
+          .flatMap((step) => step.content ?? [])
+          .map((part) => (part.type === 'text' ? (part.text ?? '') : ''))
+          .join('') ?? '';
 
       if (!text) {
         throw new AiInferenceError('AI_INVALID_RESPONSE', 'The AI provider returned an empty response.');
@@ -232,6 +270,29 @@ export class GeminiClient {
       clearTimeout(timeoutId);
     }
   }
+}
+
+function toInteractionContent(part: GeminiPart): Record<string, unknown> {
+  if (part.inlineData) {
+    return { type: 'image', mime_type: part.inlineData.mimeType, data: part.inlineData.data };
+  }
+  return { type: 'text', text: part.text ?? '' };
+}
+
+// Interactions `response_format` takes standard JSON Schema; legacy Gemini schemas use
+// uppercase OpenAPI type names ('OBJECT', 'STRING').
+function toJsonSchema(schema: unknown): Record<string, unknown> {
+  const convert = (node: unknown): unknown => {
+    if (Array.isArray(node)) return node.map(convert);
+    if (!node || typeof node !== 'object') return node;
+    return Object.fromEntries(
+      Object.entries(node).map(([key, value]) => [
+        key,
+        key === 'type' && typeof value === 'string' ? value.toLowerCase() : convert(value),
+      ]),
+    );
+  };
+  return convert(schema) as Record<string, unknown>;
 }
 
 export const geminiClient = new GeminiClient();

@@ -18,8 +18,9 @@
     "PATIENT_ONLINE_PROMISSORY": "true",
     "MAIL_TRANSPORT": "smtp",
     "MAIL_FROM_NAME": "MedCore",
-    "GEMINI_MODEL": "gemini-3.5-flash-lite",
-    "GEMINI_BACKUP_MODEL": "gemini-3.1-flash-lite",
+    // 3.1 answers in ~2 s on the free tier; 3.5 took 7–25 s (2026-10-28), so it is the backup.
+    "GEMINI_MODEL": "gemini-3.1-flash-lite",
+    "GEMINI_BACKUP_MODEL": "gemini-3.5-flash-lite",
     "GEMINI_PRO_MODEL": "gemini-3.1-flash-lite",
     // Workers caps PBKDF2 at 100,000 iterations.
     "PASSWORD_PBKDF2_ITERATIONS": "100000",
@@ -27,4 +28,7 @@
   // Hourly purge of expired codes, challenges, rate-limit buckets and old sessions.
   "triggers": { "crons": ["17 * * * *"] },
   "observability": { "enabled": true },
+  // Philippine traffic lands in Cloudflare's Hong Kong colo, where Google rejects Gemini calls
+  // (unsupported location, HTTP 400). Run next to Singapore instead, which is also where Neon lives.
+  "placement": { "region": "gcp:asia-southeast1" },
 }
