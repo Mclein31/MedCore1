@@ -2,6 +2,14 @@
 
 Newest first, condensed. Decisions are in `DECISIONS.md`.
 
+## [2026-11-01] 32 s promo video (under review)
+- `docs/media/production/medcore-promo.mp4`: 32.0 s, 1920×1080, 60 fps, −14 LUFS / −1.5 dBTP. Owner-recorded VO (s1–s9) at 1.07× with long pauses tightened; the owner chose about 32 s with a natural voice over a strict 30 s with a faster read. Scenes: clock hook, flat-badge reveal, Overview in 3D with lifted KPI cards, real ledger waterfall turned into 3D columns, discharge milestones, claims AI pre-flight scan, a 3D iPhone (Home, Bill, Coverage, Pay), then a curved wall and end card.
+- Footage is new: 3× dashboard captures and native iPhone 17 Pro simulator screens of demo patient Grace Reyes (₱21,700 billed, ₱3,700 due), with the app driven through the Expo/Hermes debugger. The clearance SLA card was left out because the demo data shows it red ("SLA Breached"). Remotion sources, captures and the mix script live in a session scratchpad and are not in the repo.
+
+## [2026-10-29] Product video V7 re-edit (under review)
+- `docs/media/production/medcore-v7.mp4` (4:39, −14 LUFS) next to V6. Adds Andre's on-camera intro (name card), a 9 s app/dashboard tease, "Why we built MedCore", and his outro (replacing S14's "Next" line) with a Cagayan map and pin. Narration is V6's at 1.05× with pauses tightened; every motion-graphics scene was rebuilt in Remotion (kinetic type, count-ups, pain cards, PH region map, competitor quadrant, team, award). Logo is the flat badge only: the owner rejected a 3D shield.
+- Built in a session scratchpad (Remotion project, stems, mix script); those sources are temporary and not in the repo, so V7 cannot be re-rendered from repo files. Known gap: legacy SFX in the music stem are not re-synced to the new graphics.
+
 ## [2026-10-29] Product video V6 re-edit: word-locked timing, real cursor, no zoom
 - Owner review: cursor positions did not match the clicks, several clips were late against the voice, and the dashboard must not be zoomed. Causes: `capture-dashboard.mjs` logged clicks on the wall clock but built video from CDP frame timestamps, and ffmpeg's concat demuxer stretched long still frames, so clips ran up to 3.8 s longer than their click logs; `v6.py` stretched each scene evenly to its new take, so beats drifted from the words.
 - Capture: the cursor is now a DOM overlay recorded in the same frames as the clicks; video is laid out at a constant 30 fps on the log's clock (every clip within one frame of its log); feature responses are prepared before capture; `ui.mark()` logs element boxes for callouts. All dashboard clips except `dash-lobby` re-recorded; `dash-ledger` now walks the six waterfall steps, `dash-clearance` shows the board first, `dash-analytics` shows KPIs with the briefing collapsed.
