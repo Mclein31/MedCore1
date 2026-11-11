@@ -330,6 +330,62 @@
    "layer": "external",
    "detail": "Hosts the API with hourly cron trigger.",
    "file": "apps/api/wrangler.jsonc"
+  },
+  {
+   "id": "dc.code",
+   "label": "Code valid?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Patient code must be right, unexpired and not locked after too many wrong tries.",
+   "file": "apps/api/src/routes/patientAuth.ts"
+  },
+  {
+   "id": "dc.cred",
+   "label": "Password correct?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Staff password is checked; failures are counted and lock the account.",
+   "file": "apps/api/src/routes/staffAuth.ts"
+  },
+  {
+   "id": "dc.mfa",
+   "label": "MFA enabled?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Staff with an authenticator get an MFA challenge, others are signed in (or told to enroll).",
+   "file": "apps/api/src/routes/staffAuth.ts"
+  },
+  {
+   "id": "dc.perm",
+   "label": "Role has permission?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "requirePermission rejects staff whose role cannot do the action with 403.",
+   "file": "apps/api/src/middleware/auth.ts"
+  },
+  {
+   "id": "dc.online",
+   "label": "Online payment on?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Patient payments only run when simulated online payments are switched on, else pay at the cashier.",
+   "file": "apps/api/src/routes/patientPortal.ts"
+  },
+  {
+   "id": "dc.settled",
+   "label": "Settled, no disputes?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Once fully settled with no open disputes the stay is cleared, the exit pass issued and the bed released.",
+   "file": "apps/api/src/services/settlement.ts"
+  },
+  {
+   "id": "dc.pass",
+   "label": "Pass verified?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Lobby check of pass number and PIN: verified, wrong PIN, expired, voided or tampered.",
+   "file": "apps/api/src/routes/staffOperations.ts"
   }
  ],
  "edges": [
@@ -550,33 +606,8 @@
   },
   {
    "from": "api.app",
-   "to": "api.encounters",
-   "label": "mounts"
-  },
-  {
-   "from": "api.app",
-   "to": "api.ops",
-   "label": "mounts"
-  },
-  {
-   "from": "api.app",
-   "to": "api.users",
-   "label": "mounts"
-  },
-  {
-   "from": "api.app",
    "to": "api.ai",
    "label": "mounts"
-  },
-  {
-   "from": "api.patientauth",
-   "to": "svc.auth",
-   "label": "issues session"
-  },
-  {
-   "from": "api.staffauth",
-   "to": "svc.auth",
-   "label": "issues session"
   },
   {
    "from": "api.patientauth",
@@ -594,11 +625,6 @@
    "label": "bill ready"
   },
   {
-   "from": "api.patient",
-   "to": "svc.ledger",
-   "label": "pays"
-  },
-  {
    "from": "api.encounters",
    "to": "svc.ledger",
    "label": "recalculates"
@@ -612,11 +638,6 @@
    "from": "api.encounters",
    "to": "svc.gatepass",
    "label": "mints"
-  },
-  {
-   "from": "svc.ledger",
-   "to": "svc.gatepass",
-   "label": "mints on clear"
   },
   {
    "from": "svc.ledger",
@@ -650,11 +671,6 @@
   },
   {
    "from": "svc.ledger",
-   "to": "db.core",
-   "label": "writes"
-  },
-  {
-   "from": "svc.gatepass",
    "to": "db.core",
    "label": "writes"
   },
@@ -702,6 +718,121 @@
    "from": "svc.notify",
    "to": "actor.patient",
    "label": "emails"
+  },
+  {
+   "from": "api.patientauth",
+   "to": "dc.code",
+   "label": "verifies code"
+  },
+  {
+   "from": "dc.code",
+   "to": "svc.auth",
+   "label": "yes: session"
+  },
+  {
+   "from": "dc.code",
+   "to": "ui.m.onboard",
+   "label": "no: rejected"
+  },
+  {
+   "from": "api.staffauth",
+   "to": "dc.cred",
+   "label": "checks password"
+  },
+  {
+   "from": "dc.cred",
+   "to": "dc.mfa",
+   "label": "yes"
+  },
+  {
+   "from": "dc.cred",
+   "to": "ui.w.login",
+   "label": "no: rejected"
+  },
+  {
+   "from": "dc.mfa",
+   "to": "ui.w.login",
+   "label": "yes: MFA challenge"
+  },
+  {
+   "from": "dc.mfa",
+   "to": "svc.auth",
+   "label": "no: session"
+  },
+  {
+   "from": "api.app",
+   "to": "dc.perm",
+   "label": "staff request"
+  },
+  {
+   "from": "dc.perm",
+   "to": "api.encounters",
+   "label": "yes"
+  },
+  {
+   "from": "dc.perm",
+   "to": "api.ops",
+   "label": "yes"
+  },
+  {
+   "from": "dc.perm",
+   "to": "api.users",
+   "label": "yes"
+  },
+  {
+   "from": "dc.perm",
+   "to": "ui.w.shell",
+   "label": "no: 403"
+  },
+  {
+   "from": "api.patient",
+   "to": "dc.online",
+   "label": "POST payment"
+  },
+  {
+   "from": "dc.online",
+   "to": "svc.ledger",
+   "label": "yes"
+  },
+  {
+   "from": "dc.online",
+   "to": "ui.m.pay",
+   "label": "no: pay at cashier"
+  },
+  {
+   "from": "svc.ledger",
+   "to": "dc.settled",
+   "label": "after payment"
+  },
+  {
+   "from": "dc.settled",
+   "to": "svc.gatepass",
+   "label": "yes: mints pass"
+  },
+  {
+   "from": "dc.settled",
+   "to": "db.core",
+   "label": "no: stays open"
+  },
+  {
+   "from": "svc.gatepass",
+   "to": "dc.pass",
+   "label": "verifies"
+  },
+  {
+   "from": "dc.pass",
+   "to": "db.core",
+   "label": "yes: marks used"
+  },
+  {
+   "from": "dc.pass",
+   "to": "actor.lobby",
+   "label": "no: rejected"
+  },
+  {
+   "from": "svc.gatepass",
+   "to": "db.core",
+   "label": "writes"
   }
  ],
  "flows": [
@@ -713,7 +844,11 @@
     "svc.m.api",
     "api.patientauth",
     "svc.notify",
-    "ext.smtp"
+    "ext.smtp",
+    "svc.notify",
+    "api.patientauth",
+    "dc.code",
+    "svc.auth"
    ]
   },
   {
@@ -723,7 +858,9 @@
     "ui.m.pay",
     "svc.m.api",
     "api.patient",
+    "dc.online",
     "svc.ledger",
+    "dc.settled",
     "db.core"
    ]
   },
@@ -746,8 +883,10 @@
     "svc.w.bridge",
     "cfg.vercel",
     "api.app",
+    "dc.perm",
     "api.encounters",
     "svc.ledger",
+    "dc.settled",
     "svc.gatepass",
     "db.core"
    ]
@@ -760,8 +899,10 @@
     "svc.w.bridge",
     "cfg.vercel",
     "api.app",
+    "dc.perm",
     "api.ops",
-    "svc.gatepass"
+    "svc.gatepass",
+    "dc.pass"
    ]
   },
   {
@@ -772,6 +913,7 @@
     "svc.w.bridge",
     "cfg.vercel",
     "api.app",
+    "dc.perm",
     "api.users",
     "svc.notify",
     "ext.smtp"
