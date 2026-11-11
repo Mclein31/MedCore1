@@ -1,0 +1,781 @@
+{
+ "version": 1,
+ "title": "MedCore (AQROMED)",
+ "summary": "Financial middleware for Philippine hospitals: staff web console and patient phone app share one Hono API and Postgres that compute the statutory deduction waterfall, clear discharges and issue exit passes.",
+ "nodes": [
+  {
+   "id": "actor.patient",
+   "label": "Patient / guarantor",
+   "kind": "actor",
+   "layer": "frontend",
+   "detail": "Hospital patient or guarantor using the phone app to see bills, pay and get an exit pass.",
+   "file": ""
+  },
+  {
+   "id": "actor.staff",
+   "label": "Billing / CFO staff",
+   "kind": "actor",
+   "layer": "frontend",
+   "detail": "Billing specialist, claims encoder, HMO coordinator, CFO or physician using the web console.",
+   "file": ""
+  },
+  {
+   "id": "actor.lobby",
+   "label": "Lobby security",
+   "kind": "actor",
+   "layer": "frontend",
+   "detail": "Guard who checks the exit pass and PIN at the hospital lobby.",
+   "file": ""
+  },
+  {
+   "id": "actor.admin",
+   "label": "Hospital admin (CFO)",
+   "kind": "actor",
+   "layer": "frontend",
+   "detail": "CFO who manages staff accounts, invites, MFA resets and audit.",
+   "file": ""
+  },
+  {
+   "id": "ui.m.onboard",
+   "label": "Onboarding + Auth",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Mobile onboarding then email-code sign-in.",
+   "file": "apps/mobile/src/screens/AuthScreen.tsx"
+  },
+  {
+   "id": "ui.m.home",
+   "label": "Mobile Home / Bill",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Patient home, itemised bill, coverage and claims tabs.",
+   "file": "apps/mobile/src/screens/HomeScreen.tsx"
+  },
+  {
+   "id": "ui.m.pay",
+   "label": "Payment flow",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Amount, method, review and receipt for simulated payments and promissory notes.",
+   "file": "apps/mobile/src/screens/PaymentFlowScreen.tsx"
+  },
+  {
+   "id": "ui.m.docs",
+   "label": "Documents + Notices",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Receipts, gate pass QR, notifications and record detail.",
+   "file": "apps/mobile/src/screens/DocumentsScreen.tsx"
+  },
+  {
+   "id": "ui.m.cora",
+   "label": "Cora concierge",
+   "kind": "component",
+   "layer": "frontend",
+   "detail": "Multilingual AI billing assistant and benefit-card scanner modal.",
+   "file": "apps/mobile/src/components/CoraAssistantModal.tsx"
+  },
+  {
+   "id": "st.m.state",
+   "label": "Mobile session + cache",
+   "kind": "component",
+   "layer": "frontend",
+   "detail": "SecureStore session, pending-payment store, gate-pass cache and patient provider.",
+   "file": "apps/mobile/src/lib/auth.tsx"
+  },
+  {
+   "id": "svc.m.api",
+   "label": "Mobile API services",
+   "kind": "component",
+   "layer": "frontend",
+   "detail": "Typed client modules for auth, billing, payments, claims, documents and AI.",
+   "file": "apps/mobile/src/lib/api.ts"
+  },
+  {
+   "id": "ui.w.login",
+   "label": "Staff login + MFA",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Password sign-in, TOTP challenge, enrolment and invite acceptance.",
+   "file": "apps/web/src/staff/Login.tsx"
+  },
+  {
+   "id": "ui.w.shell",
+   "label": "Staff workspace shell",
+   "kind": "component",
+   "layer": "frontend",
+   "detail": "Session gate that loads /me and hosts the dashboard app.",
+   "file": "apps/web/src/staff/OriginalWorkspace.tsx"
+  },
+  {
+   "id": "ui.w.cc",
+   "label": "Command Center",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Home dashboard, discharge clearance board and RCM analytics.",
+   "file": "apps/web/src/v1/pages/CommandCenterPage.tsx"
+  },
+  {
+   "id": "ui.w.ledger",
+   "label": "Encounters & Ledgers",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Census, encounter detail, charges, payments and printable statements.",
+   "file": "apps/web/src/v1/pages/EncountersLedgerPage.tsx"
+  },
+  {
+   "id": "ui.w.discharge",
+   "label": "Discharge Clearance",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "Stage-by-stage clearance with finalize and send bill.",
+   "file": "apps/web/src/v1/pages/DischargeClearancePage.tsx"
+  },
+  {
+   "id": "ui.w.disputes",
+   "label": "Approvals & Disputes",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "HMO coverage approvals and billing dispute resolution.",
+   "file": "apps/web/src/v1/pages/ApprovalsDisputesPage.tsx"
+  },
+  {
+   "id": "ui.w.claims",
+   "label": "Claims & eSOA",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "PhilHealth claims, AI preflight scrubber, eSOA XML download.",
+   "file": "apps/web/src/v1/pages/ClaimsEsoaPage.tsx"
+  },
+  {
+   "id": "ui.w.admin",
+   "label": "Staff admin + Audit",
+   "kind": "screen",
+   "layer": "frontend",
+   "detail": "User management, lobby verification, patients, account sessions and audit log.",
+   "file": "apps/web/src/staff/pages/Users.tsx"
+  },
+  {
+   "id": "svc.w.bridge",
+   "label": "v2 bridge client",
+   "kind": "component",
+   "layer": "frontend",
+   "detail": "Adapts original dashboard contracts to the v2 API, converting pesos to centavos.",
+   "file": "apps/web/src/v1/api/v2Bridge.ts"
+  },
+  {
+   "id": "cfg.vercel",
+   "label": "Vercel rewrites + CSP",
+   "kind": "config",
+   "layer": "frontend",
+   "detail": "Serves the SPA, proxies /api to the Worker and sets security headers.",
+   "file": "vercel.json"
+  },
+  {
+   "id": "api.app",
+   "label": "Hono app + middleware",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Request id, CORS, CSRF, no-store, auth guards and route mounting.",
+   "file": "apps/api/src/app.ts"
+  },
+  {
+   "id": "api.patientauth",
+   "label": "Patient auth API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Email code request and verify, me and logout.",
+   "file": "apps/api/src/routes/patientAuth.ts"
+  },
+  {
+   "id": "api.patient",
+   "label": "Patient portal API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Stays, payments, promissory notes and disputes for the signed-in patient.",
+   "file": "apps/api/src/routes/patientPortal.ts"
+  },
+  {
+   "id": "api.staffauth",
+   "label": "Staff auth API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Login, MFA, invites, sessions, password change and recovery codes.",
+   "file": "apps/api/src/routes/staffAuth.ts"
+  },
+  {
+   "id": "api.encounters",
+   "label": "Encounters API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Admit, charges, coverage, discharge stages, bill finalize and send, gate pass.",
+   "file": "apps/api/src/routes/staffEncounters.ts"
+  },
+  {
+   "id": "api.ops",
+   "label": "Operations API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Beds, claims and eSOA, analytics, notifications, lobby verify and facility rules.",
+   "file": "apps/api/src/routes/staffOperations.ts"
+  },
+  {
+   "id": "api.users",
+   "label": "Staff admin API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Create, edit, unlock, reset MFA and send invites for staff.",
+   "file": "apps/api/src/routes/staffAdmin.ts"
+  },
+  {
+   "id": "api.ai",
+   "label": "AI API",
+   "kind": "api",
+   "layer": "backend",
+   "detail": "Cora chat, OCR, claims scrubber, appeal drafter and executive briefing.",
+   "file": "apps/api/src/routes/ai.ts"
+  },
+  {
+   "id": "svc.domain",
+   "label": "Domain engine",
+   "kind": "service",
+   "layer": "backend",
+   "detail": "Pure statutory waterfall, money, promissory schedule, access matrix, government ID rules.",
+   "file": "packages/domain/src/waterfall.ts"
+  },
+  {
+   "id": "svc.ledger",
+   "label": "Ledger + settlement",
+   "kind": "service",
+   "layer": "backend",
+   "detail": "Recalculates ledgers, records payments, promissory notes and clears settled stays.",
+   "file": "apps/api/src/services/settlement.ts"
+  },
+  {
+   "id": "svc.gatepass",
+   "label": "Gate pass service",
+   "kind": "service",
+   "layer": "backend",
+   "detail": "HMAC-signed exit pass with derived PIN, five-strike void.",
+   "file": "apps/api/src/services/gatePass.ts"
+  },
+  {
+   "id": "svc.auth",
+   "label": "Sessions + rate limit",
+   "kind": "service",
+   "layer": "backend",
+   "detail": "Hashed sessions, login lockout and rate-limit buckets.",
+   "file": "apps/api/src/services/sessions.ts"
+  },
+  {
+   "id": "svc.notify",
+   "label": "Notify + mailer",
+   "kind": "service",
+   "layer": "backend",
+   "detail": "Sign-in codes, bill-ready and staff invite emails.",
+   "file": "apps/api/src/services/notify.ts"
+  },
+  {
+   "id": "svc.ai",
+   "label": "AI pipeline",
+   "kind": "service",
+   "layer": "backend",
+   "detail": "PHI scrub, result cache, Gemini call, schema validation and rehydration.",
+   "file": "apps/api/src/services/ai/phiScrubber.ts"
+  },
+  {
+   "id": "job.purge",
+   "label": "Hourly purge cron",
+   "kind": "job",
+   "layer": "backend",
+   "detail": "Deletes expired codes, challenges, rate-limit buckets and old sessions.",
+   "file": "apps/api/src/services/retention.ts"
+  },
+  {
+   "id": "db.core",
+   "label": "Postgres tables",
+   "kind": "store",
+   "layer": "backend",
+   "detail": "Encounters, charges, ledgers, payments, passes, disputes, claims, beds, audit logs and sessions.",
+   "file": "apps/api/src/db/schema.ts"
+  },
+  {
+   "id": "ext.gemini",
+   "label": "Google Gemini",
+   "kind": "external",
+   "layer": "external",
+   "detail": "Generative model for Cora, scrubber, drafter, briefing and OCR.",
+   "file": ""
+  },
+  {
+   "id": "ext.smtp",
+   "label": "Gmail SMTP",
+   "kind": "external",
+   "layer": "external",
+   "detail": "Sends patient sign-in codes and staff invites.",
+   "file": ""
+  },
+  {
+   "id": "ext.neon",
+   "label": "Neon Postgres",
+   "kind": "external",
+   "layer": "external",
+   "detail": "Hosted Postgres in Singapore, reached via Cloudflare Hyperdrive.",
+   "file": ""
+  },
+  {
+   "id": "ext.cf",
+   "label": "Cloudflare Worker",
+   "kind": "external",
+   "layer": "external",
+   "detail": "Hosts the API with hourly cron trigger.",
+   "file": "apps/api/wrangler.jsonc"
+  }
+ ],
+ "edges": [
+  {
+   "from": "actor.patient",
+   "to": "ui.m.onboard",
+   "label": "signs in"
+  },
+  {
+   "from": "actor.patient",
+   "to": "ui.m.home",
+   "label": "views bill"
+  },
+  {
+   "from": "actor.patient",
+   "to": "ui.m.pay",
+   "label": "pays"
+  },
+  {
+   "from": "actor.patient",
+   "to": "ui.m.docs",
+   "label": "opens"
+  },
+  {
+   "from": "actor.patient",
+   "to": "ui.m.cora",
+   "label": "asks"
+  },
+  {
+   "from": "ui.m.onboard",
+   "to": "st.m.state",
+   "label": "stores session"
+  },
+  {
+   "from": "ui.m.home",
+   "to": "svc.m.api",
+   "label": "fetches"
+  },
+  {
+   "from": "ui.m.pay",
+   "to": "svc.m.api",
+   "label": "submits"
+  },
+  {
+   "from": "ui.m.docs",
+   "to": "svc.m.api",
+   "label": "fetches"
+  },
+  {
+   "from": "ui.m.cora",
+   "to": "svc.m.api",
+   "label": "chats"
+  },
+  {
+   "from": "ui.m.onboard",
+   "to": "svc.m.api",
+   "label": "requests code"
+  },
+  {
+   "from": "svc.m.api",
+   "to": "st.m.state",
+   "label": "reads token"
+  },
+  {
+   "from": "ui.m.docs",
+   "to": "st.m.state",
+   "label": "caches pass"
+  },
+  {
+   "from": "svc.m.api",
+   "to": "api.patientauth",
+   "label": "code request"
+  },
+  {
+   "from": "svc.m.api",
+   "to": "api.patient",
+   "label": "GET /stays"
+  },
+  {
+   "from": "svc.m.api",
+   "to": "api.ai",
+   "label": "POST /ai/cora/chat"
+  },
+  {
+   "from": "actor.staff",
+   "to": "ui.w.login",
+   "label": "logs in"
+  },
+  {
+   "from": "actor.admin",
+   "to": "ui.w.login",
+   "label": "logs in"
+  },
+  {
+   "from": "actor.admin",
+   "to": "ui.w.admin",
+   "label": "manages"
+  },
+  {
+   "from": "ui.w.login",
+   "to": "api.staffauth",
+   "label": "POST /auth/staff"
+  },
+  {
+   "from": "ui.w.login",
+   "to": "ui.w.shell",
+   "label": "opens"
+  },
+  {
+   "from": "ui.w.shell",
+   "to": "ui.w.cc",
+   "label": "hosts"
+  },
+  {
+   "from": "ui.w.shell",
+   "to": "ui.w.ledger",
+   "label": "hosts"
+  },
+  {
+   "from": "ui.w.shell",
+   "to": "ui.w.discharge",
+   "label": "hosts"
+  },
+  {
+   "from": "ui.w.shell",
+   "to": "ui.w.disputes",
+   "label": "hosts"
+  },
+  {
+   "from": "ui.w.shell",
+   "to": "ui.w.claims",
+   "label": "hosts"
+  },
+  {
+   "from": "ui.w.shell",
+   "to": "ui.w.admin",
+   "label": "hosts"
+  },
+  {
+   "from": "actor.staff",
+   "to": "ui.w.shell",
+   "label": "opens"
+  },
+  {
+   "from": "actor.staff",
+   "to": "ui.w.discharge",
+   "label": "clears stays"
+  },
+  {
+   "from": "actor.staff",
+   "to": "ui.w.claims",
+   "label": "scrubs claims"
+  },
+  {
+   "from": "actor.lobby",
+   "to": "ui.w.admin",
+   "label": "verifies pass"
+  },
+  {
+   "from": "ui.w.cc",
+   "to": "svc.w.bridge",
+   "label": "calls"
+  },
+  {
+   "from": "ui.w.ledger",
+   "to": "svc.w.bridge",
+   "label": "calls"
+  },
+  {
+   "from": "ui.w.discharge",
+   "to": "svc.w.bridge",
+   "label": "calls"
+  },
+  {
+   "from": "ui.w.disputes",
+   "to": "svc.w.bridge",
+   "label": "calls"
+  },
+  {
+   "from": "ui.w.claims",
+   "to": "svc.w.bridge",
+   "label": "calls"
+  },
+  {
+   "from": "ui.w.admin",
+   "to": "svc.w.bridge",
+   "label": "calls"
+  },
+  {
+   "from": "svc.w.bridge",
+   "to": "cfg.vercel",
+   "label": "/api proxy"
+  },
+  {
+   "from": "cfg.vercel",
+   "to": "api.app",
+   "label": "rewrites"
+  },
+  {
+   "from": "svc.m.api",
+   "to": "api.app",
+   "label": "calls Worker"
+  },
+  {
+   "from": "api.app",
+   "to": "api.patientauth",
+   "label": "mounts"
+  },
+  {
+   "from": "api.app",
+   "to": "api.patient",
+   "label": "mounts"
+  },
+  {
+   "from": "api.app",
+   "to": "api.staffauth",
+   "label": "mounts"
+  },
+  {
+   "from": "api.app",
+   "to": "api.encounters",
+   "label": "mounts"
+  },
+  {
+   "from": "api.app",
+   "to": "api.ops",
+   "label": "mounts"
+  },
+  {
+   "from": "api.app",
+   "to": "api.users",
+   "label": "mounts"
+  },
+  {
+   "from": "api.app",
+   "to": "api.ai",
+   "label": "mounts"
+  },
+  {
+   "from": "api.patientauth",
+   "to": "svc.auth",
+   "label": "issues session"
+  },
+  {
+   "from": "api.staffauth",
+   "to": "svc.auth",
+   "label": "issues session"
+  },
+  {
+   "from": "api.patientauth",
+   "to": "svc.notify",
+   "label": "sends code"
+  },
+  {
+   "from": "api.users",
+   "to": "svc.notify",
+   "label": "sends invite"
+  },
+  {
+   "from": "api.encounters",
+   "to": "svc.notify",
+   "label": "bill ready"
+  },
+  {
+   "from": "api.patient",
+   "to": "svc.ledger",
+   "label": "pays"
+  },
+  {
+   "from": "api.encounters",
+   "to": "svc.ledger",
+   "label": "recalculates"
+  },
+  {
+   "from": "api.ops",
+   "to": "svc.gatepass",
+   "label": "verifies"
+  },
+  {
+   "from": "api.encounters",
+   "to": "svc.gatepass",
+   "label": "mints"
+  },
+  {
+   "from": "svc.ledger",
+   "to": "svc.gatepass",
+   "label": "mints on clear"
+  },
+  {
+   "from": "svc.ledger",
+   "to": "svc.domain",
+   "label": "computes"
+  },
+  {
+   "from": "api.encounters",
+   "to": "svc.domain",
+   "label": "waterfall"
+  },
+  {
+   "from": "api.ai",
+   "to": "svc.ai",
+   "label": "runs"
+  },
+  {
+   "from": "svc.ai",
+   "to": "ext.gemini",
+   "label": "generateContent"
+  },
+  {
+   "from": "svc.ai",
+   "to": "db.core",
+   "label": "reads chart"
+  },
+  {
+   "from": "svc.notify",
+   "to": "ext.smtp",
+   "label": "sends mail"
+  },
+  {
+   "from": "svc.ledger",
+   "to": "db.core",
+   "label": "writes"
+  },
+  {
+   "from": "svc.gatepass",
+   "to": "db.core",
+   "label": "writes"
+  },
+  {
+   "from": "svc.auth",
+   "to": "db.core",
+   "label": "reads/writes"
+  },
+  {
+   "from": "api.ops",
+   "to": "db.core",
+   "label": "reads"
+  },
+  {
+   "from": "api.users",
+   "to": "db.core",
+   "label": "writes"
+  },
+  {
+   "from": "api.encounters",
+   "to": "db.core",
+   "label": "writes"
+  },
+  {
+   "from": "db.core",
+   "to": "ext.neon",
+   "label": "hosted on"
+  },
+  {
+   "from": "ext.cf",
+   "to": "api.app",
+   "label": "runs"
+  },
+  {
+   "from": "ext.cf",
+   "to": "job.purge",
+   "label": "triggers hourly"
+  },
+  {
+   "from": "job.purge",
+   "to": "db.core",
+   "label": "deletes expired"
+  },
+  {
+   "from": "svc.notify",
+   "to": "actor.patient",
+   "label": "emails"
+  }
+ ],
+ "flows": [
+  {
+   "name": "Patient signs in",
+   "steps": [
+    "actor.patient",
+    "ui.m.onboard",
+    "svc.m.api",
+    "api.patientauth",
+    "svc.notify",
+    "ext.smtp"
+   ]
+  },
+  {
+   "name": "Patient pays a bill",
+   "steps": [
+    "actor.patient",
+    "ui.m.pay",
+    "svc.m.api",
+    "api.patient",
+    "svc.ledger",
+    "db.core"
+   ]
+  },
+  {
+   "name": "Patient asks Cora",
+   "steps": [
+    "actor.patient",
+    "ui.m.cora",
+    "svc.m.api",
+    "api.ai",
+    "svc.ai",
+    "ext.gemini"
+   ]
+  },
+  {
+   "name": "Staff clears a discharge",
+   "steps": [
+    "actor.staff",
+    "ui.w.discharge",
+    "svc.w.bridge",
+    "cfg.vercel",
+    "api.app",
+    "api.encounters",
+    "svc.ledger",
+    "svc.gatepass",
+    "db.core"
+   ]
+  },
+  {
+   "name": "Lobby verifies exit pass",
+   "steps": [
+    "actor.lobby",
+    "ui.w.admin",
+    "svc.w.bridge",
+    "cfg.vercel",
+    "api.app",
+    "api.ops",
+    "svc.gatepass"
+   ]
+  },
+  {
+   "name": "Admin invites staff",
+   "steps": [
+    "actor.admin",
+    "ui.w.admin",
+    "svc.w.bridge",
+    "cfg.vercel",
+    "api.app",
+    "api.users",
+    "svc.notify",
+    "ext.smtp"
+   ]
+  }
+ ]
+}
