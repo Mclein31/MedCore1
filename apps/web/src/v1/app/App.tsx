@@ -1,5 +1,5 @@
 import { BridgeInputDialog } from '../api/BridgeInputDialog';
-import { Activity, AlertCircle, RefreshCw, X } from '@/v1/components/common/SolarIcons';
+import { AlertCircle, X } from '@/v1/components/common/SolarIcons';
 import { GlobalCommandBar } from '@/v1/components/layout/GlobalCommandBar';
 import { SidebarNav } from '@/v1/components/layout/SidebarNav';
 import {
@@ -16,9 +16,12 @@ import { PrintDocumentContainer } from '@/v1/components/printing';
 import { MedCoreProvider, useMedCore } from '@/v1/context/MedCoreContext';
 import { ContextualActionDrawer, DischargeDossierDrawer } from '@/v1/features/discharge';
 import { WhyDoIOweThisDrawer } from '@/v1/features/ledger';
+import { RouteSkeleton, WorkspaceShellSkeleton } from '@/v1/components/common/Skeletons';
+import { useExitSnapshotRef } from '@/v1/utils/exitSnapshot';
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Navigate } from 'react-router';
 import { Account } from '../../staff/pages/Account';
+import { prefetchWorkspaceOnIdle, routeChunks } from './routeChunks';
 import { AuditLog } from '../../staff/pages/AuditLog';
 import { Lobby } from '../../staff/pages/Lobby';
 import { Patients } from '../../staff/pages/Patients';
@@ -26,39 +29,23 @@ import { Users } from '../../staff/pages/Users';
 
 // Code-Split 8 Task-Oriented Operational Route Pages for optimal bundle size and startup performance
 const CommandCenterPage = lazy(() =>
-  import('@/v1/pages/CommandCenterPage').then((m) => ({ default: m.CommandCenterPage })),
+  routeChunks.COMMAND_CENTER().then((m) => ({ default: m.CommandCenterPage })),
 );
 const DischargeClearancePage = lazy(() =>
-  import('@/v1/pages/DischargeClearancePage').then((m) => ({ default: m.DischargeClearancePage })),
+  routeChunks.DISCHARGE_CLEARANCE().then((m) => ({ default: m.DischargeClearancePage })),
 );
 const EncountersLedgerPage = lazy(() =>
-  import('@/v1/pages/EncountersLedgerPage').then((m) => ({ default: m.EncountersLedgerPage })),
+  routeChunks.ENCOUNTERS_LEDGER().then((m) => ({ default: m.EncountersLedgerPage })),
 );
 const ApprovalsDisputesPage = lazy(() =>
-  import('@/v1/pages/ApprovalsDisputesPage').then((m) => ({ default: m.ApprovalsDisputesPage })),
+  routeChunks.COVERAGE_APPROVALS().then((m) => ({ default: m.ApprovalsDisputesPage })),
 );
-const ClaimsEsoaPage = lazy(() =>
-  import('@/v1/pages/ClaimsEsoaPage').then((m) => ({ default: m.ClaimsEsoaPage })),
-);
+const ClaimsEsoaPage = lazy(() => routeChunks.CLAIMS_ESOA().then((m) => ({ default: m.ClaimsEsoaPage })));
 const RcmAnalyticsPage = lazy(() =>
-  import('@/v1/pages/RcmAnalyticsPage').then((m) => ({ default: m.RcmAnalyticsPage })),
+  routeChunks.RCM_ANALYTICS().then((m) => ({ default: m.RcmAnalyticsPage })),
 );
 const ConfigurationPage = lazy(() =>
-  import('@/v1/pages/ConfigurationPage').then((m) => ({ default: m.ConfigurationPage })),
-);
-
-// Page Loading Skeleton Fallback for Smooth Route Transitions
-const PageFallback: React.FC = () => (
-  <div className="flex-1 p-6 space-y-4 animate-pulse overflow-y-auto">
-    <div className="h-8 w-64 bg-slate-200 rounded-lg" />
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div className="h-24 bg-slate-200 rounded-xl" />
-      <div className="h-24 bg-slate-200 rounded-xl" />
-      <div className="h-24 bg-slate-200 rounded-xl" />
-      <div className="h-24 bg-slate-200 rounded-xl" />
-    </div>
-    <div className="h-96 bg-slate-200 rounded-2xl" />
-  </div>
+  routeChunks.CONFIGURATION().then((m) => ({ default: m.ConfigurationPage })),
 );
 
 // Resilient Error Boundary to catch uncaught component errors and provide instant recovery
@@ -152,6 +139,10 @@ export const MainLayout: React.FC = () => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 900px)').matches,
   );
+  const toastExitRef = useExitSnapshotRef<HTMLDivElement>('toast');
+  const workspaceReady = isAuthenticated && !isVerifyingSession;
+  // Warm the remaining page and modal chunks once the workspace is up, so navigation never waits on code.
+  useEffect(() => (workspaceReady ? prefetchWorkspaceOnIdle() : undefined), [workspaceReady]);
   useEffect(() => {
     const compact = window.matchMedia('(max-width: 900px)');
     const update = () => setIsSidebarCollapsed(compact.matches);
@@ -162,7 +153,10 @@ export const MainLayout: React.FC = () => {
   const renderApiErrorToast = () => {
     if (!apiError || !isAuthenticated) return null;
     return (
-      <div className="fixed bottom-5 right-5 z-[3000] max-w-md bg-rose-50 border border-rose-300 text-rose-900 px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
+      <div
+        ref={toastExitRef}
+        className="fixed bottom-5 right-5 z-[3000] max-w-md bg-rose-50 border border-rose-300 text-rose-900 px-4 py-3 rounded-2xl shadow-xl flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2"
+      >
         <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
         <div className="flex-1 text-xs">
           <div className="font-bold text-rose-950">Backend API Sync Notice</div>
@@ -180,22 +174,8 @@ export const MainLayout: React.FC = () => {
     );
   };
 
-  // Graceful non-blocking session verification state
-  if (isVerifyingSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
-        <div className="text-center space-y-4 max-w-sm">
-          <div className="w-10 h-10 mx-auto rounded-full bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-600">
-            <RefreshCw className="w-5 h-5 animate-spin" />
-          </div>
-          <h1 className="text-base font-semibold text-slate-800">Verifying session…</h1>
-          <p className="text-xs text-slate-500">
-            Checking credentials with the hospital authentication server.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Session verification shows the workspace frame, not a separate full-screen loader.
+  if (isVerifyingSession) return <WorkspaceShellSkeleton label="Verifying session" />;
 
   // Session verification error for unauthenticated visitors
   if (sessionError && !isAuthenticated) {
@@ -220,25 +200,9 @@ export const MainLayout: React.FC = () => {
   // Cached browser flags are never proof of an authenticated session.
   if (!isAuthenticated) return <Navigate to="/staff/login" replace />;
 
-  // If authenticated and encounters are still loading without any cached records, display smooth synchronizing state
-  if (encounters.length === 0 && isLoadingEncounters) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6">
-        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 shadow-xs text-center space-y-4">
-          <div className="w-12 h-12 mx-auto rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center text-teal-700">
-            <Activity className="w-6 h-6 animate-pulse" />
-          </div>
-          <h1 className="text-base font-bold text-slate-900">Synchronizing Hospital Census</h1>
-          <p className="text-xs text-slate-500">
-            Connecting to hospital records and verifying real-time encounter telemetry…
-          </p>
-          <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-teal-600 h-full w-2/3 animate-pulse rounded-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // First census load: keep the real toolbar and sidebar on screen and hold the page area
+  // with a placeholder shaped like the page that is about to appear.
+  const isSyncingCensus = encounters.length === 0 && isLoadingEncounters;
 
   const renderActiveView = () => {
     const required: Partial<Record<typeof activeRoute, string>> = {
@@ -321,8 +285,12 @@ export const MainLayout: React.FC = () => {
         {/* Main Body: Operational Workflow Sidebar + Active Task View */}
         <div className="flex-1 flex min-h-0 overflow-hidden">
           <SidebarNav isCollapsed={isSidebarCollapsed} setIsCollapsed={setIsSidebarCollapsed} />
-          <main className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-            <Suspense fallback={<PageFallback />}>{renderActiveView()}</Suspense>
+          <main className="workspace-main flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+            {isSyncingCensus ? (
+              <RouteSkeleton route={activeRoute} />
+            ) : (
+              <Suspense fallback={<RouteSkeleton route={activeRoute} />}>{renderActiveView()}</Suspense>
+            )}
           </main>
         </div>
 

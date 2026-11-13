@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from '@/v1/components/common/SolarIcons';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import { PriorityActionStrip } from '@/v1/features/command-center/components/PriorityActionStrip';
 import { VelocityRecoveryPulse } from '@/v1/features/command-center/components/VelocityRecoveryPulse';
 import { formatPhp } from '@/v1/utils/formatters';
@@ -30,6 +31,7 @@ export const CommandCenterPage: React.FC = () => {
     openWhyDoIOweThis,
     openAdmitPatientModal,
   } = useMedCore();
+  const { slaBreachMinutes } = useFacilityFacts();
 
   const summary = useQuery({
     queryKey: ['original-summary'],
@@ -57,6 +59,8 @@ export const CommandCenterPage: React.FC = () => {
       )
       .map((it) => ({
         ...it,
+        // The amount under dispute is what the hospital recorded when it was filed (as on Approvals & Disputes).
+        contestedAmount: enc.disputes.find((d) => d.itemId === it.id && d.status === 'OPEN')?.contestedAmount,
         encounterId: enc.id,
         patientName: enc.patient.fullName || enc.patient.maskedName,
         roomBed: enc.roomBed,
@@ -170,7 +174,9 @@ export const CommandCenterPage: React.FC = () => {
                       ? '34.2 mins'
                       : `${summary.clearance30d.medianMinutes} mins`}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">Target: &lt;45m discharge SLA</div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    Target: &lt;{slaBreachMinutes ?? 45}m discharge SLA
+                  </div>
                 </div>
                 <div className="text-right">
                   <span className="text-xs font-bold text-emerald-700 font-mono">
@@ -195,7 +201,9 @@ export const CommandCenterPage: React.FC = () => {
                   <strong className="text-slate-900 font-mono">
                     {encounters.length > 0
                       ? `${(
-                          (encounters.filter((e) => e.philhealth.status === 'CLEAN').length /
+                          (encounters.filter((e) =>
+                            ['CLEAN', 'TRANSMITTED', 'APPROVED'].includes(e.philhealth.status),
+                          ).length /
                             encounters.length) *
                           100
                         ).toFixed(1)}%`
@@ -382,7 +390,7 @@ export const CommandCenterPage: React.FC = () => {
 
                     <div className="text-right shrink-0">
                       <div className="font-mono font-bold text-slate-900 tabular-nums">
-                        {formatPhp(it.patientOop || it.grossAmount)}
+                        {formatPhp(it.contestedAmount ?? (it.patientOop || it.grossAmount))}
                       </div>
                       <Button
                         size="sm"

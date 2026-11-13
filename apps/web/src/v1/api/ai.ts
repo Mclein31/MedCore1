@@ -112,8 +112,9 @@ export class ClaimsAiApi {
       signal,
       body: JSON.stringify({ encounterId, forceEscalation }),
     });
-    const { clearBridgeCache } = await import('./v2Bridge');
-    clearBridgeCache();
+    // The scrub may persist new claim data; refresh charts without ending the session.
+    const { invalidateBridgeData } = await import('./v2Bridge');
+    invalidateBridgeData();
     return result;
   }
 }

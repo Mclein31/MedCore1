@@ -3,6 +3,7 @@ import { SegmentedTabs } from '@/v1/components/common';
 import { Columns, Kanban } from '@/v1/components/common/SolarIcons';
 import { ActiveDischargeRadar } from '@/v1/features/discharge/components/ActiveDischargeRadar';
 import { DischargeMissionControl } from '@/v1/features/discharge/components/DischargeMissionControl';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import React, { useState } from 'react';
 
 const VIEW_TABS: SegmentedTabItem<'WORKSPACE' | 'KANBAN'>[] = [
@@ -12,6 +13,8 @@ const VIEW_TABS: SegmentedTabItem<'WORKSPACE' | 'KANBAN'>[] = [
 
 export const DischargeClearancePage: React.FC = () => {
   const [subView, setSubView] = useState<'WORKSPACE' | 'KANBAN'>('WORKSPACE');
+  // The heading quotes the hospital's configured breach threshold, not a fixed number.
+  const { slaBreachMinutes } = useFacilityFacts();
 
   return (
     <div className="flex-1 flex flex-col h-full min-h-0 overflow-hidden bg-slate-50">
@@ -23,7 +26,7 @@ export const DischargeClearancePage: React.FC = () => {
           </h1>
           <span className="text-slate-300 hidden sm:inline">·</span>
           <span className="text-xs font-semibold text-slate-500 hidden sm:inline">
-            45-Min Statutory Target
+            {slaBreachMinutes ?? 45}-Min Statutory Target
           </span>
         </div>
         <SegmentedTabs size="sm" items={VIEW_TABS} activeId={subView} onChange={setSubView} />

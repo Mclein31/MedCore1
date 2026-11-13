@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, Badge, Card, Input, PageHeader, Spinner, Table } from '../../components/ui';
+import { Alert, Badge, Card, Input, PageHeader, Table, TableSkeleton } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
 import { when } from '../../lib/format';
 import type { Page } from '../../lib/types';
@@ -52,7 +52,15 @@ export function AuditLog() {
           />
         }
       >
-        {query.isPending && <Spinner />}
+        {query.isPending && (
+          <TableSkeleton
+            head={['When', 'Who', 'Action', 'Record', 'Details']}
+            caption="Audit events"
+            rowHeight={3.07}
+            rows={10}
+            widths={['8rem', '10rem', '9rem', '8rem', '14rem']}
+          />
+        )}
         {query.isError && <Alert>{errorMessage(query.error)}</Alert>}
         {query.data && (
           <>

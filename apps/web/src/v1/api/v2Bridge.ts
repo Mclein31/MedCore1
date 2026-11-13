@@ -2,6 +2,8 @@ import { requestBridgeInput } from './BridgeInputDialog';
 /** Adapts the original dashboard's contracts to the authoritative v2 API. Money crosses this boundary in centavos. */
 import { api, ApiRequestError } from '../../lib/api';
 import type { Bed, EncounterDetail, EncounterRow, Page, StaffMe } from '../../lib/types';
+import type { StaffNotification } from '../shared/notifications';
+import type { SmsDispatchResult, SmsTemplateType } from '../shared/sms';
 import type { Encounter } from '../types/domain';
 const pesos = (n: number | null | undefined) => (n ?? 0) / 100;
 export const centavos = (n: unknown) => Math.round(Number(n) * 100);
@@ -9,23 +11,79 @@ const unavailable = (feature: string): never => {
   throw new ApiRequestError(503, 'UNAVAILABLE', `${feature} is not available yet.`);
 };
 const details = new Map<string, { at: number; value: EncounterDetail }>();
+/** Census row fingerprint at the time each cached chart was read; a change means the chart is stale. */
+const rowPrints = new Map<string, string>();
+/** Encounter number -> id, so notification links (which carry numbers) open the right chart. */
+const encounterIds = new Map<string, string>();
 let censusPending: Promise<Encounter[]> | undefined;
 let generation = 0;
+let openEncounterId: string | null = null;
+/** Charts unchanged in the census list are still re-read after this long, a few per poll. */
+export const DETAIL_MAX_AGE_MS = 5 * 60_000;
+const STALE_REFRESH_PER_POLL = 3;
 export function clearBridgeCache() {
   generation++;
   details.clear();
+  rowPrints.clear();
+  encounterIds.clear();
   censusPending = undefined;
+}
+/**
+ * Forget cached charts so the next read is fresh, without touching the session generation.
+ * (Bumping the generation makes in-flight reads fail as SESSION_CHANGED, which signs the user out.)
+ */
+export function invalidateBridgeData() {
+  details.clear();
+  rowPrints.clear();
+}
+/** The chart the user has open is re-read on every census poll so it never looks stale. */
+export function setOpenEncounter(id: string | null) {
+  openEncounterId = id || null;
+}
+function remember(value: EncounterDetail) {
+  encounterIds.set(value.encounter.encounterNumber, value.encounter.id);
+}
+async function fetchDetail(id: string, background = false): Promise<EncounterDetail> {
+  const scope = generation;
+  // Background census refreshes are flagged so the API does not log every poll as a fresh record view.
+  const value = await api<EncounterDetail>(
+    `/v1/staff/encounters/${encodeURIComponent(id)}${background ? '?refresh=background' : ''}`,
+  );
+  if (scope !== generation) throw new ApiRequestError(401, 'SESSION_CHANGED', 'Your session changed.');
+  details.set(id, { at: Date.now(), value });
+  remember(value);
+  return value;
 }
 async function detail(id: string, force = false): Promise<EncounterDetail> {
   const cached = details.get(id);
   if (!force && cached && Date.now() - cached.at < 5000) return cached.value;
-  const scope = generation;
-  const value = await api<EncounterDetail>(`/v1/staff/encounters/${encodeURIComponent(id)}`);
-  if (scope !== generation) throw new ApiRequestError(401, 'SESSION_CHANGED', 'Your session changed.');
-  details.set(id, { at: Date.now(), value });
-  return value;
+  return fetchDetail(id);
 }
 const category: Record<string, string> = { ROOM_AND_BOARD: 'ROOM_BOARD', SUPPLIES: 'CENTRAL_SUPPLIES' };
+const DAY_MS = 86_400_000;
+/**
+ * The dashboard's claim states (CLEAN/TRANSMITTED/APPROVED/RETURNED) from the API's lifecycle states
+ * (DRAFT/READY/TRANSMITTED/RETURNED/PAID). A draft claim is ready for transmission once its bill is final,
+ * because the server can then produce the eSOA; before that it stays DRAFT.
+ */
+export function mapClaimStatus(status: string | undefined, billState: string): string {
+  switch (status) {
+    case undefined:
+      return 'PENDING';
+    case 'TRANSMITTED':
+      return 'TRANSMITTED';
+    case 'PAID':
+      return 'APPROVED';
+    case 'RETURNED':
+      return 'RETURNED';
+    case 'READY':
+      return 'CLEAN';
+    case 'DRAFT':
+      return billState === 'DRAFT' ? 'DRAFT' : 'CLEAN';
+    default:
+      return status;
+  }
+}
 export function mapEncounter(d: EncounterDetail): Encounter {
   const e = d.encounter,
     p = d.patient,
@@ -97,11 +155,19 @@ export function mapEncounter(d: EncounterDetail): Encounter {
           : e.pfSignedAt
             ? 0.04
             : 0.12,
-    cf4VitalsRecorded: true,
-    cf4CourseInWardRecorded: true,
-    cf4LabsConsistent: true,
-    eSoaXmlConformity: true,
-    status: pf?.status ?? 'PENDING',
+    // CF4 checks come from the latest AI pre-flight audit of this claim; never-audited claims stay
+    // neutral (not flagged) because MedCore holds no CF4 clinical record of its own.
+    cf4VitalsRecorded: pf?.cf4VitalsRecorded ?? true,
+    cf4CourseInWardRecorded: pf?.cf4CourseInWardRecorded ?? true,
+    cf4LabsConsistent: pf?.cf4LabsConsistent ?? true,
+    // The server builds the eSOA XML only from a finalized bill.
+    eSoaXmlConformity: !!pf && e.billState !== 'DRAFT',
+    status: mapClaimStatus(pf?.status, e.billState),
+    // Days since discharge clearance for claims not yet sent to PhilHealth (60-day filing window).
+    claimAgingDays:
+      pf && e.clearedAt && pf.status !== 'TRANSMITTED' && pf.status !== 'PAID'
+        ? Math.max(0, Math.floor((Date.now() - Date.parse(e.clearedAt)) / DAY_MS))
+        : 0,
   };
   const h = d.hmo;
   const note = d.promissoryNotes.find((n) => n.status === 'ACTIVE') ?? d.promissoryNotes[0];
@@ -163,7 +229,10 @@ export function mapEncounter(d: EncounterDetail): Encounter {
       approvedAmount: pesos(h?.approvedCents),
       approvalCode: h?.approvalCode ?? '',
       loaNumber: h?.approvalCode ?? '',
-      disallowedConsumables: 0,
+      // Charges the payer does not cover (excluded lines) are the HMO-disallowed items a coordinator may appeal.
+      disallowedConsumables: h
+        ? pesos(active.filter((c) => c.coverage === 'EXCLUDED').reduce((sum, c) => sum + c.grossCents, 0))
+        : 0,
     },
     philhealth: ph,
     philHealth: ph,
@@ -292,6 +361,107 @@ function mapReceipt(p: EncounterDetail['payments'][number], d: EncounterDetail) 
     issuedAt: p.createdAt,
   };
 }
+function rowPrint(r: EncounterRow): string {
+  return JSON.stringify([
+    r.stage,
+    r.billState,
+    r.bedCode,
+    r.patientName,
+    r.physicianName,
+    r.mghOrderedAt,
+    r.clearedAt,
+    r.voidedAt,
+    r.grossCents,
+    r.netPatientDueCents,
+    r.balanceCents,
+    r.openDisputes,
+  ]);
+}
+/** The list row carries the live SLA clock, so a cached chart still shows current elapsed time. */
+function withRowSla(d: EncounterDetail, r: EncounterRow): EncounterDetail {
+  return r.sla ? { ...d, encounter: { ...d.encounter, sla: r.sla } } : d;
+}
+/**
+ * One list request per poll. Charts are re-read only when their list row changed, when the user has
+ * them open, or (a few at a time) when they are older than DETAIL_MAX_AGE_MS.
+ */
+type ServerNotification = {
+  id: string;
+  encounterId: string;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+};
+const NOTIFICATION_TYPES: Record<string, [StaffNotification['type'], StaffNotification['severity']]> = {
+  PAYMENT_RECEIVED: ['PAYMENT', 'SUCCESS'],
+  PAYMENT: ['PAYMENT', 'SUCCESS'],
+  GATE_PASS_ISSUED: ['GATE_PASS', 'SUCCESS'],
+  DISPUTE_FILED: ['DISPUTE', 'WARNING'],
+  DISPUTE: ['DISPUTE', 'WARNING'],
+  DISPUTE_RESOLVED: ['DISPUTE', 'INFO'],
+  WAIVE: ['DISPUTE', 'INFO'],
+  PAYER: ['HMO', 'INFO'],
+  HMO: ['HMO', 'INFO'],
+};
+/** Server feed types (PAYMENT_RECEIVED, DISCHARGE, PAYER, ...) onto the bell's five categories. */
+export function mapNotification(n: ServerNotification): StaffNotification {
+  const [type, severity] = NOTIFICATION_TYPES[n.type] ?? ['STAGE', 'INFO'];
+  return {
+    id: n.id,
+    type,
+    severity,
+    title: n.title,
+    message: n.message,
+    // The feed names stays by encounter number; the dashboard selects charts by id.
+    encounterId: encounterIds.get(n.encounterId) ?? n.encounterId,
+    timestamp: n.timestamp,
+    read: n.read,
+  };
+}
+/** Sandbox SMS wording (no links, PINs or clinical codes). The API logs this exact text. */
+export function smsBody(template: SmsTemplateType, d: EncounterDetail): string {
+  const patient = d.patient.fullName;
+  const room = d.encounter.bedCode;
+  const ref = d.encounter.encounterNumber;
+  switch (template) {
+    case 'DOCTOR_PF_NUDGE':
+      return `MEDCORE ALERT: Dr. ${(d.physician?.fullName ?? 'Attending Physician').replace(/^Dr\.?\s+/i, '')}, please confirm your Professional Fee for patient ${patient} (${room}, Ref: ${ref}) to proceed with discharge clearance.`;
+    case 'INTAKE_ORIENTATION':
+      return `MEDCORE INTAKE: Good day ${patient}. Your admission record for ${room} (Ref: ${ref}) is recorded. Please prepare your PhilHealth and valid IDs and contact the hospital billing desk.`;
+    default:
+      return `MEDCORE NOTICE: Good day ${patient}. Your hospital billing summary for ${room} (Ref: ${ref}) is updated with recorded PhilHealth and statutory deductions. Please review it in the MedCore app or visit the hospital billing cashier.`;
+  }
+}
+/** The sandbox SMS the dashboard previews, built from the notification the API just recorded. */
+export function smsDispatch(
+  template: SmsTemplateType,
+  d: EncounterDetail,
+  message: string,
+): SmsDispatchResult {
+  const logged =
+    d.timeline.find((t) => t.kind === 'NOTIFICATION' && t.detail === message) ??
+    d.timeline.find((t) => t.kind === 'NOTIFICATION');
+  const doctor = template === 'DOCTOR_PF_NUDGE';
+  return {
+    success: true,
+    messageId: `SMS-SIM-${(logged?.id ?? d.encounter.id).replace(/-/g, '').slice(0, 6).toUpperCase()}`,
+    simulated: true,
+    isSimulated: true,
+    recipientName: doctor ? (d.physician?.fullName ?? 'Attending Physician') : d.patient.fullName,
+    recipientPhone: doctor
+      ? 'Hospital directory'
+      : d.patient.contactPhoneLast4
+        ? `•••• ${d.patient.contactPhoneLast4}`
+        : 'Not on file',
+    messageBody: logged?.detail ?? message,
+    timestamp: logged?.createdAt ?? new Date().toISOString(),
+    provider: 'SIMULATOR',
+    deliveryStatus: 'SIMULATED',
+    templateType: template,
+  };
+}
 async function census() {
   if (censusPending) return censusPending;
   censusPending = (async () => {
@@ -301,13 +471,35 @@ async function census() {
       rows.push(...r.items);
       if (r.items.length < 100) break;
     }
-    const mapped: Encounter[] = [];
-    // Bound parallel reads; short-lived detail cache avoids duplicate chart requests.
-    for (let i = 0; i < rows.length; i += 6)
-      mapped.push(
-        ...(await Promise.all(rows.slice(i, i + 6).map(async (r) => mapEncounter(await detail(r.id))))),
+    const now = Date.now();
+    const live = new Set(rows.map((r) => r.id));
+    for (const id of [...details.keys()]) if (!live.has(id)) details.delete(id);
+    for (const id of [...rowPrints.keys()]) if (!live.has(id)) rowPrints.delete(id);
+    for (const r of rows) encounterIds.set(r.encounterNumber, r.id);
+    const due = new Set<string>();
+    const stale: { id: string; at: number }[] = [];
+    const values = new Map<string, EncounterDetail>();
+    for (const r of rows) {
+      const cached = details.get(r.id);
+      if (cached) values.set(r.id, cached.value);
+      const changed = rowPrints.get(r.id) !== rowPrint(r);
+      if (!cached || r.id === openEncounterId) due.add(r.id);
+      else if (changed && now - cached.at >= 5000) due.add(r.id);
+      else if (changed) rowPrints.set(r.id, rowPrint(r));
+      else if (now - cached.at > DETAIL_MAX_AGE_MS) stale.push({ id: r.id, at: cached.at });
+    }
+    stale.sort((a, b) => a.at - b.at);
+    for (const s of stale.slice(0, STALE_REFRESH_PER_POLL)) due.add(s.id);
+    const ids = rows.filter((r) => due.has(r.id));
+    // Bound parallel reads.
+    for (let i = 0; i < ids.length; i += 6)
+      await Promise.all(
+        ids.slice(i, i + 6).map(async (r) => {
+          values.set(r.id, await fetchDetail(r.id, true));
+          rowPrints.set(r.id, rowPrint(r));
+        }),
       );
-    return mapped;
+    return rows.map((r) => mapEncounter(withRowSla(values.get(r.id)!, r)));
   })();
   try {
     return await censusPending;
@@ -360,13 +552,18 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
   }
   if (path.startsWith('/auth/')) return unavailable('Legacy staff sign-in and role switching');
   if (path.startsWith('/ai/')) {
-    return api(`/v1/staff${path}`, { method: 'POST', body: b });
+    return api(`/v1/staff${path}`, {
+      method: 'POST',
+      body: b,
+      ...(options.signal ? { signal: options.signal } : {}),
+    });
   }
   if (path === '/notifications' && method === 'GET') {
-    const r = await api<{ items: Array<{ read: boolean }> }>('/v1/staff/notifications');
+    const r = await api<{ items: ServerNotification[] }>('/v1/staff/notifications');
+    const notifications = r.items.map(mapNotification);
     return {
-      notifications: r.items,
-      unreadCount: r.items.filter((n) => !n.read).length,
+      notifications,
+      unreadCount: notifications.filter((n) => !n.read).length,
       available: true,
     };
   }
@@ -395,7 +592,7 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
       `/v1/staff/promissory-notes/${installment[1]}/installments/${installment[2]}/pay`,
       { method: 'POST', body: {} },
     );
-    clearBridgeCache();
+    invalidateBridgeData();
     return { success: true, ...r };
   }
   if (path === '/encounters/physicians') {
@@ -461,6 +658,12 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
     });
     return { success: true, encounter: mapEncounter(await detail(r.encounterId, true)) };
   }
+  const transmit = path.match(/^\/claims\/([^/]+)\/mark-transmitted$/);
+  if (transmit && method === 'POST') {
+    await api(`/v1/staff/claims/${encodeURIComponent(transmit[1])}/mark-transmitted`, { method: 'POST' });
+    for (const [id, cached] of details) if (cached.value.philhealth?.id === transmit[1]) details.delete(id);
+    return { success: true };
+  }
   const xml = path.match(/^\/claims\/([^/]+)\/esoa-xml$/);
   if (xml) {
     const list = await census();
@@ -475,27 +678,48 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
     if (!e) throw new ApiRequestError(404, 'NOT_FOUND', 'Charge not found.');
     if (method === 'PATCH' || method === 'PUT') {
       const existing = e.items.find((c) => c.id === charge[1])!;
-      await api(`/v1/staff/encounters/${e.id}/charges/${charge[1]}/remove`, {
-        method: 'POST',
-        body: { reason: 'Charge line updated by staff' },
-      });
       const cat = b.category ?? existing.category;
-      return mutated(e.id, 'charges', {
-        code: b.code ?? existing.code,
-        description: b.description ?? existing.description,
-        category: cat === 'ROOM_BOARD' ? 'ROOM_AND_BOARD' : cat === 'CENTRAL_SUPPLIES' ? 'SUPPLIES' : cat,
-        quantity: Number(b.qty ?? b.quantity ?? existing.qty),
-        unitPriceCents: centavos(b.unitPrice ?? existing.unitPrice),
-        coverage:
-          b.coverageType === 'PATIENT_DIRECT' ||
-          b.status === 'DISALLOWED_SUNDRY' ||
-          (!b.coverageType && !b.status && existing.status === 'DISALLOWED_SUNDRY')
-            ? 'EXCLUDED'
-            : 'COVERED',
-        ...((b.plainLanguageExplainer ?? existing.plainLanguageExplainer)
-          ? { explainer: b.plainLanguageExplainer ?? existing.plainLanguageExplainer }
-          : {}),
+      const base = `/v1/staff/encounters/${e.id}/charges`;
+      // There is no in-place edit: post the corrected line first, then retire the old one. If retiring
+      // fails, the new line is removed again, so a failed edit never loses or double-counts a charge.
+      const added = await api<EncounterDetail>(base, {
+        method: 'POST',
+        body: {
+          code: b.code ?? existing.code,
+          description: b.description ?? existing.description,
+          category: cat === 'ROOM_BOARD' ? 'ROOM_AND_BOARD' : cat === 'CENTRAL_SUPPLIES' ? 'SUPPLIES' : cat,
+          quantity: Number(b.qty ?? b.quantity ?? existing.qty),
+          unitPriceCents: centavos(b.unitPrice ?? existing.unitPrice),
+          coverage:
+            b.coverageType === 'PATIENT_DIRECT' ||
+            b.status === 'DISALLOWED_SUNDRY' ||
+            (!b.coverageType && !b.status && existing.status === 'DISALLOWED_SUNDRY')
+              ? 'EXCLUDED'
+              : 'COVERED',
+          ...((b.plainLanguageExplainer ?? existing.plainLanguageExplainer)
+            ? { explainer: b.plainLanguageExplainer ?? existing.plainLanguageExplainer }
+            : {}),
+        },
       });
+      details.delete(e.id);
+      const before = new Set(e.items.map((c) => c.id));
+      const newIds = added.charges.filter((c) => !c.removedAt && !before.has(c.id)).map((c) => c.id);
+      try {
+        const d = await api<EncounterDetail>(`${base}/${charge[1]}/remove`, {
+          method: 'POST',
+          body: { reason: 'Charge line updated by staff' },
+        });
+        details.delete(e.id);
+        return { success: true, encounter: mapEncounter(d) };
+      } catch (error) {
+        for (const id of newIds)
+          await api(`${base}/${id}/remove`, {
+            method: 'POST',
+            body: { reason: 'Reverted a charge update that could not be completed' },
+          }).catch(() => undefined);
+        details.delete(e.id);
+        throw error;
+      }
     }
     if (method !== 'DELETE') return unavailable('Charge editing');
     return mutated(e.id, `charges/${charge[1]}/remove`, {
@@ -603,11 +827,27 @@ export async function bridge(endpoint: string, options: RequestInit = {}) {
   }
   if (action === 'finalize-bill') return mutated(id, 'bill/finalize');
   if (action === 'send-bill') return mutated(id, 'bill/send');
-  if (action === 'notify-patient-sms') {
-    return mutated(id, 'notify', { kind: 'PATIENT_SMS', message: b.message });
-  }
-  if (action === 'nudge-doctor') {
-    return mutated(id, 'notify', { kind: 'DOCTOR_NUDGE', message: b.message });
+  if (action === 'notify-patient-sms' || action === 'nudge-doctor') {
+    const template: SmsTemplateType =
+      action === 'nudge-doctor'
+        ? 'DOCTOR_PF_NUDGE'
+        : b.templateType === 'INTAKE_ORIENTATION'
+          ? 'INTAKE_ORIENTATION'
+          : 'BILL_READY';
+    const message = smsBody(template, await detail(id));
+    const d = await api<EncounterDetail>(`/v1/staff/encounters/${id}/notify`, {
+      method: 'POST',
+      body: { kind: template === 'DOCTOR_PF_NUDGE' ? 'DOCTOR_NUDGE' : 'PATIENT_SMS', message },
+    });
+    details.delete(id);
+    const dispatch = smsDispatch(template, d, message);
+    return {
+      success: true,
+      simulated: true,
+      messageId: dispatch.messageId,
+      dispatch,
+      encounter: mapEncounter(d),
+    };
   }
   if (action === 'view-bill') {
     return { success: true, encounter: mapEncounter(await detail(id)) };

@@ -158,6 +158,9 @@ export interface EncounterDetail {
     status: string;
     rthRiskScore?: number | string | null;
     rthReadiness?: string | null;
+    cf4VitalsRecorded?: boolean | null;
+    cf4CourseInWardRecorded?: boolean | null;
+    cf4LabsConsistent?: boolean | null;
   } | null;
   hmo: {
     providerName: string;

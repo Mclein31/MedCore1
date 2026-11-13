@@ -1,4 +1,3 @@
-import { HmoAppealGeneratorModal } from '@/v1/components/ai/HmoAppealGeneratorModal';
 import { Button, ConfirmButton, SegmentedTabs, Select } from '@/v1/components/common';
 import {
   CheckCircle2,
@@ -14,7 +13,12 @@ import {
 import { useMedCore } from '@/v1/context/MedCoreContext';
 import { matchesEncounterSearch } from '@/v1/utils/encounterSearch';
 import { formatPhp } from '@/v1/utils/formatters';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
+
+// Code-split: the modal's code loads alongside (not inside) this page and is warmed on idle.
+const HmoAppealGeneratorModal = lazy(() =>
+  import('@/v1/components/ai/HmoAppealGeneratorModal').then((m) => ({ default: m.HmoAppealGeneratorModal })),
+);
 
 export const CoverageApprovalsPage: React.FC = () => {
   const { searchQuery, encounters, approveHmoFinalLoa, openDossierDrawer, printDocument, refreshEncounters } =
@@ -297,12 +301,19 @@ export const CoverageApprovalsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginatedEncounters.map((enc) => {
-                const deniedItems = enc.items.filter(
-                  (i) => i.patientOop > 0 && (i.status === 'DISALLOWED_SUNDRY' || !!i.exclusionReasonClause),
-                );
                 const isApproved = enc.hmo.finalLoaStatus === 'APPROVED';
                 const isAwaiting = enc.hmo.finalLoaStatus === 'AWAITING_CODE';
                 const isDisallowed = enc.hmo.finalLoaStatus === 'DISALLOWED_ITEMS';
+                const isRejected = enc.hmo.finalLoaStatus === 'REJECTED';
+                const hasHmo = enc.hmo.providerName !== 'None' && !!enc.hmo.cardMasked;
+                const excludedItems = enc.items.filter(
+                  (i) => i.patientOop > 0 && (i.status === 'DISALLOWED_SUNDRY' || !!i.exclusionReasonClause),
+                );
+                // A rejected LOA leaves every remaining patient-payable line open to appeal.
+                const deniedItems =
+                  isRejected && excludedItems.length === 0
+                    ? enc.items.filter((i) => i.patientOop > 0 && i.status !== 'WAIVED')
+                    : excludedItems;
                 const pName = enc.patient.fullName || enc.patient.maskedName;
 
                 return (
@@ -418,7 +429,7 @@ export const CoverageApprovalsPage: React.FC = () => {
                         </Button>
 
                         {/* AI Appeal Action for Disallowed Supplies */}
-                        {(enc.hmo.disallowedConsumables > 0 || isDisallowed) && (
+                        {hasHmo && (enc.hmo.disallowedConsumables > 0 || isDisallowed || isRejected) && (
                           <Button
                             size="sm"
                             variant="secondary"
@@ -524,13 +535,15 @@ export const CoverageApprovalsPage: React.FC = () => {
         </div>
       </div>
       {/* HMO Medical Necessity Appeal AI Modal */}
-      <HmoAppealGeneratorModal
-        isOpen={appealModalState.isOpen}
-        onClose={() => setAppealModalState({ isOpen: false, encounter: null })}
-        encounter={appealModalState.encounter}
-        deniedItemDescription={appealModalState.itemDescription}
-        deniedAmount={appealModalState.amount}
-      />
+      <Suspense fallback={null}>
+        <HmoAppealGeneratorModal
+          isOpen={appealModalState.isOpen}
+          onClose={() => setAppealModalState({ isOpen: false, encounter: null })}
+          encounter={appealModalState.encounter}
+          deniedItemDescription={appealModalState.itemDescription}
+          deniedAmount={appealModalState.amount}
+        />
+      </Suspense>
     </div>
   );
 };

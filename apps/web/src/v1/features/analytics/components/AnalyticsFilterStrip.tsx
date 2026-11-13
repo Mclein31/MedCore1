@@ -1,6 +1,8 @@
 import type { SegmentedTabItem } from '@/v1/components/common';
 import { Button, SegmentedTabs, Select } from '@/v1/components/common';
 import { CheckCircle2, FileText, Filter, RotateCcw, X } from '@/v1/components/common/SolarIcons';
+import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import { ALL_HMO_CARRIERS, CLINICAL_WARDS } from '@/v1/utils/rcmAnalyticsCalculations';
 import React from 'react';
 
@@ -49,6 +51,9 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
   totalFilteredCount,
   totalCount,
 }) => {
+  const { currentUser } = useMedCore();
+  const facility = useFacilityFacts();
+  const facilityName = facility.name ?? currentUser?.facilityName ?? 'Hospital';
   const hasActiveFilters =
     filters.timeframe !== '30D' ||
     filters.department !== 'All Wards' ||
@@ -72,8 +77,9 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            St. Jude Medical Center Manila (250-Bed Tertiary Facility) · Deterministic Inpatient Financial
-            Ledger
+            {facilityName}
+            {facility.bedCount ? ` (${facility.bedCount}-Bed Tertiary Facility)` : ''} · Deterministic
+            Inpatient Financial Ledger
           </p>
         </div>
 
@@ -193,7 +199,7 @@ export const AnalyticsFilterStrip: React.FC<AnalyticsFilterStripProps> = ({
 
           {filters.timeframe !== '30D' && (
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-800 border border-blue-200 font-medium">
-              Timeframe: {filters.timeframe === 'ALL' ? 'All 250 Cases' : filters.timeframe}
+              Timeframe: {filters.timeframe === 'ALL' ? `All ${totalCount} Cases` : filters.timeframe}
               <button
                 type="button"
                 aria-label={`Remove timeframe filter: ${filters.timeframe}`}

@@ -13,7 +13,7 @@ import {
   Input,
   PageHeader,
   Select,
-  Spinner,
+  TableSkeleton,
   Table,
 } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
@@ -74,7 +74,15 @@ export function Patients() {
             Search
           </Button>
         </form>
-        {query.isPending && <Spinner />}
+        {query.isPending && (
+          <TableSkeleton
+            head={['Name', 'MRN', 'Born', 'Discount', 'App email', '']}
+            caption="Patients"
+            rowHeight={3.32}
+            rows={10}
+            widths={['7.5rem', '6rem', '6rem', '4.5rem', '4.5rem', '6rem']}
+          />
+        )}
         {query.isError && <Alert>{errorMessage(query.error)}</Alert>}
         {query.data && query.data.items.length === 0 && <Empty title="No patients found." />}
         {query.data && query.data.items.length > 0 && (

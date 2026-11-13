@@ -136,7 +136,7 @@ export function getEncounterWard(enc: Encounter): string {
 // ============================================================================
 
 export function isEncounterProblem(enc: Encounter): boolean {
-  if (enc.philhealth?.status !== 'CLEAN' && enc.philhealth?.status !== 'APPROVED') return true;
+  if (!['CLEAN', 'APPROVED', 'TRANSMITTED'].includes(enc.philhealth?.status)) return true;
   if (enc.hmo?.finalLoaStatus !== 'APPROVED') return true;
   if (!enc.pharmacyRtsCleared || enc.unreturnedMedsCount > 0) return true;
   if (!enc.doctorSignedAt || enc.doctorExcessPf > 0) return true;
@@ -419,7 +419,7 @@ export function computeMacroKpiMetrics(
     if (enc.philhealth?.status === 'RETURNED') {
       returnedCount++;
     }
-    if (enc.philhealth?.status === 'CLEAN') {
+    if (['CLEAN', 'APPROVED', 'TRANSMITTED'].includes(enc.philhealth?.status)) {
       cleanCount++;
     }
 
@@ -686,7 +686,7 @@ export function computeClaimsScrutinyMetrics(encounters: Encounter[]): ClaimsPip
 
   for (const enc of encounters) {
     const s = enc.philhealth?.status || 'CLEAN';
-    if (s === 'CLEAN' || s === 'APPROVED') cleanCount++;
+    if (s === 'CLEAN' || s === 'APPROVED' || s === 'TRANSMITTED') cleanCount++;
     else if (s === 'WARNING') warningCount++;
     else if (s === 'INTERCEPTED') interceptedCount++;
     else if (s === 'RETURNED') returnedCount++;

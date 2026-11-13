@@ -1,6 +1,5 @@
 import { claimsApi } from '@/v1/api';
 import { ApiError } from '@/v1/api/client';
-import { ClaimsPreflightScrubberModal } from '@/v1/components/ai/ClaimsPreflightScrubberModal';
 import { Button, IconButton, SegmentedTabs } from '@/v1/components/common';
 import {
   AlertTriangle,
@@ -17,7 +16,23 @@ import { ViewportOverlay } from '@/v1/components/common/ViewportOverlay';
 import { useMedCore } from '@/v1/context/MedCoreContext';
 import { matchesEncounterSearch } from '@/v1/utils/encounterSearch';
 import { formatPhp } from '@/v1/utils/formatters';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+
+// Code-split: the modal's code loads alongside (not inside) this page and is warmed on idle.
+const ClaimsPreflightScrubberModal = lazy(() =>
+  import('@/v1/components/ai/ClaimsPreflightScrubberModal').then((m) => ({
+    default: m.ClaimsPreflightScrubberModal,
+  })),
+);
+
+/** Claims that passed pre-flight: ready to transmit, transmitted, or paid. */
+const PASSED_CLAIM_STATES = ['CLEAN', 'TRANSMITTED', 'APPROVED'];
+const isPassedClaim = (status: string) => PASSED_CLAIM_STATES.includes(status);
+const passedClaimLabel: Record<string, string> = {
+  CLEAN: 'Ready',
+  TRANSMITTED: 'Transmitted',
+  APPROVED: 'Paid',
+};
 
 export const ClaimsEsoaPage: React.FC = () => {
   const { encounters, printDocument, searchQuery: claimSearch, refreshEncounters } = useMedCore();
@@ -31,6 +46,11 @@ export const ClaimsEsoaPage: React.FC = () => {
   const [xmlRetry, setXmlRetry] = useState(0);
   const [xmlLoading, setXmlLoading] = useState(false);
   const [xmlPending, setXmlPending] = useState<string | null>(null);
+  // Last XML (or "finalize first" notice) shown for a claim. A background census refresh
+  // re-fetches it; until that returns, the same claim keeps its previous text instead of
+  // flashing a loading line. Copy/Download stay disabled while loading, so exports always
+  // use the fresh XML.
+  const [shownXml, setShownXml] = useState<{ claimId: string; text: string } | null>(null);
 
   const [claimPage, setClaimPage] = useState(1);
   const claimPageSize = 8;
@@ -71,19 +91,23 @@ export const ClaimsEsoaPage: React.FC = () => {
     setXmlError(null);
     setXmlPending(null);
     if (!claim?.id) return;
+    const claimId = claim.id;
     setXmlLoading(true);
     claimsApi
-      .getPhilhealthEsoaXml(claim.id)
+      .getPhilhealthEsoaXml(claimId)
       .then((xml) => {
         if (!active) return;
         if (typeof xml !== 'string' || !xml.trim().startsWith('<?xml'))
           throw new Error('The server returned invalid XML.');
         setServerXml({ key: xmlKey, xml });
+        setShownXml({ claimId, text: xml });
       })
       .catch((error) => {
         if (!active) return;
-        if (error instanceof ApiError && error.code === 'BILL_NOT_FINAL') setXmlPending(error.message);
-        else setXmlError(error instanceof Error ? error.message : 'Could not load the hospital XML.');
+        if (error instanceof ApiError && error.code === 'BILL_NOT_FINAL') {
+          setXmlPending(error.message);
+          setShownXml({ claimId, text: error.message });
+        } else setXmlError(error instanceof Error ? error.message : 'Could not load the hospital XML.');
       })
       .finally(() => {
         if (active) setXmlLoading(false);
@@ -93,6 +117,11 @@ export const ClaimsEsoaPage: React.FC = () => {
     };
   }, [xmlKey, xmlRetry]);
   const eSoaXmlString = serverXml && serverXml.key === xmlKey ? serverXml.xml : '';
+  const xmlText = xmlLoading
+    ? shownXml && shownXml.claimId === claim?.id
+      ? shownXml.text
+      : 'Loading hospital XML…'
+    : eSoaXmlString || xmlPending || 'XML is unavailable. Retry before exporting.';
   const handleCopyXml = async () => {
     if (!eSoaXmlString) return;
     try {
@@ -119,7 +148,7 @@ export const ClaimsEsoaPage: React.FC = () => {
     return <div className="p-6 text-sm text-slate-600">Select an available hospital claim.</div>;
 
   const filteredClaims = encounters.filter((enc) => {
-    if (filterClaimStatus === 'CLEAN' && enc.philhealth.status !== 'CLEAN') return false;
+    if (filterClaimStatus === 'CLEAN' && !isPassedClaim(enc.philhealth.status)) return false;
     if (
       filterClaimStatus === 'WARNING' &&
       enc.philhealth.status !== 'WARNING' &&
@@ -164,13 +193,14 @@ export const ClaimsEsoaPage: React.FC = () => {
       e.philhealth.status === 'WARNING' ||
       e.philhealth.status === 'INTERCEPTED',
   ).length;
-  const cleanCount = encounters.filter((e) => e.philhealth.status === 'CLEAN').length;
+  const cleanCount = encounters.filter((e) => isPassedClaim(e.philhealth.status)).length;
+  const agingCount = encounters.filter((e) => (e.philhealth.claimAgingDays || 0) >= 3).length;
 
   const claimStatusTabs = [
     { id: 'ALL', label: 'All Claims', badge: encounters.length },
     { id: 'CLEAN', label: 'Clean', badge: cleanCount, badgeVariant: 'emerald' as const },
     { id: 'WARNING', label: 'Warnings & Interceptions', badge: highRiskCount, badgeVariant: 'rose' as const },
-    { id: 'AGING', label: 'Aging >3 Days', badge: 3, badgeVariant: 'amber' as const },
+    { id: 'AGING', label: 'Aging >3 Days', badge: agingCount, badgeVariant: 'amber' as const },
   ];
 
   return (
@@ -378,10 +408,10 @@ export const ClaimsEsoaPage: React.FC = () => {
                     </td>
 
                     <td className="py-3.5 px-4 text-left text-xs">
-                      {auditStatus === 'CLEAN' && !isHighRisk ? (
+                      {isPassedClaim(auditStatus) && !isHighRisk ? (
                         <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
                           <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Ready</span>
+                          <span>{passedClaimLabel[auditStatus]}</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 font-bold text-rose-700">
@@ -505,7 +535,9 @@ export const ClaimsEsoaPage: React.FC = () => {
               </Button>
               <span
                 className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                  claim.status === 'CLEAN' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  isPassedClaim(claim.status)
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-rose-100 text-rose-800'
                 }`}
               >
                 {claim.status}
@@ -596,9 +628,7 @@ export const ClaimsEsoaPage: React.FC = () => {
           </div>
 
           <pre className="p-4 rounded-lg bg-slate-900 text-slate-100 font-mono text-xs overflow-x-auto max-h-[340px] leading-relaxed">
-            {xmlLoading
-              ? 'Loading hospital XML…'
-              : eSoaXmlString || xmlPending || 'XML is unavailable. Retry before exporting.'}
+            {xmlText}
           </pre>
         </div>
       </div>
@@ -629,7 +659,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                     </h3>
                     <span
                       className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                        currentEncounter.philhealth.status === 'CLEAN'
+                        isPassedClaim(currentEncounter.philhealth.status)
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-rose-100 text-rose-800'
                       }`}
@@ -712,9 +742,7 @@ export const ClaimsEsoaPage: React.FC = () => {
                   <span>Encoding: UTF-8</span>
                 </div>
                 <pre className="font-mono text-xs text-emerald-400 overflow-x-auto max-h-[420px] leading-relaxed select-all">
-                  {xmlLoading
-                    ? 'Loading hospital XML…'
-                    : eSoaXmlString || xmlPending || 'XML is unavailable. Retry before exporting.'}
+                  {xmlText}
                 </pre>
               </div>
             </div>
@@ -730,21 +758,24 @@ export const ClaimsEsoaPage: React.FC = () => {
         </ViewportOverlay>
       )}
       {/* PhilHealth Claims Pre-Flight Forensic Scrubber AI Modal */}
-      <ClaimsPreflightScrubberModal
-        isOpen={isAiScrubberOpen}
-        onClose={() => setIsAiScrubberOpen(false)}
-        encounter={currentEncounter}
-        onAuditComplete={(result) => {
-          setAuditScores((scores) => ({
-            ...scores,
-            [currentEncounter.id]: {
-              score: result.rthRiskScore,
-              previousScore: currentEncounter.philhealth.rthRiskScore,
-            },
-          }));
-          void refreshEncounters(0, true);
-        }}
-      />
+      <Suspense fallback={null}>
+        <ClaimsPreflightScrubberModal
+          isOpen={isAiScrubberOpen}
+          onClose={() => setIsAiScrubberOpen(false)}
+          encounter={currentEncounter}
+          onClaimCleared={() => void refreshEncounters(0, true)}
+          onAuditComplete={(result) => {
+            setAuditScores((scores) => ({
+              ...scores,
+              [currentEncounter.id]: {
+                score: result.rthRiskScore,
+                previousScore: currentEncounter.philhealth.rthRiskScore,
+              },
+            }));
+            void refreshEncounters(0, true);
+          }}
+        />
+      </Suspense>
     </div>
   );
 };

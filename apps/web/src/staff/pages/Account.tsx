@@ -1,7 +1,17 @@
 import { checkPassword, ROLE_LABELS } from '@medcore/domain';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Alert, Badge, Button, Card, Field, Input, PageHeader, Spinner, Table } from '../../components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  PageHeader,
+  Table,
+  TableSkeleton,
+} from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
 import { when } from '../../lib/format';
 import { useStaff } from '../session';
@@ -61,7 +71,14 @@ function Sessions() {
         </Button>
       }
     >
-      {sessions.isPending && <Spinner />}
+      {sessions.isPending && (
+        <TableSkeleton
+          head={['Device', 'Last active', '']}
+          caption="Active sessions"
+          rowHeight={3.32}
+          rows={2}
+        />
+      )}
       {(sessions.isError || revoke.isError) && <Alert>{errorMessage(sessions.error ?? revoke.error)}</Alert>}
       {revokeOthers.isSuccess && (
         <Alert tone="good">Signed out of {revokeOthers.data.revoked} other session(s).</Alert>

@@ -182,7 +182,7 @@ export const ActiveDischargeRadar: React.FC = () => {
       case 'SENT_TO_PATIENT':
         return (
           <span className="inline-flex items-center gap-1 font-medium text-blue-700 text-[11px]">
-            <span>eSOA Transmitted</span>
+            <span>Bill Sent to Patient</span>
           </span>
         );
       case 'FINALIZED':

@@ -10,6 +10,7 @@ import {
 } from '@/v1/components/common/SolarIcons';
 import { ViewportOverlay } from '@/v1/components/common/ViewportOverlay';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import { formatPhp } from '@/v1/utils/formatters';
 import React from 'react';
 
@@ -30,6 +31,7 @@ export const DischargeDossierDrawer: React.FC = () => {
     setActiveRoute,
     selectEncounter,
   } = useMedCore();
+  const slaTarget = useFacilityFacts().slaBreachMinutes ?? 45;
 
   const [copiedLink, setCopiedLink] = React.useState(false);
   if (!isDossierDrawerOpen || !dossierEncounter) return null;
@@ -37,7 +39,7 @@ export const DischargeDossierDrawer: React.FC = () => {
   const enc = encounters.find((item) => item.id === dossierEncounter.id);
   if (!enc) return null;
   const patientName = enc.patient.fullName || enc.patient.maskedName;
-  const remainingMinutes = 45 - enc.elapsedMinutes;
+  const remainingMinutes = slaTarget - enc.elapsedMinutes;
   const isBreached = remainingMinutes <= 0;
 
   const handleDispatchLink = async () => {
@@ -147,7 +149,9 @@ export const DischargeDossierDrawer: React.FC = () => {
                 ) : enc.elapsedMinutes >= 25 ? (
                   <span className="font-bold text-amber-700 flex items-center gap-1.5">
                     <Clock className="w-4 h-4 text-amber-600" />
-                    <span>{remainingMinutes}m remaining on 45m SLA</span>
+                    <span>
+                      {remainingMinutes}m remaining on {slaTarget}m SLA
+                    </span>
                   </span>
                 ) : (
                   <span className="font-bold text-emerald-700 flex items-center gap-1.5">

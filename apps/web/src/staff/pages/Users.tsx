@@ -12,7 +12,7 @@ import {
   Input,
   PageHeader,
   Select,
-  Spinner,
+  TableSkeleton,
   Table,
 } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
@@ -71,7 +71,14 @@ export function Users() {
         </div>
       )}
       <Card>
-        {users.isPending && <Spinner />}
+        {users.isPending && (
+          <TableSkeleton
+            head={['Name', 'Role', 'Status', 'Two-step', 'Last sign-in', '']}
+            caption="Staff accounts"
+            rowHeight={3.82}
+            widths={['11rem', '9rem', '4.5rem', '5rem', '8rem', '7rem']}
+          />
+        )}
         {users.isError && <Alert>{errorMessage(users.error)}</Alert>}
         {users.data && (
           <Table head={['Name', 'Role', 'Status', 'Two-step', 'Last sign-in', '']} caption="Staff accounts">

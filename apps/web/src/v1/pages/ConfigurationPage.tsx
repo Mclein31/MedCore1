@@ -1,22 +1,22 @@
 import { defaultApiClient } from '@/v1/api';
 import { Button, Select } from '@/v1/components/common';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { invalidateFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import React, { useEffect, useState } from 'react';
 
 interface FacilitySettings {
   id: string;
   code: string;
   name: string;
-  philhealthPan: string;
+  philhealthAccreditation: string;
   slaWarningMinutes: number;
   slaBreachMinutes: number;
-  doctorPfTimeoutMinutes: number;
+  doctorPfTimeoutMinutes?: number;
 }
 
 export const ConfigurationPage: React.FC = () => {
   const { currentUser } = useMedCore();
-  const canEdit =
-    currentUser?.permissions?.includes('admin:settings') || currentUser?.role === 'HOSPITAL_CFO';
+  const canEdit = currentUser?.permissions?.includes('staff:manage') || currentUser?.role === 'HOSPITAL_CFO';
 
   const [facilityName, setFacilityName] = useState('St. Jude Medical Center');
   const [philhealthPan, setPhilhealthPan] = useState('PAN-NCR-HOSP-004921');
@@ -34,7 +34,7 @@ export const ConfigurationPage: React.FC = () => {
       .then((res) => {
         if (!active || !res?.facility) return;
         setFacilityName(res.facility.name || 'St. Jude Medical Center');
-        setPhilhealthPan(res.facility.philhealthPan || 'PAN-NCR-HOSP-004921');
+        setPhilhealthPan(res.facility.philhealthAccreditation || 'PAN-NCR-HOSP-004921');
         setSlaWarningMinutes(res.facility.slaWarningMinutes ?? 25);
         setSlaBreachMinutes(res.facility.slaBreachMinutes ?? 40);
         setDoctorPfTimeoutMinutes(res.facility.doctorPfTimeoutMinutes ?? 15);
@@ -56,12 +56,14 @@ export const ConfigurationPage: React.FC = () => {
       await defaultApiClient.request('/facility', {
         method: 'PUT',
         body: JSON.stringify({
-          name: facilityName,
+          name: facilityName.trim(),
+          philhealthAccreditation: philhealthPan.trim(),
           slaWarningMinutes: Number(slaWarningMinutes),
           slaBreachMinutes: Number(slaBreachMinutes),
           doctorPfTimeoutMinutes: Number(doctorPfTimeoutMinutes),
         }),
       });
+      invalidateFacilityFacts();
       setSaveMessage('Hospital SLA thresholds and configuration saved.');
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Could not save configuration.');

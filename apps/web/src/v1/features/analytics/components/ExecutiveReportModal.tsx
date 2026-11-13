@@ -2,6 +2,7 @@ import { Button, IconButton } from '@/v1/components/common';
 import { Building, CheckCircle2, Download, Printer, X } from '@/v1/components/common/SolarIcons';
 import { ViewportOverlay } from '@/v1/components/common/ViewportOverlay';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import { formatPhp } from '@/v1/utils/formatters';
 import type {
   CommercialCarrierMetric,
@@ -25,7 +26,9 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
   kpis,
   carriers,
 }) => {
-  const { printDocument } = useMedCore();
+  const { printDocument, currentUser } = useMedCore();
+  const facility = useFacilityFacts();
+  const facilityName = facility.name ?? currentUser?.facilityName ?? 'Hospital';
 
   if (!isOpen) return null;
 
@@ -80,7 +83,8 @@ export const ExecutiveReportModal: React.FC<ExecutiveReportModalProps> = ({
                 Hospital RCM Financial Intelligence &amp; Statutory Audit
               </h2>
               <p className="text-xs text-slate-500">
-                St. Jude Medical Center Manila (250-Bed Tertiary Hospital) · Financial Summary
+                {facilityName}
+                {facility.bedCount ? ` (${facility.bedCount}-Bed Tertiary Hospital)` : ''} · Financial Summary
               </p>
             </div>
           </div>

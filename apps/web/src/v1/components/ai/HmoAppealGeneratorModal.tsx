@@ -187,7 +187,8 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
               </div>
             </div>
           ) : appealData ? (
-            <>
+            // Results fade in where the loading state was, instead of popping in.
+            <div className="space-y-5 content-fade-in">
               {/* Telemetry Strip */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-xs">
                 <div>
@@ -289,7 +290,7 @@ export const HmoAppealGeneratorModal: React.FC<HmoAppealGeneratorModalProps> = (
                   </ul>
                 </div>
               )}
-            </>
+            </div>
           ) : null}
         </div>
 

@@ -2,8 +2,9 @@ import React from 'react';
 
 export const VelocityRecoveryPulse: React.FC = () => {
   return (
-    <footer className="h-12 border-t border-slate-200 bg-slate-50 px-6 flex items-center justify-between z-10 shrink-0 overflow-x-auto text-xs text-slate-600">
-      <div className="flex items-center gap-6 min-w-max">
+    <footer className="min-h-12 py-2 border-t border-slate-200 bg-slate-50 px-6 flex items-center justify-between z-10 shrink-0 text-xs text-slate-600">
+      {/* Wraps onto a second line on narrower laptop screens instead of scrolling sideways. */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 whitespace-nowrap">
         <div className="flex items-baseline gap-1.5">
           <span className="text-slate-500 font-medium">24h average TAT:</span>
           <span className="font-bold text-slate-900">Unavailable</span>

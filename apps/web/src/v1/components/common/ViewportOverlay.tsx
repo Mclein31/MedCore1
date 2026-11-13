@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import { useExitSnapshotRef } from '../../utils/exitSnapshot';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ViewportOverlayProps {
@@ -23,6 +24,21 @@ export function ViewportOverlay({
   dialogLabel,
 }: ViewportOverlayProps) {
   const root = useRef<HTMLDivElement>(null);
+  // Closing mirrors opening: the scrim fades and the panel leaves the way it came in.
+  const exitRef = useExitSnapshotRef<HTMLDivElement>(
+    motion === 'right' ? 'overlay-right' : motion === 'fade' ? 'overlay-fade' : 'overlay-rise',
+  );
+  const setRoot = useCallback(
+    (node: HTMLDivElement | null) => {
+      root.current = node;
+      const exit = exitRef(node);
+      return () => {
+        root.current = null;
+        exit?.();
+      };
+    },
+    [exitRef],
+  );
   const dismiss = useRef(onDismiss);
   dismiss.current = onDismiss;
   useEffect(() => {
@@ -82,7 +98,7 @@ export function ViewportOverlay({
   const zIndex = { modal: 1000, nested: 1100, processing: 1200, confirmation: 9999 }[layer];
   return createPortal(
     <div
-      ref={root}
+      ref={setRoot}
       className="viewport-overlay no-print"
       data-overlay-root
       data-overlay-layer={layer}

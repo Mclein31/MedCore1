@@ -9,6 +9,7 @@ import {
   Settings,
   ShieldAlert,
 } from '@/v1/components/common/SolarIcons';
+import { prefetchRoute } from '@/v1/app/routeChunks';
 import { useMedCore } from '@/v1/context/MedCoreContext';
 import type { NavRoute } from '@/v1/types/navigation';
 import React from 'react';
@@ -136,6 +137,8 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({ isCollapsed, setIsCollap
             <button
               key={item.route}
               onClick={() => setActiveRoute(item.route)}
+              onPointerEnter={() => prefetchRoute(item.route)}
+              onFocus={() => prefetchRoute(item.route)}
               title={isCollapsed ? item.label : undefined}
               aria-label={item.label}
               aria-current={isActive ? 'page' : undefined}

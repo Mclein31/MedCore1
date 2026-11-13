@@ -825,3 +825,67 @@ textarea:focus-visible {
     display: none !important;
   }
 }
+
+/* ==========================================================================
+   Loading and state-change motion. Transform/opacity only; nothing here changes
+   how a settled screen looks. The global reduced-motion rule above shortens all
+   of these to an instant change.
+   ========================================================================== */
+:root {
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+}
+/* Workspace page switch: the incoming page fades in (no movement, no fill). */
+.workspace-main > * {
+  animation: fadeIn 180ms var(--ease-out-strong);
+}
+/* Content that replaces a loading placeholder. */
+.content-fade-in {
+  animation: fadeIn 200ms var(--ease-out-strong);
+}
+/* Click-opened popovers grow out of their top-right trigger. */
+.motion-popover {
+  transform-origin: top right;
+  animation: popover-in 160ms var(--ease-out-strong);
+}
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+/* Toasts rise in from the bottom edge they sit on. */
+@keyframes slide-in-from-bottom-2 {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+.animate-in.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom-2;
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease-out-strong);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .motion-safe\:animate-in.motion-safe\:slide-in-from-bottom-2 {
+    animation: slide-in-from-bottom-2 200ms var(--ease-out-strong) both;
+  }
+}
+/* Exit snapshots (see v1/utils/exitSnapshot.ts) must not replay entrance motion. */
+.is-exiting,
+.is-exiting * {
+  animation: none !important;
+  transition: none !important;
+}
+/* Native <dialog> (staff admin forms): same rise-in as ViewportOverlay panels. */
+dialog[open] {
+  animation: viewport-panel-in 220ms var(--ease-out-strong);
+}
+dialog[open]::backdrop {
+  animation: viewport-scrim-in 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog[open],
+  .motion-popover {
+    animation-name: fadeIn;
+  }
+}

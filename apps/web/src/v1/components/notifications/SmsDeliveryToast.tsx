@@ -1,12 +1,15 @@
 import { MessageSquare, X } from '@/v1/components/common/SolarIcons';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useExitSnapshotRef } from '@/v1/utils/exitSnapshot';
 import { createPortal } from 'react-dom';
 
 export function SmsDeliveryToast() {
   const { lastSmsDispatch, clearLastSmsDispatch } = useMedCore();
+  const exitRef = useExitSnapshotRef<HTMLElement>('toast');
   if (!lastSmsDispatch || typeof document === 'undefined') return null;
   return createPortal(
     <section
+      ref={exitRef}
       role="status"
       aria-live="polite"
       aria-atomic="true"

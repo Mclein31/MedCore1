@@ -116,14 +116,18 @@ export const NotificationCenter: React.FC = () => {
           id="hospital-notifications"
           role="dialog"
           aria-labelledby="notification-title"
-          className="absolute right-0 top-full mt-2 w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden"
+          className="motion-popover absolute right-0 top-full mt-2 w-[min(26rem,calc(100vw-2rem))] rounded-xl border border-slate-200 bg-white shadow-xl z-50 overflow-hidden"
         >
           <div className="flex items-start gap-2 border-b border-slate-100 p-4">
             <div className="min-w-0 flex-1">
               <h2 id="notification-title" className="text-sm font-bold leading-5 text-slate-900">
                 Hospital Operational Telemetry &amp; Notifications
               </h2>
-              <p className="mt-1 text-xs text-slate-500">Hospital notifications unavailable</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {notificationError
+                  ? 'Hospital notifications unavailable'
+                  : `${unreadNotificationCount} unread`}
+              </p>
             </div>
             <button
               ref={close}

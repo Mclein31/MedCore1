@@ -29,7 +29,14 @@ export const GlobalCommandBar: React.FC = () => {
   return (
     <header className="workspace-toolbar no-print h-12 border-b border-slate-200 bg-white px-3 sm:px-4 grid grid-cols-[auto_minmax(0,1fr)_auto] xl:grid-cols-[minmax(0,1fr)_minmax(160px,640px)_minmax(0,1fr)] items-center gap-3 z-30 sticky top-0 shadow-2xs">
       <div className="flex items-center gap-2 shrink-0">
-        <img src="/logo/MedCore_Badge_Logo.png" alt="MedCore" className="h-7 w-auto" />
+        <img
+          src="/logo/MedCore_Badge_Logo.png"
+          alt="MedCore"
+          width={380}
+          height={356}
+          decoding="async"
+          className="h-7 w-auto"
+        />
         <div>
           <div className="flex items-center gap-1.5">
             <span className="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 leading-none">
@@ -78,7 +85,7 @@ export const GlobalCommandBar: React.FC = () => {
           {open && (
             <div
               id="staff-account-menu"
-              className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
+              className="motion-popover absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl"
             >
               <p className="px-2 py-2 text-xs font-semibold text-slate-900">{currentUser?.email}</p>
               <button

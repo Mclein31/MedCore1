@@ -308,6 +308,49 @@ export function Table({
   );
 }
 
+/**
+ * First-load placeholder for a Table: the real header plus rows of the settled row height,
+ * so the loaded rows land exactly where the placeholders were (no spinner-to-table jump).
+ * Bones use the same slate-100 placeholder tone as the workspace skeletons.
+ */
+export function TableSkeleton({
+  head,
+  caption,
+  rowHeight,
+  rows = 8,
+  widths,
+}: {
+  head: ReactNode[];
+  caption?: string;
+  /** Typical content width per column (CSS length), so the auto-sized columns match the loaded table. */
+  widths?: string[];
+  /** Height of one settled row, in rem (so it tracks the root font-size breakpoints). */
+  rowHeight: number;
+  rows?: number;
+}) {
+  return (
+    <>
+      <p role="status" className="sr-only">
+        Loading…
+      </p>
+      <Table head={head} caption={caption}>
+        {Array.from({ length: rows }, (_, r) => (
+          <tr key={r} aria-hidden style={{ height: `${rowHeight}rem` }}>
+            {head.map((_, c) => (
+              <td key={c} className="px-3 py-2.5">
+                <span
+                  className="block h-3 max-w-full animate-pulse rounded bg-slate-100"
+                  style={{ width: widths?.[c] ?? `${40 + ((r * 13 + c * 29) % 45)}%` }}
+                />
+              </td>
+            ))}
+          </tr>
+        ))}
+      </Table>
+    </>
+  );
+}
+
 /** v1 page heading: small eyebrow, large title, and pill-shaped primary actions on the right. */
 export function PageHeader({
   title,

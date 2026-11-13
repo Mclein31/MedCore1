@@ -214,8 +214,8 @@ export const EncountersLedgerPage: React.FC = () => {
             {/* Scheduled Intake Encounters */}
             <div className="lg:col-span-7 p-6 rounded-xl border border-slate-200 space-y-4 bg-white shadow-2xs">
               <div className="flex items-baseline justify-between">
-                <h4 className="font-bold text-base text-slate-900">Scheduled Pre-Admission Encounters</h4>
-                <span className="text-xs text-slate-500 font-medium">{encounters.length} scheduled</span>
+                <h4 className="font-bold text-base text-slate-900">Registered Inpatient Encounters</h4>
+                <span className="text-xs text-slate-500 font-medium">{encounters.length} admitted</span>
               </div>
 
               <div className="max-h-[380px] overflow-y-auto overflow-x-auto overscroll-contain rounded-lg border border-slate-200">
@@ -223,9 +223,9 @@ export const EncountersLedgerPage: React.FC = () => {
                   <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
                     <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
                       <th className="py-3 px-3 text-left">Patient &amp; MRN</th>
-                      <th className="py-3 px-3 text-left">Planned Room</th>
+                      <th className="py-3 px-3 text-left">Room</th>
                       <th className="py-3 px-3 text-left">Payer</th>
-                      <th className="py-3 px-3 text-left">Est. Out-of-Pocket</th>
+                      <th className="py-3 px-3 text-left">Net Patient Due</th>
                       <th className="py-3 px-3 text-left">Action</th>
                     </tr>
                   </thead>

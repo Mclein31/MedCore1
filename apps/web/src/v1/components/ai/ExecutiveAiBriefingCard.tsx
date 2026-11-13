@@ -19,10 +19,20 @@ import { useMedCore } from '@/v1/context/MedCoreContext';
 import { formatPhp } from '@/v1/utils/formatters';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+/** Minutes past the SLA, in hours or days once that reads better. */
+function formatOverage(minutes: number): string {
+  if (minutes < 120) return `${minutes}m`;
+  if (minutes < 48 * 60) return `${(minutes / 60).toFixed(1)}h`;
+  return `${Math.round(minutes / 1440)}d`;
+}
+
 export interface ExecutiveAiBriefingCardProps {
   className?: string;
   defaultCollapsed?: boolean;
 }
+
+const BRIEFING_REUSE_MS = 10 * 60_000;
+let briefingCache: { key: string; at: number; data: ExecutiveBriefingResponse } | null = null;
 
 export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = ({
   className = '',
@@ -35,6 +45,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
   const [briefing, setBriefing] = useState<ExecutiveBriefingResponse | null>(null);
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
+  const cacheKey = `${currentUser?.id ?? ''}:${currentUser?.facilityId ?? ''}`;
   const fetchBriefing = useCallback(
     async (forceRefresh: boolean = false) => {
       pendingRequest.current?.abort();
@@ -42,12 +53,18 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
       pendingRequest.current = controller;
       setLoading(true);
       setError(null);
-      setBriefing(null);
+      // A manual refresh keeps the current briefing on screen until the new one arrives
+      // (the Refresh button shows progress); only a first load starts from the skeleton.
+      if (!forceRefresh) setBriefing(null);
       try {
         const data = await rcmAi.getExecutiveBriefing(forceRefresh, controller.signal);
-        if (!controller.signal.aborted) setBriefing(data);
+        if (!controller.signal.aborted) {
+          setBriefing(data);
+          briefingCache = { key: cacheKey, at: Date.now(), data };
+        }
       } catch (err: any) {
         if (!controller.signal.aborted) {
+          setBriefing(null);
           const message =
             err?.code === 'AI_NOT_CONFIGURED'
               ? 'AI insights are not configured for this environment. Contact your MedCore administrator.'
@@ -60,10 +77,20 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
         if (!controller.signal.aborted) setLoading(false);
       }
     },
-    [currentUser?.id, currentUser?.facilityId],
+    [cacheKey],
   );
 
   useEffect(() => {
+    // Overview and RCM Analytics both mount this card; reuse a recent briefing instead of asking
+    // Gemini again on every page switch. Refresh still forces a new one.
+    if (
+      briefingCache &&
+      briefingCache.key === cacheKey &&
+      Date.now() - briefingCache.at < BRIEFING_REUSE_MS
+    ) {
+      setBriefing(briefingCache.data);
+      return;
+    }
     setBriefing(null);
     const timer = setTimeout(() => {
       void fetchBriefing(false);
@@ -72,7 +99,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
       clearTimeout(timer);
       pendingRequest.current?.abort();
     };
-  }, [fetchBriefing]);
+  }, [fetchBriefing, cacheKey]);
 
   return (
     <div
@@ -132,18 +159,36 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
         </div>
       </div>
 
-      {/* Loading Skeleton */}
-      {loading && !briefing && (
-        <div className="p-6 space-y-4 animate-pulse">
+      {/* Loading Skeleton: same padding, metric strip and narrative panel as the briefing body.
+          A collapsed card shows only its header, so it stays header-only while loading too. */}
+      {loading && !briefing && !isCollapsed && (
+        <div className="p-5 space-y-5" aria-hidden="true">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-20 bg-slate-100 rounded-xl" />
+              <div key={i} className="p-3.5 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="inline-block h-[0.7em] w-24 rounded bg-slate-100 align-middle animate-pulse" />
+                  <span className="w-3.5 h-3.5 rounded bg-slate-100 animate-pulse" />
+                </div>
+                <div className="mt-1.5 text-xl">
+                  <span className="inline-block h-[0.8em] w-20 rounded bg-slate-100 align-middle animate-pulse" />
+                  {'\u200b'}
+                </div>
+                <div className="mt-1 text-[11px]">
+                  <span className="inline-block h-[0.7em] w-28 rounded bg-slate-100 align-middle animate-pulse" />
+                  {'\u200b'}
+                </div>
+              </div>
             ))}
           </div>
-          <div className="h-24 bg-slate-100 rounded-xl" />
-          <div className="space-y-2">
-            <div className="h-4 bg-slate-100 rounded w-3/4" />
-            <div className="h-4 bg-slate-100 rounded w-1/2" />
+          <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+            <div className="h-6 border-b border-slate-200/80 pb-2">
+              <span className="block h-3 w-48 rounded bg-slate-100 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 bg-slate-100 rounded w-3/4 animate-pulse" />
+              <div className="h-4 bg-slate-100 rounded w-1/2 animate-pulse" />
+            </div>
           </div>
         </div>
       )}
@@ -162,7 +207,7 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
 
       {/* Briefing Content Body */}
       {briefing && !isCollapsed && (
-        <div className="p-5 space-y-5">
+        <div className="p-5 space-y-5 content-fade-in">
           {/* Top Scorecard Metrics Strip */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {/* Metric 1: Avg Discharge TAT */}
@@ -179,10 +224,24 @@ export const ExecutiveAiBriefingCard: React.FC<ExecutiveAiBriefingCardProps> = (
                   / {briefing.metricsSummary.slaTargetMinutes}m SLA
                 </span>
               </div>
-              <div className="mt-1 text-[11px] font-medium text-emerald-600 flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3" />
-                <span>Within 3.0h standard</span>
-              </div>
+              {Math.round(briefing.metricsSummary.averageDischargeTatMinutes) <=
+              briefing.metricsSummary.slaTargetMinutes ? (
+                <div className="mt-1 text-[11px] font-medium text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  <span>Within {briefing.metricsSummary.slaTargetMinutes}m SLA</span>
+                </div>
+              ) : (
+                <div className="mt-1 text-[11px] font-medium text-rose-600 flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span>
+                    {formatOverage(
+                      Math.round(briefing.metricsSummary.averageDischargeTatMinutes) -
+                        briefing.metricsSummary.slaTargetMinutes,
+                    )}{' '}
+                    over SLA
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Metric 2: Reclaimed Bed-Hours */}

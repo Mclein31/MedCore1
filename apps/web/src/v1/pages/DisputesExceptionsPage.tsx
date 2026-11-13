@@ -1,9 +1,13 @@
-import { HmoAppealGeneratorModal } from '@/v1/components/ai/HmoAppealGeneratorModal';
 import { Button, ConfirmButton, SegmentedTabs } from '@/v1/components/common';
 import { CheckCircle2, FileText, HelpCircle, Scale } from '@/v1/components/common/SolarIcons';
 import { useMedCore } from '@/v1/context/MedCoreContext';
 import { formatPhp, formatPstTimestamp } from '@/v1/utils/formatters';
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
+
+// Code-split: the modal's code loads alongside (not inside) this page and is warmed on idle.
+const HmoAppealGeneratorModal = lazy(() =>
+  import('@/v1/components/ai/HmoAppealGeneratorModal').then((m) => ({ default: m.HmoAppealGeneratorModal })),
+);
 
 export const DisputesExceptionsPage: React.FC = () => {
   const {
@@ -14,6 +18,11 @@ export const DisputesExceptionsPage: React.FC = () => {
     openPromissoryModal,
     selectEncounter,
   } = useMedCore();
+  // HMO appeals apply only to stays that have an HMO payer.
+  const hasHmoPayer = (encounterId: string) => {
+    const enc = encounters.find((e) => e.id === encounterId);
+    return !!enc && enc.hmo.providerName !== 'None' && !!enc.hmo.cardMasked;
+  };
 
   const [activeTab, setActiveTab] = useState<'CONTESTED_ITEMS' | 'PROMISSORY_REGISTER'>('CONTESTED_ITEMS');
   const [itemsPage, setItemsPage] = useState(1);
@@ -243,25 +252,27 @@ export const DisputesExceptionsPage: React.FC = () => {
                                 Why?
                               </Button>
 
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                icon={Scale}
-                                onClick={() => {
-                                  const enc = encounters.find((e) => e.id === encounterId);
-                                  if (!enc) return;
-                                  setAppealModalState({
-                                    isOpen: true,
-                                    encounter: enc,
-                                    itemDescription: item.description,
-                                    amount: dispute?.contestedAmount,
-                                  });
-                                }}
-                                className="text-purple-700 hover:text-purple-800 hover:bg-purple-50 border-purple-200"
-                                title="Draft AI Medical Necessity Appeal for HMO"
-                              >
-                                Draft Appeal
-                              </Button>
+                              {hasHmoPayer(encounterId) && (
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  icon={Scale}
+                                  onClick={() => {
+                                    const enc = encounters.find((e) => e.id === encounterId);
+                                    if (!enc) return;
+                                    setAppealModalState({
+                                      isOpen: true,
+                                      encounter: enc,
+                                      itemDescription: item.description,
+                                      amount: dispute?.contestedAmount,
+                                    });
+                                  }}
+                                  className="text-purple-700 hover:text-purple-800 hover:bg-purple-50 border-purple-200"
+                                  title="Draft AI Medical Necessity Appeal for HMO"
+                                >
+                                  Draft Appeal
+                                </Button>
+                              )}
 
                               {/* Visual Divider between Review and Interventions */}
                               <div className="h-4 w-px bg-slate-200 shrink-0" />
@@ -499,13 +510,15 @@ export const DisputesExceptionsPage: React.FC = () => {
         </div>
       )}
       {/* HMO Medical Necessity Appeal AI Modal */}
-      <HmoAppealGeneratorModal
-        isOpen={appealModalState.isOpen}
-        onClose={() => setAppealModalState({ isOpen: false, encounter: null })}
-        encounter={appealModalState.encounter}
-        deniedItemDescription={appealModalState.itemDescription}
-        deniedAmount={appealModalState.amount}
-      />
+      <Suspense fallback={null}>
+        <HmoAppealGeneratorModal
+          isOpen={appealModalState.isOpen}
+          onClose={() => setAppealModalState({ isOpen: false, encounter: null })}
+          encounter={appealModalState.encounter}
+          deniedItemDescription={appealModalState.itemDescription}
+          deniedAmount={appealModalState.amount}
+        />
+      </Suspense>
     </div>
   );
 };

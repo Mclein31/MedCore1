@@ -1,5 +1,7 @@
 import type { ClaimsAuditResult } from '@/v1/api/ai';
 import { claimsAi } from '@/v1/api/ai';
+import { claimsApi } from '@/v1/api/claims';
+import { ApiError } from '@/v1/api/client';
 import { Button } from '@/v1/components/common';
 import {
   AlertTriangle,
@@ -25,6 +27,8 @@ export interface ClaimsPreflightScrubberModalProps {
   onClose: () => void;
   encounter: any;
   onAuditComplete?: (result: ClaimsAuditResult) => void;
+  /** Called after the server records the claim as transmitted. */
+  onClaimCleared?: () => void;
 }
 
 export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModalProps> = ({
@@ -32,6 +36,7 @@ export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModal
   onClose,
   encounter,
   onAuditComplete,
+  onClaimCleared,
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +45,7 @@ export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModal
   const [copiedAddendum, setCopiedAddendum] = useState(false);
   const [copiedDossier, setCopiedDossier] = useState(false);
   const [clearedForGateway, setClearedForGateway] = useState(false);
+  const [clearingClaim, setClearingClaim] = useState(false);
   const [showRiskExplanation, setShowRiskExplanation] = useState(false);
 
   const pendingRequest = useRef<AbortController | null>(null);
@@ -84,6 +90,30 @@ export const ClaimsPreflightScrubberModal: React.FC<ClaimsPreflightScrubberModal
   }, [isOpen, runAudit]);
 
   if (!isOpen || !encounter) return null;
+
+  const alreadyTransmitted = ['TRANSMITTED', 'APPROVED'].includes(encounter.philhealth?.status);
+  const isCleared = clearedForGateway || alreadyTransmitted;
+  const clearClaim = async () => {
+    const claimId = encounter.philhealth?.id;
+    if (isCleared || clearingClaim || !claimId) return;
+    setClearingClaim(true);
+    try {
+      await claimsApi.markTransmitted(claimId);
+      setClearedForGateway(true);
+      onClaimCleared?.();
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.code === 'ALREADY_TRANSMITTED') {
+        setClearedForGateway(true);
+        onClaimCleared?.();
+      } else {
+        setError(
+          `This claim could not be cleared: ${err instanceof Error ? err.message : 'please try again.'}`,
+        );
+      }
+    } finally {
+      setClearingClaim(false);
+    }
+  };
 
   const rthScore = auditResult?.rthRiskScore ?? 0.05;
   const isPass = auditResult?.passThreshold ?? rthScore <= 0.15;
@@ -257,7 +287,8 @@ Remediation: ${f.remediation}`,
               </div>
             </div>
           ) : auditResult ? (
-            <>
+            // Results fade in where the loading state was, instead of popping in.
+            <div className="space-y-6 content-fade-in">
               {/* Scorecard Hero Banner */}
               <div
                 className={`p-5 rounded-2xl border ${riskColors.border} ${riskColors.bg} flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}
@@ -357,9 +388,10 @@ Remediation: ${f.remediation}`,
                     size="sm"
                     variant={isPass ? 'primary' : 'secondary'}
                     icon={CheckCircle2}
-                    onClick={() => setClearedForGateway(true)}
+                    disabled={clearingClaim}
+                    onClick={() => void clearClaim()}
                   >
-                    {clearedForGateway ? 'Cleared for Gateway' : 'Clear Claim'}
+                    {isCleared ? 'Cleared for Gateway' : 'Clear Claim'}
                   </Button>
                 </div>
               </div>
@@ -568,7 +600,7 @@ Remediation: ${f.remediation}`,
                   </pre>
                 </div>
               )}
-            </>
+            </div>
           ) : null}
         </div>
 

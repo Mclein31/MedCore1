@@ -1,6 +1,7 @@
 import type { ApiUser } from '@/v1/api';
 import { apiClient, ApiError } from '@/v1/api';
 import { notificationsApi } from '@/v1/api/notifications';
+import { setOpenEncounter } from '@/v1/api/v2Bridge';
 import type { ConfirmationContextInfo, ConfirmationModalVariant } from '@/v1/components/modals';
 import type { DemoPaymentRail, DemoPaymentRecord } from '@/v1/features/patient-clarify';
 import { broadcastBillingSync, usePatientBillingSync } from '@/v1/features/patient-clarify';
@@ -186,19 +187,42 @@ interface MedCoreContextType {
 
 const MedCoreContext = createContext<MedCoreContextType | undefined>(undefined);
 
+const ROUTE_PATHS: Partial<Record<NavRoute, string>> = {
+  COMMAND_CENTER: '/staff',
+  DISCHARGE_CLEARANCE: '/staff/discharge',
+  ENCOUNTERS_LEDGER: '/staff/encounters',
+  COVERAGE_APPROVALS: '/staff/approvals',
+  DISPUTES_EXCEPTIONS: '/staff/disputes',
+  CLAIMS_ESOA: '/staff/claims',
+  RCM_ANALYTICS: '/staff/analytics',
+  CONFIGURATION: '/staff/settings',
+  STAFF_USERS: '/staff/users',
+  AUDIT_LOG: '/staff/audit',
+  ACCOUNT: '/staff/account',
+  PATIENTS: '/staff/patients',
+  LOBBY: '/staff/lobby',
+};
+
+function routeFromPath(pathname: string): NavRoute {
+  const clean = pathname.replace(/\/+$/, '') || '/staff';
+  const hit = (Object.entries(ROUTE_PATHS) as [NavRoute, string][]).find(([, p]) => p === clean);
+  return hit?.[0] ?? 'COMMAND_CENTER';
+}
+
 export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [selectedEncounterId, setSelectedEncounterId] = useState<string>('');
-  const [activeRoute, setActiveRoute] = useState<NavRoute>(
-    () =>
-      (({
-        '/staff/account': 'ACCOUNT',
-        '/staff/patients': 'PATIENTS',
-        '/staff/users': 'STAFF_USERS',
-        '/staff/audit': 'AUDIT_LOG',
-        '/staff/lobby': 'LOBBY',
-      })[window.location.pathname] as NavRoute) ?? 'COMMAND_CENTER',
-  );
+  const [activeRoute, setActiveRoute] = useState<NavRoute>(() => routeFromPath(window.location.pathname));
+  // Keep the address bar in step with the active page so refresh and back/forward stay put.
+  useEffect(() => {
+    const path = ROUTE_PATHS[activeRoute];
+    if (path && window.location.pathname !== path) window.history.pushState(null, '', path);
+  }, [activeRoute]);
+  useEffect(() => {
+    const onPop = () => setActiveRoute(routeFromPath(window.location.pathname));
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   const [activeRole, setActiveRoleState] = useState<UserRole>('BILLING_SPECIALIST');
 
   // API Loading & Error State
@@ -381,7 +405,8 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setIsVerifyingSession(false);
         setSessionError('Session verification timed out. Check your connection and try again.');
       }
-    }, 10000);
+      // Generous enough for slow venue Wi-Fi plus a cold API and database start.
+    }, 25000);
 
     apiClient
       .getMe()
@@ -529,6 +554,11 @@ export const MedCoreProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const selectedEncounter = encounters.find((e) => e.id === selectedEncounterId) || encounters[0];
+  // Background polling re-reads only changed charts, plus the one the user is looking at.
+  const openEncounterId = (isDossierDrawerOpen && dossierEncounter?.id) || selectedEncounter?.id || null;
+  useEffect(() => {
+    setOpenEncounter(openEncounterId);
+  }, [openEncounterId]);
 
   const selectEncounter = (id: string) => {
     setSelectedEncounterId(id);

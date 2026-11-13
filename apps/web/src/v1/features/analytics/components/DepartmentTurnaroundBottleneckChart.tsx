@@ -1,9 +1,11 @@
 import { Activity, Clock, FileCheck, Pill, Shield, Stethoscope } from '@/v1/components/common/SolarIcons';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import React from 'react';
 
 export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
   const { encounters } = useMedCore();
+  const slaTarget = useFacilityFacts().slaBreachMinutes ?? 45;
 
   // Compute live active bottlenecks across encounters
   const doctorPfCount = encounters.filter((e) => e.stage === 'DOCTOR_PF_PENDING' || !e.doctorSignedAt).length;
@@ -100,14 +102,14 @@ export const DepartmentTurnaroundBottleneckChart: React.FC = () => {
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            Operational turnaround time (TAT in minutes) vs hospital standard 45-minute discharge milestone
-            benchmark.
+            Operational turnaround time (TAT in minutes) vs hospital standard {slaTarget}-minute discharge
+            milestone benchmark.
           </p>
         </div>
 
         <div className="text-right">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-            45m SLA Target
+            {slaTarget}m SLA Target
           </span>
           <span className="text-xs font-semibold text-slate-700">Target TAT ≤ 15m / stage</span>
         </div>

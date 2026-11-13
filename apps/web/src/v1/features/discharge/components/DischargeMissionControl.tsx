@@ -1,5 +1,6 @@
 import { Clock, CreditCard, Pill, QrCode, ShieldCheck, Stethoscope } from '@/v1/components/common/SolarIcons';
 import { useMedCore } from '@/v1/context/MedCoreContext';
+import { useFacilityFacts } from '@/v1/hooks/useFacilityFacts';
 import type { DischargeStage } from '@/v1/types/domain';
 import { formatPeso } from '@/v1/utils/formatters';
 import React from 'react';
@@ -60,6 +61,7 @@ const STAGES: StageConfig[] = [
 
 export const DischargeMissionControl: React.FC = () => {
   const { encounters, selectedEncounterId, activeFilter, setActiveFilter } = useMedCore();
+  const { slaBreachMinutes } = useFacilityFacts();
 
   // Apply filters
   const filteredEncounters = encounters.filter((enc) => {
@@ -116,7 +118,7 @@ export const DischargeMissionControl: React.FC = () => {
             <span className="text-xs text-slate-500">{filteredEncounters.length} active inpatient cases</span>
           </div>
           <div className="text-xs text-slate-500 mt-0.5">
-            Active 6-stage tripartite discharge pipeline · Total SLA target &lt;45m
+            Active 6-stage tripartite discharge pipeline · Total SLA target &lt;{slaBreachMinutes ?? 45}m
           </div>
         </div>
 

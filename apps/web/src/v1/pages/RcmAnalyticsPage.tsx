@@ -10,7 +10,6 @@ import { ClaimsScrutinyPipeline } from '@/v1/features/analytics/components/Claim
 import { CommercialCarrierLedger } from '@/v1/features/analytics/components/CommercialCarrierLedger';
 import { DepartmentExceptionMatrix } from '@/v1/features/analytics/components/DepartmentExceptionMatrix';
 import { DepartmentTurnaroundBottleneckChart } from '@/v1/features/analytics/components/DepartmentTurnaroundBottleneckChart';
-import { ExecutiveReportModal } from '@/v1/features/analytics/components/ExecutiveReportModal';
 import { HospitalFinancingWaterfall } from '@/v1/features/analytics/components/HospitalFinancingWaterfall';
 import { MacroRevenueScorecard } from '@/v1/features/analytics/components/MacroRevenueScorecard';
 import { PatientOopDriverCard } from '@/v1/features/analytics/components/PatientOopDriverCard';
@@ -30,7 +29,14 @@ import {
   getEncounterWard,
   isEncounterProblem,
 } from '@/v1/utils/rcmAnalyticsCalculations';
-import React, { useMemo, useState } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
+
+// Code-split: the modal's code loads alongside (not inside) this page and is warmed on idle.
+const ExecutiveReportModal = lazy(() =>
+  import('@/v1/features/analytics/components/ExecutiveReportModal').then((m) => ({
+    default: m.ExecutiveReportModal,
+  })),
+);
 
 export const RcmAnalyticsPage: React.FC = () => {
   const { encounters, searchQuery, setSearchQuery } = useMedCore();
@@ -288,13 +294,15 @@ export const RcmAnalyticsPage: React.FC = () => {
       </main>
 
       {/* Executive Report & Financial Audit Modal */}
-      <ExecutiveReportModal
-        isOpen={isReportModalOpen}
-        onClose={() => setIsReportModalOpen(false)}
-        waterfall={waterfall}
-        kpis={kpis}
-        carriers={carrierMetrics}
-      />
+      <Suspense fallback={null}>
+        <ExecutiveReportModal
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+          waterfall={waterfall}
+          kpis={kpis}
+          carriers={carrierMetrics}
+        />
+      </Suspense>
     </div>
   );
 };
