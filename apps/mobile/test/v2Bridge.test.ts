@@ -1,13 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  BRIDGE_CACHE_MS,
   bridge,
   createV2Call,
+  invalidateBridgeCache,
+  passIsLive,
+  timelineIds,
+  toDocuments,
   toEncounter,
+  toNotifications,
   toPayInput,
   toPromissoryInput,
   toV1Stage,
   type V2StayDetail,
 } from '../src/lib/v2Bridge';
+import { gatePassRoute } from '../src/navigation/gatePassRoute';
 
 const TOKEN = 'abcdefghijklmnopqrstuvwxyz0123456789-_ABCDE';
 const STAY = '3f1c2a8e-7b6d-4c5e-9f0a-1b2c3d4e5f60';
@@ -171,11 +178,14 @@ describe('mapping v2 stays to the v1 screens', () => {
   it('maps the clearance stage and the exit pass (QR carries only the pass number)', () => {
     expect(toV1Stage('CLEARED')).toBe('CLEARED_GATE_PASS');
     expect(toV1Stage('HMO_FINAL_LOA')).toBe('HMO_FINAL_LOA');
-    const e = toEncounter({
-      ...detail,
-      stay: { ...detail.stay, stage: 'CLEARED', clearedAt: '2026-10-16T12:00:00Z' },
-      gatePass: { passNumber: 'GP-CRKV9FV88W', pin: '394525', expiresAt: '2026-10-17T09:43:00Z' },
-    });
+    const e = toEncounter(
+      {
+        ...detail,
+        stay: { ...detail.stay, stage: 'CLEARED', clearedAt: '2026-10-16T12:00:00Z' },
+        gatePass: { passNumber: 'GP-CRKV9FV88W', pin: '394525', expiresAt: '2026-10-17T09:43:00Z' },
+      },
+      Date.parse('2026-10-16T12:05:00Z'),
+    );
     expect(e.stage).toBe('CLEARED_GATE_PASS');
     expect(e.dischargePass).toMatchObject({
       passNumber: 'GP-CRKV9FV88W',
@@ -189,6 +199,100 @@ describe('mapping v2 stays to the v1 screens', () => {
     const e = toEncounter({ stay: { ...detail.stay, billReady: false, billState: 'DRAFT' } });
     expect(e.items).toEqual([]);
     expect(e.waterfall.netPatientDue).toBe(0);
+  });
+});
+
+describe('exit pass expiry', () => {
+  const issued = Date.parse('2026-10-16T12:00:00Z');
+  const cleared: V2StayDetail = {
+    ...detail,
+    stay: { ...detail.stay, stage: 'CLEARED', billState: 'SETTLED', clearedAt: '2026-10-16T12:00:00Z' },
+    gatePass: { passNumber: 'GP-EXPIRY0001', pin: '123456', expiresAt: '2026-10-17T12:00:00Z' },
+  };
+
+  it('treats a pass as live only before expiresAt, and fails closed on a bad or withheld value', () => {
+    expect(passIsLive(cleared.gatePass, issued)).toBe(true);
+    expect(passIsLive(cleared.gatePass, Date.parse('2026-10-17T12:00:00Z'))).toBe(false);
+    expect(passIsLive({ pin: '123456', expiresAt: 'not a date' }, issued)).toBe(false);
+    expect(passIsLive({ pin: null, expiresAt: '2026-10-17T12:00:00Z' }, issued)).toBe(false);
+    expect(passIsLive(null, issued)).toBe(false);
+  });
+
+  it('shows an expired pass as no longer active, with no PIN or QR', () => {
+    const e = toEncounter(cleared, Date.parse('2026-10-17T12:00:01Z'));
+    expect(e.stage).toBe('CLEARED_GATE_PASS');
+    expect(e.dischargePass).toMatchObject({
+      passNumber: 'GP-EXPIRY0001',
+      status: 'EXPIRED',
+      exitPin: null,
+      qrPayload: null,
+      expiresAt: '2026-10-17T12:00:00Z',
+    });
+    const pass = toDocuments([cleared], Date.parse('2026-10-17T12:00:01Z')).find(
+      (d) => d.kind === 'GATE_PASS',
+    );
+    expect(pass?.status).toBe('EXPIRED');
+  });
+
+  it('keeps a live pass ready for the lobby and carries its expiry', () => {
+    const e = toEncounter(cleared, issued + 60_000);
+    expect(e.dischargePass).toMatchObject({
+      status: 'ACTIVE_READY_FOR_EXIT',
+      exitPin: '123456',
+      qrPayload: 'GP-EXPIRY0001',
+      expiresAt: '2026-10-17T12:00:00Z',
+    });
+    expect(toDocuments([cleared], issued + 60_000).find((d) => d.kind === 'GATE_PASS')?.status).toBe(
+      'ACTIVE_READY_FOR_EXIT',
+    );
+  });
+
+  it('does not show a pass the API returned without its PIN as ready', () => {
+    const e = toEncounter({ ...cleared, gatePass: { ...cleared.gatePass!, pin: null } }, issued);
+    expect(e.dischargePass).toMatchObject({ status: 'EXPIRED', exitPin: null, qrPayload: null });
+  });
+});
+
+describe('notification and timeline ids', () => {
+  const older = { kind: 'BILL', title: 'Bill sent', detail: 'SOA-1', createdAt: '2026-10-16T10:00:00Z' };
+  const newer = {
+    kind: 'PAYMENT',
+    title: 'Payment received',
+    detail: null,
+    createdAt: '2026-10-16T11:00:00Z',
+  };
+
+  it('keeps an event id when a newer event arrives', () => {
+    const before = toNotifications([{ ...detail, timeline: [older] }]);
+    const after = toNotifications([{ ...detail, timeline: [newer, older] }]);
+    expect(after.find((n) => n.title === 'Bill sent')?.id).toBe(before[0]!.id);
+    expect(new Set(after.map((n) => n.id)).size).toBe(2);
+    // The encounter timeline uses the same ids.
+    expect(toEncounter({ ...detail, timeline: [newer, older] }).timeline.map((t) => t.id)).toEqual(
+      after.map((n) => n.id),
+    );
+  });
+
+  it('gives identical events distinct ids that stay stable', () => {
+    const twin = { ...older };
+    const first = timelineIds(STAY, [twin, older]);
+    expect(new Set(first).size).toBe(2);
+    expect(timelineIds(STAY, [newer, twin, older]).slice(1)).toEqual(first);
+  });
+
+  it('scopes ids to the stay', () => {
+    expect(timelineIds('stay-a', [older])[0]).not.toBe(timelineIds('stay-b', [older])[0]);
+  });
+});
+
+describe('discharge pass navigation', () => {
+  it('opens the pass itself when its number is known, else the Documents list', () => {
+    expect(gatePassRoute(STAY, 'GP-ABC')).toEqual([
+      'RecordDetail',
+      { encounterId: STAY, documentKind: 'GATE_PASS', documentId: 'GP-ABC' },
+    ]);
+    expect(gatePassRoute(STAY, undefined)).toEqual(['Documents']);
+    expect(gatePassRoute(undefined, 'GP-ABC')).toEqual(['Documents']);
   });
 });
 
@@ -400,7 +504,11 @@ describe('bridge routes', () => {
         {
           ...detail,
           promissoryNotes: [note],
-          gatePass: { passNumber: 'GP-TEST123456', pin: '123456', expiresAt: '2026-10-18T01:00:00Z' },
+          gatePass: {
+            passNumber: 'GP-TEST123456',
+            pin: '123456',
+            expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          },
         },
       ],
     });
@@ -452,6 +560,82 @@ describe('bridge routes', () => {
       path: '/patient/ai/cora/chat',
       body: { message: 'Explain my bill' },
     });
+  });
+});
+
+describe('shared read cache', () => {
+  const KEY = `Bearer ${TOKEN}`;
+  const fanOut = (calls: { method: string; path: string }[]) =>
+    calls.filter((c) => c.method === 'GET' && c.path === '/auth/patient/me').length;
+
+  it('answers concurrent reads for one session from a single v2 load', async () => {
+    invalidateBridgeCache();
+    const { call, calls } = fakeV2(readOnly);
+    const replies = await Promise.all([
+      bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY),
+      bridge('/patient/me/encounters', 'GET', undefined, call, undefined, KEY),
+      bridge('/patient/me/payments', 'GET', undefined, call, undefined, KEY),
+    ]);
+    expect(replies.map((r) => r.status)).toEqual([200, 200, 200]);
+    // Every reply has its own readable body.
+    for (const r of replies) expect(await r.json()).toBeTruthy();
+    expect(calls).toHaveLength(3); // me + stays + one stay detail
+    await bridge('/patient/me/documents', 'GET', undefined, call, undefined, KEY);
+    expect(fanOut(calls)).toBe(1);
+  });
+
+  it('never shares a load between sessions or without a key', async () => {
+    invalidateBridgeCache();
+    const { call, calls } = fakeV2(readOnly);
+    await bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY);
+    await bridge('/patient/me/overview', 'GET', undefined, call, undefined, 'Bearer someone-else');
+    await bridge('/patient/me/overview', 'GET', undefined, call);
+    expect(fanOut(calls)).toBe(3);
+  });
+
+  it('reloads after any write and after the cache window', async () => {
+    invalidateBridgeCache();
+    vi.useFakeTimers();
+    try {
+      const { call, calls } = fakeV2({
+        ...readOnly,
+        [`POST /patient/stays/${STAY}/disputes`]: () => [201, { id: 'd2', status: 'OPEN' }],
+      });
+      await bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY);
+      await bridge(
+        `/encounters/${STAY}/disputes`,
+        'POST',
+        { chargeId: 'c1', reason: 'Only one night.' },
+        call,
+        undefined,
+        KEY,
+      );
+      await bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY);
+      expect(fanOut(calls)).toBe(2);
+      vi.advanceTimersByTime(BRIDGE_CACHE_MS + 1);
+      await bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY);
+      expect(fanOut(calls)).toBe(3);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not reuse a failed load', async () => {
+    invalidateBridgeCache();
+    let fail = true;
+    const { call, calls } = fakeV2({
+      ...readOnly,
+      'GET /patient/stays': () =>
+        fail
+          ? [503, { error: { code: 'UNAVAILABLE', message: 'Try again.' } }]
+          : [200, { items: [{ id: STAY, patientName: 'Mark Dela Cruz' }] }],
+    });
+    const first = await bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY);
+    expect(first.status).toBe(503);
+    fail = false;
+    const second = await bridge('/patient/me/overview', 'GET', undefined, call, undefined, KEY);
+    expect(second.status).toBe(200);
+    expect(fanOut(calls)).toBe(2);
   });
 });
 

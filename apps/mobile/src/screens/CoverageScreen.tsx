@@ -47,6 +47,9 @@ export default function CoverageScreen({ navigation }: { navigation?: any }) {
     );
   const w = enc.waterfall;
   const hmo = enc.hmo;
+  const ph = enc.philhealth;
+  const phHasClaim = !!ph?.id && ph.status !== 'UNAVAILABLE';
+  const hmoHasDetail = !!hmo.cardMasked || hmo.finalLoaStatus !== 'NONE' || hmo.policyMbl > 0;
   return (
     <Screen safeBottom={false}>
       <ScrollView
@@ -88,10 +91,14 @@ export default function CoverageScreen({ navigation }: { navigation?: any }) {
         <SectionHeader title="PhilHealth" />
         <View style={{ paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: C.border }}>
           <StatusBadge tone="info" text="Benefit amount recorded" />
-          <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
-            Claim status and case-rate details are not available in the patient app yet.
-          </Text>
+          {phHasClaim ? null : (
+            <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
+              Claim status and case-rate details are not available in the patient app yet.
+            </Text>
+          )}
           <View style={{ marginTop: 12 }}>
+            {phHasClaim && <Row label="Claim status" value={statusLabel(ph.status)} />}
+            {phHasClaim && !!ph.caseRateCode && <Row label="Case rate" value={ph.caseRateCode} />}
             <Row label="Benefit applied" value={formatPeso(w.philhealthTotal)} />
           </View>
         </View>
@@ -99,10 +106,20 @@ export default function CoverageScreen({ navigation }: { navigation?: any }) {
         {hasHmo(enc) ? (
           <View style={{ paddingBottom: 20 }}>
             <Text style={T.cardTitle}>{hmo.providerName}</Text>
-            <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
-              Provider details, authorization status and benefit limits are not available in the patient app
-              yet.
-            </Text>
+            {hmoHasDetail ? (
+              <View style={{ marginTop: 12 }}>
+                {!!hmo.cardMasked && <Row label="Member card" value={hmo.cardMasked} />}
+                {hmo.finalLoaStatus !== 'NONE' && (
+                  <Row label="Authorization" value={statusLabel(hmo.finalLoaStatus)} />
+                )}
+                {hmo.policyMbl > 0 && <Row label="Benefit limit" value={formatPeso(hmo.policyMbl)} />}
+              </View>
+            ) : (
+              <Text style={[T.body, { color: C.secondary, marginTop: 12 }]}>
+                Provider details, authorization status and benefit limits are not available in the patient app
+                yet.
+              </Text>
+            )}
             <Row label="Benefit applied" value={formatPeso(hmo.approvedAmount)} />
           </View>
         ) : (
@@ -121,4 +138,10 @@ export default function CoverageScreen({ navigation }: { navigation?: any }) {
       <BenefitCardScannerModal visible={scannerOpen} onClose={() => setScannerOpen(false)} />
     </Screen>
   );
+}
+
+/** "PARTIALLY_APPROVED" → "Partially approved". */
+function statusLabel(status: string): string {
+  const text = status.replace(/_/g, ' ').toLowerCase();
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

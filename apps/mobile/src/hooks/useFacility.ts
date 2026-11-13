@@ -1,17 +1,8 @@
-import { useEffect, useState } from 'react';
 import { useAuth } from '../lib/auth';
-import { getFacilityName } from '../lib/facility';
+
+// The hospital name comes from the signed-in session (`/auth/patient/me` → facility.name).
+// /api/health reports only liveness, so there is nothing to fetch for it.
 export function useFacilityName() {
   const { user } = useAuth();
-  const [name, setName] = useState(user?.facilityName || 'Your hospital');
-  useEffect(() => {
-    let active = true;
-    getFacilityName().then((value) => {
-      if (active && value !== 'Your hospital') setName(value);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-  return name;
+  return user?.facilityName || 'Your hospital';
 }

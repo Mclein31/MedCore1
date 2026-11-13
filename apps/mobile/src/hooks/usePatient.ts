@@ -8,7 +8,8 @@ export function usePatient() {
   if (!state) throw new Error('usePatient must be used inside PatientProvider');
   useFocusEffect(
     useCallback(() => {
-      if (!state.lastSynced || Date.now() - state.lastSynced.getTime() > 30000) void state.refresh();
+      // Refresh on focus unless the shared snapshot is only seconds old (reads are deduplicated anyway).
+      if (!state.lastSynced || Date.now() - state.lastSynced.getTime() > 5000) void state.refresh();
     }, [state.lastSynced, state.refresh]),
   );
   return state;

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Svg, { Path, Circle, Ellipse, type SvgProps } from 'react-native-svg';
 import { solarData, solarNames, type SolarWeight } from '@medcore/icons';
 export interface SolarIconProps extends SvgProps {
@@ -21,7 +22,8 @@ function createSolarIcon(name: string) {
         viewBox="0 0 24 24"
         fill="none"
         color={color}
-        accessible={false}
+        // On web react-native-svg forwards `accessible` to the DOM <svg>; hide it the web way there.
+        {...(Platform.OS === 'web' ? { 'aria-hidden': true } : { accessible: false })}
         {...props}
       >
         {nodes.map((node, index) => {

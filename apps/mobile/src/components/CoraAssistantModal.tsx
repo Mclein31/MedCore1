@@ -3,7 +3,7 @@ import CoraTypingDots from './CoraTypingDots';
 import { CORA_LANGUAGE_LABELS, CORA_LANGUAGE_OPTIONS, type CoraLanguage } from '../shared/coraLanguage';
 import { ModalOverlay } from './ModalOverlay';
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, StyleSheet, Platform } from 'react-native';
 import type { ScrollViewInstance } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mic, Send, X, ChevronRight } from './SolarIcons';
@@ -21,6 +21,29 @@ import {
 } from '../lib/coraConversation';
 import type { PatientEncounter } from '../types/domain';
 import { formatPeso, remainingBalance } from '../lib/format';
+
+/**
+ * Speech recognition constructor: the browser's Web Speech API on web, and the
+ * expo-speech-recognition polyfill (same interface) in native builds. Loaded lazily so Expo Go,
+ * which lacks the native module, falls back to typing instead of crashing.
+ */
+type SpeechCtor = new () => any;
+async function loadSpeechRecognition(): Promise<SpeechCtor | null> {
+  if (Platform.OS === 'web') {
+    if (typeof window === 'undefined') return null;
+    return (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition || null;
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('expo-speech-recognition');
+    if (!mod.ExpoSpeechRecognitionModule.isRecognitionAvailable()) return null;
+    const permission = await mod.ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permission.granted) return null;
+    return mod.ExpoWebSpeechRecognition as SpeechCtor;
+  } catch {
+    return null;
+  }
+}
 
 export interface CoraAssistantModalProps {
   visible: boolean;
@@ -251,18 +274,14 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
 
   sendRef.current = handleSend;
 
-  const handleVoiceToggle = () => {
-    if (
-      typeof window !== 'undefined' &&
-      ((window as any).webkitSpeechRecognition || (window as any).SpeechRecognition)
-    ) {
-      if (isListening && recognitionRef.current) {
-        recognitionRef.current.stop();
-        setIsListening(false);
-        return;
-      }
-
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+  const handleVoiceToggle = async () => {
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    const SpeechRecognition = await loadSpeechRecognition();
+    if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.lang =
         language === 'fil' || language === 'tl' ? 'fil-PH' : language === 'ilo' ? 'ilo-PH' : 'en-PH';
@@ -307,7 +326,7 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
       recognitionRef.current = recognition;
       recognition.start();
     } else {
-      setSpeechNotice('Voice input available in web browser. Please type below.');
+      setSpeechNotice('Voice input is unavailable here. Please type below.');
       setTimeout(() => setSpeechNotice(null), 3000);
     }
   };
@@ -316,16 +335,23 @@ export const CoraAssistantModal: React.FC<CoraAssistantModalProps> = ({
     closeAssistant();
     if (!navigation) return;
 
+    // From a tab screen, switch tabs. From a stack screen (RecordDetail), go back to the tabs rather
+    // than stacking a second copy of them.
+    const goTab = (screen: 'Bill' | 'Payments' | 'Coverage') => {
+      if (navigation.getState?.()?.type === 'tab') navigation.navigate(screen);
+      else if (typeof navigation.popTo === 'function') navigation.popTo('Main', { screen });
+      else navigation.navigate('Main', { screen });
+    };
     if (action.actionType === 'NAVIGATE_BILL') {
-      navigation.navigate('Bill');
+      goTab('Bill');
     } else if (action.actionType === 'NAVIGATE_PAYMENT') {
       if (encounter) {
         navigation.navigate('PaymentFlow', { encounterId: encounter.uuid });
       } else {
-        navigation.navigate('Payments');
+        goTab('Payments');
       }
     } else if (action.actionType === 'NAVIGATE_COVERAGE') {
-      navigation.navigate('Coverage');
+      goTab('Coverage');
     } else if (action.actionType === 'NAVIGATE_DOCUMENTS') {
       navigation.navigate('Documents');
     }

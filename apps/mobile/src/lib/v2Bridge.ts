@@ -109,7 +109,8 @@ export interface V2StayDetail {
   promissoryNotes?: V2Note[];
   disputes?: V2Dispute[];
   timeline?: { kind: string; title: string; detail: string | null; createdAt: string }[];
-  gatePass?: { passNumber: string; pin: string; expiresAt: string } | null;
+  /** `pin` is null once the pass has expired (newer API builds withhold it). */
+  gatePass?: { passNumber: string; pin: string | null; expiresAt: string } | null;
   philhealth?: {
     id: string;
     claimNumber: string;
@@ -140,6 +141,51 @@ export const accountId = (email: string) => `acct.${email.toLowerCase().replace(
 
 export const pesos = (cents: number | null | undefined) => (cents ?? 0) / 100;
 export const centavos = (amount: number) => Math.round(amount * 100);
+
+/**
+ * A pass is usable only while ACTIVE (the API returns only active passes) and before `expiresAt`.
+ * The lobby rejects an expired pass, so the app must not show it as ready. Fails closed on an
+ * unreadable expiry.
+ */
+export function passIsLive(
+  pass: { pin?: string | null; expiresAt?: string | null } | null | undefined,
+  now = Date.now(),
+): boolean {
+  if (!pass || pass.pin === null) return false;
+  if (!pass.expiresAt) return true;
+  const expires = Date.parse(pass.expiresAt);
+  return Number.isFinite(expires) && expires > now;
+}
+
+/** Status for an issued pass: the v1 "ready" state, or a non-active state the screens already handle. */
+export const passStatus = (live: boolean) => (live ? 'ACTIVE_READY_FOR_EXIT' : 'EXPIRED');
+
+function hashText(text: string): string {
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+/**
+ * Stable ids for timeline events (the API sends no event id). Derived from the event itself, so a
+ * new event arriving at the top of the list does not shift the ids of older ones. Identical events
+ * are numbered from the oldest, which also keeps their ids stable.
+ */
+export function timelineIds(
+  stayId: string,
+  timeline: { kind: string; title: string; detail: string | null; createdAt: string }[],
+): string[] {
+  const seen = new Map<string, number>();
+  const ids: string[] = new Array(timeline.length);
+  for (let i = timeline.length - 1; i >= 0; i--) {
+    const t = timeline[i]!;
+    const base = `${stayId}-${t.kind}-${t.createdAt}-${hashText(`${t.title}|${t.detail ?? ''}`)}`;
+    const n = seen.get(base) ?? 0;
+    seen.set(base, n + 1);
+    ids[i] = n ? `${base}-${n}` : base;
+  }
+  return ids;
+}
 
 /** v2 discharge stages are the v1 ones except the last. */
 export function toV1Stage(stage: string): string {
@@ -186,8 +232,10 @@ export function toBillItem(
   };
 }
 
-export function toEncounter(d: V2StayDetail): PatientEncounter {
+export function toEncounter(d: V2StayDetail, now = Date.now()): PatientEncounter {
   const s = d.stay;
+  const passLive = passIsLive(d.gatePass, now);
+  const eventIds = timelineIds(s.id, d.timeline ?? []);
   const l = d.ledger ?? null;
   const charges = (d.charges ?? []).filter((c) => c.coverage !== 'WAIVED');
   const pf = charges.filter((c) => c.category === 'PROFESSIONAL_FEE').reduce((n, c) => n + c.grossCents, 0);
@@ -256,13 +304,15 @@ export function toEncounter(d: V2StayDetail): PatientEncounter {
     dischargePass: d.gatePass
       ? {
           passNumber: d.gatePass.passNumber,
-          status: 'ACTIVE_READY_FOR_EXIT',
+          status: passStatus(passLive),
           settledAmount: pesos(l?.paidCents),
           roomBed: '',
           issuedAt: s.clearedAt ?? new Date().toISOString(),
-          exitPin: d.gatePass.pin,
+          expiresAt: d.gatePass.expiresAt,
+          // An expired pass keeps no credentials: the lobby would reject them anyway.
+          exitPin: passLive ? d.gatePass.pin : null,
           // The lobby verifies the pass number plus the PIN the patient says aloud.
-          qrPayload: d.gatePass.passNumber,
+          qrPayload: passLive ? d.gatePass.passNumber : null,
         }
       : undefined,
     promissoryNote: activeNote
@@ -284,7 +334,7 @@ export function toEncounter(d: V2StayDetail): PatientEncounter {
       resolutionClause: x.resolutionNote ?? undefined,
     })),
     timeline: (d.timeline ?? []).map((t, i) => ({
-      id: `${s.id}-${i}`,
+      id: eventIds[i]!,
       timestamp: t.createdAt,
       title: t.title,
       description: t.detail ?? '',
@@ -410,7 +460,7 @@ export function toPromissoryRecord(n: V2Note, d: V2StayDetail) {
   };
 }
 
-export function toDocuments(details: V2StayDetail[]): PatientDocument[] {
+export function toDocuments(details: V2StayDetail[], now = Date.now()): PatientDocument[] {
   const docs: PatientDocument[] = [];
   for (const d of details) {
     if (d.stay.billReady && d.ledger) {
@@ -451,7 +501,7 @@ export function toDocuments(details: V2StayDetail[]): PatientDocument[] {
         title: `Discharge pass ${d.gatePass.passNumber}`,
         encounterNumber: d.stay.encounterNumber,
         issuedAt: d.stay.clearedAt ?? undefined,
-        status: 'ACTIVE_READY_FOR_EXIT',
+        status: passStatus(passIsLive(d.gatePass, now)),
       });
     }
   }
@@ -460,16 +510,17 @@ export function toDocuments(details: V2StayDetail[]): PatientDocument[] {
 
 export function toNotifications(details: V2StayDetail[]): PatientNotification[] {
   return details
-    .flatMap((d) =>
-      (d.timeline ?? []).map((t, i) => ({
-        id: `${d.stay.id}-${i}`,
+    .flatMap((d) => {
+      const ids = timelineIds(d.stay.id, d.timeline ?? []);
+      return (d.timeline ?? []).map((t, i) => ({
+        id: ids[i]!,
         encounterNumber: d.stay.encounterNumber,
         title: t.title,
         message: t.detail ?? '',
         category: t.kind,
         timestamp: t.createdAt,
-      })),
-    )
+      }));
+    })
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 }
 
@@ -559,6 +610,9 @@ const okReply = (r: V2Reply) => r.status >= 200 && r.status < 300;
 /**
  * Answer one v1 request. `call` performs a v2 request with the caller's bearer token
  * (see `createV2Call`). Returns a real `Response` so `ApiClient` handles it unchanged.
+ *
+ * `cacheKey` (the caller's Authorization header) lets concurrent and back-to-back reads for the same
+ * session share one v2 fan-out (see `loadShared`). Without it every read loads fresh.
  */
 export async function bridge(
   path: string,
@@ -566,10 +620,29 @@ export async function bridge(
   body: unknown,
   call: V2Call,
   idempotencyKey?: string,
+  cacheKey?: string | null,
 ): Promise<Response> {
   const [route] = path.split('?');
   const m = (re: RegExp) => route.match(re);
+  // Any write (payment, note, dispute, sign-in, sign-out, AI) may change what reads return.
+  if (method !== 'GET') invalidateBridgeCache();
+  try {
+    return await answer(route, method, body, call, idempotencyKey, cacheKey, m);
+  } finally {
+    // A read that started before the write finished must not be reused afterwards.
+    if (method !== 'GET') invalidateBridgeCache();
+  }
+}
 
+async function answer(
+  route: string,
+  method: string,
+  body: unknown,
+  call: V2Call,
+  idempotencyKey: string | undefined,
+  cacheKey: string | null | undefined,
+  m: (re: RegExp) => RegExpMatchArray | null,
+): Promise<Response> {
   // ----- auth -----
   if (method === 'POST' && route === '/auth/login') {
     return fail(400, 'PASSWORD_LOGIN_RETIRED', 'Sign in with the 6-digit code we email you instead.');
@@ -613,8 +686,8 @@ export async function bridge(
 
   // ----- patient reads -----
   if (method === 'GET' && route.startsWith('/patient/me')) {
-    const loaded = await loadAll(call);
-    if ('error' in loaded) return loaded.error;
+    const loaded = await loadShared(call, cacheKey);
+    if ('error' in loaded) return json(loaded.error.status, loaded.error.data);
     const { me, details } = loaded;
     const one = m(/^\/patient\/me\/encounters\/([^/]+)$/);
     if (one) {
@@ -638,7 +711,7 @@ export async function bridge(
       case '/patient/me/overview':
         return json(200, toOverview(me, details));
       case '/patient/me/encounters':
-        return list(details.map(toEncounter));
+        return list(details.map((d) => toEncounter(d)));
       case '/patient/me/payments':
         return list(details.flatMap((d) => (d.payments ?? []).map((p) => toPaymentRecord(p, d))));
       case '/patient/me/receipts':
@@ -782,17 +855,60 @@ async function sessionUser(call: (method: string, path: string) => Promise<V2Rep
   };
 }
 
-async function loadAll(call: V2Call): Promise<{ me: V2Me; details: V2StayDetail[] } | { error: Response }> {
+type Loaded = { me: V2Me; details: V2StayDetail[] } | { error: V2Reply };
+
+async function loadAll(call: V2Call): Promise<Loaded> {
   const [me, stays] = await Promise.all([call('GET', '/auth/patient/me'), call('GET', '/patient/stays')]);
-  if (!okReply(me)) return { error: json(me.status, me.data) };
-  if (!okReply(stays)) return { error: json(stays.status, stays.data) };
+  if (!okReply(me)) return { error: me };
+  if (!okReply(stays)) return { error: stays };
   const rows = (stays.data as { items: V2StayRow[] }).items;
   const replies = await Promise.all(
     rows.map((r) => call('GET', `/patient/stays/${encodeURIComponent(r.id)}`)),
   );
   const failed = replies.find((r) => !okReply(r));
-  if (failed) return { error: json(failed.status, failed.data) };
+  if (failed) return { error: failed };
   return { me: me.data as V2Me, details: replies.map((r) => r.data as V2StayDetail) };
+}
+
+/**
+ * Every v1 read (overview, encounters, payments, receipts, notes, documents, notifications, claims)
+ * is answered from the same v2 fan-out: `me` + stays + each stay's detail. Screens ask for several of
+ * those at once and on overlapping timers, so one session shares one in-flight load and reuses a
+ * successful result for a few seconds. Failures are never reused, and any write clears the cache.
+ */
+export const BRIDGE_CACHE_MS = 4000;
+let shared: { key: string; generation: number; settledAt: number | null; promise: Promise<Loaded> } | null =
+  null;
+let generation = 0;
+
+export function invalidateBridgeCache() {
+  generation++;
+  shared = null;
+}
+
+function loadShared(call: V2Call, cacheKey: string | null | undefined, now = Date.now()): Promise<Loaded> {
+  if (!cacheKey) return loadAll(call);
+  const hit = shared;
+  if (
+    hit &&
+    hit.key === cacheKey &&
+    hit.generation === generation &&
+    (hit.settledAt === null || now - hit.settledAt < BRIDGE_CACHE_MS)
+  )
+    return hit.promise;
+  const entry = { key: cacheKey, generation, settledAt: null as number | null, promise: loadAll(call) };
+  shared = entry;
+  entry.promise.then(
+    (result) => {
+      if (shared !== entry) return;
+      if ('error' in result) shared = null;
+      else entry.settledAt = Date.now();
+    },
+    () => {
+      if (shared === entry) shared = null;
+    },
+  );
+  return entry.promise;
 }
 
 /**

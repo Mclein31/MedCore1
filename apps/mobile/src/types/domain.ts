@@ -98,6 +98,8 @@ export interface PatientEncounter {
     settledAmount: number;
     roomBed: string;
     issuedAt: string;
+    /** When the hospital stops accepting this pass at the lobby (24 h after issue). */
+    expiresAt?: string;
     verifiedAt?: string;
     exitPin: string | null;
     qrPayload: string | null;

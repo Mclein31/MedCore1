@@ -6,7 +6,7 @@ import { paymentAccountNamespace } from '../lib/mobileAccess';
 import { ApiError } from '../lib/api';
 import GatePassCard from '../components/GatePassCard';
 import { useAuth } from '../lib/auth';
-import { useResource } from '../hooks/useResource';
+import { POLL_MS, useResource } from '../hooks/useResource';
 import { createPaymentApi } from '../services/paymentApi';
 import { createPatientApi } from '../services/patientApi';
 import { describeDischargeStage, formatDate, formatDateTime, formatPeso } from '../lib/format';
@@ -33,6 +33,7 @@ import type { RootStackParamList } from '../navigation/types';
 
 export default function RecordDetailScreen({
   route,
+  navigation,
 }: NativeStackScreenProps<RootStackParamList, 'RecordDetail'>) {
   const { client, user, selectedPatientId } = useAuth();
   const { encounterId, documentKind, documentId } = route.params;
@@ -124,7 +125,7 @@ export default function RecordDetailScreen({
       };
     }
   }, [client, encounterId, documentKind, documentId, user, selectedPatientId]);
-  const { data, loading, error, refresh } = useResource(load, 5000);
+  const { data, loading, error, refresh } = useResource(load, POLL_MS);
   const pullRefresh = usePullRefresh(refresh);
   const enc = data?.encounter;
   const [shareOpen, setShareOpen] = useState(false);
@@ -295,6 +296,7 @@ export default function RecordDetailScreen({
         visible={coraOpen}
         onClose={() => setCoraOpen(false)}
         encounter={enc}
+        navigation={navigation}
         initialQuery="Can you explain the itemized charges and deductions for this hospital stay?"
       />
     </Screen>

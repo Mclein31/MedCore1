@@ -2,6 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppState } from 'react-native';
 
+/**
+ * Background refresh for a focused screen. Every read goes through one shared v2 load per session
+ * (v2Bridge.ts), so this is about server and quota load, not freshness: screens also refresh when
+ * they gain focus, when the app returns to the foreground, on pull-to-refresh and after a write.
+ */
+export const POLL_MS = 20000;
+
 // Associate every result with its loader, so route changes cannot show old records.
 export function useResource<T>(load: () => Promise<T>, pollIntervalMs = 0) {
   const [snapshot, setSnapshot] = useState<{ loader: typeof load; data: T } | null>(null);
@@ -59,7 +66,14 @@ export function useResource<T>(load: () => Promise<T>, pollIntervalMs = 0) {
       const interval = setInterval(() => {
         if (AppState.currentState === 'active') void refresh();
       }, pollIntervalMs);
-      return () => clearInterval(interval);
+      // Timers are skipped in the background; catch up as soon as the app is back.
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') void refresh();
+      });
+      return () => {
+        clearInterval(interval);
+        sub.remove();
+      };
     }, [refresh, pollIntervalMs]),
   );
   const current = snapshot?.loader === load;

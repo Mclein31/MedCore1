@@ -46,7 +46,7 @@ export function createPaymentApi(client: ApiClient) {
         success: boolean;
         payment: PaymentRecord;
         receipt: ReceiptRecord;
-        dischargePass?: unknown;
+        dischargePass?: PatientEncounter['dischargePass'];
         encounter?: PatientEncounter;
       }>(`/encounters/${encodeURIComponent(encounterId)}/payments`, {
         method: 'POST',
@@ -67,7 +67,7 @@ export function createPaymentApi(client: ApiClient) {
       client.request<{
         success: boolean;
         promissoryNote: PromissoryNoteRecord & { scheduleJson?: number[] };
-        dischargePass?: unknown;
+        dischargePass?: PatientEncounter['dischargePass'];
       }>(`/encounters/${encodeURIComponent(encounterId)}/promissory-notes`, {
         method: 'POST',
         body: JSON.stringify(input),

@@ -100,6 +100,8 @@ export class ApiClient {
           body,
           createV2Call(ENV.apiRoot, headers, controller.signal),
           idempotencyKey,
+          // Reads for the same session share one v2 load (see loadShared in v2Bridge.ts).
+          headers.get('Authorization'),
         );
       } catch {
         if (controller.signal.aborted)

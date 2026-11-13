@@ -1,8 +1,9 @@
 import { usePullRefresh } from '../hooks/usePullRefresh';
+import { FadeIn, DocumentsSkeleton, useRevealAfterSkeleton } from '../components/Skeleton';
 import { useCallback, useMemo } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { usePatient } from '../hooks/usePatient';
-import { useResource } from '../hooks/useResource';
+import { POLL_MS, useResource } from '../hooks/useResource';
 import { readSavedPass } from '../lib/gatePassCache';
 import { paymentAccountNamespace } from '../lib/mobileAccess';
 import { ApiError } from '../lib/api';
@@ -10,11 +11,11 @@ import { useAuth } from '../lib/auth';
 import { createDocumentsApi } from '../services/documentsApi';
 import { formatDateTime, formatPeso } from '../lib/format';
 import {
+  C,
   Card,
   EmptyState,
   ErrorState,
   LedgerRow,
-  LoadingState,
   RefreshNotice,
   Screen,
   SectionHeader,
@@ -86,7 +87,7 @@ export default function DocumentsScreen({ navigation }: { navigation: any }) {
       };
     }
   }, [client, user, selectedPatientId]);
-  const { data, loading, error, refresh: loadList } = useResource(load, 5000);
+  const { data, loading, error, refresh: loadList } = useResource(load, POLL_MS);
   const pullRefresh = usePullRefresh(loadList);
   const docs = data?.items || [];
 
@@ -109,43 +110,50 @@ export default function DocumentsScreen({ navigation }: { navigation: any }) {
     });
   }
 
-  if (loading && !data) return <LoadingState message="Loading your documents…" />;
+  const reveal = useRevealAfterSkeleton(loading && !data);
+  if (loading && !data) return <DocumentsSkeleton label="Loading your documents…" />;
   if (error && !data) return <ErrorState message={error!} onRetry={loadList} />;
 
   return (
-    <Screen>
-      <ScrollView
-        contentInsetAdjustmentBehavior="never"
-        automaticallyAdjustContentInsets={false}
-        refreshControl={
-          <RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />
-        }
-        contentContainerStyle={{ paddingBottom: 24 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <RefreshNotice error={error} onRetry={loadList} />
-        <Text style={[T.meta, { marginTop: 8 }]}>
-          Statements, receipts and clearance documents, organized by type.
-        </Text>
-        {docs.length === 0 && (
-          <EmptyState
-            title="No documents yet"
-            detail="Statements, receipts, and discharge papers will appear here."
+    <FadeIn active={reveal} background={C.surface}>
+      <Screen>
+        <ScrollView
+          contentInsetAdjustmentBehavior="never"
+          automaticallyAdjustContentInsets={false}
+          refreshControl={
+            <RefreshControl refreshing={pullRefresh.refreshing} onRefresh={pullRefresh.onRefresh} />
+          }
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <RefreshNotice error={error} onRetry={loadList} />
+          <Text style={[T.meta, { marginTop: 8 }]}>
+            Statements, receipts and clearance documents, organized by type.
+          </Text>
+          {docs.length === 0 && (
+            <EmptyState
+              title="No documents yet"
+              detail="Statements, receipts, and discharge papers will appear here."
+            />
+          )}
+          <Group
+            title={`Statements · ${groups.statements.length}`}
+            docs={groups.statements}
+            onOpen={openDocument}
           />
-        )}
-        <Group
-          title={`Statements · ${groups.statements.length}`}
-          docs={groups.statements}
-          onOpen={openDocument}
-        />
-        <Group title={`Receipts · ${groups.receipts.length}`} docs={groups.receipts} onOpen={openDocument} />
-        <Group title="Discharge & payment plans" docs={groups.clearance} onOpen={openDocument} />
-        <Group title="Other papers" docs={groups.other} onOpen={openDocument} />
-        <Text style={[T.meta, { marginVertical: 14 }]}>
-          Tap a document to view its hospital record and discharge pass details. Document upload from the
-          phone is not yet supported — to submit papers, please visit the hospital billing desk.
-        </Text>
-      </ScrollView>
-    </Screen>
+          <Group
+            title={`Receipts · ${groups.receipts.length}`}
+            docs={groups.receipts}
+            onOpen={openDocument}
+          />
+          <Group title="Discharge & payment plans" docs={groups.clearance} onOpen={openDocument} />
+          <Group title="Other papers" docs={groups.other} onOpen={openDocument} />
+          <Text style={[T.meta, { marginVertical: 14 }]}>
+            Tap a document to view its hospital record and discharge pass details. Document upload from the
+            phone is not yet supported — to submit papers, please visit the hospital billing desk.
+          </Text>
+        </ScrollView>
+      </Screen>
+    </FadeIn>
   );
 }

@@ -31,7 +31,7 @@
         {
           "photosPermission": "Choose a benefit card photo for credential extraction.",
           "cameraPermission": false,
-          "microphonePermission": false
+          "microphonePermission": "Allow MedCore to use the microphone so you can ask Cora questions by voice."
         }
       ],
       "expo-secure-store",
@@ -42,6 +42,15 @@
           "image": "./assets/brand/MedCore_Badge_Logo.png",
           "resizeMode": "contain",
           "backgroundColor": "#0F2A4A"
+        }
+      ],
+      "./plugins/withoutPushEntitlement",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow MedCore to use the microphone so you can ask Cora questions by voice.",
+          "speechRecognitionPermission": "Allow MedCore to turn your spoken questions to Cora into text.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ]
     ]

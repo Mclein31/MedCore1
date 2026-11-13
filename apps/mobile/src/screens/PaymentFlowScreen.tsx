@@ -223,6 +223,17 @@ export default function PaymentFlowScreen({
   >(null);
   const [note, setNote] = useState<(PromissoryNoteRecord & { scheduleJson?: number[] }) | null>(null);
   const [passIssued, setPassIssued] = useState(false);
+  const [passNumber, setPassNumber] = useState<string | null>(null);
+  // Open the released pass itself; fall back to the Documents list if its number is unknown.
+  const openPass = (replace = false) => {
+    const encounterId = currentEncounter?.uuid;
+    if (encounterId && passNumber) {
+      const params = { encounterId, documentKind: 'GATE_PASS', documentId: passNumber };
+      if (replace) navigation.replace('RecordDetail', params);
+      else navigation.navigate('RecordDetail', params);
+    } else if (replace) navigation.replace('Documents');
+    else navigation.navigate('Documents');
+  };
   const attemptKey = useRef('');
   const submissionLock = useRef(false);
   const [uncertain, setUncertain] = useState(false);
@@ -357,6 +368,7 @@ export default function PaymentFlowScreen({
       }
       setReceipt({ ...res.receipt, ...res.payment, methodRail: input.paymentRail });
       setPassIssued(!!res.dischargePass || !!res.encounter?.dischargePass);
+      setPassNumber(res.dischargePass?.passNumber ?? res.encounter?.dischargePass?.passNumber ?? null);
       await paymentAttempts.complete(account, key).catch(() => {});
       setPending(null);
       setUncertain(false);
@@ -427,6 +439,7 @@ export default function PaymentFlowScreen({
         throw new ApiError('The hospital did not return a confirmed note.', 502, 'INVALID_RESPONSE');
       setNote(res.promissoryNote);
       setPassIssued(!!res.dischargePass);
+      setPassNumber(res.dischargePass?.passNumber ?? null);
       setStep('done');
       refresh();
     } catch (e: unknown) {
@@ -473,9 +486,9 @@ export default function PaymentFlowScreen({
               bill={receipt.billReference || currentEncounter.billNumber || currentEncounter.encounterNumber}
               date={receipt.settledAt || receipt.createdAt}
               onReceipt={() => setStep('done')}
-              onBills={() => navigation.navigate('Main', { screen: 'Bill' })}
+              onBills={() => navigation.popTo('Main', { screen: 'Bill' })}
               passIssued={passIssued}
-              onPass={() => navigation.navigate('Documents')}
+              onPass={() => openPass()}
             />
           </ScrollView>
         </Screen>
@@ -519,16 +532,16 @@ export default function PaymentFlowScreen({
             <View style={{ flex: 1 }}>
               <SecondaryButton
                 title="Back to Bills"
-                onPress={() => navigation.navigate('Main', { screen: 'Bill' })}
+                onPress={() => navigation.popTo('Main', { screen: 'Bill' })}
               />
             </View>
             <View style={{ flex: 1 }}>
               {passIssued ? (
-                <PrimaryButton title="View Gate Pass" onPress={() => navigation.navigate('Documents')} />
+                <PrimaryButton title="View Gate Pass" onPress={() => openPass()} />
               ) : (
                 <PrimaryButton
                   title="Payment history"
-                  onPress={() => navigation.navigate('Main', { screen: 'Payments' })}
+                  onPress={() => navigation.popTo('Main', { screen: 'Payments' })}
                 />
               )}
             </View>
@@ -574,11 +587,7 @@ export default function PaymentFlowScreen({
             )}
             <PrimaryButton
               title={passIssued ? 'View discharge pass' : 'View payments'}
-              onPress={() =>
-                passIssued
-                  ? navigation.replace('Documents')
-                  : navigation.navigate('Main', { screen: 'Payments' })
-              }
+              onPress={() => (passIssued ? openPass(true) : navigation.popTo('Main', { screen: 'Payments' }))}
             />
             <SecondaryButton title="Documents & receipts" onPress={() => navigation.replace('Documents')} />
           </ScrollView>
@@ -601,10 +610,7 @@ export default function PaymentFlowScreen({
             title="Your final bill is being reviewed"
             detail="Hospital clearance checks must finish before online settlement. You can review the running bill now."
           />
-          <SecondaryButton
-            title="Review bill"
-            onPress={() => navigation.navigate('Main', { screen: 'Bill' })}
-          />
+          <SecondaryButton title="Review bill" onPress={() => navigation.popTo('Main', { screen: 'Bill' })} />
           <SecondaryButton title="Go back" onPress={() => navigation.goBack()} />
         </Screen>
       );
@@ -685,7 +691,7 @@ export default function PaymentFlowScreen({
               <SecondaryButton
                 title="Payment history"
                 disabled={busy}
-                onPress={() => navigation.navigate('Main', { screen: 'Payments' })}
+                onPress={() => navigation.popTo('Main', { screen: 'Payments' })}
               />
             </Card>
           )}
@@ -1230,7 +1236,7 @@ export default function PaymentFlowScreen({
           {uncertain && (
             <SecondaryButton
               title={isNote ? 'Check payment plans' : 'Check payment history'}
-              onPress={() => navigation.navigate('Main', { screen: 'Payments' })}
+              onPress={() => navigation.popTo('Main', { screen: 'Payments' })}
             />
           )}
         </ScrollView>

@@ -62,7 +62,8 @@ export function ModalOverlay({
       Animated.timing(panelProgress, {
         toValue: visible ? 1 : 0,
         duration: visible ? 280 : 200,
-        easing: visible ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+        // iOS sheet curve in, strong ease-out away: no slow start on either edge.
+        easing: visible ? Easing.bezier(0.32, 0.72, 0, 1) : Easing.bezier(0.23, 1, 0.32, 1),
         useNativeDriver: true,
       }),
     ]);

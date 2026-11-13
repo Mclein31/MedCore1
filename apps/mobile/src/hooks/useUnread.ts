@@ -32,12 +32,17 @@ export function useUnreadCount(): number {
         }
       };
       void refresh();
+      // The badge is a hint; the Home snapshot and the Notifications screen carry the live data.
       const interval = setInterval(() => {
         if (AppState.currentState === 'active') void refresh();
-      }, 5000);
+      }, 30000);
+      const sub = AppState.addEventListener('change', (state) => {
+        if (state === 'active') void refresh();
+      });
       return () => {
         active = false;
         clearInterval(interval);
+        sub.remove();
       };
     }, [client, user, selectedPatientId]),
   );

@@ -37,7 +37,7 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
     pendingRequest.current?.abort();
     setLoading(false);
     setExtractedData(null);
-    setError('AI is temporarily unavailable. Please bring your card to the hospital billing desk.');
+    setError(null);
     if (visible) setSelectedCategory(preferredCategory || 'ALL');
     return () => {
       activeSelection.current++;
@@ -72,17 +72,17 @@ export const BenefitCardScannerModal: React.FC<BenefitCardScannerModalProps> = (
   };
 
   const handleSelectFile = async () => {
-    if (!extractedData) {
-      setError('AI is temporarily unavailable. Please bring your card to the hospital billing desk.');
-      return;
-    }
+    // Ignore taps while a scan is running; a finished result is cleared by "Scan Another".
+    if (loading) return;
     const selection = ++activeSelection.current;
     setError(null);
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         base64: true,
-        quality: 1,
+        // Re-encodes as JPEG (iOS otherwise may hand over HEIC, which the API rejects) and keeps a
+        // 12 MP photo well under the API's 6 MB image / 8 MB request limits.
+        quality: 0.7,
         allowsEditing: false,
       });
       if (result.canceled || selection !== activeSelection.current) return;

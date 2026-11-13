@@ -41,7 +41,9 @@ export function parseSavedPass(raw: string | null, scope: string, now = Date.now
       value.pass.status !== 'ACTIVE_READY_FOR_EXIT' ||
       typeof value.pass.exitPin !== 'string' ||
       !/^\d{6}$/.test(value.pass.exitPin) ||
-      !Number.isFinite(Date.parse(value.pass.issuedAt))
+      !Number.isFinite(Date.parse(value.pass.issuedAt)) ||
+      // The lobby rejects an expired pass, so an offline copy must not outlive it.
+      (value.pass.expiresAt !== undefined && !(Date.parse(value.pass.expiresAt) > now))
     )
       return null;
     return value;

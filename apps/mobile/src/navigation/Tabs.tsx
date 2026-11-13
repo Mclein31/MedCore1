@@ -1,6 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, type LinkingOptions } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../lib/auth';
@@ -25,12 +25,35 @@ import { C } from '../components/ui';
 import { HeaderLayout } from '../components/theme';
 import { ErrorState, Screen, SecondaryButton } from '../components/ui';
 import { PatientProvider } from '../hooks/PatientProvider';
+import { useReducedMotion } from '../hooks/useReducedMotion';
 
 import RecordDetailScreen from '../screens/RecordDetailScreen';
 import type { RootStackParamList, TabParamList } from './types';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/** medcore:// deep links (scheme in app.json). Paths only open screens the signed-in patient can already reach. */
+const linking: LinkingOptions<ReactNavigation.RootParamList> = {
+  prefixes: ['medcore://'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          Home: 'home',
+          Bill: 'bill',
+          Coverage: 'coverage',
+          Payments: 'payments',
+          Profile: 'profile',
+        },
+      },
+      RecordDetail: 'record/:encounterId/:documentKind/:documentId',
+      Documents: 'documents',
+      Notifications: 'updates',
+      Claims: 'claims',
+    },
+  },
+};
 
 function MainTabs() {
   return (
@@ -60,6 +83,8 @@ function MainTabs() {
 
 export default function RootNavigator() {
   const { user, loading, sessionError, retrySession, logout, selectedPatientId } = useAuth();
+  // Pushed screens keep the platform's native transition; Reduce Motion swaps the slide for a fade.
+  const reduceMotion = useReducedMotion();
   const verifiedThisLaunch = React.useRef(false);
   if (user) verifiedThisLaunch.current = true;
   const onboarding = useOnboarding(verifiedThisLaunch.current);
@@ -107,7 +132,7 @@ export default function RootNavigator() {
       <PatientProvider
         key={`${user?.id || 'signed-out'}:${user?.role || ''}:${selectedPatientId || 'default'}`}
       >
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
           <StatusBar style="dark" />
           <Stack.Navigator
             screenOptions={({ navigation }) => ({
@@ -127,6 +152,7 @@ export default function RootNavigator() {
               headerTintColor: C.ink,
               headerTitleStyle: { fontSize: HeaderLayout.titleSize, fontWeight: '600' },
               headerShadowVisible: false,
+              animation: reduceMotion ? 'fade' : 'default',
             })}
           >
             {user ? (

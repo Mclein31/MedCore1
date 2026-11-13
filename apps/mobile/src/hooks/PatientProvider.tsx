@@ -107,9 +107,10 @@ export function PatientProvider({ children }: { children: React.ReactNode }) {
         pending.current = null;
       };
     void refresh();
+    // Paused in the background; refreshed on return, on screen focus (usePatient) and after writes.
     const interval = setInterval(() => {
       if (AppState.currentState === 'active') void refresh();
-    }, 12000);
+    }, 20000);
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') void refresh();
     });
