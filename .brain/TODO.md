@@ -2,6 +2,17 @@
 
 Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order.
 
+## Demo 2026-12-10 readiness (from 2026-11-13 audit)
+- 👤 Apply migrations `0002_doctor_pf_timeout` and `0003_notification_reads` to Neon `demo` (backup branch `demo-backup-2026-11-18` already taken; history shows 0000–0001 applied): `cd apps/api && DATABASE_URL=<demo direct URL> node --import tsx src/db/migrate.ts`. Must happen BEFORE the Worker deploy (the Worker reads the new column).
+- 👤 Then deploy the Worker: `npm run deploy -w @medcore/api`; confirm `placement.region gcp:asia-southeast1` and one AI call from a Philippine network.
+- 👤 Shift demo dates on 2026-12-09: `cd apps/api && DATABASE_URL=<demo direct URL> SHIFT_ALLOW_REMOTE=<host> npm run db:shift-demo-dates -- --apply` (dry run without `--apply`; take a Neon branch first). Calendar reminder set for 2026-12-05.
+- 👤 iPhone: run `npm run native:prebuild -w @medcore/mobile` (new speech-recognition plugin), open `apps/mobile/ios/MedCore.xcworkspace`, pick a signing team, Release config, Developer Mode on; free-team installs expire in 7 days, reinstall the day before. Rebuild after any JS change.
+- 👤 Check Cloudflare Workers/Hyperdrive plan limits; set up Gemini billing (free tier 15 RPM).
+- ⬜ CF4 checks and RTH score now come from the latest AI pre-flight audit; never-audited claims stay neutral (no CF4 clinical source).
+- ⬜ Statutory "45 mins (DOH AO 2021-0037)" citations kept on the radar and velocity chart by design; facility targets use the configured threshold.
+- ⬜ D6: no dashboard OCR UI ever existed (checked git history); OCR stays mobile-only.
+- ⬜ M5: retired password-login / patient-selector code paths left in place (unused).
+
 ## 0. v2 rebuild (`rebuild/medcore-v2`)
 - ✅ (2026-10-17) Manual acceptance guide: `TESTING_GUIDE.md`, linked from README. Includes current staff accounts and three verified patient MRN/DOB sign-ins, cross-app payment/dispute/plan/pass checks, role isolation, responsive layouts, known gaps and a replacement decision sheet. Test actions change local fictional data; the guide does not replace `main`.
 - ✅ (2026-10-17) Original v1 mobile and dashboard restored on the v2 API, with v2 staff login/MFA preserved. Mobile simulator and dashboard browser workflow verified.

@@ -2,6 +2,11 @@
 
 Newest first. Every durable `[DECISION]` from the former 2,540-line `PROJECT_CONTEXT.md` is here, grouped by topic inside each period. Where a later entry replaced an earlier one, only the later one is kept, with a `Supersedes:` note. Dates are 2026 unless stated. Sections 1–49 of the old file had no dates beyond late Sep to early Oct, so they are grouped as "Sep–early Oct".
 
+## 2026-11-13: demo readiness
+- [DECISION] Mobile polling is 20 s for patient data and per-screen resources, 30 s for the unread badge, paused while backgrounded, behind a 4 s shared read cache cleared by any write. Supersedes: "Mobile polling 12 s". Dashboard census polling stays 15 s but re-reads only changed, open or >5 min old charts; background reads send `?refresh=background` and are audited at most once per staff member, record and hour.
+- [DECISION] The patient app is demoed from a standalone Release build (Xcode free personal team / sideloaded APK), not Expo Go, so the phone needs no Mac or shared network. `ios/` and `android/` stay git-ignored (CNG); native config lives in `app.json` and `apps/mobile/plugins/`. The push entitlement is stripped until real remote push exists.
+- [DECISION] Loading and motion polish must never change the settled UI: skeletons mirror real layout with existing tokens, opacity/transform only, reduced motion respected.
+
 ## 2026-10-16: v2 rebuild (branch `rebuild/medcore-v2`)
 - [DECISION] Both apps use the original v1 UI over the v2 API through a client-side v1→v2 bridge; the dashboard keeps the v2 staff login (MFA). Client adapters convert pesos/centavos and use server-authoritative sessions, permissions and financial records. Missing API features show unavailable states; no v1 login, demo personas, role switching or invented results. (2026-10-17)
 - [DECISION] MedCore is rebuilt from scratch on branch `rebuild/medcore-v2` as an npm-workspaces monorepo: `packages/domain` (pure rules), `apps/api` (Hono + Drizzle + Postgres, Node and Workers entries), `apps/web` (React 19 + Vite + Tailwind 4; staff dashboard only). The old `apps/server`, `apps/dashboard`, `apps/shared`, `apps/mobile` and `scripts/` are removed from that branch only; `main` keeps them. Implements the whole 2026-10-16 audit by design rather than as patches.

@@ -11,9 +11,9 @@
 MedCore is not an HIS or EMR. It is the financial middleware between hospital systems, payers (PhilHealth, HMOs) and patients. It applies the statutory deduction waterfall (VAT exemption, Senior/PWD discount, PhilHealth, HMO) to the centavo, validates claims before submission, runs discharge clearance in under 45 minutes, and gives patients a plain-language bill, payment, promissory note (RA 9439, 0% interest) and exit pass on their phone. Generative AI explains and drafts; it never computes money.
 
 ## 3. Product surfaces
-- **Dashboard** (`apps/dashboard`, Vercel): hospital Command Center with Home, Discharge Clearance, Encounters & Ledgers, Approvals & Disputes, Claims & eSOA, RCM Analytics, Settings.
+- **Dashboard** (`apps/web`, Vercel): hospital Command Center with Home, Discharge Clearance, Encounters & Ledgers, Approvals & Disputes, Claims & eSOA, RCM Analytics, Settings.
 - **Mobile** (`apps/mobile`, Expo): patient companion with bills, coverage, simulated payments, documents, Cora AI concierge.
-- **API** (`apps/server`, Hono on Cloudflare Workers) and **shared** code (`apps/shared`).
+- **API** (`apps/api`, Hono on Cloudflare Workers) and **shared** code (`packages/domain`, `packages/icons`).
 - Five AI features: claims preflight scrubber, HMO appeal drafter, executive briefing, Cora, OCR scanner. SMS is a sandbox only.
 
 ## 4. Current state (2026-10-16)

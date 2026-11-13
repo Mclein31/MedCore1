@@ -68,7 +68,9 @@ Staff sign in at http://localhost:5173 with `cfo@`, `billing@`, `claims@`, `hmo@
 `stjude.example.test` and `SEED_PASSWORD`, then enroll an authenticator app. Patients use the mobile app: "First time here? Link your hospital stay" (MRN + DOB),
 a seeded MRN (for example `MRN-240118`) and date of birth, then the 6-digit code printed in the API log.
 
-The app defaults to `http://127.0.0.1:8787`. For a phone on your network, start the API with
+Without `EXPO_PUBLIC_API_BASE_URL` the app uses the hosted demo Worker
+(`https://medcore-backend.mcleinonza0531.workers.dev`, see `apps/mobile/src/config/apiConfig.ts`).
+To use a local API instead, set it explicitly. For a phone on your network, start the API with
 `HOST=0.0.0.0` and set `EXPO_PUBLIC_API_BASE_URL` to your Mac's Wi-Fi address:
 
 ```bash
@@ -80,6 +82,43 @@ On a physical iPhone, sign in to the same Expo account in Expo Go and on your Ma
 from `apps/mobile`), then scan the terminal QR code with the iPhone Camera and open it in Expo Go.
 Expo Go must support SDK 58. The dashboard and mobile app share React 19.3.0, pinned in the root
 overrides to match React Native's renderer and avoid duplicate React runtimes.
+
+## Install on a physical phone
+
+Release builds embed the JavaScript bundle and the API address from `apps/mobile/.env` (or the hosted
+default), so the installed app runs on its own: no Metro, no Mac, any network. The API address must be
+HTTPS; the release app rejects `http://` addresses. Any later change to `apps/mobile/src` or assets
+needs a new Release build and reinstall.
+
+`apps/mobile/ios` and `apps/mobile/android` are generated and git-ignored. Create or refresh them after
+cloning or after changing `app.json`, plugins or native dependencies:
+
+```bash
+cd apps/mobile
+npm run native:prebuild       # expo prebuild --clean, then pod install
+```
+
+**iPhone (Xcode)**
+
+1. `open ios/MedCore.xcworkspace` (the workspace, not the `.xcodeproj`).
+2. Target MedCore → Signing & Capabilities → Automatically manage signing, then pick your Team. A free
+   Personal Team works (the app requests no push or other paid capabilities). If Xcode says the bundle ID
+   is unavailable, change it there (e.g. `ph.medcore.patient.yourname`).
+3. Product → Scheme → Edit Scheme → Run → Build Configuration: **Release**.
+4. Connect the iPhone, select it as the destination and Run. First time only: on the iPhone turn on
+   Settings → Privacy & Security → Developer Mode (restarts), then after install trust the developer in
+   Settings → General → VPN & Device Management.
+5. Apps signed by a free Personal Team expire after 7 days. Reinstall from Xcode shortly before a demo.
+
+Once a team is set, `npm run ios:device` builds Release and installs it from the terminal.
+
+**Android (Android Studio or adb)**
+
+1. On the phone: Settings → About phone → tap Build number seven times, then Developer options → USB
+   debugging. Connect it and accept the prompt.
+2. `npm run android:release` builds `android/app/build/outputs/apk/release/app-release.apk` (signed with
+   the debug keystore: fine for sideloading, not for the Play Store). `npm run android:install` installs it.
+3. Or open `apps/mobile/android` in Android Studio, set Build Variants → app → **release**, and Run.
 
 ## Checks
 
