@@ -15,6 +15,20 @@
       "when": 1792141574735,
       "tag": "0001_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794564904543,
+      "tag": "0002_doctor_pf_timeout",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794565425105,
+      "tag": "0003_notification_reads",
+      "breakpoints": true
     }
   ]
 }

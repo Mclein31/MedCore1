@@ -341,6 +341,30 @@ describe('access control', () => {
     expect(mine!.requestId).toBeTruthy();
   });
 
+  it('logs background chart refreshes at most once per staff member, record and hour', async () => {
+    const billing = await h.staff('BILLING_SPECIALIST', 1);
+    const stay = await stayAwaitingSettlement(h, { patientIndex: 8, bedIndex: 8 });
+    const views = async () =>
+      (
+        await h.db
+          .select()
+          .from(s.auditLogs)
+          .where(
+            sql`${s.auditLogs.action} = 'ENCOUNTER_VIEWED' and ${s.auditLogs.resourceId} = ${stay.id} and ${s.auditLogs.actorId} = ${billing.user.id}`,
+          )
+      ).length;
+    for (let i = 0; i < 4; i++)
+      expect((await billing.get(`${stay.base}?refresh=background`)).status).toBe(200);
+    expect(await views()).toBe(1);
+    // A deliberate open is always logged.
+    expect((await billing.get(stay.base)).status).toBe(200);
+    expect(await views()).toBe(2);
+    h.advance(61 * 60 * 1000);
+    const later = await h.staff('BILLING_SPECIALIST', 1); // the earlier session has idled out
+    expect((await later.get(`${stay.base}?refresh=background`)).status).toBe(200);
+    expect(await views()).toBe(3);
+  });
+
   it('stores sensitive identifiers encrypted', async () => {
     const [row] = await h.db.select().from(s.patients).where(eq(s.patients.id, h.fixture.patients[0]!.id));
     expect(row!.contactPhoneEnc).toMatch(/^v1\./);

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull, sql, type SQL } from 'drizzle-orm';
 import type { StaffPrincipal } from '../context';
 import type { DbOrTx } from '../db/client';
 import {
+  auditLogs,
   charges,
   disputes,
   encounters,
@@ -147,6 +148,22 @@ export async function staffEncounterDetail(
     .from(philhealthClaims)
     .where(eq(philhealthClaims.encounterId, encounter.id));
   const [hmo] = await db.select().from(hmoCoverages).where(eq(hmoCoverages.encounterId, encounter.id));
+  // The latest claims pre-flight audit (written by the AI scrubber route) is the only real source of
+  // the RTH risk score and CF4 checklist; without one, those stay null ("not audited").
+  const [scrub] = claim
+    ? await db
+        .select({ detail: auditLogs.detail, createdAt: auditLogs.createdAt })
+        .from(auditLogs)
+        .where(
+          and(
+            eq(auditLogs.resourceType, 'encounter'),
+            eq(auditLogs.resourceId, encounter.id),
+            eq(auditLogs.action, 'AI_CLAIM_SCRUB'),
+          ),
+        )
+        .orderBy(desc(auditLogs.createdAt))
+        .limit(1)
+    : [];
   const chargeRows = await db
     .select()
     .from(charges)
@@ -250,7 +267,7 @@ export async function staffEncounterDetail(
     },
     physician: physician ?? null,
     ledger: ledger ?? null,
-    philhealth: claim ?? null,
+    philhealth: claim ? { ...claim, ...scrubSummary(scrub) } : null,
     hmo: hmo ?? null,
     charges: chargeRows,
     payments: paymentRows,
@@ -258,5 +275,26 @@ export async function staffEncounterDetail(
     disputes: disputeRows,
     gatePasses: passes,
     timeline: events,
+  };
+}
+
+/** RTH score and CF4 checklist from the most recent scrub audit row, or nulls when never audited. */
+export function scrubSummary(row: { detail: unknown; createdAt: Date } | undefined) {
+  const d = (row?.detail ?? {}) as {
+    rthRiskScore?: unknown;
+    riskLevel?: unknown;
+    cf4?: { vitals?: unknown; courseInWard?: unknown; labs?: unknown };
+    esoaXmlConformity?: unknown;
+  };
+  const score = typeof d.rthRiskScore === 'number' && Number.isFinite(d.rthRiskScore) ? d.rthRiskScore : null;
+  const flag = (v: unknown) => (typeof v === 'boolean' ? v : null);
+  return {
+    rthRiskScore: score,
+    rthRiskLevel: typeof d.riskLevel === 'string' ? d.riskLevel : null,
+    cf4VitalsRecorded: flag(d.cf4?.vitals),
+    cf4CourseInWardRecorded: flag(d.cf4?.courseInWard),
+    cf4LabsConsistent: flag(d.cf4?.labs),
+    scrubXmlConformity: flag(d.esoaXmlConformity),
+    scrubbedAt: score === null ? null : (row?.createdAt ?? null),
   };
 }

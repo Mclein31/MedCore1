@@ -91,6 +91,8 @@ export const facilities = pgTable('facilities', {
   address: varchar('address', { length: 300 }).notNull(),
   slaWarningMinutes: integer('sla_warning_minutes').notNull().default(25),
   slaBreachMinutes: integer('sla_breach_minutes').notNull().default(40),
+  /** Minutes before the dashboard suggests the accredited PF ceiling for an unsigned professional fee. */
+  doctorPfTimeoutMinutes: integer('doctor_pf_timeout_minutes').notNull().default(15),
   createdAt: createdAt(),
 });
 
@@ -747,4 +749,17 @@ export const auditLogs = pgTable(
     index('audit_logs_resource_idx').on(t.resourceType, t.resourceId),
     check('audit_logs_actor_type', sql`${t.actorType} IN ('STAFF','PATIENT','SYSTEM','ANON')`),
   ],
+);
+
+/** Which staff notifications (payment, dispute, pass, timeline ids) each staff member has read. */
+export const staffNotificationReads = pgTable(
+  'staff_notification_reads',
+  {
+    staffId: uuid('staff_id')
+      .notNull()
+      .references(() => staffUsers.id, { onDelete: 'cascade' }),
+    notificationId: varchar('notification_id', { length: 80 }).notNull(),
+    readAt: timestamp('read_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('staff_notification_reads_pk').on(t.staffId, t.notificationId)],
 );

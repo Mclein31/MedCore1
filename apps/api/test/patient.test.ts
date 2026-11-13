@@ -234,6 +234,22 @@ describe('patient portal', () => {
     const after = await patient.get(`/api/v1/patient/stays/${stay.id}`);
     expect(after.body.stay.stage).toBe('CLEARED');
     expect(after.body.gatePass.pin).toMatch(/^\d{6}$/);
+    expect(Date.parse(after.body.gatePass.expiresAt)).toBeGreaterThan(Date.now());
+
+    // The lobby rejects a pass after 24 h, so the app must not be handed a usable PIN for it.
+    const elapsed = 24 * 60 * 60 * 1000 + 60_000;
+    h.advance(elapsed);
+    try {
+      const expired = await patient.get(`/api/v1/patient/stays/${stay.id}`);
+      expect(expired.status).toBe(200);
+      expect(expired.body.gatePass).toMatchObject({
+        passNumber: after.body.gatePass.passNumber,
+        pin: null,
+        expiresAt: after.body.gatePass.expiresAt,
+      });
+    } finally {
+      h.advance(-elapsed);
+    }
   });
 
   it('hides draft bills from patients', async () => {

@@ -11,6 +11,7 @@ import { and, asc, desc, eq, gte, isNull, sql, type SQL } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppBindings } from '../context';
+import type { DbOrTx } from '../db/client';
 import {
   auditLogs,
   beds,
@@ -27,6 +28,7 @@ import {
   receipts,
   staffUsers,
   timelineEvents,
+  staffNotificationReads,
 } from '../db/schema';
 import { ApiError, conflict, notFound } from '../lib/errors';
 import { idParam } from '../lib/params';
@@ -559,7 +561,14 @@ staffOperationRoutes.get(
 );
 
 // ---------------------------------------------------------------- notifications & sms outbox
-const readNotificationsByStaff = new Map<string, Set<string>>();
+/** Read marks live in Postgres so they survive Worker isolates and restarts. */
+async function readNotificationIds(db: DbOrTx, staffId: string): Promise<Set<string>> {
+  const rows = await db
+    .select({ id: staffNotificationReads.notificationId })
+    .from(staffNotificationReads)
+    .where(eq(staffNotificationReads.staffId, staffId));
+  return new Set(rows.map((r) => r.id));
+}
 
 staffOperationRoutes.get('/notifications', async (c) => {
   const staff = c.var.staff;
@@ -567,7 +576,7 @@ staffOperationRoutes.get('/notifications', async (c) => {
     return c.json({ items: [] });
   }
   const db = c.var.db;
-  const readSet = readNotificationsByStaff.get(staff.id) ?? new Set<string>();
+  const readSet = await readNotificationIds(db, staff.id);
   const scope = staffEncounterScope(staff);
 
   const recentPayments = await db
@@ -720,11 +729,7 @@ const MarkReadBody = z.object({
 staffOperationRoutes.post('/notifications/mark-read', jsonBody(MarkReadBody), async (c) => {
   const body = c.req.valid('json');
   const staffId = c.var.staff.id;
-  let readSet = readNotificationsByStaff.get(staffId);
-  if (!readSet) {
-    readSet = new Set<string>();
-    readNotificationsByStaff.set(staffId, readSet);
-  }
+  const readSet = new Set<string>();
   if (body.id) readSet.add(body.id);
   if (body.notificationIds) {
     for (const id of body.notificationIds) readSet.add(id);
@@ -763,6 +768,13 @@ staffOperationRoutes.post('/notifications/mark-read', jsonBody(MarkReadBody), as
     for (const r of disps) readSet.add(`disp-${r.id}`);
     for (const r of passes) readSet.add(`gp-${r.id}`);
     for (const r of tls) readSet.add(`tl-${r.id}`);
+  }
+  const ids = [...readSet].filter((id) => id.length > 0 && id.length <= 80).slice(0, 200);
+  if (ids.length) {
+    await c.var.db
+      .insert(staffNotificationReads)
+      .values(ids.map((notificationId) => ({ staffId, notificationId })))
+      .onConflictDoNothing();
   }
   return c.json({ ok: true });
 });
@@ -819,6 +831,7 @@ staffOperationRoutes.get('/facility', requirePermission('encounter:read'), async
       address: facility.address,
       slaWarningMinutes: facility.slaWarningMinutes,
       slaBreachMinutes: facility.slaBreachMinutes,
+      doctorPfTimeoutMinutes: facility.doctorPfTimeoutMinutes,
     },
     runtime: {
       aiEnabled: config.ai.enabled,
@@ -838,6 +851,7 @@ const UpdateFacilityBody = z.strictObject({
   philhealthAccreditation: z.string().trim().min(2).max(32).optional(),
   slaWarningMinutes: z.number().int().min(5).max(240).optional(),
   slaBreachMinutes: z.number().int().min(10).max(480).optional(),
+  doctorPfTimeoutMinutes: z.number().int().min(5).max(240).optional(),
 });
 
 staffOperationRoutes.put(
@@ -868,6 +882,7 @@ staffOperationRoutes.put(
           ...(body.philhealthAccreditation ? { philhealthAccreditation: body.philhealthAccreditation } : {}),
           slaWarningMinutes: warn,
           slaBreachMinutes: breach,
+          ...(body.doctorPfTimeoutMinutes ? { doctorPfTimeoutMinutes: body.doctorPfTimeoutMinutes } : {}),
         })
         .where(eq(facilities.id, facilityId))
         .returning();

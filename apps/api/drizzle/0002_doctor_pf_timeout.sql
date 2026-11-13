@@ -1,0 +1,1 @@
+ALTER TABLE "facilities" ADD COLUMN "doctor_pf_timeout_minutes" integer DEFAULT 15 NOT NULL;

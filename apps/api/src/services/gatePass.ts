@@ -77,6 +77,11 @@ export async function issuePass(
   return row!;
 }
 
+/** Same rule `verifyPass` applies at the lobby. */
+export function passExpired(pass: Pick<GatePass, 'expiresAt'>, now: Date): boolean {
+  return pass.expiresAt <= now;
+}
+
 export type VerifyOutcome =
   | { result: 'VERIFIED'; pass: GatePass }
   | { result: 'WRONG_PIN'; attemptsLeft: number }
@@ -100,7 +105,7 @@ export async function verifyPass(
     .for('update');
   if (!pass) return { result: 'NOT_FOUND' };
   if (pass.status !== 'ACTIVE') return { result: 'NOT_ACTIVE' };
-  if (pass.expiresAt <= now) return { result: 'EXPIRED' };
+  if (passExpired(pass, now)) return { result: 'EXPIRED' };
 
   // Integrity before PIN: a row edited in the database fails here.
   if (!timingSafeEqual(pass.signature, await signPass(secret, pass))) {

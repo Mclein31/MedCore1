@@ -35,6 +35,8 @@ export interface GenerateHmoAppealOptions {
   userId?: string;
   forceRefresh?: boolean;
   aiConfig?: AiConfig;
+  /** Clock for the letter date; defaults to the current time. */
+  now?: Date;
 }
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -91,6 +93,12 @@ export class HmoAppealService {
       `${enc.primaryDiagnosis} (${enc.icd10Code})`,
       JSON.stringify({
         facility: { name: facility.name, address: facility.address },
+        // Without this the model invents a date for the letter.
+        letterDate: (options.now ?? new Date()).toLocaleDateString('en-PH', {
+          timeZone: 'Asia/Manila',
+          dateStyle: 'long',
+        }),
+        letterDateInstruction: 'Date the letter with letterDate exactly; do not use any other date.',
         referenceNumber: referenceNumberPlaceholder,
         admissionDate: enc.admittedAt.toLocaleDateString('en-PH', {
           timeZone: 'Asia/Manila',

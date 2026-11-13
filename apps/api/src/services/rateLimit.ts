@@ -27,6 +27,9 @@ export const LIMITS = {
   gatePassVerify: { name: 'gate-pass-verify', limit: 30, windowSeconds: 300 },
   patientPayment: { name: 'patient-payment', limit: 10, windowSeconds: 600 },
   inviteAccept: { name: 'invite-accept', limit: 100, windowSeconds: 3600 },
+  // Per patient account; generous enough for a live demo, but caps runaway Gemini use (free tier 15 RPM).
+  patientAiCora: { name: 'patient-ai-cora', limit: 30, windowSeconds: 600 },
+  patientAiOcr: { name: 'patient-ai-ocr', limit: 30, windowSeconds: 600 },
 } satisfies Record<string, LimitRule>;
 
 export async function consume(

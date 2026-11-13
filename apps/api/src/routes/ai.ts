@@ -16,6 +16,7 @@ import { hmoAppealService } from '../services/ai/hmoAppealService';
 import { ocrService } from '../services/ai/ocrService';
 import { CORA_LANGUAGE_IDS } from '../services/ai/prompts/coraPrompts';
 import { audit } from '../services/audit';
+import { enforce, LIMITS } from '../services/rateLimit';
 import { staffEncounterScope } from '../services/views';
 
 const MAX_OCR_IMAGE_BYTES = 6 * 1024 * 1024;
@@ -141,6 +142,28 @@ async function resolveStaffEncounter(c: AppContext, encounterId: string): Promis
   return row.id;
 }
 
+/**
+ * CF4 checklist derived from the scrubber's findings: a missing-field finding about vital signs fails
+ * "vitals", any other missing CF4 field fails "course in ward", and a diagnostic or medication
+ * discrepancy above INFO fails "labs consistent".
+ */
+export function cf4Summary(
+  flags: { category: string; severity: string; field: string; description: string }[],
+): { vitals: boolean; courseInWard: boolean; labs: boolean } {
+  const missing = flags.filter((f) => f.category === 'MISSING_CF4_FIELD');
+  const isVitals = (f: { field: string; description: string }) =>
+    /vital/i.test(`${f.field} ${f.description}`);
+  return {
+    vitals: !missing.some(isVitals),
+    courseInWard: !missing.some((f) => !isVitals(f)),
+    labs: !flags.some(
+      (f) =>
+        (f.category === 'DIAGNOSTIC_DISCREPANCY' || f.category === 'MEDICATION_DISCORDANCE') &&
+        f.severity !== 'INFO',
+    ),
+  };
+}
+
 export const staffAiRoutes = new Hono<AppBindings>();
 
 staffAiRoutes.post('/cora/chat', requirePermission('encounter:read'), jsonBody(CoraChatBody), async (c) => {
@@ -202,10 +225,13 @@ staffAiRoutes.post(
         action: 'AI_CLAIM_SCRUB',
         resourceType: 'encounter',
         resourceId: resolvedId,
+        // Persisted so the claims worklist shows the latest real audit instead of placeholder values.
         detail: {
           rthRiskScore: result.rthRiskScore,
           riskLevel: result.riskLevel,
           modelUsed: result.modelUsed,
+          cf4: cf4Summary(result.flags),
+          esoaXmlConformity: result.esoaXmlConformity,
         },
       });
       return c.json(result);
@@ -332,6 +358,7 @@ const VISIBLE_BILL_STATES = new Set(['FINALIZED', 'SENT', 'PARTIALLY_PAID', 'SET
 patientAiRoutes.post('/cora/chat', jsonBody(CoraChatBody), async (c) => {
   const body = c.req.valid('json');
   const patient = c.var.patient;
+  await enforce(c, [[LIMITS.patientAiCora, patient.accountId]]);
   const linked = sql`exists (select 1 from ${patientAccountLinks}
     where ${patientAccountLinks.patientId} = ${encounters.patientId}
       and ${patientAccountLinks.accountId} = ${patient.accountId}
@@ -394,6 +421,7 @@ patientAiRoutes.post('/cora/chat', jsonBody(CoraChatBody), async (c) => {
 patientAiRoutes.post('/ocr/extract-card', jsonBody(ExtractCardBody), async (c) => {
   const body = c.req.valid('json');
   const patient = c.var.patient;
+  await enforce(c, [[LIMITS.patientAiOcr, patient.accountId]]);
   try {
     const result = await observeAiCache(
       (outcome) => c.header('X-MedCore-AI-Cache', outcome),

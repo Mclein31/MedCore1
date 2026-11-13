@@ -23,7 +23,7 @@ import { idempotencyKey, idParam } from '../lib/params';
 import { patientAuth } from '../middleware/auth';
 import { jsonBody } from '../middleware/http';
 import { fileDispute } from '../services/disputes';
-import { derivePin } from '../services/gatePass';
+import { derivePin, passExpired } from '../services/gatePass';
 import { lockEncounter } from '../services/ledger';
 import { enforce, LIMITS } from '../services/rateLimit';
 import { activePassFor, createPromissoryNote, recordPayment } from '../services/settlement';
@@ -227,6 +227,8 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
     .limit(50);
   const pass = await activePassFor(db, id);
   const { config } = c.var.services;
+  // The lobby rejects a pass once it expires, so an expired pass is listed without its PIN.
+  const passLive = !!pass && !passExpired(pass, c.var.services.now());
 
   return c.json({
     stay: summary,
@@ -254,7 +256,7 @@ patientPortalRoutes.get('/stays/:id', async (c) => {
     gatePass: pass
       ? {
           passNumber: pass.passNumber,
-          pin: await derivePin(config.gatePassSecret, pass.id),
+          pin: passLive ? await derivePin(config.gatePassSecret, pass.id) : null,
           expiresAt: pass.expiresAt,
         }
       : null,

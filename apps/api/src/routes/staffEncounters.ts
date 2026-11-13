@@ -19,12 +19,13 @@ import {
   VoidEncounterBody,
   type DischargeAction,
 } from '@medcore/domain';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { AppBindings, AppContext } from '../context';
 import type { Tx } from '../db/client';
 import {
+  auditLogs,
   beds,
   charges,
   disputes,
@@ -42,7 +43,7 @@ import { idempotencyKey, idParam } from '../lib/params';
 import { requirePermission } from '../middleware/auth';
 import { jsonBody, queryParams } from '../middleware/http';
 import { audit, timeline } from '../services/audit';
-import { derivePin } from '../services/gatePass';
+import { derivePin, passExpired } from '../services/gatePass';
 import { lockEncounter, recalculateLedger, type Encounter } from '../services/ledger';
 import { nextDocumentNumber } from '../services/numbers';
 import { notifyBillReady } from '../services/notify';
@@ -135,11 +136,39 @@ staffEncounterRoutes.get('/', requirePermission('encounter:read'), queryParams(L
   );
 });
 
+/** A dashboard's background refresh of a record already on screen is logged at most this often. */
+export const BACKGROUND_VIEW_AUDIT_WINDOW_MS = 60 * 60 * 1000;
+
 staffEncounterRoutes.get('/:id', requirePermission('encounter:read'), async (c) => {
   const id = idParam(c, 'id', 'Stay');
-  const detail = await staffEncounterDetail(c.var.db, c.var.staff, id, c.var.services.now());
-  // Opening a patient record is itself an auditable event (RA 10173 accountability).
-  await audit(c, c.var.db, { action: 'ENCOUNTER_VIEWED', resourceType: 'encounter', resourceId: id });
+  const now = c.var.services.now();
+  const detail = await staffEncounterDetail(c.var.db, c.var.staff, id, now);
+  // Opening a patient record is itself an auditable event (RA 10173 accountability). Automatic
+  // background refreshes (?refresh=background) still leave a trail, but at most one row per staff
+  // member, record and hour, so dashboard polling cannot flood the audit log.
+  const background = c.req.query('refresh') === 'background';
+  if (background) {
+    const [recent] = await c.var.db
+      .select({ id: auditLogs.id })
+      .from(auditLogs)
+      .where(
+        and(
+          eq(auditLogs.resourceType, 'encounter'),
+          eq(auditLogs.resourceId, id),
+          eq(auditLogs.action, 'ENCOUNTER_VIEWED'),
+          eq(auditLogs.actorId, c.var.staff.id),
+          gt(auditLogs.createdAt, new Date(now.getTime() - BACKGROUND_VIEW_AUDIT_WINDOW_MS)),
+        ),
+      )
+      .limit(1);
+    if (recent) return c.json(detail);
+  }
+  await audit(c, c.var.db, {
+    action: 'ENCOUNTER_VIEWED',
+    resourceType: 'encounter',
+    resourceId: id,
+    ...(background ? { detail: { background: true } } : {}),
+  });
   return c.json(detail);
 });
 
@@ -790,6 +819,12 @@ staffEncounterRoutes.get('/:id/gate-pass', requirePermission('gatepass:read'), a
   await staffEncounterDetail(c.var.db, c.var.staff, id, c.var.services.now()); // scope check
   const pass = await activePassFor(c.var.db, id);
   if (!pass) throw notFound('Active exit pass');
+  // The lobby rejects an expired pass, so its PIN is never shown or printed.
+  if (passExpired(pass, c.var.services.now()))
+    throw conflict(
+      'PASS_EXPIRED',
+      'This exit pass has expired, so its PIN is no longer shown. The lobby will reject it.',
+    );
   await audit(c, c.var.db, {
     action: 'GATE_PASS_PIN_VIEWED',
     resourceType: 'gate_pass',
