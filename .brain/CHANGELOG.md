@@ -1,8 +1,14 @@
 # AQROMED / MedCore: Changelog (Operational Brain)
 
-Newest first, condensed. Decisions are in `DECISIONS.md`.
+Newest first, condensed. Decisions are in `DECISIONS.md`. v1-era entries (Sep 26 to the 2026-10-16 audit fixes) are in [archive/CHANGELOG_ARCHIVE.md](archive/CHANGELOG_ARCHIVE.md).
 
-## [2026-11-13] Demo-readiness audit, fixes, UX polish, native builds (uncommitted)
+## [2026-11-15] Brain cleanup
+- Verified the brain against the v2 code and git log. `ARCHITECTURE.md` rewritten for the v2 monorepo (old v1 text moved verbatim to `archive/ARCHITECTURE_V1_ARCHIVE.md`); v1-era changelog entries and decision periods (2026-10-14 and older) moved verbatim to `archive/`, with still-binding decisions kept in `DECISIONS.md` under "Carried forward".
+- Corrected stale facts: Gemini primary is `gemini-3.1-flash-lite` (backup 3.5); v2 migrations are `0000`–`0003` (the v1 `0004`–`0008` drift items are obsolete); no R2 binding or `neon.ts` in v2; `docs/audits/`, `docs/v2/` and validation folders were removed on 2026-10-29 (git history only); the pitch deck is not in the repo.
+- `TODO.md`: audit items that v2 implements in code (SameSite=Strict, idle timeout, CSRF header, no web token in storage, PIN attempt limit and limiter, `env.ts`, security headers, client-IP mode, retention cron, CI/lint/Vitest, staff TOTP + invitations) moved to Done; v1-only items marked obsolete. `FLOW.json` validated, unchanged.
+
+## [2026-11-13] Demo-readiness audit, fixes, UX polish, native builds
+- Committed 2026-11-13 as `8cb5c88` (api), `5dade1b` (dashboard), `ca4fe30` (mobile) and `1e153e2` (docs, brain). Hosted migration and Worker deploy still await the owner (TODO).
 - Audit (dashboard + mobile): no IP, device, geolocation or IP-bound-session lock exists. Venue risks are the API origin allowlist (present from `med-core1.vercel.app` / `medcore1.vercel.app` only), Expo Go loading the bundle from Metro over LAN (now avoided by standalone Release builds), the Worker `placement` that Gemini needs, and per-identity limits (5 bad passwords = 15 min lock, 5 patient codes/hour, 30 min staff idle).
 - Dashboard fixes: SMS sandbox preview, notification bell type mapping, Settings save (422), HMO Appeal button + letter date, claim status mapping and Clear Claim → `mark-transmitted`, safe charge edit (add then remove, rollback), computed briefing SLA badge, polling cut from ~23 to ~3 requests per 15 s with background reads (`?refresh=background`) audited at most once per staff/record/hour, real bed/case counts and breach threshold in copy, footer overflow, AI abort signal, 25 s session check, logo 1.06 MB → 79 KB. Also fixed: a successful AI scrub signed the user out (`clearBridgeCache` → new `invalidateBridgeData`).
 - Mobile fixes: card OCR re-enabled (picker quality 0.7 for JPEG and size limits), expired gate pass shown as "no longer active" (API returns `pin: null` after expiry), Bill tab treats SETTLED as paid, pass buttons open the pass, shared 4 s read cache + polling 20 s (unread 30 s, paused in background), stable notification ids, Cora navigation from RecordDetail, no wasted health call, Home draft-bill ScrollView.
@@ -11,11 +17,11 @@ Newest first, condensed. Decisions are in `DECISIONS.md`.
 - Round 2: Cora voice input on native via `expo-speech-recognition` (lazy-loaded, Expo Go falls back to typing; mic + speech permissions; image-picker no longer blocks RECORD_AUDIO); Expo SDK patch alignment (`expo install --fix`); first-name greeting; expired-pass Home copy; PaymentFlow `popTo`; Coverage shows real claim status, case rate, HMO card, authorization and MBL; `medcore://` linking; dashboard URL per page (refresh/back keep the page); briefing reused for 10 min client-side; PF timeout persisted (`0002_doctor_pf_timeout`); durable staff notification reads (`0003_notification_reads`); CF4/RTH from the latest AI scrub audit; expired pass PIN never printed at the desk; per-patient AI limits (Cora/OCR 30 per 10 min); `db:shift-demo-dates` script (activity tables only, audit log untouched). Neon backup branch `demo-backup-2026-11-18` created; hosted migration and Worker deploy await the owner.
 - Checks on the combined tree: typecheck pass; lint 0 errors; tests domain 31, web 19, mobile 34, API 74; web build and `expo export` pass. Needs Worker redeploy (staffEncounters, hmoAppealService, patientPortal, gatePass) and Vercel deploy to reach the hosted demo.
 
-## [2026-11-01] 32 s promo video (under review)
+## [2026-11-01] 32 s promo video (committed 2026-11-09 in `748eda0` with V7)
 - `docs/media/production/medcore-promo.mp4`: 32.0 s, 1920×1080, 60 fps, −14 LUFS / −1.5 dBTP. Owner-recorded VO (s1–s9) at 1.07× with long pauses tightened; the owner chose about 32 s with a natural voice over a strict 30 s with a faster read. Scenes: clock hook, flat-badge reveal, Overview in 3D with lifted KPI cards, real ledger waterfall turned into 3D columns, discharge milestones, claims AI pre-flight scan, a 3D iPhone (Home, Bill, Coverage, Pay), then a curved wall and end card.
 - Footage is new: 3× dashboard captures and native iPhone 17 Pro simulator screens of demo patient Grace Reyes (₱21,700 billed, ₱3,700 due), with the app driven through the Expo/Hermes debugger. The clearance SLA card was left out because the demo data shows it red ("SLA Breached"). Remotion sources, captures and the mix script live in a session scratchpad and are not in the repo.
 
-## [2026-10-29] Product video V7 re-edit (under review)
+## [2026-10-29] Product video V7 re-edit (committed 2026-11-09 in `748eda0`; still under owner review)
 - `docs/media/production/medcore-v7.mp4` (4:39, −14 LUFS) next to V6. Adds Andre's on-camera intro (name card), a 9 s app/dashboard tease, "Why we built MedCore", and his outro (replacing S14's "Next" line) with a Cagayan map and pin. Narration is V6's at 1.05× with pauses tightened; every motion-graphics scene was rebuilt in Remotion (kinetic type, count-ups, pain cards, PH region map, competitor quadrant, team, award). Logo is the flat badge only: the owner rejected a 3D shield.
 - Built in a session scratchpad (Remotion project, stems, mix script); those sources are temporary and not in the repo, so V7 cannot be re-rendered from repo files. Known gap: legacy SFX in the music stem are not re-synced to the new graphics.
 
@@ -102,63 +108,3 @@ Newest first, condensed. Decisions are in `DECISIONS.md`.
 - Fresh monorepo: `packages/domain`, `apps/api`, `apps/web`; old apps removed on that branch only. README.md and DEPLOY.md describe setup, security model and deployment. CI in `.github/workflows/ci.yml` (typecheck, lint, prettier, tests with a Postgres service, build, `npm audit --omit=dev`).
 - Migrations `apps/api/drizzle/0000_init.sql` (generated) and `0001_hardening.sql` (immutability/no-delete triggers). Local dev DB `medcore_v2_dev`; tests create and drop `medcore_v2_test`.
 - Browser check found and fixed: Field ARIA props leaking as DOM attributes, `₱-0.00` from negative zero, sign-in audit rows recorded as anonymous.
-
-## [2026-10-16] Audit C2 closed, login rate limit (C3)
-- Removed `POST /api/v1/auth/register` (MRN + phone + password) and `/forgot-password` from `routes/auth.ts` and `publicAuth`. Anonymous calls now get 401 from the auth wall; signed-in calls get 404. Stays are linked only through `/auth/otp/*` with purpose REGISTER.
-- New Workers rate limiter `PATIENT_AUTH_LIMITER` (namespace 2005, 10 per 60 s) in `wrangler.jsonc`. `otp.ts` already used it; `/auth/login` now checks it per IP and per email and returns 429 `RATE_LIMITED`. Not deployed yet.
-
-## [2026-10-16] Patient email-code sign-in (audit C2, §4)
-- `POST /api/v1/auth/otp/request` and `/verify` (`apps/server/src/routes/otp.ts`), ported from AdvanCare ADV-AUTH-001: 6-digit codes, sha256 stored, 10 min, 5 tries, 5 per hour, newest code only, race-safe consume. REGISTER sends only to the hospital-recorded `patients.email` (MRN + phone pick the record, decoy mask when nothing matches). Patient sessions last 30 days; `revoked_at` is honoured, `last_seen_at` is touched hourly, and logout now revokes instead of deleting.
-- Mailer `apps/server/src/services/mailer.ts`: dependency-free SMTP. It loads `cloudflare:sockets` lazily on Workers and `node:tls` on Node. With `NODE_ENV=development` and no SMTP, the code is logged; anywhere else that returns 503.
-- Migration `0006_patient_email_otp.sql` (OTP pieces of §3 only: `login_codes`, `patients.email`, `patient_account_links` with a LEGACY_MRN backfill of 2 links, `lower(email)` unique, nullable password with a staff CHECK, session columns). Applied to Neon **demo** only via `npm run db:otp`, which refuses production. Not recorded in `__drizzle_migrations` (D12 drift; the drifted `ai_*` tables were left out of the SQL).
-- Mobile `AuthScreen`: email → code (auto-submits on the sixth digit), "Link your hospital stay" (MRN + phone → code), password kept as a secondary path for demo accounts. Token still in SecureStore.
-- Tests: `npm run test:otp` (8 mailer checks + 13 flow checks on a disposable local DB `medcore_otp_validation`, SMTP blanked).
-- Deployed 2026-10-16 (merged with main's section-0 fixes): Worker version `40bdc37b…`, sender `medcore1.noreply@gmail.com` via `SMTP_USER` / `SMTP_PASSWORD` secrets. Demo emails seeded as `mcleinonza0531+…@gmail.com` aliases (2 guarantors, 9 patients). Live `/otp/request` returned 202 with real delivery.
-- Re-run `npm run seed:otp-emails -- mcleinonza0531@gmail.com` after any reseed: `scripts/seedPostgres.ts` still seeds juan/ramon.delacruz@gmail.com.
-
-## [2026-10-16] AI audit tables on demo (audit D12)
-- `ai_conversations` and `ai_audit_logs` existed only in `schema.ts`, so `recordAiAudit` writes were silently skipped. Added `0007_ai_audit_tables.sql` (`IF NOT EXISTS`, guarded FKs; first committed as 0006, renumbered after `0006_patient_email_otp`) and `npm run db:ai-audit` (refuses `NEON_BRANCH=production`). Applied to `demo` only. A hosted Cora call then wrote a `SUCCESS` audit row.
-- `__drizzle_migrations` on `demo` still records only 0000–0003 (0004–0007 applied by scripts). Do not run `drizzle-kit migrate` there until it is reconciled. The audit's remaining draft security migration is now 0008.
-
-## [2026-10-16] Audit section-0 demo fixes (C1, H5, H9, H10, M4)
-- No login password prefill. `seedPostgres.ts` and the test scripts read `SEED_PASSWORD` (12+ chars). The mobile demo CFO principal requires `MOBILE_DEMO_ENABLED=true` (set in `wrangler.jsonc`). `.env.example` `GATE_PASS_SECRET` is blank.
-- `DELETE /encounters/:id` is CFO-only and returns 409 once any payment, note or pass exists. Physicians can sign only their own encounters. AI routes cap free text and OCR size and use `AI_LIMITER` (10/60 s).
-- Hosted passwords rotated on `demo` with `scripts/rotateSeedPasswords.ts` (14 of 15 accounts, sessions revoked). Worker version `810c41bf…` deployed; Vercel rebuilt. `medcore1.vercel.app` serves an unrelated site but is still in the credentialed CORS list (H8).
-
-## [2026-10-16] Security audit and Singapore database
-- Audit report `docs/audits/2026-10-16/SECURITY_AND_ARCHITECTURE_AUDIT.md` (3 critical, 10 high findings, draft security migration, OTP design). No code changed.
-- Database moved from Neon Ohio to Singapore project `medcore-sg`: `production` (schema only) and `demo` (full copy, 21 tables matched, payments total ₱43,300.00). Hyperdrive repointed to `demo` direct endpoint; live health 200 with 248 encounters, about 435–463 ms warm. `neon.ts` added and repo linked.
-
-## [2026-10-14] Final polish, mascot, screenshots, video
-- Shared dashboard tokens and mobile tab bar refreshed (Solar icons). Cora mascot with blink and tilt animation replaces sparkle icons.
-- `UI_SCREENSHOTS/` recaptured (76 images plus two WebM walkthroughs), mirrored to `docs/media/assets/ui/`. Video direction and narration cues synchronized with recorded feature demonstrations.
-
-## [2026-10-13] Product video V3 and SMS presentation
-- V3 production brief, narration cues and team portraits manifest. Notices and disclaimers removed from the film; dashboard SMS toast simplified.
-
-## [2026-10-12] Apple-style UI, Cora languages, AI cache, SMS sandbox
-- Dashboard shell and mobile Home refreshed. Cora gains Tagalog and strict language checks. Shared `ai_result_cache` (migration 0004) deployed, backend `2ae8c460…`. SMS sandbox engine (migration 0005) deployed, backend `8ec21c04…`. Approvals & Disputes page sizes tuned.
-
-## [2026-10-11] Performance, AI integrity, Cora policy
-- Census latency 26.2 s cold to 16.7 s and 234 ms warm; shared pool, SWR hydration, lazy pages (main chunk 809 kB to 504 kB), mobile polling 12 s.
-- Runtime AI mocks removed; Hyperdrive SQL caching disabled after a stale-read root cause; hosted verifier passed all five AI services. Cora topic gate and policy deployed (`d31b7887…`, later `73a0ce2b…`). Native OCR scanner now uses real images. Fixed a Claims/eSOA initial-render null crash. Overlays rebuilt as `ViewportOverlay` and `ModalOverlay`.
-
-## [2026-10-10] Sync, notifications, hosted deployment, AI suite
-- Backend with finalize-bill, send-bill and notifications published to the Worker (`650e0bae…`). Hosted Neon holds the mobile demo principal and a patient account. Staff notifications (migration 0003), unified header search, shared gate-pass payload and QR, login screen redesign.
-- AI features delivered: claims scrubber, HMO appeal drafter, executive briefing, Cora, OCR scanner (14 AI tests, 88 API, 250 financial, 49 mobile).
-
-## [2026-10-09] Master audit and remediation
-- First master audit was BLOCKED by sandbox DB access; remediation then landed: shared waterfall engine, transactional mutations, server-authoritative dashboard, keyed exit PIN, `OR-SJMC` receipts, DAR formula, XML namespaces. Government ID validation, mobile administrator account, onboarding SVGs and animated preload, gesture-refresh hook, analytics card alignment, A4 printing. Reports in `docs/audits/2026-10-09/`.
-
-## [2026-10-08] Mobile reference match and simulated payments
-- Close reference-match UI pass, Expo Go SDK alignment fixes, annotated refinements, backend-owned simulated payments for four rails, Final LOA toast and confirmation lifecycle fixes, reusable A4 print engine.
-
-## [2026-10-06–07] Mobile patient companion
-- `apps/mobile` Expo patient app against the shared backend: sign-in, registration, bills, coverage, payments, documents, receipts, notifications. Independent audits cleared it as a prototype, not production.
-
-## [2026-10-03] Cloudflare Workers and Vercel authentication
-- Worker deployed with Hyperdrive and secret isolation. Fixed CORS regex for `medcore1.vercel.app`, Vercel `/api` proxy, `X-Forwarded-For` overflow, Hyperdrive pool starvation (error 1101), isolate socket lifecycle, and print root and logo defects.
-
-## [Sep 26 – Oct 2] Dashboard foundation
-- Built the eight-route Command Center, light-mode enterprise visual system, Master/Detail discharge workstation, 250-patient realistic dataset (100% reconciliation), RCM analytics suite, feature-sliced reorganization, confirmation modals, print engine, REM-scale density pass, PostgreSQL backend with Drizzle, atomic payment settlement and idempotency, the 14-finding code-review remediation, navigation simplification, shared control primitives, client separation and Vercel setup.
-- Product framing: PGC Digital Innovation Challenge alignment, competitive positioning and statutory research (see `NOTES.md`).

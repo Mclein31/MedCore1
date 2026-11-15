@@ -1,87 +1,51 @@
 # AQROMED / MedCore: TODO (Operational Brain)
 
-Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order.
+Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order. Last verified against the v2 code: 2026-11-15.
 
 ## Demo 2026-12-10 readiness (from 2026-11-13 audit)
 - 👤 Apply migrations `0002_doctor_pf_timeout` and `0003_notification_reads` to Neon `demo` (backup branch `demo-backup-2026-11-18` already taken; history shows 0000–0001 applied): `cd apps/api && DATABASE_URL=<demo direct URL> node --import tsx src/db/migrate.ts`. Must happen BEFORE the Worker deploy (the Worker reads the new column).
-- 👤 Then deploy the Worker: `npm run deploy -w @medcore/api`; confirm `placement.region gcp:asia-southeast1` and one AI call from a Philippine network.
+- 👤 Then deploy the Worker: `npm run deploy -w @medcore/api`; confirm `placement.region gcp:asia-southeast1` and one AI call from a Philippine network. This also ships the 2026-10-28 one-call Cora and cooldown fallback and the 2026-11-13 API fixes (staffEncounters, hmoAppealService, patientPortal, gatePass). Rebuild the Vercel dashboard after the push.
 - 👤 Shift demo dates on 2026-12-09: `cd apps/api && DATABASE_URL=<demo direct URL> SHIFT_ALLOW_REMOTE=<host> npm run db:shift-demo-dates -- --apply` (dry run without `--apply`; take a Neon branch first). Calendar reminder set for 2026-12-05.
 - 👤 iPhone: run `npm run native:prebuild -w @medcore/mobile` (new speech-recognition plugin), open `apps/mobile/ios/MedCore.xcworkspace`, pick a signing team, Release config, Developer Mode on; free-team installs expire in 7 days, reinstall the day before. Rebuild after any JS change.
-- 👤 Check Cloudflare Workers/Hyperdrive plan limits; set up Gemini billing (free tier 15 RPM).
-- ⬜ CF4 checks and RTH score now come from the latest AI pre-flight audit; never-audited claims stay neutral (no CF4 clinical source).
-- ⬜ Statutory "45 mins (DOH AO 2021-0037)" citations kept on the radar and velocity chart by design; facility targets use the configured threshold.
-- ⬜ D6: no dashboard OCR UI ever existed (checked git history); OCR stays mobile-only.
-- ⬜ M5: retired password-login / patient-selector code paths left in place (unused).
+- 👤 Check Cloudflare Workers/Hyperdrive plan limits; set up Gemini billing (free tier 15 RPM for Flash Lite; Cora now makes 1 call per answer, was ~3). Local `.env` `GEMINI_PRO_MODEL` set to `gemini-3.1-flash-lite` on 2026-10-28.
+- 👤 Watch the final cut (`docs/media/production/medcore-final.mp4`, V6) and review V7 / the 32 s promo end to end with sound against the competition checklist and honesty notes before submitting.
+- 👤 PGC Digital Innovation Challenge presentation 2026-12-10, SP Session Hall, Capitol Compound, Tuguegarao City (12-slide deck `MedCore_Presentation_Deck.pptx`, kept outside the repo; 5-minute pitch and 10-minute defense).
+- Notes from the audit (no action): CF4 checks and RTH score now come from the latest AI pre-flight audit and never-audited claims stay neutral; the statutory "45 mins (DOH AO 2021-0037)" citations stay on the radar and velocity chart by design; no dashboard OCR UI ever existed, so OCR stays mobile-only (D6); retired password-login / patient-selector code paths are left in place, unused (M5).
 
-## 0. v2 rebuild (`rebuild/medcore-v2`)
-- ✅ (2026-10-17) Manual acceptance guide: `TESTING_GUIDE.md`, linked from README. Includes current staff accounts and three verified patient MRN/DOB sign-ins, cross-app payment/dispute/plan/pass checks, role isolation, responsive layouts, known gaps and a replacement decision sheet. Test actions change local fictional data; the guide does not replace `main`.
-- ✅ (2026-10-17) Original v1 mobile and dashboard restored on the v2 API, with v2 staff login/MFA preserved. Mobile simulator and dashboard browser workflow verified.
-- ✅ (2026-10-17) Ported v1 server capabilities: AI stack (`Cora`, OCR, claims scrubber, HMO appeals, executive briefing), staff notifications/simulated SMS outbox, patient claim status & coverage detail, full RCM analytics, facility SLA configuration, admission edits, and promissory installment collection.
-- ✅ (2026-10-16) Domain package, hardened API, staff dashboard (patient web portal later removed: patients use the mobile app); 86 tests (31 domain incl. property tests, 55 API against real Postgres); browser-verified sign-in with MFA enrollment, payment → clearance → exit pass, patient code sign-in, 0% payment plan.
-- ✅ (2026-10-17) Full acceptance test suite (`TESTING_GUIDE.md`) passed and branch merged into `main`.
-- ✅ (2026-10-16) Mobile app rebuilt as `apps/mobile` on branch `rebuild/mobile-v2` (cut from `rebuild/medcore-v2`, not merged): code sign-in, bill, question a charge, simulated card payment, payment plan, exit pass QR/PIN, logout. Verified in the iOS simulator (Expo Go) against the local v2 API; 25 tests for the API client and token storage.
-- ✅ (2026-10-16) v1 look restored on v2 (dashboard and mobile share palette, type and Solar icons via `packages/icons`); Discharge Clearance board, cost estimator, rules page and mobile Hospital updates carried over.
-- ⬜ Mobile follow-ups: EAS dev build and signed builds, physical-device checks (keychain, Dynamic Type, VoiceOver), push notifications when a bill is ready, refund display once the API has refunds.
-- ✅ (2026-10-17) Port the AI layer (PHI scrubber, Cora, OCR, claims scrubber, appeals, briefing) onto v2 with per-user rate limits and input caps.
-- ✅ (2026-10-17) Deploy: Neon `demo` branch migrated and seeded with v2 schema, Hyperdrive id (`b611eac58efa4966b649dfa7d1631b2a`) + secrets deployed on Cloudflare Worker `medcore-backend` (`f6062a1e-d871-49e0-ba0a-55ee1a48ac3f`), and Vercel `https://med-core1.vercel.app` connected via root `vercel.json`.
-- ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet). Official PhilHealth eSOA DTD conformance still unproven.
-- ⬜ Dependency advisories (2026-10-17 root audit): 26 total (11 moderate, 15 high), including inherited Expo/tooling dependency chains. Resolve through compatible upstream upgrades; do not force breaking SDK changes as part of the UI port.
-
-## A. 2026-10-16 audit remediation
-Run in fresh sessions. Test migrations on a Neon branch first, and never seed or reset anything but `demo`.
-
-**Phase 0: close the open doors**
-- ✅ C1 (2026-10-16): rotate hosted passwords, remove the dashboard login prefill, make the seed read `SEED_PASSWORD` from the env and refuse remote hosts, put the demo principal behind a flag. The shared seed password is probably live on the hosted DB and a CFO account can browse all patients.
-- ✅ H5 (2026-10-16): blank `.env.example`. Rotate `GATE_PASS_SECRET` if it was ever used.
-- ⬜ H8: confirm ownership of the hard-coded Vercel origins, then move them to `ALLOWED_ORIGINS`.
-- ⬜ C3: Postgres rate limits on login, sign-in codes and MFA are done (`services/rateLimit.ts`). v2 has no per-user AI limit (2026-10-28 check); AI cost is bounded by `ai_result_cache` and the model cooldown only. Still to do: PIN verify limiter and DB lockout on login and PIN.
-- ⬜ H4: add `env.ts` with a production default. `GATE_PASS_SECRET` is required outside explicit development. Remove the public fallback secret.
-- ✅ H9 (2026-10-16): disable encounter hard-delete (409 once any payment, note or pass exists). H10: scope physician sign-off to the attending physician (both done).
-- ⬜ H2 quick part: `SameSite=Strict`, since the dashboard is already same-origin.
-
-**Phase 1: identity (next 2 weeks)**
-- ⬜ Rest of the draft security migration (now `0008`, since 0006 is patient OTP and 0007 is AI tables), run on a Neon branch first.
-- ✅ C2 (2026-10-16): patient email OTP (`routes/otp.ts`, Gmail SMTP from `medcore1.noreply@gmail.com`), old MRN-and-phone registration removed.
-- ⬜ Sessions and CSRF: H2 header check, H3 no web token in `localStorage`, H7 idle timeout (revocation via `revoked_at` is done).
-- ⬜ H1 gate-pass PIN hashing and attempt limits; H6 login fixes; M1 spoofable client IP; M2 security headers; M5 public health endpoint leak.
-
-**Phase 2: hardening**
-- ⬜ Staff TOTP MFA and invitations (AdvanCare phase A).
-- ⬜ Role matrix and audited PHI reads (M3), waiver separation of duties (M8), append-only audit (D15), retention cron (D13).
-- ⬜ `PAYMENTS_MODE` (M6), dependency upgrades (M9). AI input caps (M4) done 2026-10-16.
-- ⬜ Vitest, CI, split `encounters.ts`, lint.
-
-## B. Database
-- ⬜ Reconcile migration drift (audit D12): AI tables now exist (0007). Still record 0004–0007 in `drizzle.__drizzle_migrations` on `demo` before running `drizzle-kit migrate`.
-- 👤 Delete the Ohio Neon project after the rollback window (permanent). (Local Ohio `.env` backups deleted 2026-10-22.)
-- ⬜ For a real pilot, point Hyperdrive at the `production` branch (schema only, 0 rows).
-
-## C. Release gates for the patient mobile app (prototype only today)
-- ⬜ Abuse controls beyond the current rate limits (OTP identity is done, audit C2).
-- ⬜ Backend-bound expiring magic links; the Clarify selector is a demonstration.
-- ⬜ Real gateway confirmation and legal signing (currently simulated by design; see `DECISIONS.md`).
-- ⬜ Production controls for staff simulation workflows.
-- ⬜ Real PostgreSQL concurrency tests and physical-device checks (SecureStore, restart, logout, keyboard, safe areas, Dynamic Type, reduced motion, VoiceOver, native photo selection for the OCR scanner).
-- ⬜ Resolve npm audit advisories compatibly (root 17: 6 moderate, 9 high, 2 critical; mobile 22: 7 moderate, 15 high). No forced downgrades.
-- ⬜ Native EAS project setup and signed builds.
-
-## D. Verification gaps
-- ⬜ Exhaustive browser E2E certificate is BLOCKED: approval review rejected a live uncapped ₱21,000 QuickSign, and a user handoff is pending. Do not bypass the held action.
-- ⬜ Official PhilHealth eSOA DTD conformance is unproven (current XML is syntactically valid with the circular namespaces).
-- ⬜ Persisted 250-encounter and 200-bed parity, PostgreSQL rollback and concurrency, and native synchronization were verified only on local or synthetic setups.
-- ⬜ Dashboard scorecard and footer metrics are legacy values, not certified live measurements.
-- ⬜ Local sign-in: confirm which backend (local or hosted) the user's mobile account was created on; reseeding deletes locally created accounts and local and hosted accounts do not sync.
-- ⬜ Hosted guarantor Juan (now `mcleinonza0531+juandelacruz@gmail.com`) resolves to a patient with zero encounters; positive live Cora tests use the mobile presentation principal.
-- ✅ AI telemetry inserts (`ai_audit_logs`) work on `demo` since migration 0007.
-
-## E. Publication and media
-- 👤 Dashboard and mobile source changes from Oct 11–14 need normal publication: Vercel rebuild for the dashboard (explicit appeal Regenerate flag, SMS toast copy) and a Metro reload or rebuild for mobile.
-- ✅ Product video (2026-10-29): final cut `docs/media/production/medcore-final.mp4` (V6, about 4:40) with `MEDCORE_SCRIPT_FINAL.md`. The production sources are not included, so the film cannot be re-rendered from the current files.
-  1. 👤 Watch the final cut end to end with sound against the competition checklist and honesty notes before submitting.
-  2. ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): would need to be cut from `medcore-final.mp4`.
+## Open: product and data
+- ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet; voiding is blocked once money moved).
 - ⬜ Trapped capital differs between RCM Analytics (₱65,250 tile) and the Overview briefing (₱21,350); align the definitions.
-- 👤 (2026-10-28) Redeploy the Worker (`npm run deploy -w @medcore/api`) for one-call Cora and the cooldown fallback fix (3.1-primary deploy went out 13:34 UTC; hosted Cora then timed out on the 3-call flow). The rate-limit and cooldown deploy went out 2026-10-28 13:29 UTC; hosted Cora verified (correct ₱350 answer, 29 s on 3.5).
-- 👤 Gemini key is on the free tier (15 RPM for Flash Lite). Cora now makes 1 call per answer (was ~3). Set up billing before the Dec 10 pitch. (Local `.env` `GEMINI_PRO_MODEL` set to `gemini-3.1-flash-lite` on 2026-10-28.)
-- ⬜ Fix rough edges found while filming: "View discharge pass"/"View Gate Pass" open Documents instead of the pass; the appeal letter prints a raw ISO deadline and the admission date; the analytics AR aging (₱39.0 M) is inconsistent with ₱442.8 K billings; the clearance header labels the encounter number as MRN; the Home draft-bill state overlaps the patient name; Cora's money explanations vary between calls (once ₱350 → ₱3,500, once said the HMO ₱5,000 made up the balance), so ground the reply's numbers in the ledger; RN warning "Unsupported dashed / dotted border style".
-- ⬜ Dashboard main JS chunk is 570 KB (Vite 500 KB warning); consider further splitting.
-- 👤 PGC Digital Innovation Challenge presentation 2026-12-10, SP Session Hall, Capitol Compound, Tuguegarao City (12-slide deck `MedCore_Presentation_Deck.pptx`, 5-minute pitch and 10-minute defense).
+- ⬜ Rough edges found while filming, not yet confirmed fixed: the appeal letter prints the admission date; the clearance header labels the encounter number as MRN; Cora's money explanations varied between calls (once ₱350 → ₱3,500, once said the HMO ₱5,000 made up the balance), so ground the reply's numbers in the ledger; RN warning "Unsupported dashed / dotted border style". (Pass buttons, Home draft-bill overlap, ISO appeal deadline and computed AR aging were fixed 2026-10-29 / 2026-11-13.)
+- ⬜ Dashboard main JS chunk was 570 KB (Vite 500 KB warning); re-check after the 2026-11-13 code splitting.
+- ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): would need to be cut from `medcore-final.mp4` (production sources are not in the repo).
+- ⬜ Mobile follow-ups: EAS project and signed store builds, physical-device checks (keychain, Dynamic Type, VoiceOver, safe areas, reduced motion, native photo selection for OCR), push notifications when a bill is ready, refund display once the API has refunds.
+
+## Open: security and release gates (prototype only today)
+- ⬜ H8: confirm ownership of `medcore1.vercel.app` (it served an unrelated site on 2026-10-16) and drop it from `ALLOWED_ORIGINS` in `apps/api/wrangler.jsonc` if it is not ours.
+- ⬜ No staff AI rate limiter in v2 (only per-patient Cora/OCR); AI cost is otherwise bounded by the in-memory result cache and the model cooldown.
+- ⬜ Remaining audit items not yet re-checked against v2: H6 login fixes, M5 public health endpoint (v2 `/api/health` returns only `ok`/`error`), M9 dependency upgrades, D13 retention schedule review (v2 has an hourly purge cron).
+- ⬜ Abuse controls beyond the current rate limits (patient email-code identity is done).
+- ⬜ Backend-bound expiring magic links (the Clarify selector is a demonstration); real gateway confirmation and legal signing (simulated by design; see DECISIONS); production controls for staff simulation workflows.
+- ⬜ Resolve npm audit advisories compatibly; no forced downgrades or breaking SDK changes. Latest count: 12 (6 moderate, 6 high) after the Expo 58 upgrade (2026-10-27); the 2026-10-17 root audit had 26.
+- ⬜ Official PhilHealth eSOA DTD conformance is unproven (current XML is syntactically valid with the circular namespaces).
+
+## Open: database and environments
+- 👤 Delete the Ohio Neon project after the rollback window (permanent). Local Ohio `.env` backups were deleted 2026-10-22.
+- ⬜ For a real pilot, point Hyperdrive at the `production` branch (schema only, 0 rows).
+- ⬜ Local sign-in: confirm which backend (local or hosted) the user's mobile account was created on; reseeding deletes locally created accounts and local and hosted accounts do not sync.
+- ⬜ Hosted guarantor Juan (`mcleinonza0531+juandelacruz@gmail.com`) resolved to a patient with zero encounters in the v1 data; re-check on the v2 `demo` seed.
+
+## Open: verification gaps
+- ⬜ Exhaustive browser E2E certificate is BLOCKED: approval review rejected a live uncapped ₱21,000 QuickSign, and a user handoff is pending. Do not bypass the held action.
+- ⬜ Persisted parity, PostgreSQL rollback and concurrency, and native synchronization were verified only on local or synthetic setups.
+- ⬜ Dashboard scorecard and footer metrics are legacy values, not certified live measurements.
+
+## Done
+- ✅ (2026-11-13) Demo-readiness fixes on dashboard, mobile and API; standalone Release builds for iPhone/Android; Cora voice input; per-patient AI limits; `db:shift-demo-dates` script.
+- ✅ (2026-11-09) Product video V7 and 32 s promo committed (`docs/media/production/`); final cut V6 `medcore-final.mp4` (about 4:40) with `MEDCORE_SCRIPT_FINAL.md` (2026-10-29). Production sources are not in the repo, so the films cannot be re-rendered from repo files.
+- ✅ (2026-10-28) Per-IP limits raised to network-wide ceilings; mobile defaults to the hosted Worker; Gemini cooldown and one-call Cora (code; Worker deploy pending above).
+- ✅ (2026-10-17) v2 rebuild merged into `main` after the full `TESTING_GUIDE.md` acceptance suite passed; deployed: Neon `demo` migrated and seeded with the v2 schema, Worker `medcore-backend` (version `f6062a1e-d871-49e0-ba0a-55ee1a48ac3f`) with Hyperdrive `b611eac58efa4966b649dfa7d1631b2a`, Vercel `https://med-core1.vercel.app` via root `vercel.json`.
+- ✅ (2026-10-17) Original v1 mobile and dashboard UI restored on the v2 API (v2 staff login/MFA kept); v1 server capabilities ported (AI stack with PHI scrubbing, notifications and simulated SMS outbox, coverage detail, RCM analytics, facility SLA, admission edits, promissory installments).
+- ✅ (2026-10-16) v2 domain package, hardened API, staff dashboard (patient web portal removed; patients use the mobile app), v2 mobile app, shared `@medcore/icons`; CI workflow.
+- ✅ 2026-10-16 audit items implemented in v2 by design (verified in code 2026-11-15): C1 (no password prefill, `SEED_PASSWORD`, seed refuses remote hosts), C2 (patient email-code sign-in only), C3 (Postgres rate limits on login, codes, MFA, gate-pass verify, payments and patient AI), H1 (PIN derived not stored, 5 wrong PINs void the pass), H2 (`SameSite=Strict` + `x-medcore-csrf` header + Origin/Fetch Metadata), H3 (no web token in `localStorage`; cookies only), H4 (`env.ts` validation, `GATE_PASS_SECRET` required, no public fallback), H5, H7 (30 min staff idle timeout), H9, H10 (physicians scoped to own patients), M1 (client IP from `cf-connecting-ip` via `TRUST_PROXY=cloudflare`), M2 (security headers), M3 (audited PHI reads), M4 (AI input caps), M6 (`PATIENT_ONLINE_PAYMENTS`), M8 (waiver separation of duties), D15 (append-only audit log), staff TOTP MFA and invitations, Vitest + CI + lint, `encounters.ts` split into route modules.
+- ✅ Obsolete (v1 only, superseded by the v2 schema 2026-10-17): v1 migration drift D12 (`__drizzle_migrations` 0004–0007 on `demo`), the draft security migration `0006`/`0008`, `ai_conversations`/`ai_audit_logs` telemetry tables, and the Oct 11–14 v1 dashboard/mobile publication task.
