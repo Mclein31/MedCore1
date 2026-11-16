@@ -30,6 +30,8 @@ export const LIMITS = {
   // Per patient account; generous enough for a live demo, but caps runaway Gemini use (free tier 15 RPM).
   patientAiCora: { name: 'patient-ai-cora', limit: 30, windowSeconds: 600 },
   patientAiOcr: { name: 'patient-ai-ocr', limit: 30, windowSeconds: 600 },
+  // Per staff user across all staff AI endpoints; mirrors per-patient AI limits without blocking shared demo networks.
+  staffAi: { name: 'staff-ai', limit: 60, windowSeconds: 600 },
 } satisfies Record<string, LimitRule>;
 
 export async function consume(

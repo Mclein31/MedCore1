@@ -1,8 +1,9 @@
 import { eq, sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import * as s from '../src/db/schema';
-import { base32Decode } from '../src/lib/crypto';
+import { base32Decode, sha256Hex } from '../src/lib/crypto';
 import { currentStep, hotp } from '../src/lib/totp';
+import { geminiClient } from '../src/services/ai/geminiClient';
 import { LIMITS } from '../src/services/rateLimit';
 import { createHarness, PASSWORD, stayAwaitingSettlement, type Harness } from './harness';
 
@@ -421,5 +422,150 @@ describe('exit pass PIN', () => {
       pin: pass.pin,
     });
     expect(r.body.error.code).toBe('PASS_TAMPERED');
+  });
+});
+
+describe('staff AI rate limit', () => {
+  it('shares a Postgres per-staff bucket across staff AI endpoints, spares shared IPs, and resets after the window', async () => {
+    const aiHarness = await createHarness({ GEMINI_API_KEY: 'test-api-key-at-least-20-characters-long' });
+    const generate = vi.spyOn(geminiClient, 'generate').mockImplementation(async (options) => {
+      let rawJson: unknown;
+      if (options.prompt.includes('APL-')) {
+        const referenceNumber = /APL-[0-9A-F]{8}/.exec(options.prompt)![0];
+        const reconsiderationDeadline = /"reconsiderationDeadline":"([^"]+)"/.exec(options.prompt)![1]!;
+        const letterDate = /"letterDate":"([^"]+)"/.exec(options.prompt)![1]!;
+        rawJson = {
+          referenceNumber,
+          appealLetterMarkdown: `**Date:** ${letterDate}\n\nAppeal ${referenceNumber}\nRespond by ${reconsiderationDeadline}`,
+          citationsApplied: [],
+          attendingPhysicianName: 'Doctor',
+          doctorPan: 'None',
+          reconsiderationDeadline,
+          suggestedAttachments: [],
+        };
+      } else if (options.prompt.includes('ClaimsAuditResultSchema')) {
+        rawJson = {
+          rthRiskScore: 0.08,
+          riskLevel: 'LOW',
+          passThreshold: true,
+          cleanClaimReadiness: 92,
+          flags: [],
+          clinicalSummary: 'Documentation complete.',
+          suggestedDoctorAddendum: null,
+          esoaXmlConformity: true,
+        };
+      } else if (options.prompt.includes('card credential image')) {
+        rawJson = {
+          cardType: 'HMO',
+          idNumber: 'HMO-1234',
+          memberFullName: 'Patient 0',
+          dateOfBirth: '1990-01-01',
+          providerName: 'Maxicare',
+          validUntil: '2027-12-31',
+          confidenceScore: 0.95,
+          rawExtractedFields: {},
+        };
+      } else if (options.prompt.includes('server_record')) {
+        rawJson = {
+          scopeDecision: 'UNSUPPORTED',
+          reply: 'Hospital visiting hours are not recorded in your chart.',
+          mode: 'GENERAL',
+          suggestedActions: [],
+        };
+      } else {
+        rawJson = {
+          generatedAt: '2026-11-16T10:00:00Z',
+          briefingMarkdown: 'Briefing summary',
+          metricsSummary: {
+            activeInpatients: 1,
+            averageDischargeTatMinutes: 15,
+            slaTargetMinutes: 45,
+            reclaimedBedHoursLast24h: null,
+            trappedCapitalPesos: 0,
+            criticalDepartmentBottleneck: 'NONE',
+          },
+          topRecommendations: [],
+        };
+      }
+      return { modelUsed: 'primary-model', text: JSON.stringify(rawJson), rawJson };
+    });
+
+    try {
+      const stay = await stayAwaitingSettlement(aiHarness, { patientIndex: 0, bedIndex: 0, withHmo: true });
+      const sharedIp = '203.0.113.88';
+      const cfoUser = aiHarness.fixture.staff.find((u) => u.role === 'HOSPITAL_CFO')!;
+      const billingUser = aiHarness.fixture.staff.find((u) => u.role === 'BILLING_SPECIALIST')!;
+
+      const cfo = aiHarness.client({ ip: sharedIp });
+      expect(
+        (await cfo.post('/api/v1/auth/staff/login', { email: cfoUser.email, password: PASSWORD })).status,
+      ).toBe(200);
+      const billing = aiHarness.client({ ip: sharedIp });
+      expect(
+        (await billing.post('/api/v1/auth/staff/login', { email: billingUser.email, password: PASSWORD }))
+          .status,
+      ).toBe(200);
+
+      const samplePng =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
+      // All 5 staff AI endpoints consume the same per-staff bucket.
+      expect((await cfo.post('/api/v1/staff/ai/executive/briefing', {})).status).toBe(200);
+      expect(
+        (await cfo.post('/api/v1/staff/ai/claims/preflight-scrub', { encounterId: stay.id })).status,
+      ).toBe(200);
+      expect(
+        (
+          await cfo.post('/api/v1/staff/ai/hmo/generate-appeal', {
+            encounterId: stay.id,
+            deniedItemDescription: 'Toiletries',
+            deniedAmount: 350,
+          })
+        ).status,
+      ).toBe(200);
+      expect(
+        (
+          await cfo.post('/api/v1/staff/ai/cora/chat', {
+            encounterId: stay.id,
+            message: 'What are visiting hours?',
+            language: 'en',
+          })
+        ).status,
+      ).toBe(200);
+      expect((await cfo.post('/api/v1/staff/ai/ocr/extract-card', { imageBase64: samplePng })).status).toBe(
+        200,
+      );
+
+      for (let i = 5; i < LIMITS.staffAi.limit; i++) {
+        const res = await cfo.post('/api/v1/staff/ai/executive/briefing', {});
+        expect(res.status, `call #${i + 1}`).toBe(200);
+      }
+
+      const blocked = await cfo.post('/api/v1/staff/ai/claims/preflight-scrub', { encounterId: stay.id });
+      expect(blocked.status).toBe(429);
+      expect(blocked.body.error.code).toBe('RATE_LIMITED');
+      expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+
+      const bucketKey = await sha256Hex(`${LIMITS.staffAi.name}:${cfoUser.id}`);
+      const [bucket] = await aiHarness.db
+        .select()
+        .from(s.rateLimitBuckets)
+        .where(eq(s.rateLimitBuckets.key, bucketKey));
+      expect(bucket?.count).toBe(LIMITS.staffAi.limit + 1);
+
+      // A second staff user on the same IP is unaffected.
+      const otherStaff = await billing.post('/api/v1/staff/ai/claims/preflight-scrub', {
+        encounterId: stay.id,
+      });
+      expect(otherStaff.status).toBe(200);
+
+      // Advancing past the window clears the block without forcing re-login (<30 min idle timeout).
+      aiHarness.advance((LIMITS.staffAi.windowSeconds + 1) * 1000);
+      const recovered = await cfo.post('/api/v1/staff/ai/executive/briefing', {});
+      expect(recovered.status).toBe(200);
+    } finally {
+      generate.mockRestore();
+      await aiHarness.close();
+    }
   });
 });

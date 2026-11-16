@@ -166,6 +166,11 @@ export function cf4Summary(
 
 export const staffAiRoutes = new Hono<AppBindings>();
 
+staffAiRoutes.use('*', async (c, next) => {
+  await enforce(c, [[LIMITS.staffAi, c.get('staff')?.id]]);
+  await next();
+});
+
 staffAiRoutes.post('/cora/chat', requirePermission('encounter:read'), jsonBody(CoraChatBody), async (c) => {
   const body = c.req.valid('json');
   if (!body.encounterId) throw new ApiError(400, 'INVALID_AI_REQUEST', 'Encounter ID is required.');
