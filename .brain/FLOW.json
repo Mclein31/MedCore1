@@ -232,7 +232,7 @@
    "label": "AI API",
    "kind": "api",
    "layer": "backend",
-   "detail": "Cora chat, OCR, claims scrubber, appeal drafter and executive briefing.",
+   "detail": "Rate-limited Cora chat, OCR, claims scrubber, appeal drafter and executive briefing.",
    "file": "apps/api/src/routes/ai.ts"
   },
   {
@@ -280,7 +280,7 @@
    "label": "AI pipeline",
    "kind": "service",
    "layer": "backend",
-   "detail": "PHI scrub, result cache, Gemini call, schema validation and rehydration.",
+   "detail": "PHI scrub, result cache, Gemini call, schema validation, rehydration and Cora ledger grounding.",
    "file": "apps/api/src/services/ai/phiScrubber.ts"
   },
   {
@@ -386,6 +386,14 @@
    "layer": "backend",
    "detail": "Lobby check of pass number and PIN: verified, wrong PIN, expired, voided or tampered.",
    "file": "apps/api/src/routes/staffOperations.ts"
+  },
+  {
+   "id": "dc.grounded",
+   "label": "Amounts grounded?",
+   "kind": "decision",
+   "layer": "backend",
+   "detail": "Checks Cora peso figures against recorded ledger; retries once or falls back to deterministic summary.",
+   "file": "apps/api/src/services/ai/coraService.ts"
   }
  ],
  "edges": [
@@ -651,13 +659,33 @@
   },
   {
    "from": "api.ai",
+   "to": "svc.auth",
+   "label": "rate limits"
+  },
+  {
+   "from": "api.ai",
    "to": "svc.ai",
    "label": "runs"
   },
   {
    "from": "svc.ai",
    "to": "ext.gemini",
-   "label": "generateContent"
+   "label": "interactions API"
+  },
+  {
+   "from": "ext.gemini",
+   "to": "dc.grounded",
+   "label": "checks amounts"
+  },
+  {
+   "from": "dc.grounded",
+   "to": "ui.m.cora",
+   "label": "yes: grounded reply"
+  },
+  {
+   "from": "dc.grounded",
+   "to": "svc.ai",
+   "label": "no: retry / fallback"
   },
   {
    "from": "svc.ai",
@@ -781,6 +809,11 @@
   },
   {
    "from": "dc.perm",
+   "to": "api.ai",
+   "label": "yes"
+  },
+  {
+   "from": "dc.perm",
    "to": "ui.w.shell",
    "label": "no: 403"
   },
@@ -872,7 +905,9 @@
     "svc.m.api",
     "api.ai",
     "svc.ai",
-    "ext.gemini"
+    "ext.gemini",
+    "dc.grounded",
+    "ui.m.cora"
    ]
   },
   {
