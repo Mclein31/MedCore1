@@ -820,7 +820,7 @@ export const PrintDocument: React.FC<{ config: PrintDocumentConfig }> = ({ confi
               </colgroup>
               <thead className="bg-slate-100 border-b border-slate-300 font-bold uppercase text-[9px]">
                 <tr>
-                  <th className="py-2 px-3 border-r border-slate-300">Patient &amp; MRN</th>
+                  <th className="py-2 px-3 border-r border-slate-300">Patient &amp; Encounter</th>
                   <th className="py-2 px-2.5 border-r border-slate-300">Room</th>
                   <th className="py-2 px-3 border-r border-slate-300">PhilHealth ACR</th>
                   <th className="py-2 px-3 border-r border-slate-300">HMO Carrier</th>

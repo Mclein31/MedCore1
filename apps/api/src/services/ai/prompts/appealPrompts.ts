@@ -27,6 +27,7 @@ Never invent surgery, consumables, physician orders, laboratory results, policy 
 The denied items may be any charge category. Address only those supplied. State when evidence or the insurer's denial reason is unavailable and request review of the applicable policy.
 Use supplied patient/physician tokens verbatim. Do not copy facts from any other case.
 Copy referenceNumber and reconsiderationDeadline from the supplied documentation exactly into the JSON response. Include that same referenceNumber in the letter.
+Date the letter header using the supplied letterDate exactly; never use admissionDate as the letter date.
 A requested 48-hour response window is a request, not a statutory deadline. Include citations only when supported by supplied documentation; otherwise return an empty citationsApplied array.
 Return the required JSON with a formal markdown letter, signature block and relevant suggested attachments.`;
 
@@ -41,11 +42,12 @@ export function buildHmoAppealPrompt(
   denialReason: string,
   primaryDiagnosis: string,
   clinicalJustificationNotes: string,
+  letterDate?: string,
 ): string {
   return `Draft an authoritative, medico-legal HMO Medical Necessity Appeal letter:
 
 === CASE IDENTIFIERS ===
-Encounter Reference: ${encounterId}
+${letterDate ? `Letter Date: ${letterDate}\n` : ''}Encounter Reference: ${encounterId}
 Patient Pseudonym: ${patientPseudonym}
 Attending Physician: ${attendingDoctor} (PAN: ${doctorPan})
 Target HMO Provider: ${hmoProvider}

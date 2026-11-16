@@ -1,6 +1,6 @@
 # AQROMED / MedCore: TODO (Operational Brain)
 
-Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order. Last verified against the v2 code: 2026-11-15.
+Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each group is priority order. Last verified against the v2 code: 2026-11-16.
 
 ## Demo 2026-12-10 readiness (from 2026-11-13 audit)
 - 👤 Apply migrations `0002_doctor_pf_timeout` and `0003_notification_reads` to Neon `demo` (backup branch `demo-backup-2026-11-18` already taken; history shows 0000–0001 applied): `cd apps/api && DATABASE_URL=<demo direct URL> node --import tsx src/db/migrate.ts`. Must happen BEFORE the Worker deploy (the Worker reads the new column).
@@ -14,9 +14,10 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 
 ## Open: product and data
 - ⬜ Refunds/reversals flow for `ledgers.credit_cents` (a waiver after payment shows a refund due but there is no refund action yet; voiding is blocked once money moved).
-- ⬜ Trapped capital differs between RCM Analytics (₱65,250 tile) and the Overview briefing (₱21,350); align the definitions.
-- ⬜ Rough edges found while filming, not yet confirmed fixed: the appeal letter prints the admission date; the clearance header labels the encounter number as MRN; Cora's money explanations varied between calls (once ₱350 → ₱3,500, once said the HMO ₱5,000 made up the balance), so ground the reply's numbers in the ledger; RN warning "Unsupported dashed / dotted border style". (Pass buttons, Home draft-bill overlap, ISO appeal deadline and computed AR aging were fixed 2026-10-29 / 2026-11-13.)
-- ⬜ Dashboard main JS chunk was 570 KB (Vite 500 KB warning); re-check after the 2026-11-13 code splitting.
+- ✅ Trapped capital differs between RCM Analytics (₱65,250 tile) and the Overview briefing (₱21,350); align the definitions — done 2026-11-16: shared `sumTrappedCapitalCents` in `@medcore/domain` sums unpaid `balanceCents` for `HMO_FINAL_LOA` and `PENDING_SETTLEMENT` across both views.
+- ✅ Appeal letter admission date and clearance header MRN label (filming rough edges) — done 2026-11-16: `APPEAL_SYSTEM_PROMPT`/`hmoAppealService` enforce `letterDate` and reject `admissionDate` in the letter date header; `ActiveDischargeRadar`, `EncountersLedgerPage`, and `PrintDocumentContainer` table headers changed from `Patient & MRN` to `Patient & Encounter`.
+- ⬜ Remaining filming rough edges: Cora's money explanations varied between calls (once ₱350 → ₱3,500, once said the HMO ₱5,000 made up the balance), so ground the reply's numbers in the ledger; RN warning "Unsupported dashed / dotted border style". (Pass buttons, Home draft-bill overlap, ISO appeal deadline and computed AR aging were fixed 2026-10-29 / 2026-11-13.)
+- ✅ Dashboard main JS chunk was 570 KB (Vite 500 KB warning); re-check after the 2026-11-13 code splitting — done 2026-11-16: `npm run build` emits `index-*.js` at 340.74 kB (106.48 kB gzip) and `OriginalWorkspace-*.js` at 267.67 kB (55.89 kB gzip) with no >500 KB warning; no further splitting needed.
 - ⬜ 15-second teaser (S1 hook, S5 waterfall, S9 payment, logo): would need to be cut from `medcore-final.mp4` (production sources are not in the repo).
 - ⬜ Mobile follow-ups: EAS project and signed store builds, physical-device checks (keychain, Dynamic Type, VoiceOver, safe areas, reduced motion, native photo selection for OCR), push notifications when a bill is ready, refund display once the API has refunds.
 

@@ -184,7 +184,7 @@ export const MacroRevenueScorecard: React.FC<MacroRevenueScorecardProps> = ({
               {formatPhp(metrics.trappedWorkingCapital)}
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              Active patient balances pending discharge clearance or eLOA
+              Unsettled patient balances pending final LOA or settlement
             </p>
           </div>
         </div>

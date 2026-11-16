@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { can, canWaive, encounterScope, STAFF_ROLES, WAIVER_LIMIT_CENTS } from '../src/access';
 import { PatientPaymentBody, PromissoryBody, StaffLoginBody } from '../src/contracts';
 import { addMonths, isIsoDate, manilaDate } from '../src/dates';
-import { chargesEditable, slaStatus, transition } from '../src/discharge';
+import {
+  chargesEditable,
+  isTrappedCapitalStage,
+  slaStatus,
+  sumTrappedCapitalCents,
+  transition,
+} from '../src/discharge';
 import { validateGovernmentId } from '../src/governmentId';
 import { formatPeso, lineTotal, MoneyError, mulRatio, parsePesos, sumCents } from '../src/money';
 import { checkPassword } from '../src/password';
@@ -106,6 +112,31 @@ describe('discharge state machine', () => {
     expect(slaStatus(10, 25, 40)).toBe('ON_TRACK');
     expect(slaStatus(25, 25, 40)).toBe('WARNING');
     expect(slaStatus(41, 25, 40)).toBe('BREACH');
+  });
+
+  it('sums trapped capital only for balances awaiting final LOA or settlement', () => {
+    expect(isTrappedCapitalStage('HMO_FINAL_LOA')).toBe(true);
+    expect(isTrappedCapitalStage('PENDING_SETTLEMENT')).toBe(true);
+    expect(isTrappedCapitalStage('ADMITTED')).toBe(false);
+    expect(isTrappedCapitalStage('MGH_DECLARED')).toBe(false);
+    expect(isTrappedCapitalStage('DOCTOR_PF_PENDING')).toBe(false);
+    expect(isTrappedCapitalStage('PHARMACY_RTS_AUDIT')).toBe(false);
+    expect(isTrappedCapitalStage('CLEARED')).toBe(false);
+    expect(isTrappedCapitalStage('CLEARED_GATE_PASS')).toBe(false);
+
+    expect(
+      sumTrappedCapitalCents([
+        { stage: 'ADMITTED', balanceCents: 1_500_000 },
+        { stage: 'MGH_DECLARED', balanceCents: 800_000 },
+        { stage: 'DOCTOR_PF_PENDING', balanceCents: 900_000 },
+        { stage: 'PHARMACY_RTS_AUDIT', balanceCents: 700_000 },
+        { stage: 'HMO_FINAL_LOA', balanceCents: 1_100_000 },
+        { stage: 'PENDING_SETTLEMENT', balanceCents: 1_035_000 },
+        { stage: 'CLEARED', balanceCents: 500_000 },
+        { stage: 'CLEARED_GATE_PASS', balanceCents: 500_000 },
+        { stage: 'PENDING_SETTLEMENT', balanceCents: null },
+      ]),
+    ).toBe(2_135_000);
   });
 });
 

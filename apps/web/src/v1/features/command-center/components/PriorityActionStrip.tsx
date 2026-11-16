@@ -11,7 +11,7 @@ export const PriorityActionStrip: React.FC = () => {
     (e) => e.hmo.finalLoaStatus === 'PENDING_SUBMISSION' || e.hmo.finalLoaStatus === 'AWAITING_CODE',
   );
 
-  const trappedCapital = encounters.reduce((sum, enc) => sum + (enc.remainingBalance ?? 0), 0);
+  const patientReceivables = encounters.reduce((sum, enc) => sum + (enc.remainingBalance ?? 0), 0);
   const actions = [
     {
       label: 'Discharge queue',
@@ -43,7 +43,7 @@ export const PriorityActionStrip: React.FC = () => {
     },
     {
       label: 'Patient receivables',
-      value: formatPhp(trappedCapital),
+      value: formatPhp(patientReceivables),
       icon: CreditCard,
       attention: false,
       onClick: () => setActiveRoute('ENCOUNTERS_LEDGER'),

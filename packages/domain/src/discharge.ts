@@ -80,6 +80,29 @@ export function chargesEditable(stage: DischargeStage): boolean {
   return stage !== 'PENDING_SETTLEMENT' && stage !== 'CLEARED';
 }
 
+/**
+ * Stages where clearance has reached final payer or cashier settlement:
+ * unpaid balances here represent capital trapped at release gates.
+ */
+export const TRAPPED_CAPITAL_STAGES: readonly DischargeStage[] = ['HMO_FINAL_LOA', 'PENDING_SETTLEMENT'];
+
+export function isTrappedCapitalStage(stage: string): boolean {
+  return stage === 'HMO_FINAL_LOA' || stage === 'PENDING_SETTLEMENT';
+}
+
+/** Sum unpaid patient balances (in centavos) for encounters held at final LOA or settlement. */
+export function sumTrappedCapitalCents(
+  encounters: ReadonlyArray<{ stage: string; balanceCents: number | null | undefined }>,
+): number {
+  let total = 0;
+  for (const enc of encounters) {
+    if (isTrappedCapitalStage(enc.stage)) {
+      total += Math.max(0, Math.round(enc.balanceCents ?? 0));
+    }
+  }
+  return total;
+}
+
 export type SlaStatus = 'ON_TRACK' | 'WARNING' | 'BREACH';
 
 /** The discharge SLA clock starts at the may-go-home order. */

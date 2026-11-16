@@ -1,4 +1,4 @@
-import { minutesBetween } from '@medcore/domain';
+import { minutesBetween, sumTrappedCapitalCents } from '@medcore/domain';
 import { and, eq, isNull } from 'drizzle-orm';
 import type { DbOrTx } from '../../db/client';
 import { encounters, ledgers } from '../../db/schema';
@@ -82,12 +82,12 @@ export class ExecutiveBriefingService {
           : 0,
     };
 
-    let trappedRevenueCents = 0;
-    for (const { encounter: enc, ledger } of activeInpatients) {
-      if (enc.stage === 'HMO_FINAL_LOA' || enc.stage === 'PENDING_SETTLEMENT') {
-        trappedRevenueCents += ledger?.balanceCents ?? 0;
-      }
-    }
+    const trappedRevenueCents = sumTrappedCapitalCents(
+      activeInpatients.map(({ encounter: enc, ledger }) => ({
+        stage: enc.stage,
+        balanceCents: ledger?.balanceCents,
+      })),
+    );
     const trappedRevenue = trappedRevenueCents / 100;
 
     const telemetryMetrics = {

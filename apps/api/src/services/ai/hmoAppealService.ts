@@ -41,6 +41,42 @@ export interface GenerateHmoAppealOptions {
 
 const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Returns true if the appeal markdown prints the admission date as the letter's date header
+ * (for example, on a "Date:" line or standalone header line) when it differs from letterDate.
+ */
+export function hasAdmissionDateAsLetterDate(
+  markdown: string,
+  admissionDate: string,
+  letterDate: string,
+): boolean {
+  if (!admissionDate || admissionDate === letterDate) return false;
+  const admRegex = new RegExp(`\\b${escapeRegex(admissionDate)}\\b`, 'i');
+  const letterDateRegex = new RegExp(`\\b${escapeRegex(letterDate)}\\b`, 'i');
+  const lines = markdown.split(/\r?\n/);
+
+  for (const line of lines) {
+    const stripped = line.replace(/[*_`>#-]/g, '').trim();
+    if (
+      /^(?:letter\s+)?date\s*:/i.test(stripped) &&
+      admRegex.test(stripped) &&
+      !letterDateRegex.test(stripped)
+    ) {
+      return true;
+    }
+  }
+
+  const nonEmptyLeading = lines
+    .map((l) => l.replace(/[*_`>#-]/g, '').trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  return nonEmptyLeading.some((line) => line.toLowerCase() === admissionDate.toLowerCase());
+}
+
 export class HmoAppealService {
   async generateAppeal(
     options: GenerateHmoAppealOptions,
@@ -80,6 +116,14 @@ export class HmoAppealService {
 
     const referenceNumberPlaceholder = 'AI_APPEAL_REFERENCE';
     const reconsiderationDeadlinePlaceholder = 'AI_APPEAL_DEADLINE';
+    const letterDate = (options.now ?? new Date()).toLocaleDateString('en-PH', {
+      timeZone: 'Asia/Manila',
+      dateStyle: 'long',
+    });
+    const admissionDate = enc.admittedAt.toLocaleDateString('en-PH', {
+      timeZone: 'Asia/Manila',
+      dateStyle: 'long',
+    });
 
     const rawPrompt = buildHmoAppealPrompt(
       enc.encounterNumber,
@@ -93,17 +137,12 @@ export class HmoAppealService {
       `${enc.primaryDiagnosis} (${enc.icd10Code})`,
       JSON.stringify({
         facility: { name: facility.name, address: facility.address },
-        // Without this the model invents a date for the letter.
-        letterDate: (options.now ?? new Date()).toLocaleDateString('en-PH', {
-          timeZone: 'Asia/Manila',
-          dateStyle: 'long',
-        }),
-        letterDateInstruction: 'Date the letter with letterDate exactly; do not use any other date.',
+        // Without this the model uses admissionDate or invents a date for the letter header.
+        letterDate,
+        letterDateInstruction:
+          'Date the letter header with letterDate exactly. Never use admissionDate as the letter date.',
         referenceNumber: referenceNumberPlaceholder,
-        admissionDate: enc.admittedAt.toLocaleDateString('en-PH', {
-          timeZone: 'Asia/Manila',
-          dateStyle: 'long',
-        }),
+        admissionDate,
         loaNumber: hmo?.approvalCode ?? 'Not recorded',
         reconsiderationDeadline: reconsiderationDeadlinePlaceholder,
         items: activeItems
@@ -121,6 +160,7 @@ export class HmoAppealService {
         suppliedJustification:
           options.justificationNotes || 'No clinical notes or physician justification supplied.',
       }),
+      letterDate,
     );
 
     const scrubbed = scrubPatientData(rawPrompt, {
@@ -164,11 +204,13 @@ export class HmoAppealService {
           if (
             parsed.referenceNumber !== referenceNumber ||
             parsed.reconsiderationDeadline !== reconsiderationDeadline ||
-            !parsed.appealLetterMarkdown.includes(referenceNumber)
+            !parsed.appealLetterMarkdown.includes(referenceNumber) ||
+            !parsed.appealLetterMarkdown.includes(letterDate) ||
+            hasAdmissionDateAsLetterDate(parsed.appealLetterMarkdown, admissionDate, letterDate)
           ) {
             throw new AiInferenceError(
               'AI_INVALID_RESPONSE',
-              'The generated letter did not preserve its appeal reference and requested response date. Please regenerate it.',
+              'The generated letter did not preserve its letter date, appeal reference, or requested response date. Please regenerate it.',
             );
           }
           const readableDeadline = new Date(reconsiderationDeadline).toLocaleString('en-PH', {

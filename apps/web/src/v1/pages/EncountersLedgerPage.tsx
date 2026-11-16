@@ -5,10 +5,12 @@ import { TripartiteWorkbench } from '@/v1/features/ledger/components/TripartiteW
 import { formatPhp } from '@/v1/utils/formatters';
 import React, { useState } from 'react';
 
-export const EncountersLedgerPage: React.FC = () => {
+export const EncountersLedgerPage: React.FC<{
+  initialTab?: 'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE';
+}> = ({ initialTab = 'INPATIENT_LEDGER' }) => {
   const { encounters, selectEncounter, openAdmitPatientModal, notifyPatientSms, isSmsSending, activeRole } =
     useMedCore();
-  const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>('INPATIENT_LEDGER');
+  const [activeTab, setActiveTab] = useState<'INPATIENT_LEDGER' | 'PRE_ADMISSION_INTAKE'>(initialTab);
 
   // Estimator State
   const [smsEncounterId, setSmsEncounterId] = useState('');
@@ -222,7 +224,7 @@ export const EncountersLedgerPage: React.FC = () => {
                 <table className="w-full text-left text-sm border-collapse">
                   <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
                     <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                      <th className="py-3 px-3 text-left">Patient &amp; MRN</th>
+                      <th className="py-3 px-3 text-left">Patient &amp; Encounter</th>
                       <th className="py-3 px-3 text-left">Room</th>
                       <th className="py-3 px-3 text-left">Payer</th>
                       <th className="py-3 px-3 text-left">Net Patient Due</th>

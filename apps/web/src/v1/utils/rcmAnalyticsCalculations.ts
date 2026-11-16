@@ -1,3 +1,4 @@
+import { sumTrappedCapitalCents } from '@medcore/domain';
 import type {
   ArAgingSummary,
   CommercialCarrierMetric,
@@ -412,7 +413,6 @@ export function computeMacroKpiMetrics(
   let atRiskAmount = 0;
   let atRiskCases = 0;
   let problemCount = 0;
-  let trappedCapital = 0;
   let recoveredAmount = 0;
 
   for (const enc of filteredEncounters) {
@@ -438,10 +438,6 @@ export function computeMacroKpiMetrics(
       problemCount++;
     }
 
-    if (enc.stage !== 'CLEARED_GATE_PASS') {
-      trappedCapital += enc.waterfall.netPatientDue;
-    }
-
     // Revenue recovered: Promissory notes + supervisory waived disputes
     if (enc.promissoryNote) {
       recoveredAmount += enc.promissoryNote.principalAmount;
@@ -454,6 +450,17 @@ export function computeMacroKpiMetrics(
       }
     }
   }
+
+  // Uses the shared domain rule so RCM Analytics matches the Executive Briefing metric.
+  const trappedCapital =
+    sumTrappedCapitalCents(
+      filteredEncounters.map((enc) => {
+        const openPesos =
+          enc.remainingBalance ??
+          Math.max(0, enc.waterfall.netPatientDue - (enc.amountPaid ?? enc.waterfall.patientPaid ?? 0));
+        return { stage: enc.stage, balanceCents: Math.round(openPesos * 100) };
+      }),
+    ) / 100;
 
   const cleanClaimRate =
     totalEncountersCount > 0

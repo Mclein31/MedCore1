@@ -2,6 +2,12 @@
 
 Newest first, condensed. Decisions are in `DECISIONS.md`. v1-era entries (Sep 26 to the 2026-10-16 audit fixes) are in [archive/CHANGELOG_ARCHIVE.md](archive/CHANGELOG_ARCHIVE.md).
 
+## [2026-11-16] Demo polish (PGC 2026-12-10 prep)
+- **HMO appeal letter date guard:** Updated `APPEAL_SYSTEM_PROMPT`, `buildHmoAppealPrompt`, and `hmoAppealService` (`apps/api/src/services/ai/`) so `Letter Date` is surfaced in case identifiers and the service rejects generated letters that omit `letterDate` or place `admissionDate` in the letter date header (`hasAdmissionDateAsLetterDate`). Added unit/integration coverage in `apps/api/test/hmoAppeal.test.ts`.
+- **Clearance & table headers:** Changed `Patient & MRN` table headers that display `enc.encounterNumber` to `Patient & Encounter` in `ActiveDischargeRadar.tsx`, `EncountersLedgerPage.tsx`, and `PrintDocumentContainer.tsx` (`COVERAGE_APPROVALS_REPORT`); added component render coverage in `apps/web/test/demoPolish.test.tsx`.
+- **Trapped Capital alignment:** Extracted `TRAPPED_CAPITAL_STAGES`, `isTrappedCapitalStage`, and `sumTrappedCapitalCents` into `packages/domain/src/discharge.ts` (unpaid `balanceCents` for `HMO_FINAL_LOA` and `PENDING_SETTLEMENT`) and wired both `executiveBriefingService.ts` and `rcmAnalyticsCalculations.ts` (`computeMacroKpiMetrics`) to it; aligned `MacroRevenueScorecard.tsx` subtitle and added tests in `packages/domain/test/rules.test.ts`, `apps/api/test/executiveBriefing.test.ts`, and `apps/web/test/demoPolish.test.tsx`. Documented decision in `DECISIONS.md`.
+- **Bundle verification:** Re-verified `npm run build` (`vite build`): main JS entry `index-*.js` is 340.74 kB (106.48 kB gzip), `OriginalWorkspace-*.js` is 267.67 kB (55.89 kB gzip), zero >500 KB chunk warnings. Note: updated `apps/api` changes still require owner deploy per `TODO.md`.
+
 ## [2026-11-15] Brain cleanup
 - Verified the brain against the v2 code and git log. `ARCHITECTURE.md` rewritten for the v2 monorepo (old v1 text moved verbatim to `archive/ARCHITECTURE_V1_ARCHIVE.md`); v1-era changelog entries and decision periods (2026-10-14 and older) moved verbatim to `archive/`, with still-binding decisions kept in `DECISIONS.md` under "Carried forward".
 - Corrected stale facts: Gemini primary is `gemini-3.1-flash-lite` (backup 3.5); v2 migrations are `0000`–`0003` (the v1 `0004`–`0008` drift items are obsolete); no R2 binding or `neon.ts` in v2; `docs/audits/`, `docs/v2/` and validation folders were removed on 2026-10-29 (git history only); the pitch deck is not in the repo.

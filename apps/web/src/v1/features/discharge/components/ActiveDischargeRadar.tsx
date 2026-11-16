@@ -32,7 +32,9 @@ import { matchesEncounterSearch } from '@/v1/utils/encounterSearch';
 import { formatPhp } from '@/v1/utils/formatters';
 import React, { useEffect, useRef, useState } from 'react';
 
-export const ActiveDischargeRadar: React.FC = () => {
+export const ActiveDischargeRadar: React.FC<{
+  initialViewMode?: 'MASTER_DETAIL' | 'TABLE' | 'CARD_LIST';
+}> = ({ initialViewMode = 'MASTER_DETAIL' }) => {
   const {
     searchQuery,
     encounters,
@@ -57,7 +59,7 @@ export const ActiveDischargeRadar: React.FC = () => {
   } = useMedCore();
 
   const filterQuery = searchQuery;
-  const [viewMode, setViewMode] = useState<'MASTER_DETAIL' | 'TABLE' | 'CARD_LIST'>('MASTER_DETAIL');
+  const [viewMode, setViewMode] = useState<'MASTER_DETAIL' | 'TABLE' | 'CARD_LIST'>(initialViewMode);
   const [isQueueCollapsed, setIsQueueCollapsed] = useState(false);
   const [mobileActivePane, setMobileActivePane] = useState<'QUEUE' | 'DETAIL'>('QUEUE');
   const [activeDetailTab, setActiveDetailTab] = useState<'CLEARANCE' | 'CHARGES' | 'TIMELINE'>('CLEARANCE');
@@ -1723,7 +1725,7 @@ export const ActiveDischargeRadar: React.FC = () => {
           <table className="w-full min-w-[950px] text-left text-sm border-collapse">
             <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200">
               <tr className="text-xs font-bold uppercase tracking-wider text-slate-600">
-                <th className="py-3 px-6 text-left">Patient &amp; MRN</th>
+                <th className="py-3 px-6 text-left">Patient &amp; Encounter</th>
                 <th className="py-3 px-4 text-left">Room / Bed</th>
                 <th className="py-3 px-4 text-left">Attending Doctor</th>
                 <th className="py-3 px-4 text-left">Payer / Plan</th>
