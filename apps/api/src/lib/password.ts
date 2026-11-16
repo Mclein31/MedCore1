@@ -48,13 +48,17 @@ export async function verifyPassword(
   return { ok, needsRehash: ok && iterations < targetIterations };
 }
 
-let dummy: Promise<string> | null = null;
+const dummyByIterations = new Map<number, Promise<string>>();
 
 /**
  * Burn the same work as a real verification when the account does not exist, so
  * response time does not reveal which emails are registered.
  */
 export async function verifyAgainstDummy(password: string, iterations: number): Promise<void> {
-  dummy ??= hashPassword('medcore-timing-equalizer', iterations);
+  let dummy = dummyByIterations.get(iterations);
+  if (!dummy) {
+    dummy = hashPassword('medcore-timing-equalizer', iterations);
+    dummyByIterations.set(iterations, dummy);
+  }
   await verifyPassword(password, await dummy, iterations);
 }

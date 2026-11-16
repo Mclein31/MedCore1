@@ -1,5 +1,6 @@
 import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { createApp } from '../src/app';
 import * as s from '../src/db/schema';
 import { base32Decode, sha256Hex } from '../src/lib/crypto';
 import { currentStep, hotp } from '../src/lib/totp';
@@ -24,6 +25,25 @@ describe('surface', () => {
     expect(res.headers.get('x-frame-options')).toBe('DENY');
     expect(res.headers.get('content-security-policy')).toContain("default-src 'none'");
     expect(res.headers.get('x-request-id')).toBeTruthy();
+  });
+
+  it('health returns 503 degraded without leaking database error details (M5)', async () => {
+    const degradedApp = createApp({
+      ...h.services,
+      database: {
+        acquire: async () => ({
+          db: {
+            execute: async () => {
+              throw new Error('postgres://secret-host:5432/medcore connection failed');
+            },
+          } as never,
+          release: async () => undefined,
+        }),
+      },
+    });
+    const res = await degradedApp.request('/api/health');
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ status: 'degraded', database: 'error' });
   });
 
   it('errors carry a request id and never leak internals', async () => {
@@ -110,6 +130,42 @@ describe('staff sign-in', () => {
     expect(wrong.status).toBe(401);
     expect(unknown.body.error.message).toBe(wrong.body.error.message);
     expect(unknown.body.error.code).toBe(wrong.body.error.code);
+  });
+
+  it('normalizes mixed-case email, hides inactive state identically, and caps password length (H6)', async () => {
+    const targetEmail = email('CLAIMS_ENCODER');
+    const c = h.client();
+    const mixedCase = await c.post('/api/v1/auth/staff/login', {
+      email: `  ${targetEmail.toUpperCase()}  `,
+      password: PASSWORD,
+    });
+    expect(mixedCase.status).toBe(200);
+
+    const tooLong = await h.client().post('/api/v1/auth/staff/login', {
+      email: targetEmail,
+      password: 'x'.repeat(129),
+    });
+    expect(tooLong.status).toBe(422);
+    expect(tooLong.body.error.code).toBe('VALIDATION_FAILED');
+
+    const cfo = await h.staff('HOSPITAL_CFO');
+    const user = h.fixture.staff.find((u) => u.email === targetEmail)!;
+    const unknown = await h.client().post('/api/v1/auth/staff/login', {
+      email: 'missing@nowhere.example.test',
+      password: PASSWORD,
+    });
+    await cfo.patch(`/api/v1/staff/users/${user.id}`, { isActive: false });
+    try {
+      const inactive = await h.client().post('/api/v1/auth/staff/login', {
+        email: targetEmail,
+        password: PASSWORD,
+      });
+      expect(inactive.status).toBe(401);
+      expect(inactive.body.error.code).toBe(unknown.body.error.code);
+      expect(inactive.body.error.message).toBe(unknown.body.error.message);
+    } finally {
+      await cfo.patch(`/api/v1/staff/users/${user.id}`, { isActive: true });
+    }
   });
 
   it('locks the account after five wrong passwords, even for the right one', async () => {

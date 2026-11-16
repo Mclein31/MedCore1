@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { AiConfig } from '../src/env';
 import {
+  assertReplyNumbersGroundedInLedger,
+  buildDeterministicLedgerSummary,
   collectAllowedLedgerCents,
   coraService,
   extractPesoAmountsCents,
@@ -228,11 +230,46 @@ describe('Cora peso grounding helpers', () => {
     expect(allowed.has(270_000)).toBe(true);
     expect(allowed.has(90_000)).toBe(true);
     expect(allowed.has(350_000)).toBe(false);
+
+    expect(() => assertReplyNumbersGroundedInLedger('Toiletries cost ₱3,500.00.', allowed)).toThrowError(
+      AiInferenceError,
+    );
+    expect(() =>
+      assertReplyNumbersGroundedInLedger('HMO ₱5,000 made up the balance.', new Set([370_000, 1_300_000])),
+    ).toThrowError(AiInferenceError);
+
+    for (const language of ['en', 'fil', 'tl', 'ilo'] as const) {
+      const summary = buildDeterministicLedgerSummary({
+        language,
+        mode: 'WHY_DO_I_OWE',
+        hmoProviderName: 'PhilCare',
+        grossHospitalCents: 1_670_000,
+        grossProfessionalFeeCents: 500_000,
+        grossCents: 2_170_000,
+        vatExemptionCents: 0,
+        seniorPwdDiscountCents: 0,
+        philhealthCents: 1_300_000,
+        hmoCents: 500_000,
+        excludedConsumablesCents: 35_000,
+        roomUpgradeExcessCents: 0,
+        doctorExcessPfCents: 0,
+        coverageShortfallCents: 335_000,
+        netPatientDueCents: 370_000,
+        paidCents: 100_000,
+        financedCents: 0,
+        balanceCents: 270_000,
+        creditCents: 0,
+      });
+      expect(summary.modelUsed).toBe('ledger-summary-fallback');
+      expect(summary.reply).toContain('₱21,700.00');
+      expect(summary.reply).toContain('₱2,700.00');
+      expect(findUngroundedPesoAmounts(summary.reply, allowed)).toEqual([]);
+    }
   });
 });
 
 describe('Cora service ledger grounding', () => {
-  it('passes structured ledger data and enforces the 350 -> 3,500 post-check without caching failures', async () => {
+  it('passes structured ledger data, retries once on 350 -> 3,500, and falls back cleanly without caching fallback', async () => {
     const stay = await createSettlingStay({
       patientIndex: 0,
       bedIndex: 0,
@@ -245,13 +282,13 @@ describe('Cora service ledger grounding', () => {
       hmoApprovedCents: 500_000, // ₱5,000.00 HMO -> ₱3,700.00 remaining
     });
 
-    let capturedPrompt = '';
+    const prompts: string[] = [];
     let capturedSystem = '';
     let replyText =
       'Your admission kit (toiletries) charge is ₱3,500.00, bringing your balance to ₱3,700.00.';
 
     const generate = vi.spyOn(geminiClient, 'generate').mockImplementation(async (options) => {
-      capturedPrompt = options.prompt;
+      prompts.push(options.prompt);
       capturedSystem = options.systemInstruction ?? '';
       const rawJson = {
         scopeDecision: 'ANSWERED',
@@ -263,20 +300,30 @@ describe('Cora service ledger grounding', () => {
     });
 
     try {
-      await expect(
-        coraService.chat({
-          db: h.db,
-          encounterId: stay.id,
-          facilityId: h.fixture.facility.id,
-          message: 'Why do I owe ₱3,700?',
-          language: 'en',
-          mode: 'WHY_DO_I_OWE',
-          aiConfig,
-        }),
-      ).rejects.toBeInstanceOf(AiInferenceError);
+      const fallback = await coraService.chat({
+        db: h.db,
+        encounterId: stay.id,
+        facilityId: h.fixture.facility.id,
+        message: 'Why do I owe ₱3,700?',
+        language: 'en',
+        mode: 'WHY_DO_I_OWE',
+        aiConfig,
+      });
 
-      // Inspect structured ledger prompt sent to Gemini
-      const parsedPrompt = JSON.parse(capturedPrompt) as {
+      // Retried once automatically before returning the deterministic ledger summary fallback.
+      expect(prompts).toHaveLength(2);
+      expect(prompts[1]).toContain('CORRECTION:');
+      expect(prompts[1]).toContain('₱350.00');
+      expect(prompts[1]).toContain('₱3,700.00');
+      expect(fallback.modelUsed).toBe('ledger-summary-fallback');
+      expect(fallback.reply).toContain('[Recorded ledger summary');
+      expect(fallback.reply).toContain('₱350.00');
+      expect(fallback.reply).toContain('₱5,000.00');
+      expect(fallback.reply).toContain('₱3,700.00');
+      expect(fallback.reply).not.toContain('3,500');
+
+      // Inspect structured ledger prompt sent to Gemini on the first call.
+      const parsedPrompt = JSON.parse(prompts[0]!) as {
         server_record: { authoritativeLedger: Record<string, unknown> };
       };
       const ledger = parsedPrompt.server_record.authoritativeLedger as {
@@ -301,7 +348,7 @@ describe('Cora service ledger grounding', () => {
       expect(capturedSystem).toContain('authoritativeLedger');
       expect(capturedSystem).toContain('NEVER say that HMO or PhilHealth coverage is owed by the patient');
 
-      // Now return exact grounded figures; the rejected reply must not have been cached.
+      // Now return exact grounded figures; the fallback must not have been cached.
       replyText =
         'Your gross bill is ₱21,700.00. PhilHealth deducted ₱13,000.00 and PhilCare HMO covered ₱5,000.00. Your remaining balance of ₱3,700.00 comes from ₱350.00 for excluded toiletries plus ₱3,350.00 coverage shortfall.';
       const ok = await coraService.chat({
@@ -313,6 +360,8 @@ describe('Cora service ledger grounding', () => {
         mode: 'WHY_DO_I_OWE',
         aiConfig,
       });
+      expect(prompts).toHaveLength(3);
+      expect(ok.modelUsed).toBe('primary-model');
       expect(ok.reply).toContain('₱350.00');
       expect(ok.reply).toContain('₱5,000.00');
       expect(ok.reply).toContain('₱3,700.00');
@@ -321,7 +370,80 @@ describe('Cora service ledger grounding', () => {
     }
   });
 
-  it('rejects ungrounded 5,000 via the patient AI route and accepts grounded partial-payment updates', async () => {
+  it('recovers cleanly via retry when the model self-corrects on the second attempt', async () => {
+    const stay = await createSettlingStay({
+      patientIndex: 4,
+      bedIndex: 4,
+      roomCents: 600_000,
+      ivCents: 90_000,
+      toiletriesCents: 35_000,
+      pfCents: 500_000,
+      philhealthHciCents: 300_000,
+      philhealthPfCents: 100_000,
+      hmoApprovedCents: 200_000,
+    });
+
+    const prompts: string[] = [];
+    const generate = vi
+      .spyOn(geminiClient, 'generate')
+      .mockImplementationOnce(async (options) => {
+        prompts.push(options.prompt);
+        const rawJson = {
+          scopeDecision: 'ANSWERED',
+          reply: 'Your toiletries charge is ₱3,500.00.',
+          mode: 'WHY_DO_I_OWE',
+          suggestedActions: [],
+        };
+        return { modelUsed: 'primary-model', text: JSON.stringify(rawJson), rawJson };
+      })
+      .mockImplementationOnce(async (options) => {
+        prompts.push(options.prompt);
+        const rawJson = {
+          scopeDecision: 'ANSWERED',
+          reply: 'Your toiletries charge is ₱350.00 and your remaining balance is ₱6,250.00.',
+          mode: 'WHY_DO_I_OWE',
+          suggestedActions: [{ label: 'Review bill', actionType: 'NAVIGATE_BILL' }],
+        };
+        return { modelUsed: 'primary-model', text: JSON.stringify(rawJson), rawJson };
+      });
+
+    try {
+      const recovered = await coraService.chat({
+        db: h.db,
+        encounterId: stay.id,
+        facilityId: h.fixture.facility.id,
+        message: 'Magkano ang toiletries ko?',
+        language: 'fil',
+        mode: 'WHY_DO_I_OWE',
+        aiConfig,
+      });
+      expect(prompts).toHaveLength(2);
+      expect(prompts[1]).toContain('CORRECTION:');
+      expect(prompts[1]).toContain('₱350.00');
+      expect(prompts[1]).toContain('₱6,250.00');
+      expect(recovered.modelUsed).toBe('primary-model');
+      expect(recovered.reply).toBe(
+        'Your toiletries charge is ₱350.00 and your remaining balance is ₱6,250.00.',
+      );
+
+      // A verified retry answer IS cached for duplicate requests.
+      const cached = await coraService.chat({
+        db: h.db,
+        encounterId: stay.id,
+        facilityId: h.fixture.facility.id,
+        message: 'Magkano ang toiletries ko?',
+        language: 'fil',
+        mode: 'WHY_DO_I_OWE',
+        aiConfig,
+      });
+      expect(prompts).toHaveLength(2);
+      expect(cached.reply).toBe(recovered.reply);
+    } finally {
+      generate.mockRestore();
+    }
+  });
+
+  it('never fails on ungrounded 5,000 via the patient AI route and accepts grounded partial-payment updates', async () => {
     // Encounter WITHOUT ₱5,000 anywhere in the ledger (PF ₱4,500, HMO ₱2,000, PhilHealth ₱4,000)
     const stay = await createSettlingStay({
       patientIndex: 2,
@@ -348,14 +470,17 @@ describe('Cora service ledger grounding', () => {
     });
 
     try {
-      const bad = await patientClient.post('/api/v1/patient/ai/cora/chat', {
+      const fallbackRes = await patientClient.post('/api/v1/patient/ai/cora/chat', {
         encounterId: stay.id,
         message: 'Why do I have a balance?',
-        language: 'en',
+        language: 'fil',
         mode: 'WHY_DO_I_OWE',
       });
-      expect(bad.status).toBe(502);
-      expect(bad.body.error.code).toBe('AI_INVALID_RESPONSE');
+      expect(fallbackRes.status, JSON.stringify(fallbackRes.body)).toBe(200);
+      expect(fallbackRes.body.modelUsed).toBe('ledger-summary-fallback');
+      expect(fallbackRes.body.reply).toContain('[Recorded ledger summary');
+      expect(fallbackRes.body.reply).toContain('₱5,750.00');
+      expect(fallbackRes.body.reply).not.toContain('5,000');
 
       // Record a partial ₱1,000.00 payment and confirm Cora accepts exact payment + updated balance
       const pay = await stay.billing.post(
@@ -376,6 +501,52 @@ describe('Cora service ledger grounding', () => {
       });
       expect(good.status, JSON.stringify(good.body)).toBe(200);
       expect(good.body.reply).toContain('₱4,750.00');
+    } finally {
+      generate.mockRestore();
+    }
+  });
+
+  it('falls back to deterministic ledger summary if the retry fails or times out', async () => {
+    const stay = await createSettlingStay({
+      patientIndex: 5,
+      bedIndex: 5,
+      roomCents: 600_000,
+      ivCents: 90_000,
+      toiletriesCents: 35_000,
+      pfCents: 500_000,
+      philhealthHciCents: 300_000,
+      philhealthPfCents: 100_000,
+      hmoApprovedCents: 200_000,
+    });
+
+    const generate = vi
+      .spyOn(geminiClient, 'generate')
+      .mockResolvedValueOnce({
+        modelUsed: 'primary-model',
+        text: '{}',
+        rawJson: {
+          scopeDecision: 'ANSWERED',
+          reply: 'Your excluded charge is ₱3,500.00.',
+          mode: 'WHY_DO_I_OWE',
+          suggestedActions: [],
+        },
+      })
+      .mockRejectedValueOnce(new AiInferenceError('AI_TIMEOUT', 'Timed out on retry.', 504));
+
+    try {
+      const res = await coraService.chat({
+        db: h.db,
+        encounterId: stay.id,
+        facilityId: h.fixture.facility.id,
+        message: 'Why do I owe this much?',
+        language: 'ilo',
+        mode: 'WHY_DO_I_OWE',
+        aiConfig,
+      });
+      expect(res.modelUsed).toBe('ledger-summary-fallback');
+      expect(res.reply).toContain('[Pakabuklan manipud iti opisial a listaan ti bill yo]');
+      expect(res.reply).toContain('₱6,250.00');
+      expect(res.reply).not.toContain('3,500');
     } finally {
       generate.mockRestore();
     }

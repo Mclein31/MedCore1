@@ -25,6 +25,7 @@ import { AiInferenceError } from './geminiClient';
 import { clearTokenMap, rehydrateText, scrubPatientData } from './phiScrubber';
 import {
   buildCoraPrompt,
+  CORA_ACTION_LABELS,
   type CoraEncounterContext,
   type CoraFinancialContext,
   type CoraHistoryTurn,
@@ -247,6 +248,221 @@ export function assertReplyNumbersGroundedInLedger(reply: string, allowedCents: 
       'AI_INVALID_RESPONSE',
       'Cora returned a peso amount that does not match the recorded ledger. Please try again.',
     );
+  }
+}
+
+function buildGroundingCorrectionPrompt(
+  scrubbedPrompt: string,
+  ungroundedTokens: readonly string[],
+  allowedAmounts: readonly string[],
+): string {
+  return `${scrubbedPrompt}\n\nCORRECTION: Your previous reply used peso amount(s) not present in server_record (${ungroundedTokens.join(', ')}). Rewrite the answer in the selected response_language quoting ONLY these recorded ledger peso figures: ${allowedAmounts.join(', ')}. Never alter digits or treat insurer deductions as remaining balance.`;
+}
+
+export interface DeterministicLedgerSummaryInput {
+  language: CoraLanguage;
+  mode: CoraMode;
+  hmoProviderName?: string | null;
+  grossHospitalCents: number;
+  grossProfessionalFeeCents: number;
+  grossCents: number;
+  vatExemptionCents: number;
+  seniorPwdDiscountCents: number;
+  philhealthCents: number;
+  hmoCents: number;
+  excludedConsumablesCents: number;
+  roomUpgradeExcessCents: number;
+  doctorExcessPfCents: number;
+  coverageShortfallCents: number;
+  netPatientDueCents: number;
+  paidCents: number;
+  financedCents: number;
+  balanceCents: number;
+  creditCents: number;
+}
+
+const FALLBACK_COPY: Record<
+  CoraLanguage,
+  {
+    banner: string;
+    totalCharges: string;
+    hospital: string;
+    doctor: string;
+    deductions: string;
+    noDeductions: string;
+    vat: string;
+    seniorPwd: string;
+    philhealth: string;
+    hmo: string;
+    patientShare: string;
+    excluded: string;
+    roomUpgrade: string;
+    excessPf: string;
+    shortfall: string;
+    paid: string;
+    financed: string;
+    remaining: string;
+    credit: string;
+  }
+> = {
+  en: {
+    banner: '[Recorded ledger summary — exact figures from your bill]',
+    totalCharges: 'Total billed charges',
+    hospital: 'hospital',
+    doctor: 'doctor fee',
+    deductions: 'Deductions applied',
+    noDeductions: 'none recorded',
+    vat: 'VAT exemption',
+    seniorPwd: 'Senior/PWD discount',
+    philhealth: 'PhilHealth',
+    hmo: 'HMO',
+    patientShare: 'Patient share',
+    excluded: 'excluded items',
+    roomUpgrade: 'room upgrade excess',
+    excessPf: 'doctor fee excess',
+    shortfall: 'uncovered charges',
+    paid: 'Payments recorded',
+    financed: 'Promissory note financed',
+    remaining: 'Remaining balance',
+    credit: 'Overpayment credit',
+  },
+  fil: {
+    banner: '[Recorded ledger summary — eksaktong figures mula sa bill ninyo]',
+    totalCharges: 'Total billed charges',
+    hospital: 'hospital',
+    doctor: 'doctor PF',
+    deductions: 'Mga nabawas',
+    noDeductions: 'walang naitalang bawas',
+    vat: 'VAT exemption',
+    seniorPwd: 'Senior/PWD discount',
+    philhealth: 'PhilHealth',
+    hmo: 'HMO',
+    patientShare: 'Sagot ng pasyente',
+    excluded: 'excluded items',
+    roomUpgrade: 'room upgrade excess',
+    excessPf: 'doctor fee excess',
+    shortfall: 'uncovered charges',
+    paid: 'Nabayaran na',
+    financed: 'Promissory note',
+    remaining: 'Natitirang balance',
+    credit: 'Overpayment credit',
+  },
+  tl: {
+    banner: '[Buod mula sa opisyal na talaan ng bayarin]',
+    totalCharges: 'Kabuuang singil',
+    hospital: 'ospital',
+    doctor: 'bayad sa doktor',
+    deductions: 'Mga ibinawas',
+    noDeductions: 'walang nakatalang bawas',
+    vat: 'eksemsyon sa VAT',
+    seniorPwd: 'diskwentong Senior/PWD',
+    philhealth: 'PhilHealth',
+    hmo: 'HMO',
+    patientShare: 'Bahagi ng pasyente',
+    excluded: 'hindi saklaw na gamit',
+    roomUpgrade: 'sobra sa kuwarto',
+    excessPf: 'sobra sa bayad sa doktor',
+    shortfall: 'hindi nasaklaw na singil',
+    paid: 'Nabayaran na',
+    financed: 'Promissory note',
+    remaining: 'Natitirang babayaran',
+    credit: 'Sobrang bayad',
+  },
+  ilo: {
+    banner: '[Pakabuklan manipud iti opisial a listaan ti bill yo]',
+    totalCharges: 'Dagup a singir',
+    hospital: 'ospital',
+    doctor: 'bayad ti doktor',
+    deductions: 'Dagiti naibawas',
+    noDeductions: 'awan nailista a bawas',
+    vat: 'eksemsion iti VAT',
+    seniorPwd: 'diskuento ti Senior/PWD',
+    philhealth: 'PhilHealth',
+    hmo: 'HMO',
+    patientShare: 'Pasarte ti pasiente',
+    excluded: 'saan a sakop a gamit',
+    roomUpgrade: 'sobra ti kuarto',
+    excessPf: 'sobra a bayad ti doktor',
+    shortfall: 'saan a nasakup a singir',
+    paid: 'Nabayadanen',
+    financed: 'Promissory note',
+    remaining: 'Nabati a babayaran',
+    credit: 'Sobra a bayad',
+  },
+};
+
+/** Build a labelled deterministic summary using only recorded ledger figures when model output stays ungrounded. */
+export function buildDeterministicLedgerSummary(
+  input: DeterministicLedgerSummaryInput,
+): CoraResponse & { modelUsed: string } {
+  const copy = FALLBACK_COPY[input.language];
+  const chargeSubparts: string[] = [];
+  if (input.grossHospitalCents > 0)
+    chargeSubparts.push(`${copy.hospital} ${formatPeso(input.grossHospitalCents)}`);
+  if (input.grossProfessionalFeeCents > 0) {
+    chargeSubparts.push(`${copy.doctor} ${formatPeso(input.grossProfessionalFeeCents)}`);
+  }
+
+  const deductions: string[] = [];
+  if (input.vatExemptionCents > 0) deductions.push(`${copy.vat} ${formatPeso(input.vatExemptionCents)}`);
+  if (input.seniorPwdDiscountCents > 0) {
+    deductions.push(`${copy.seniorPwd} ${formatPeso(input.seniorPwdDiscountCents)}`);
+  }
+  if (input.philhealthCents > 0) deductions.push(`${copy.philhealth} ${formatPeso(input.philhealthCents)}`);
+  if (input.hmoCents > 0) {
+    const hmoLabel =
+      input.hmoProviderName && input.hmoProviderName !== 'None'
+        ? `${input.hmoProviderName} ${copy.hmo}`
+        : copy.hmo;
+    deductions.push(`${hmoLabel} ${formatPeso(input.hmoCents)}`);
+  }
+
+  const shareParts: string[] = [];
+  if (input.excludedConsumablesCents > 0) {
+    shareParts.push(`${copy.excluded} ${formatPeso(input.excludedConsumablesCents)}`);
+  }
+  if (input.roomUpgradeExcessCents > 0) {
+    shareParts.push(`${copy.roomUpgrade} ${formatPeso(input.roomUpgradeExcessCents)}`);
+  }
+  if (input.doctorExcessPfCents > 0) {
+    shareParts.push(`${copy.excessPf} ${formatPeso(input.doctorExcessPfCents)}`);
+  }
+  if (input.coverageShortfallCents > 0) {
+    shareParts.push(`${copy.shortfall} ${formatPeso(input.coverageShortfallCents)}`);
+  }
+
+  const sentences = [
+    copy.banner,
+    `${copy.totalCharges}: ${formatPeso(input.grossCents)}${chargeSubparts.length ? ` (${chargeSubparts.join(', ')})` : ''}.`,
+    `${copy.deductions}: ${deductions.length ? deductions.join(', ') : copy.noDeductions}.`,
+    `${copy.patientShare}: ${formatPeso(input.netPatientDueCents)}${shareParts.length ? ` (${shareParts.join(', ')})` : ''}.`,
+  ];
+
+  if (input.paidCents > 0) sentences.push(`${copy.paid}: ${formatPeso(input.paidCents)}.`);
+  if (input.financedCents > 0) sentences.push(`${copy.financed}: ${formatPeso(input.financedCents)}.`);
+  sentences.push(`${copy.remaining}: ${formatPeso(input.balanceCents)}.`);
+  if (input.creditCents > 0) sentences.push(`${copy.credit}: ${formatPeso(input.creditCents)}.`);
+
+  const actionLabels = CORA_ACTION_LABELS[input.language];
+  const suggestedActions: CoraResponse['suggestedActions'] = [
+    { actionType: 'NAVIGATE_BILL', label: actionLabels.NAVIGATE_BILL },
+    input.balanceCents > 0
+      ? { actionType: 'NAVIGATE_PAYMENT', label: actionLabels.NAVIGATE_PAYMENT }
+      : { actionType: 'NAVIGATE_COVERAGE', label: actionLabels.NAVIGATE_COVERAGE },
+  ];
+
+  return {
+    scopeDecision: 'ANSWERED',
+    reply: sentences.join(' '),
+    mode: input.mode,
+    suggestedActions,
+    modelUsed: 'ledger-summary-fallback',
+  };
+}
+
+class CoraLedgerFallbackSignal extends Error {
+  constructor(readonly fallback: CoraResponse & { modelUsed: string }) {
+    super('Returning deterministic ledger summary fallback.');
   }
 }
 
@@ -565,6 +781,46 @@ export class CoraService {
     );
     const scrubbed = scrubPatientData(rawPrompt, scrubCtx);
 
+    const allowedFormattedAmounts = [...allowedLedgerCents].sort((a, b) => a - b).map(formatPeso);
+    const deterministicFallback = buildDeterministicLedgerSummary({
+      language,
+      mode,
+      hmoProviderName: hmo?.providerName ?? null,
+      grossHospitalCents: ledger?.grossHospitalCents ?? 0,
+      grossProfessionalFeeCents: ledger?.grossProfessionalFeeCents ?? 0,
+      grossCents: grossTotalCents,
+      vatExemptionCents,
+      seniorPwdDiscountCents,
+      philhealthCents: philhealthAppliedCents,
+      hmoCents: hmoAppliedCents,
+      excludedConsumablesCents,
+      roomUpgradeExcessCents: enc.roomUpgradeExcessCents,
+      doctorExcessPfCents: enc.doctorExcessPfCents,
+      coverageShortfallCents,
+      netPatientDueCents,
+      paidCents,
+      financedCents,
+      balanceCents: remainingBalanceCents,
+      creditCents,
+    });
+
+    const hydrateAnswer = (answer: CoraResponse, modelUsed: string): CoraResponse & { modelUsed: string } => {
+      const hydratedReply = rehydrateText(
+        rehydrateText(answer.reply, scrubbed.tokenMap),
+        scrubbedMessage.tokenMap,
+      );
+      return {
+        scopeDecision: answer.scopeDecision,
+        reply: hydratedReply,
+        mode: answer.mode || mode,
+        suggestedActions: (answer.suggestedActions || []).map((a) => ({
+          label: rehydrateText(a.label, scrubbed.tokenMap),
+          actionType: a.actionType,
+        })),
+        modelUsed,
+      };
+    };
+
     try {
       return await cachedAiResult({
         module: 'cora-chat',
@@ -590,38 +846,72 @@ export class CoraService {
               modelUsed: 'policy-guard',
             };
           }
-          const { answer, modelUsed } = await generateLocalizedCoraReply({
+
+          const first = await generateLocalizedCoraReply({
             prompt: scrubbed.scrubbedText,
             language,
             aiConfig,
             deadline,
           });
-          if (answer.scopeDecision === 'OUT_OF_SCOPE' || answer.scopeDecision === 'RESTRICTED') {
+          if (first.answer.scopeDecision === 'OUT_OF_SCOPE' || first.answer.scopeDecision === 'RESTRICTED') {
             return {
-              scopeDecision: answer.scopeDecision,
-              reply: coraPolicyNotice(answer.scopeDecision, language),
+              scopeDecision: first.answer.scopeDecision,
+              reply: coraPolicyNotice(first.answer.scopeDecision, language),
               mode,
               suggestedActions: [],
-              modelUsed,
+              modelUsed: first.modelUsed,
             };
           }
-          const hydratedReply = rehydrateText(
-            rehydrateText(answer.reply, scrubbed.tokenMap),
-            scrubbedMessage.tokenMap,
-          );
-          assertReplyNumbersGroundedInLedger(hydratedReply, allowedLedgerCents);
-          return {
-            scopeDecision: answer.scopeDecision,
-            reply: hydratedReply,
-            mode: answer.mode || mode,
-            suggestedActions: (answer.suggestedActions || []).map((a) => ({
-              label: rehydrateText(a.label, scrubbed.tokenMap),
-              actionType: a.actionType,
-            })),
-            modelUsed,
-          };
+
+          const firstHydrated = hydrateAnswer(first.answer, first.modelUsed);
+          const ungroundedFirst = findUngroundedPesoAmounts(firstHydrated.reply, allowedLedgerCents);
+          if (ungroundedFirst.length === 0) {
+            return firstHydrated;
+          }
+
+          // Retry once automatically with an explicit correction listing allowed ledger figures.
+          if (Date.now() < deadline - 1000) {
+            const correctionPrompt = buildGroundingCorrectionPrompt(
+              scrubbed.scrubbedText,
+              ungroundedFirst,
+              allowedFormattedAmounts,
+            );
+            try {
+              const retry = await generateLocalizedCoraReply({
+                prompt: correctionPrompt,
+                language,
+                aiConfig,
+                deadline,
+              });
+              if (
+                retry.answer.scopeDecision === 'OUT_OF_SCOPE' ||
+                retry.answer.scopeDecision === 'RESTRICTED'
+              ) {
+                return {
+                  scopeDecision: retry.answer.scopeDecision,
+                  reply: coraPolicyNotice(retry.answer.scopeDecision, language),
+                  mode,
+                  suggestedActions: [],
+                  modelUsed: retry.modelUsed,
+                };
+              }
+              const retryHydrated = hydrateAnswer(retry.answer, retry.modelUsed);
+              if (findUngroundedPesoAmounts(retryHydrated.reply, allowedLedgerCents).length === 0) {
+                return retryHydrated;
+              }
+            } catch {
+              // Fall through to deterministic ledger summary so the demo never surfaces an error here.
+            }
+          }
+
+          throw new CoraLedgerFallbackSignal(deterministicFallback);
         },
       });
+    } catch (err) {
+      if (err instanceof CoraLedgerFallbackSignal) {
+        return err.fallback;
+      }
+      throw err;
     } finally {
       clearTokenMap(scrubbed.tokenMap);
       clearTokenMap(scrubbedMessage.tokenMap);
