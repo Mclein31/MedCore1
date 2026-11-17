@@ -29,7 +29,7 @@ Status key: ⬜ to do · ✅ done · 👤 needs the owner. Order inside each gro
 - ⬜ Remaining audit items not yet re-checked against v2: M9 dependency upgrades, D13 retention schedule review (v2 has an hourly purge cron).
 - ⬜ Abuse controls beyond the current rate limits (patient email-code identity is done).
 - ⬜ Backend-bound expiring magic links (the Clarify selector is a demonstration); real gateway confirmation and legal signing (simulated by design; see DECISIONS); production controls for staff simulation workflows.
-- ⬜ Resolve npm audit advisories compatibly; no forced downgrades or breaking SDK changes. Latest count: 12 (6 moderate, 6 high) after the Expo 58 upgrade (2026-10-27); the 2026-10-17 root audit had 26.
+- ⬜ Resolve npm audit advisories compatibly; no forced downgrades or breaking SDK changes. 2026-11-18: the server/web production graph is clean (`hono` and `@hono/node-server` upgraded; the CI gate is `scripts/audit-prod.mjs`). Still open: the mobile production tree has 29 (2 moderate, 27 high), the whole repo including dev tooling about 44 (13 moderate, 31 high). `picomatch` (GHSA-fc5q-39xc-vjpf) has no patched release yet; re-check it, and the vite / `@vitejs/plugin-react` peer conflict that makes plain `npm audit fix` fail with ERESOLVE.
 - ⬜ Official PhilHealth eSOA DTD conformance is unproven (current XML is syntactically valid with the circular namespaces).
 
 ## Open: database and environments

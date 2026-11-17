@@ -2,6 +2,11 @@
 
 Newest first, condensed. Decisions are in `DECISIONS.md`. v1-era entries (Sep 26 to the 2026-10-16 audit fixes) are in [archive/CHANGELOG_ARCHIVE.md](archive/CHANGELOG_ARCHIVE.md).
 
+## [2026-11-18] CI dependency audit fixed
+- CI run #21 (`4578d1f`) failed only at the dependency audit: new advisories since 2026-11-16. `hono` 4.13.13 → 4.13.19 and `@hono/node-server` 2.1.5 → 2.1.9 in `apps/api` (moderate: mount and RegExpRouter middleware bypass, `csrf()` and `validator('form')` gaps, backslash paths, `ECONNRESET` crash). Lockfile change limited to those two packages.
+- The remaining high finding, `picomatch` ReDoS (GHSA-fc5q-39xc-vjpf, every version up to the latest 4.0.7, no patch), reaches the audit only through mobile React Native/Expo tooling and vite/vitest. `scripts/audit-prod.mjs` now gates the server/web audit on the real production graph (`npm ls --omit=dev --all`) and prints the rest. See DECISIONS 2026-11-18.
+- Verified locally: typecheck, lint (0 errors), format check, 175 tests, build, and the new gate.
+
 ## [2026-11-16] Demo polish (PGC 2026-12-10 prep)
 - **HMO appeal letter date guard:** Updated `APPEAL_SYSTEM_PROMPT`, `buildHmoAppealPrompt`, and `hmoAppealService` (`apps/api/src/services/ai/`) so `Letter Date` is surfaced in case identifiers and the service rejects generated letters that omit `letterDate` or place `admissionDate` in the letter date header (`hasAdmissionDateAsLetterDate`). Added unit/integration coverage in `apps/api/test/hmoAppeal.test.ts`.
 - **Clearance & table headers:** Changed `Patient & MRN` table headers that display `enc.encounterNumber` to `Patient & Encounter` in `ActiveDischargeRadar.tsx`, `EncountersLedgerPage.tsx`, and `PrintDocumentContainer.tsx` (`COVERAGE_APPROVALS_REPORT`); added component render coverage in `apps/web/test/demoPolish.test.tsx`.

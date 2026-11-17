@@ -38,8 +38,10 @@ jobs:
       - run: npm run format:check
       - run: npm test
       - run: npm run build
+      # Fails on a high/critical advisory in a package the api, web or domain really ship (npm ls --omit=dev).
+      # Plain `npm audit -w` also counts packages that only mobile or dev tooling install; those are printed, not failed.
       - name: Dependency audit (production server and web)
-        run: npm audit --omit=dev --audit-level=high -w @medcore/api -w @medcore/web -w @medcore/domain
+        run: node scripts/audit-prod.mjs --audit-level=high -w @medcore/api -w @medcore/web -w @medcore/domain
       # Expo's CLI (dev server, code signing) pulls braces and node-forge advisories with no patched release.
       # They never ship inside the app bundle, so the mobile audit is reported but does not fail the build.
       - name: Dependency audit (mobile, report only)
